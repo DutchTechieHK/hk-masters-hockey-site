@@ -26,7 +26,7 @@ router.get("/", async (_req, res) => {
 
   const fundraisingRows = await db.select().from(fundraisingTable);
   const totalFundsRaised = fundraisingRows.reduce((sum, f) => sum + parseFloat(f.amountReceived ?? "0"), 0);
-  const fundraisingTarget = 50000;
+  const fundraisingTarget = 300000;
 
   const upcomingTasks = await db
     .select({ task: logisticsTable, teamName: teamsTable.name })
