@@ -13,12 +13,26 @@ export interface CreatePlayer {
   email: string;
   phone?: string;
   position?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  flightArrivalDateTime?: string;
+  flightDepartureDateTime?: string;
+  arrivalCity?: string;
+  roomSharingPreference?: string;
+  roomSharingWith?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
   travelDates?: string;
   feePaid: boolean;
-  passportExpiry?: string;
+  paymentAmountDue?: number;
+  paymentAmountPaid?: number;
+  paymentDate?: string;
   dietaryRequirements?: string;
+  medicalNotes?: string;
   notes?: string;
 }

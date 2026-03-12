@@ -497,6 +497,16 @@ components:
           type: string
         managerPhone:
           type: string
+        assistantManagerName:
+          type: string
+        assistantManagerContact:
+          type: string
+        whatsappGroupLink:
+          type: string
+        targetPlayerCount:
+          type: integer
+        kitNotes:
+          type: string
         notes:
           type: string
         createdAt:
@@ -521,6 +531,16 @@ components:
         managerEmail:
           type: string
         managerPhone:
+          type: string
+        assistantManagerName:
+          type: string
+        assistantManagerContact:
+          type: string
+        whatsappGroupLink:
+          type: string
+        targetPlayerCount:
+          type: integer
+        kitNotes:
           type: string
         notes:
           type: string
@@ -550,6 +570,28 @@ components:
           type: string
         position:
           type: string
+        dateOfBirth:
+          type: string
+        nationality:
+          type: string
+        passportNumber:
+          type: string
+        passportExpiry:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        flightArrivalDateTime:
+          type: string
+        flightDepartureDateTime:
+          type: string
+        arrivalCity:
+          type: string
+        roomSharingPreference:
+          type: string
+        roomSharingWith:
+          type: string
         shirtSize:
           type: string
         shortsSize:
@@ -560,9 +602,15 @@ components:
           type: string
         feePaid:
           type: boolean
-        passportExpiry:
+        paymentAmountDue:
+          type: number
+        paymentAmountPaid:
+          type: number
+        paymentDate:
           type: string
         dietaryRequirements:
+          type: string
+        medicalNotes:
           type: string
         notes:
           type: string
@@ -590,6 +638,28 @@ components:
           type: string
         position:
           type: string
+        dateOfBirth:
+          type: string
+        nationality:
+          type: string
+        passportNumber:
+          type: string
+        passportExpiry:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        flightArrivalDateTime:
+          type: string
+        flightDepartureDateTime:
+          type: string
+        arrivalCity:
+          type: string
+        roomSharingPreference:
+          type: string
+        roomSharingWith:
+          type: string
         shirtSize:
           type: string
         shortsSize:
@@ -600,9 +670,15 @@ components:
           type: string
         feePaid:
           type: boolean
-        passportExpiry:
+        paymentAmountDue:
+          type: number
+        paymentAmountPaid:
+          type: number
+        paymentDate:
           type: string
         dietaryRequirements:
+          type: string
+        medicalNotes:
           type: string
         notes:
           type: string
@@ -627,7 +703,9 @@ components:
           type: string
         itemType:
           type: string
-          enum: [playing_kit, training_kit, travel_leisure_kit]
+          enum: [playing_kit, training_kit, travel_leisure_kit, accessories]
+        itemName:
+          type: string
         size:
           type: string
         quantity:
@@ -636,9 +714,11 @@ components:
           type: number
         totalCost:
           type: number
+        supplier:
+          type: string
         orderStatus:
           type: string
-          enum: [pending, ordered, delivered]
+          enum: [not_ordered, ordered, received, distributed]
         notes:
           type: string
         createdAt:
@@ -647,6 +727,7 @@ components:
         - id
         - playerId
         - itemType
+        - itemName
         - size
         - quantity
         - unitCost
@@ -660,21 +741,26 @@ components:
           type: integer
         itemType:
           type: string
-          enum: [playing_kit, training_kit, travel_leisure_kit]
+          enum: [playing_kit, training_kit, travel_leisure_kit, accessories]
+        itemName:
+          type: string
         size:
           type: string
         quantity:
           type: integer
         unitCost:
           type: number
+        supplier:
+          type: string
         orderStatus:
           type: string
-          enum: [pending, ordered, delivered]
+          enum: [not_ordered, ordered, received, distributed]
         notes:
           type: string
       required:
         - playerId
         - itemType
+        - itemName
         - size
         - quantity
         - unitCost
@@ -748,7 +834,7 @@ components:
           type: string
         category:
           type: string
-          enum: [travel, accommodation, flights, visas, insurance, tournament_registration, other]
+          enum: [travel, accommodation, tournament, kits_equipment, finance, other]
         status:
           type: string
           enum: [todo, in_progress, done]
@@ -775,7 +861,7 @@ components:
           type: string
         category:
           type: string
-          enum: [travel, accommodation, flights, visas, insurance, tournament_registration, other]
+          enum: [travel, accommodation, tournament, kits_equipment, finance, other]
         status:
           type: string
           enum: [todo, in_progress, done]

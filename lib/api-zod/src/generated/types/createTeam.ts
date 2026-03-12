@@ -12,5 +12,10 @@ export interface CreateTeam {
   managerName: string;
   managerEmail: string;
   managerPhone: string;
+  assistantManagerName?: string;
+  assistantManagerContact?: string;
+  whatsappGroupLink?: string;
+  targetPlayerCount?: number;
+  kitNotes?: string;
   notes?: string;
 }

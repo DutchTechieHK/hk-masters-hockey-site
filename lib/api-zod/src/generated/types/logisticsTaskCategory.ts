@@ -12,9 +12,8 @@ export type LogisticsTaskCategory =
 export const LogisticsTaskCategory = {
   travel: "travel",
   accommodation: "accommodation",
-  flights: "flights",
-  visas: "visas",
-  insurance: "insurance",
-  tournament_registration: "tournament_registration",
+  tournament: "tournament",
+  kits_equipment: "kits_equipment",
+  finance: "finance",
   other: "other",
 } as const;

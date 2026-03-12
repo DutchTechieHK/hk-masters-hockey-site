@@ -7,10 +7,12 @@ export const kitsTable = pgTable("kits", {
   id: serial("id").primaryKey(),
   playerId: integer("player_id").references(() => playersTable.id).notNull(),
   itemType: text("item_type").notNull(),
+  itemName: text("item_name").notNull(),
   size: text("size").notNull(),
   quantity: integer("quantity").notNull().default(1),
   unitCost: numeric("unit_cost", { precision: 10, scale: 2 }).notNull(),
-  orderStatus: text("order_status").notNull().default("pending"),
+  supplier: text("supplier"),
+  orderStatus: text("order_status").notNull().default("not_ordered"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

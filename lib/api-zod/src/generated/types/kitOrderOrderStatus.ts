@@ -10,7 +10,8 @@ export type KitOrderOrderStatus =
   (typeof KitOrderOrderStatus)[keyof typeof KitOrderOrderStatus];
 
 export const KitOrderOrderStatus = {
-  pending: "pending",
+  not_ordered: "not_ordered",
   ordered: "ordered",
-  delivered: "delivered",
+  received: "received",
+  distributed: "distributed",
 } as const;

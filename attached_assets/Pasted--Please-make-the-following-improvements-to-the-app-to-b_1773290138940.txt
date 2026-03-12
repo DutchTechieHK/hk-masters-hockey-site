@@ -1,0 +1,75 @@
+"Please make the following improvements to the app to better reflect real tournament organisation needs:
+
+Players — add missing fields to the form and database:
+
+Shirt number (if not already added)
+
+Date of birth
+
+Nationality
+
+Passport number
+
+Passport expiry date
+
+Emergency contact name and phone number
+
+Flight arrival date and time into Rotterdam
+
+Flight departure date and time from Rotterdam
+
+Arrival city/airport
+
+Room sharing preference (single/shared)
+
+Room sharing with (player name, optional)
+
+Dietary requirements
+
+Medical notes (optional)
+
+Payment amount due (in HKD)
+
+Payment amount paid (in HKD)
+
+Payment date
+
+Players list view — update the table columns to show:
+Name, Shirt No., Team, Position, Nationality, Fee Paid (yes/no), Passport Expiry — and add a colour indicator: green if passport expiry is beyond October 2026, red if expiring before then.
+
+Teams page — add the following fields to each team:
+
+Team manager name and contact
+
+Assistant manager (optional)
+
+Team WhatsApp group link
+
+Target number of players
+
+Kit colour/design notes
+
+Kits & Clothing page — improve the kit tracking:
+
+Link each kit order to a specific player
+
+Add kit categories: Playing Kit, Training Kit, Travel/Leisure Kit, Accessories
+
+Add fields: item name, size, quantity, unit cost (HKD), total cost (auto-calculated), supplier, order status (not ordered/ordered/received/distributed)
+
+Add a kit summary view showing total cost per category and total kit budget
+
+Logistics page — add pre-built task categories with default tasks:
+
+Travel (flights, visas, travel insurance, airport transfers)
+
+Accommodation (hotel booking, room allocation, check-in/out dates)
+
+Tournament (registration, accreditation, match schedule, warm-up schedule)
+
+Kits & Equipment (kit ordering deadline, equipment list, stick shipping)
+
+Finance (payment deadlines, sponsor invoicing, budget tracking)
+Each task should have: task name, category, assigned to, due date, status (pending/in progress/done), and notes.
+
+Keep everything fully responsive and mobile-friendly. Maintain the existing dark green and white design."

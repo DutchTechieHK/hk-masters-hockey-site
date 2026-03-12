@@ -21,6 +21,11 @@ const teamSchema = z.object({
   managerName: z.string().min(1, "Manager name is required"),
   managerEmail: z.string().email("Invalid email"),
   managerPhone: z.string().min(1, "Phone is required"),
+  assistantManagerName: z.string().optional(),
+  assistantManagerContact: z.string().optional(),
+  whatsappGroupLink: z.string().optional(),
+  targetPlayerCount: z.union([z.coerce.number().int().min(1), z.literal("")]).optional(),
+  kitNotes: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -152,7 +157,12 @@ export default function Teams() {
 
   const openAddModal = () => {
     setEditingTeam(null)
-    reset({ name: "", category: "Women 35+", managerName: "", managerEmail: "", managerPhone: "", notes: "" })
+    reset({
+      name: "", category: "Women 35+",
+      managerName: "", managerEmail: "", managerPhone: "",
+      assistantManagerName: "", assistantManagerContact: "",
+      whatsappGroupLink: "", targetPlayerCount: "", kitNotes: "", notes: ""
+    })
     setIsModalOpen(true)
   }
 
@@ -164,6 +174,11 @@ export default function Teams() {
       managerName: team.managerName,
       managerEmail: team.managerEmail,
       managerPhone: team.managerPhone,
+      assistantManagerName: team.assistantManagerName || "",
+      assistantManagerContact: team.assistantManagerContact || "",
+      whatsappGroupLink: team.whatsappGroupLink || "",
+      targetPlayerCount: team.targetPlayerCount ?? "",
+      kitNotes: team.kitNotes || "",
       notes: team.notes || ""
     })
     setIsModalOpen(true)
@@ -314,30 +329,56 @@ export default function Teams() {
           </div>
           
           <div className="space-y-4 pt-4 border-t border-border">
-            <h4 className="text-sm font-bold text-primary uppercase tracking-wider">Manager Details</h4>
+            <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Manager Details</h4>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Full Name</label>
+              <label className="text-sm font-semibold">Manager Full Name *</label>
               <Input placeholder="Manager Name" {...register("managerName")} />
               {errors.managerName && <p className="text-xs text-destructive">{errors.managerName.message}</p>}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Email</label>
+                <label className="text-sm font-semibold">Manager Email *</label>
                 <Input type="email" placeholder="manager@example.com" {...register("managerEmail")} />
                 {errors.managerEmail && <p className="text-xs text-destructive">{errors.managerEmail.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Phone</label>
+                <label className="text-sm font-semibold">Manager Phone *</label>
                 <Input placeholder="+852 XXXX XXXX" {...register("managerPhone")} />
                 {errors.managerPhone && <p className="text-xs text-destructive">{errors.managerPhone.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Assistant Manager Name</label>
+                <Input placeholder="Optional" {...register("assistantManagerName")} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Assistant Manager Contact</label>
+                <Input placeholder="Phone or email" {...register("assistantManagerContact")} />
               </div>
             </div>
           </div>
 
+          <div className="space-y-4 pt-4 border-t border-border">
+            <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Team Info</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">WhatsApp Group Link</label>
+                <Input placeholder="https://chat.whatsapp.com/..." {...register("whatsappGroupLink")} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Target Player Count</label>
+                <Input type="number" min="1" placeholder="e.g. 16" {...register("targetPlayerCount")} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Kit & Clothing Notes</label>
+              <Input placeholder="Colours, design preferences, supplier notes..." {...register("kitNotes")} />
+            </div>
+          </div>
+
           <div className="space-y-2 pt-4 border-t border-border">
-            <label className="text-sm font-semibold">Notes (Optional)</label>
-            <textarea 
-              className="flex w-full rounded-xl border-2 border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all min-h-[100px]"
+            <label className="text-sm font-semibold">General Notes (Optional)</label>
+            <textarea
+              className="flex w-full rounded-xl border-2 border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all min-h-[80px]"
               placeholder="Any additional info..."
               {...register("notes")}
             />

@@ -15,10 +15,12 @@ export interface KitOrder {
   teamId?: number;
   teamName?: string;
   itemType: KitOrderItemType;
+  itemName: string;
   size: string;
   quantity: number;
   unitCost: number;
   totalCost: number;
+  supplier?: string;
   orderStatus: KitOrderOrderStatus;
   notes?: string;
   createdAt?: string;

@@ -13,4 +13,5 @@ export const KitOrderItemType = {
   playing_kit: "playing_kit",
   training_kit: "training_kit",
   travel_leisure_kit: "travel_leisure_kit",
+  accessories: "accessories",
 } as const;

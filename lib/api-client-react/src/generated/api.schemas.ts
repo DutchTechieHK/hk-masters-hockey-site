@@ -39,6 +39,11 @@ export interface Team {
   managerName: string;
   managerEmail: string;
   managerPhone: string;
+  assistantManagerName?: string;
+  assistantManagerContact?: string;
+  whatsappGroupLink?: string;
+  targetPlayerCount?: number;
+  kitNotes?: string;
   notes?: string;
   createdAt?: string;
 }
@@ -49,6 +54,11 @@ export interface CreateTeam {
   managerName: string;
   managerEmail: string;
   managerPhone: string;
+  assistantManagerName?: string;
+  assistantManagerContact?: string;
+  whatsappGroupLink?: string;
+  targetPlayerCount?: number;
+  kitNotes?: string;
   notes?: string;
 }
 
@@ -61,13 +71,27 @@ export interface Player {
   email: string;
   phone?: string;
   position?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  flightArrivalDateTime?: string;
+  flightDepartureDateTime?: string;
+  arrivalCity?: string;
+  roomSharingPreference?: string;
+  roomSharingWith?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
   travelDates?: string;
   feePaid: boolean;
-  passportExpiry?: string;
+  paymentAmountDue?: number;
+  paymentAmountPaid?: number;
+  paymentDate?: string;
   dietaryRequirements?: string;
+  medicalNotes?: string;
   notes?: string;
   createdAt?: string;
 }
@@ -79,13 +103,27 @@ export interface CreatePlayer {
   email: string;
   phone?: string;
   position?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  flightArrivalDateTime?: string;
+  flightDepartureDateTime?: string;
+  arrivalCity?: string;
+  roomSharingPreference?: string;
+  roomSharingWith?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
   travelDates?: string;
   feePaid: boolean;
-  passportExpiry?: string;
+  paymentAmountDue?: number;
+  paymentAmountPaid?: number;
+  paymentDate?: string;
   dietaryRequirements?: string;
+  medicalNotes?: string;
   notes?: string;
 }
 
@@ -96,15 +134,17 @@ export const KitOrderItemType = {
   playing_kit: "playing_kit",
   training_kit: "training_kit",
   travel_leisure_kit: "travel_leisure_kit",
+  accessories: "accessories",
 } as const;
 
 export type KitOrderOrderStatus =
   (typeof KitOrderOrderStatus)[keyof typeof KitOrderOrderStatus];
 
 export const KitOrderOrderStatus = {
-  pending: "pending",
+  not_ordered: "not_ordered",
   ordered: "ordered",
-  delivered: "delivered",
+  received: "received",
+  distributed: "distributed",
 } as const;
 
 export interface KitOrder {
@@ -114,10 +154,12 @@ export interface KitOrder {
   teamId?: number;
   teamName?: string;
   itemType: KitOrderItemType;
+  itemName: string;
   size: string;
   quantity: number;
   unitCost: number;
   totalCost: number;
+  supplier?: string;
   orderStatus: KitOrderOrderStatus;
   notes?: string;
   createdAt?: string;
@@ -130,23 +172,27 @@ export const CreateKitOrderItemType = {
   playing_kit: "playing_kit",
   training_kit: "training_kit",
   travel_leisure_kit: "travel_leisure_kit",
+  accessories: "accessories",
 } as const;
 
 export type CreateKitOrderOrderStatus =
   (typeof CreateKitOrderOrderStatus)[keyof typeof CreateKitOrderOrderStatus];
 
 export const CreateKitOrderOrderStatus = {
-  pending: "pending",
+  not_ordered: "not_ordered",
   ordered: "ordered",
-  delivered: "delivered",
+  received: "received",
+  distributed: "distributed",
 } as const;
 
 export interface CreateKitOrder {
   playerId: number;
   itemType: CreateKitOrderItemType;
+  itemName: string;
   size: string;
   quantity: number;
   unitCost: number;
+  supplier?: string;
   orderStatus: CreateKitOrderOrderStatus;
   notes?: string;
 }
@@ -198,10 +244,9 @@ export type LogisticsTaskCategory =
 export const LogisticsTaskCategory = {
   travel: "travel",
   accommodation: "accommodation",
-  flights: "flights",
-  visas: "visas",
-  insurance: "insurance",
-  tournament_registration: "tournament_registration",
+  tournament: "tournament",
+  kits_equipment: "kits_equipment",
+  finance: "finance",
   other: "other",
 } as const;
 
@@ -233,10 +278,9 @@ export type CreateLogisticsTaskCategory =
 export const CreateLogisticsTaskCategory = {
   travel: "travel",
   accommodation: "accommodation",
-  flights: "flights",
-  visas: "visas",
-  insurance: "insurance",
-  tournament_registration: "tournament_registration",
+  tournament: "tournament",
+  kits_equipment: "kits_equipment",
+  finance: "finance",
   other: "other",
 } as const;
 

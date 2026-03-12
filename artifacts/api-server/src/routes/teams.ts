@@ -11,49 +11,40 @@ import {
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
-  const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
-  res.json(teams.map((t) => ({
+function mapTeam(t: typeof teamsTable.$inferSelect) {
+  return {
     id: t.id,
     name: t.name,
     category: t.category,
     managerName: t.managerName,
     managerEmail: t.managerEmail,
     managerPhone: t.managerPhone,
+    assistantManagerName: t.assistantManagerName,
+    assistantManagerContact: t.assistantManagerContact,
+    whatsappGroupLink: t.whatsappGroupLink,
+    targetPlayerCount: t.targetPlayerCount,
+    kitNotes: t.kitNotes,
     notes: t.notes,
     createdAt: t.createdAt?.toISOString(),
-  })));
+  };
+}
+
+router.get("/", async (_req, res) => {
+  const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
+  res.json(teams.map(mapTeam));
 });
 
 router.post("/", async (req, res) => {
   const body = CreateTeamBody.parse(req.body);
-  const [team] = await db.insert(teamsTable).values(body).returning();
-  res.status(201).json({
-    id: team.id,
-    name: team.name,
-    category: team.category,
-    managerName: team.managerName,
-    managerEmail: team.managerEmail,
-    managerPhone: team.managerPhone,
-    notes: team.notes,
-    createdAt: team.createdAt?.toISOString(),
-  });
+  const [team] = await db.insert(teamsTable).values(body as any).returning();
+  res.status(201).json(mapTeam(team));
 });
 
 router.put("/:id", async (req, res) => {
   const { id } = UpdateTeamParams.parse(req.params);
   const body = UpdateTeamBody.parse(req.body);
-  const [team] = await db.update(teamsTable).set(body).where(eq(teamsTable.id, id)).returning();
-  res.json({
-    id: team.id,
-    name: team.name,
-    category: team.category,
-    managerName: team.managerName,
-    managerEmail: team.managerEmail,
-    managerPhone: team.managerPhone,
-    notes: team.notes,
-    createdAt: team.createdAt?.toISOString(),
-  });
+  const [team] = await db.update(teamsTable).set(body as any).where(eq(teamsTable.id, id)).returning();
+  res.json(mapTeam(team));
 });
 
 router.delete("/:id", async (req, res) => {

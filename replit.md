@@ -35,21 +35,21 @@ artifacts-monorepo/
 
 ## Pages / Sections
 
-1. **Dashboard** - Stats overview: total players per team, fees paid vs outstanding, funds raised vs target, upcoming deadlines
-2. **Teams** - List of 3 teams with name, category, manager name, email, phone
-3. **Players** - Full player list with name, team, email, phone, position, sizes, travel dates, fee paid, passport expiry, dietary requirements, notes
-4. **Kits & Clothing** - Kit orders per player: item type, size, quantity, unit cost, total cost, order status
+1. **Dashboard** - Stats overview: total players, fees paid vs outstanding, funds raised vs HK$300,000 target, clickable key deadlines panel
+2. **Teams** - 3 teams with manager + assistant manager, WhatsApp link, target player count, kit notes; clickable cards open team detail with full player roster
+3. **Players** - Full player list with shirt number, team, position, nationality, fee status, passport expiry (green/red color indicator). Form includes DOB, nationality, passport details, emergency contact, flight arrival/departure, accommodation preferences, kit sizes, payment tracking, dietary requirements, medical notes
+4. **Kits & Clothing** - Kit orders per player linked to categories (Playing Kit, Training Kit, Travel/Leisure Kit, Accessories); tracks item name, size, quantity, unit cost, supplier, and order status (Not Ordered → Ordered → Received → Distributed); summary view shows total per category and kit budget
 5. **Fundraising** - Sponsor/donor tracking: name, amounts pledged/received, date, team, status
-6. **Logistics** - Task/checklist board for travel, accommodation, flights, visas, insurance, tournament registration
+6. **Logistics** - Kanban board with 22 pre-built tasks across 5 categories: Travel, Accommodation, Tournament, Kits & Equipment, Finance; filterable by category
 
 ## Database Schema
 
 Tables in PostgreSQL:
-- `teams` - Team details (id, name, category, manager_name, manager_email, manager_phone, notes)
-- `players` - Player records linked to teams
-- `kits` - Kit orders linked to players
+- `teams` - id, name, category, manager_name, manager_email, manager_phone, assistant_manager_name, assistant_manager_contact, whatsapp_group_link, target_player_count, kit_notes, notes
+- `players` - Full profile: team_id, name, shirt_number, email, phone, position, date_of_birth, nationality, passport_number, passport_expiry, emergency_contact_name, emergency_contact_phone, flight_arrival_date_time, flight_departure_date_time, arrival_city, room_sharing_preference, room_sharing_with, shirt_size, shorts_size, jacket_size, travel_dates, fee_paid, payment_amount_due, payment_amount_paid, payment_date, dietary_requirements, medical_notes, notes
+- `kits` - player_id, item_type (playing_kit/training_kit/travel_leisure_kit/accessories), item_name, size, quantity, unit_cost, supplier, order_status (not_ordered/ordered/received/distributed), notes
 - `fundraising` - Sponsor/donor records optionally linked to a team
-- `logistics` - Task checklist items optionally linked to a team
+- `logistics` - Task items: title, category (travel/accommodation/tournament/kits_equipment/finance/other), status (todo/in_progress/done), due_date, assigned_to, notes, team_id
 
 ## API Routes
 

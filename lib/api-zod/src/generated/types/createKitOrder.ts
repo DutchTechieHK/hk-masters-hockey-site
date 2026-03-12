@@ -11,9 +11,11 @@ import type { CreateKitOrderOrderStatus } from "./createKitOrderOrderStatus";
 export interface CreateKitOrder {
   playerId: number;
   itemType: CreateKitOrderItemType;
+  itemName: string;
   size: string;
   quantity: number;
   unitCost: number;
+  supplier?: string;
   orderStatus: CreateKitOrderOrderStatus;
   notes?: string;
 }

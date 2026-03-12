@@ -10,7 +10,8 @@ export type CreateKitOrderOrderStatus =
   (typeof CreateKitOrderOrderStatus)[keyof typeof CreateKitOrderOrderStatus];
 
 export const CreateKitOrderOrderStatus = {
-  pending: "pending",
+  not_ordered: "not_ordered",
   ordered: "ordered",
-  delivered: "delivered",
+  received: "received",
+  distributed: "distributed",
 } as const;
