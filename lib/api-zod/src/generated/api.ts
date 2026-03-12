@@ -113,6 +113,7 @@ export const ListPlayersResponseItem = zod.object({
   teamId: zod.number(),
   teamName: zod.string().optional(),
   name: zod.string(),
+  shirtNumber: zod.number().optional(),
   email: zod.string(),
   phone: zod.string().optional(),
   position: zod.string().optional(),
@@ -134,6 +135,7 @@ export const ListPlayersResponse = zod.array(ListPlayersResponseItem);
 export const CreatePlayerBody = zod.object({
   teamId: zod.number(),
   name: zod.string(),
+  shirtNumber: zod.number().optional(),
   email: zod.string(),
   phone: zod.string().optional(),
   position: zod.string().optional(),
@@ -157,6 +159,7 @@ export const UpdatePlayerParams = zod.object({
 export const UpdatePlayerBody = zod.object({
   teamId: zod.number(),
   name: zod.string(),
+  shirtNumber: zod.number().optional(),
   email: zod.string(),
   phone: zod.string().optional(),
   position: zod.string().optional(),
@@ -175,6 +178,7 @@ export const UpdatePlayerResponse = zod.object({
   teamId: zod.number(),
   teamName: zod.string().optional(),
   name: zod.string(),
+  shirtNumber: zod.number().optional(),
   email: zod.string(),
   phone: zod.string().optional(),
   position: zod.string().optional(),

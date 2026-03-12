@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useListTeams, useCreateTeam, useUpdateTeam, useDeleteTeam, getListTeamsQueryKey } from "@workspace/api-client-react"
+import { useListTeams, useCreateTeam, useUpdateTeam, useDeleteTeam, getListTeamsQueryKey, useListPlayers } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit2, Trash2, Mail, Phone, Users } from "lucide-react"
+import { Plus, Edit2, Trash2, Mail, Phone, Users, ChevronLeft, CheckCircle, XCircle } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -26,6 +26,113 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>
 
+function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; onEdit: (team: Team) => void }) {
+  const { data: players = [], isLoading } = useListPlayers({ teamId: team.id })
+
+  return (
+    <div>
+      {/* Back header */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary mb-6 transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Back to Teams
+      </button>
+
+      {/* Team header card */}
+      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden mb-6">
+        <div className="p-6 border-b border-border bg-gradient-to-br from-primary/5 to-transparent flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div>
+            <Badge className="mb-2">{team.category}</Badge>
+            <h2 className="text-3xl font-bold text-primary">{team.name}</h2>
+            {team.createdAt && (
+              <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'MMM d, yyyy')}</p>
+            )}
+          </div>
+          <Button variant="outline" onClick={() => onEdit(team)} className="shrink-0">
+            <Edit2 className="w-4 h-4 mr-2" /> Edit Team
+          </Button>
+        </div>
+        <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div>
+            <p className="text-muted-foreground font-medium mb-1 flex items-center gap-1"><Users className="w-3.5 h-3.5" /> Manager</p>
+            <p className="font-semibold text-foreground">{team.managerName}</p>
+          </div>
+          <div>
+            <p className="text-muted-foreground font-medium mb-1 flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> Email</p>
+            <a href={`mailto:${team.managerEmail}`} className="font-semibold text-primary hover:underline">{team.managerEmail}</a>
+          </div>
+          <div>
+            <p className="text-muted-foreground font-medium mb-1 flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> Phone</p>
+            <a href={`tel:${team.managerPhone}`} className="font-semibold text-foreground">{team.managerPhone}</a>
+          </div>
+        </div>
+      </div>
+
+      {/* Players roster */}
+      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold text-foreground">Team Roster</h3>
+            <p className="text-sm text-muted-foreground mt-0.5">{players.length} player{players.length !== 1 ? 's' : ''} registered</p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="p-8 text-center text-muted-foreground">Loading players...</div>
+        ) : players.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground">
+            <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No players in this team yet.</p>
+            <p className="text-sm mt-1">Add players from the Players section.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                <tr>
+                  <th className="px-6 py-3 font-semibold">#</th>
+                  <th className="px-6 py-3 font-semibold">Name</th>
+                  <th className="px-6 py-3 font-semibold hidden sm:table-cell">Position</th>
+                  <th className="px-6 py-3 font-semibold">Fee Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {players.map(player => (
+                  <tr key={player.id} className="hover:bg-muted/10 transition-colors">
+                    <td className="px-6 py-3">
+                      {player.shirtNumber != null ? (
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                          {player.shirtNumber}
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-muted/50 text-muted-foreground flex items-center justify-center text-xs">—</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 font-semibold text-foreground">{player.name}</td>
+                    <td className="px-6 py-3 hidden sm:table-cell text-muted-foreground">{player.position || '—'}</td>
+                    <td className="px-6 py-3">
+                      {player.feePaid ? (
+                        <Badge variant="success" className="gap-1"><CheckCircle className="w-3 h-3" /> Paid</Badge>
+                      ) : (
+                        <Badge variant="destructive" className="gap-1 bg-rose-100 text-rose-800"><XCircle className="w-3 h-3" /> Unpaid</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Teams() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -33,6 +140,7 @@ export default function Teams() {
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
 
   const createMutation = useCreateTeam()
   const updateMutation = useUpdateTeam()
@@ -67,6 +175,7 @@ export default function Teams() {
       await deleteMutation.mutateAsync({ id })
       queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey() })
       toast({ title: "Team deleted successfully" })
+      if (selectedTeam?.id === id) setSelectedTeam(null)
     } catch {
       toast({ title: "Failed to delete team", variant: "destructive" })
     }
@@ -77,6 +186,9 @@ export default function Teams() {
       if (editingTeam) {
         await updateMutation.mutateAsync({ id: editingTeam.id, data })
         toast({ title: "Team updated successfully" })
+        if (selectedTeam?.id === editingTeam.id) {
+          setSelectedTeam({ ...selectedTeam, ...data })
+        }
       } else {
         await createMutation.mutateAsync({ data })
         toast({ title: "Team created successfully" })
@@ -93,62 +205,88 @@ export default function Teams() {
       title="Teams"
       description="Manage the 3 Hong Kong field hockey teams travelling to Rotterdam."
       action={
-        <Button onClick={openAddModal}>
-          <Plus className="w-5 h-5 mr-2" /> Add Team
-        </Button>
+        !selectedTeam ? (
+          <Button onClick={openAddModal}>
+            <Plus className="w-5 h-5 mr-2" /> Add Team
+          </Button>
+        ) : undefined
       }
     >
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-          {[1,2,3].map(i => <div key={i} className="h-64 bg-white rounded-2xl border border-border"></div>)}
-        </div>
+      {/* Team detail view */}
+      {selectedTeam ? (
+        <TeamDetail
+          team={selectedTeam}
+          onBack={() => setSelectedTeam(null)}
+          onEdit={(team) => openEditModal(team)}
+        />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teams.map(team => (
-            <div key={team.id} className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col group">
-              <div className="p-6 border-b border-border bg-gradient-to-br from-primary/5 to-transparent relative">
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-2">
-                  <button onClick={() => openEditModal(team)} className="p-1.5 bg-white rounded-md shadow text-blue-600 hover:bg-blue-50 transition-colors">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(team.id)} className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <Badge className="mb-3">{team.category}</Badge>
-                <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
-                {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'MMM d, yyyy')}</p>}
-              </div>
-              <div className="p-6 flex-1 flex flex-col gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center"><Users className="w-4 h-4 mr-2"/> Manager</p>
-                  <p className="font-medium text-foreground">{team.managerName}</p>
-                </div>
-                <div className="space-y-2">
-                  <a href={`mailto:${team.managerEmail}`} className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors">
-                    <Mail className="w-4 h-4 mr-3" /> {team.managerEmail}
-                  </a>
-                  <a href={`tel:${team.managerPhone}`} className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors">
-                    <Phone className="w-4 h-4 mr-3" /> {team.managerPhone}
-                  </a>
-                </div>
-                {team.notes && (
-                  <div className="mt-auto pt-4 border-t border-border">
-                    <p className="text-sm italic text-muted-foreground line-clamp-2">{team.notes}</p>
-                  </div>
-                )}
-              </div>
+        <>
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+              {[1,2,3].map(i => <div key={i} className="h-64 bg-white rounded-2xl border border-border"></div>)}
             </div>
-          ))}
-          {teams.length === 0 && (
-            <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-border">
-              <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-bold text-foreground">No teams yet</h3>
-              <p className="text-muted-foreground mt-1 mb-4">Add your first team to get started.</p>
-              <Button onClick={openAddModal} variant="outline">Create a Team</Button>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {teams.map(team => (
+                <div
+                  key={team.id}
+                  className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col group hover:border-primary/30"
+                  onClick={() => setSelectedTeam(team)}
+                >
+                  <div className="p-6 border-b border-border bg-gradient-to-br from-primary/5 to-transparent relative">
+                    <div className="absolute top-4 right-4 flex space-x-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openEditModal(team) }}
+                        className="p-1.5 bg-white rounded-md shadow text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
+                        className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <Badge className="mb-3">{team.category}</Badge>
+                    <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
+                    {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'MMM d, yyyy')}</p>}
+                  </div>
+                  <div className="p-6 flex-1 flex flex-col gap-4">
+                    <div>
+                      <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center"><Users className="w-4 h-4 mr-2"/> Manager</p>
+                      <p className="font-medium text-foreground">{team.managerName}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <a href={`mailto:${team.managerEmail}`} onClick={e => e.stopPropagation()} className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors">
+                        <Mail className="w-4 h-4 mr-3" /> {team.managerEmail}
+                      </a>
+                      <a href={`tel:${team.managerPhone}`} onClick={e => e.stopPropagation()} className="flex items-center text-sm text-muted-foreground hover:text-primary transition-colors">
+                        <Phone className="w-4 h-4 mr-3" /> {team.managerPhone}
+                      </a>
+                    </div>
+                    {team.notes && (
+                      <div className="mt-auto pt-4 border-t border-border">
+                        <p className="text-sm italic text-muted-foreground line-clamp-2">{team.notes}</p>
+                      </div>
+                    )}
+                    <div className="mt-auto pt-3 border-t border-border/50 text-xs font-medium text-primary flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" /> Click to view team roster →
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {teams.length === 0 && (
+                <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-border">
+                  <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-bold text-foreground">No teams yet</h3>
+                  <p className="text-muted-foreground mt-1 mb-4">Add your first team to get started.</p>
+                  <Button onClick={openAddModal} variant="outline">Create a Team</Button>
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
 
       <Modal

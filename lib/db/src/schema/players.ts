@@ -7,6 +7,7 @@ export const playersTable = pgTable("players", {
   id: serial("id").primaryKey(),
   teamId: integer("team_id").references(() => teamsTable.id).notNull(),
   name: text("name").notNull(),
+  shirtNumber: integer("shirt_number"),
   email: text("email").notNull(),
   phone: text("phone"),
   position: text("position"),

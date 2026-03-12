@@ -11,6 +11,7 @@ export interface Player {
   teamId: number;
   teamName?: string;
   name: string;
+  shirtNumber?: number;
   email: string;
   phone?: string;
   position?: string;

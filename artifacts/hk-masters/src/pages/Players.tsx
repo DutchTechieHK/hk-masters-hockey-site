@@ -18,6 +18,7 @@ import { getInitials } from "@/lib/utils"
 const playerSchema = z.object({
   teamId: z.coerce.number().min(1, "Team selection is required"),
   name: z.string().min(1, "Name is required"),
+  shirtNumber: z.coerce.number().int().min(1).max(99).optional().or(z.literal("")),
   email: z.string().email("Invalid email"),
   phone: z.string().optional(),
   position: z.string().optional(),
@@ -65,7 +66,7 @@ export default function Players() {
     setEditingPlayer(null)
     reset({ 
       teamId: teams.length > 0 ? teams[0].id : 0, 
-      name: "", email: "", phone: "", position: "", 
+      name: "", shirtNumber: "", email: "", phone: "", position: "", 
       shirtSize: "", shortsSize: "", jacketSize: "", 
       travelDates: "", feePaid: false, passportExpiry: "", 
       dietaryRequirements: "", notes: "" 
@@ -78,6 +79,7 @@ export default function Players() {
     reset({
       teamId: player.teamId,
       name: player.name,
+      shirtNumber: player.shirtNumber ?? "",
       email: player.email,
       phone: player.phone || "",
       position: player.position || "",
@@ -106,11 +108,15 @@ export default function Players() {
 
   const onSubmit = async (data: PlayerFormValues) => {
     try {
+      const payload = {
+        ...data,
+        shirtNumber: data.shirtNumber === "" ? undefined : data.shirtNumber as number | undefined,
+      }
       if (editingPlayer) {
-        await updateMutation.mutateAsync({ id: editingPlayer.id, data })
+        await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload as any })
         toast({ title: "Player updated successfully" })
       } else {
-        await createMutation.mutateAsync({ data })
+        await createMutation.mutateAsync({ data: payload as any })
         toast({ title: "Player added successfully" })
       }
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
@@ -158,54 +164,76 @@ export default function Players() {
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
               <tr>
-                <th className="px-6 py-4 font-semibold">Player</th>
-                <th className="px-6 py-4 font-semibold hidden md:table-cell">Contact</th>
-                <th className="px-6 py-4 font-semibold hidden lg:table-cell">Team Info</th>
-                <th className="px-6 py-4 font-semibold">Fee Status</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                <th className="px-4 py-4 font-semibold">#</th>
+                <th className="px-4 py-4 font-semibold">Player</th>
+                <th className="px-4 py-4 font-semibold hidden sm:table-cell">Team</th>
+                <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
+                <th className="px-4 py-4 font-semibold hidden lg:table-cell">Contact</th>
+                <th className="px-4 py-4 font-semibold">Fee</th>
+                <th className="px-4 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">Loading players...</td>
+                  <td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">Loading players...</td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">
                     No players found. {teams.length === 0 && "Add a team first."}
                   </td>
                 </tr>
               ) : (
                 filteredPlayers.map(player => (
                   <tr key={player.id} className="hover:bg-muted/10 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                    {/* Shirt Number */}
+                    <td className="px-4 py-4">
+                      {player.shirtNumber != null ? (
+                        <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                          {player.shirtNumber}
+                        </div>
+                      ) : (
+                        <div className="w-9 h-9 rounded-lg bg-muted/50 text-muted-foreground flex items-center justify-center text-xs">
+                          —
+                        </div>
+                      )}
+                    </td>
+                    {/* Player name + avatar */}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-9 h-9 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0">
                           {getInitials(player.name)}
                         </div>
                         <div>
                           <div className="font-bold text-foreground">{player.name}</div>
-                          <div className="text-muted-foreground text-xs md:hidden">{player.teamName}</div>
+                          <div className="text-muted-foreground text-xs sm:hidden">{player.teamName}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <div className="text-foreground">{player.email}</div>
-                      <div className="text-muted-foreground text-xs">{player.phone || '-'}</div>
+                    {/* Team */}
+                    <td className="px-4 py-4 hidden sm:table-cell">
+                      <Badge variant="outline">{player.teamName ?? '—'}</Badge>
                     </td>
-                    <td className="px-6 py-4 hidden lg:table-cell">
-                      <Badge variant="outline" className="mb-1">{player.teamName}</Badge>
-                      <div className="text-muted-foreground text-xs">{player.position || 'No position'}</div>
+                    {/* Position */}
+                    <td className="px-4 py-4 hidden md:table-cell">
+                      <span className="text-foreground">{player.position || <span className="text-muted-foreground text-xs">—</span>}</span>
                     </td>
-                    <td className="px-6 py-4">
+                    {/* Contact */}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      <div className="text-foreground text-sm">{player.email}</div>
+                      <div className="text-muted-foreground text-xs">{player.phone || '—'}</div>
+                    </td>
+                    {/* Fee */}
+                    <td className="px-4 py-4">
                       {player.feePaid ? (
-                        <Badge variant="success" className="gap-1"><CheckCircle className="w-3 h-3"/> Paid</Badge>
+                        <Badge variant="success" className="gap-1 whitespace-nowrap"><CheckCircle className="w-3 h-3"/> Paid</Badge>
                       ) : (
-                        <Badge variant="destructive" className="gap-1 bg-rose-100 text-rose-800 hover:bg-rose-200"><XCircle className="w-3 h-3"/> Unpaid</Badge>
+                        <Badge variant="destructive" className="gap-1 whitespace-nowrap bg-rose-100 text-rose-800 hover:bg-rose-200"><XCircle className="w-3 h-3"/> Unpaid</Badge>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    {/* Actions */}
+                    <td className="px-4 py-4 text-right">
                       <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => openEditModal(player)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
                           <Edit2 className="w-4 h-4" />
@@ -247,6 +275,11 @@ export default function Players() {
                 {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-semibold">Shirt Number</label>
+                <Input type="number" min="1" max="99" {...register("shirtNumber")} placeholder="e.g. 7" />
+                {errors.shirtNumber && <p className="text-xs text-destructive">{errors.shirtNumber.message as string}</p>}
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm font-semibold">Email</label>
                 <Input type="email" {...register("email")} placeholder="jane@example.com" />
                 {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
@@ -255,9 +288,9 @@ export default function Players() {
                 <label className="text-sm font-semibold">Phone</label>
                 <Input {...register("phone")} placeholder="+852..." />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-semibold">Position</label>
-                <Input {...register("position")} placeholder="Forward, Midfield..." />
+                <Input {...register("position")} placeholder="Forward, Midfield, Defender, Goalkeeper..." />
               </div>
             </div>
             <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-xl border">

@@ -1,11 +1,13 @@
 import { useGetDashboard } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
+import { useLocation } from "wouter"
 
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboard()
+  const [, navigate] = useLocation()
 
   if (isLoading) {
     return (
@@ -56,6 +58,8 @@ export default function Dashboard() {
           value={stats.upcomingDeadlines.length.toString()} 
           icon={<CalendarDays className="w-6 h-6 text-amber-500" />}
           trend="Tasks needing attention"
+          onClick={() => navigate("/logistics")}
+          clickable
         />
         <StatCard 
           title="Total Outstanding" 
@@ -85,11 +89,11 @@ export default function Dashboard() {
                     <div className="flex gap-4">
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground mb-1">Fees Paid</p>
-                        <p className="font-semibold text-emerald-600">{formatCurrency(team.feesPaid)}</p>
+                        <p className="font-semibold text-emerald-600">{team.feesPaid} paid</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground mb-1">Outstanding</p>
-                        <p className="font-semibold text-rose-600">{formatCurrency(team.feesOutstanding)}</p>
+                        <p className="font-semibold text-rose-600">{team.feesOutstanding} unpaid</p>
                       </div>
                     </div>
                   </div>
@@ -131,28 +135,39 @@ export default function Dashboard() {
         {/* Right Column (1/3 width) */}
         <div className="space-y-8">
           
-          {/* Upcoming Deadlines */}
-          <div className="bg-white rounded-2xl shadow-sm border border-border">
+          {/* Upcoming Deadlines — clickable, navigates to Logistics */}
+          <button
+            className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group"
+            onClick={() => navigate("/logistics")}
+          >
             <div className="p-6 border-b border-border flex items-center justify-between">
               <h2 className="text-xl font-display font-bold">Key Deadlines</h2>
-              <CalendarDays className="w-5 h-5 text-muted-foreground" />
+              <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                <CalendarDays className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4" />
+              </div>
             </div>
             <div className="p-4 space-y-4">
               {stats.upcomingDeadlines.length > 0 ? (
-                stats.upcomingDeadlines.map((deadline, idx) => (
-                  <div key={idx} className="flex gap-4 items-start p-3 rounded-xl hover:bg-muted transition-colors">
-                    <div className="w-12 h-12 rounded-xl bg-amber-100 flex flex-col items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-amber-800 uppercase">{format(parseISO(deadline.dueDate), 'MMM')}</span>
-                      <span className="text-lg font-bold text-amber-900 leading-none">{format(parseISO(deadline.dueDate), 'dd')}</span>
+                <>
+                  {stats.upcomingDeadlines.map((deadline, idx) => (
+                    <div key={idx} className="flex gap-4 items-start p-3 rounded-xl hover:bg-muted transition-colors">
+                      <div className="w-12 h-12 rounded-xl bg-amber-100 flex flex-col items-center justify-center shrink-0">
+                        <span className="text-xs font-bold text-amber-800 uppercase">{format(parseISO(deadline.dueDate), 'MMM')}</span>
+                        <span className="text-lg font-bold text-amber-900 leading-none">{format(parseISO(deadline.dueDate), 'dd')}</span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-foreground leading-tight text-left">{deadline.title}</p>
+                        <span className="inline-flex items-center px-2 py-0.5 mt-2 rounded text-xs font-medium bg-secondary text-secondary-foreground capitalize">
+                          {deadline.category.replace(/_/g, ' ')}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-foreground leading-tight">{deadline.title}</p>
-                      <span className="inline-flex items-center px-2 py-0.5 mt-2 rounded text-xs font-medium bg-secondary text-secondary-foreground capitalize">
-                        {deadline.category.replace('_', ' ')}
-                      </span>
-                    </div>
+                  ))}
+                  <div className="pt-2 text-center text-xs font-medium text-primary flex items-center justify-center gap-1">
+                    View all tasks in Logistics <ArrowRight className="w-3 h-3" />
                   </div>
-                ))
+                </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground flex flex-col items-center">
                   <CheckCircle2 className="w-10 h-10 mb-3 text-emerald-400/50" />
@@ -161,7 +176,7 @@ export default function Dashboard() {
                 </div>
               )}
             </div>
-          </div>
+          </button>
 
         </div>
       </div>
@@ -169,9 +184,20 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ title, value, icon, trend }: { title: string, value: string, icon: React.ReactNode, trend: string }) {
+function StatCard({ 
+  title, value, icon, trend, onClick, clickable 
+}: { 
+  title: string; value: string; icon: React.ReactNode; trend: string; 
+  onClick?: () => void; clickable?: boolean 
+}) {
+  const Component = clickable ? 'button' : 'div'
   return (
-    <div className="bg-white p-6 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+    <Component
+      className={`bg-white p-6 rounded-2xl border border-border shadow-sm transition-shadow group relative overflow-hidden w-full text-left ${
+        clickable ? 'hover:shadow-md hover:border-primary/40 cursor-pointer' : 'hover:shadow-md'
+      }`}
+      onClick={onClick}
+    >
       <div className="flex justify-between items-start mb-4 relative z-10">
         <h3 className="font-medium text-muted-foreground">{title}</h3>
         <div className="p-2 rounded-xl bg-muted/50 group-hover:scale-110 transition-transform">
@@ -181,10 +207,15 @@ function StatCard({ title, value, icon, trend }: { title: string, value: string,
       <div className="relative z-10">
         <p className="text-3xl font-display font-bold text-foreground">{value}</p>
         <p className="text-sm text-muted-foreground mt-1">{trend}</p>
+        {clickable && (
+          <p className="text-xs text-primary font-medium mt-2 flex items-center gap-1">
+            View Logistics <ArrowRight className="w-3 h-3" />
+          </p>
+        )}
       </div>
       <div className="absolute -bottom-6 -right-6 opacity-5 group-hover:opacity-10 transition-opacity scale-150 pointer-events-none">
         {icon}
       </div>
-    </div>
+    </Component>
   )
 }

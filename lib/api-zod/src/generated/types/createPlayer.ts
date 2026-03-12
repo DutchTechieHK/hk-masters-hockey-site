@@ -9,6 +9,7 @@
 export interface CreatePlayer {
   teamId: number;
   name: string;
+  shirtNumber?: number;
   email: string;
   phone?: string;
   position?: string;
