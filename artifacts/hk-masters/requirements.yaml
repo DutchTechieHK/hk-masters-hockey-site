@@ -1,0 +1,17 @@
+packages:
+  "framer-motion": "For page transitions, smooth enter/exit animations, and premium micro-interactions"
+  "recharts": "For dashboard charts and progress visualization"
+  "react-hook-form": "For robust form state management"
+  "@hookform/resolvers": "For Zod schema validation in forms"
+  "date-fns": "For formatting upcoming deadlines and task dates"
+  "clsx": "Utility for conditionally joining classNames"
+  "tailwind-merge": "Utility for merging tailwind classes without conflicts"
+
+images:
+  - path: "artifacts/hk-masters/public/images/hero-bg.png"
+    description: "Abstract subtle gradient mesh background in dark forest green and deep emerald, very clean, premium, professional, slightly textured, suitable for a sports management dashboard header"
+    aspect_ratio: "16:9"
+
+notes:
+  - Expects backend endpoints at /api as defined in the OpenAPI spec
+  - Uses @workspace/api-client-react for all data fetching and mutations

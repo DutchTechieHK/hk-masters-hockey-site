@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'DM Sans', sans-serif;
+  --font-display: 'Outfit', sans-serif;
+
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-success: hsl(142 71% 45%);
+  --color-success-foreground: hsl(144 100% 11%);
+  --color-warning: hsl(38 92% 50%);
+  --color-warning-foreground: hsl(48 100% 11%);
+}
+
+:root {
+  /* Dark Green & White Theme */
+  --background: 145 20% 98%;
+  --foreground: 145 50% 10%;
+  
+  --card: 0 0% 100%;
+  --card-foreground: 145 50% 10%;
+  
+  /* Primary: Dark Green */
+  --primary: 145 60% 25%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary: Soft Gray-Green */
+  --secondary: 145 20% 92%;
+  --secondary-foreground: 145 60% 20%;
+  
+  /* Muted: Very soft backgrounds */
+  --muted: 145 15% 94%;
+  --muted-foreground: 145 20% 40%;
+  
+  /* Accent: Bright, vivid green for subtle pops */
+  --accent: 145 80% 40%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --border: 145 20% 90%;
+  --input: 145 20% 90%;
+  --ring: 145 60% 25%;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: 145 50% 5%;
+  --foreground: 145 20% 98%;
+  
+  --card: 145 50% 8%;
+  --card-foreground: 145 20% 98%;
+  
+  --primary: 145 50% 40%;
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: 145 30% 15%;
+  --secondary-foreground: 145 20% 98%;
+  
+  --muted: 145 30% 12%;
+  --muted-foreground: 145 20% 65%;
+  
+  --accent: 145 60% 45%;
+  --accent-foreground: 0 0% 100%;
+  
+  --destructive: 0 62% 40%;
+  --destructive-foreground: 0 0% 100%;
+  
+  --border: 145 30% 15%;
+  --input: 145 30% 15%;
+  --ring: 145 50% 40%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased font-sans selection:bg-primary/20 selection:text-primary;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply tracking-tight;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-full border-2 border-transparent bg-clip-content;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}

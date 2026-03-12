@@ -1,22 +1,33 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: HK 2026 Masters World Cup API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: teams
+    description: Team operations
+  - name: players
+    description: Player operations
+  - name: kits
+    description: Kit & clothing operations
+  - name: fundraising
+    description: Fundraising operations
+  - name: logistics
+    description: Logistics operations
+  - name: dashboard
+    description: Dashboard operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +35,388 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard stats
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List all teams
+      responses:
+        "200":
+          description: List of teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Create a team
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeam"
+      responses:
+        "201":
+          description: Created team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /teams/{id}:
+    put:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Update a team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeam"
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+    delete:
+      operationId: deleteTeam
+      tags: [teams]
+      summary: Delete a team
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /players:
+    get:
+      operationId: listPlayers
+      tags: [players]
+      summary: List all players
+      parameters:
+        - name: teamId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Player"
+    post:
+      operationId: createPlayer
+      tags: [players]
+      summary: Create a player
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayer"
+      responses:
+        "201":
+          description: Created player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+
+  /players/{id}:
+    put:
+      operationId: updatePlayer
+      tags: [players]
+      summary: Update a player
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayer"
+      responses:
+        "200":
+          description: Updated player
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Player"
+    delete:
+      operationId: deletePlayer
+      tags: [players]
+      summary: Delete a player
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /kits:
+    get:
+      operationId: listKits
+      tags: [kits]
+      summary: List all kit orders
+      parameters:
+        - name: playerId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of kit orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KitOrder"
+    post:
+      operationId: createKit
+      tags: [kits]
+      summary: Create a kit order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateKitOrder"
+      responses:
+        "201":
+          description: Created kit order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitOrder"
+
+  /kits/{id}:
+    put:
+      operationId: updateKit
+      tags: [kits]
+      summary: Update a kit order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateKitOrder"
+      responses:
+        "200":
+          description: Updated kit order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitOrder"
+    delete:
+      operationId: deleteKit
+      tags: [kits]
+      summary: Delete a kit order
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /fundraising:
+    get:
+      operationId: listFundraising
+      tags: [fundraising]
+      summary: List all fundraising entries
+      responses:
+        "200":
+          description: List of fundraising entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FundraisingEntry"
+    post:
+      operationId: createFundraising
+      tags: [fundraising]
+      summary: Create a fundraising entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFundraisingEntry"
+      responses:
+        "201":
+          description: Created entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundraisingEntry"
+
+  /fundraising/{id}:
+    put:
+      operationId: updateFundraising
+      tags: [fundraising]
+      summary: Update a fundraising entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFundraisingEntry"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FundraisingEntry"
+    delete:
+      operationId: deleteFundraising
+      tags: [fundraising]
+      summary: Delete a fundraising entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /logistics:
+    get:
+      operationId: listLogistics
+      tags: [logistics]
+      summary: List all logistics tasks
+      parameters:
+        - name: teamId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of logistics tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LogisticsTask"
+    post:
+      operationId: createLogisticsTask
+      tags: [logistics]
+      summary: Create a logistics task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLogisticsTask"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogisticsTask"
+
+  /logistics/{id}:
+    put:
+      operationId: updateLogisticsTask
+      tags: [logistics]
+      summary: Update a logistics task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLogisticsTask"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogisticsTask"
+    delete:
+      operationId: deleteLogisticsTask
+      tags: [logistics]
+      summary: Delete a logistics task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +427,361 @@ components:
       required:
         - status
 
+    DashboardStats:
+      type: object
+      properties:
+        totalPlayers:
+          type: integer
+        teamStats:
+          type: array
+          items:
+            type: object
+            properties:
+              teamId:
+                type: integer
+              teamName:
+                type: string
+              category:
+                type: string
+              playerCount:
+                type: integer
+              feesPaid:
+                type: integer
+              feesOutstanding:
+                type: integer
+            required:
+              - teamId
+              - teamName
+              - category
+              - playerCount
+              - feesPaid
+              - feesOutstanding
+        totalFundsRaised:
+          type: number
+        fundraisingTarget:
+          type: number
+        upcomingDeadlines:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              dueDate:
+                type: string
+              category:
+                type: string
+            required:
+              - title
+              - dueDate
+              - category
+      required:
+        - totalPlayers
+        - teamStats
+        - totalFundsRaised
+        - fundraisingTarget
+        - upcomingDeadlines
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        managerName:
+          type: string
+        managerEmail:
+          type: string
+        managerPhone:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - category
+        - managerName
+        - managerEmail
+        - managerPhone
+
+    CreateTeam:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        managerName:
+          type: string
+        managerEmail:
+          type: string
+        managerPhone:
+          type: string
+        notes:
+          type: string
+      required:
+        - name
+        - category
+        - managerName
+        - managerEmail
+        - managerPhone
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        position:
+          type: string
+        shirtSize:
+          type: string
+        shortsSize:
+          type: string
+        jacketSize:
+          type: string
+        travelDates:
+          type: string
+        feePaid:
+          type: boolean
+        passportExpiry:
+          type: string
+        dietaryRequirements:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - teamId
+        - name
+        - email
+        - feePaid
+
+    CreatePlayer:
+      type: object
+      properties:
+        teamId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        position:
+          type: string
+        shirtSize:
+          type: string
+        shortsSize:
+          type: string
+        jacketSize:
+          type: string
+        travelDates:
+          type: string
+        feePaid:
+          type: boolean
+        passportExpiry:
+          type: string
+        dietaryRequirements:
+          type: string
+        notes:
+          type: string
+      required:
+        - teamId
+        - name
+        - email
+        - feePaid
+
+    KitOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        playerName:
+          type: string
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        itemType:
+          type: string
+          enum: [playing_kit, training_kit, travel_leisure_kit]
+        size:
+          type: string
+        quantity:
+          type: integer
+        unitCost:
+          type: number
+        totalCost:
+          type: number
+        orderStatus:
+          type: string
+          enum: [pending, ordered, delivered]
+        notes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - itemType
+        - size
+        - quantity
+        - unitCost
+        - totalCost
+        - orderStatus
+
+    CreateKitOrder:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        itemType:
+          type: string
+          enum: [playing_kit, training_kit, travel_leisure_kit]
+        size:
+          type: string
+        quantity:
+          type: integer
+        unitCost:
+          type: number
+        orderStatus:
+          type: string
+          enum: [pending, ordered, delivered]
+        notes:
+          type: string
+      required:
+        - playerId
+        - itemType
+        - size
+        - quantity
+        - unitCost
+        - orderStatus
+
+    FundraisingEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        donorName:
+          type: string
+        amountPledged:
+          type: number
+        amountReceived:
+          type: number
+        date:
+          type: string
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, received]
+        notes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - donorName
+        - amountPledged
+        - amountReceived
+        - status
+
+    CreateFundraisingEntry:
+      type: object
+      properties:
+        donorName:
+          type: string
+        amountPledged:
+          type: number
+        amountReceived:
+          type: number
+        date:
+          type: string
+        teamId:
+          type: integer
+        status:
+          type: string
+          enum: [pending, confirmed, received]
+        notes:
+          type: string
+      required:
+        - donorName
+        - amountPledged
+        - amountReceived
+        - status
+
+    LogisticsTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        title:
+          type: string
+        category:
+          type: string
+          enum: [travel, accommodation, flights, visas, insurance, tournament_registration, other]
+        status:
+          type: string
+          enum: [todo, in_progress, done]
+        dueDate:
+          type: string
+        assignedTo:
+          type: string
+        notes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - category
+        - status
+
+    CreateLogisticsTask:
+      type: object
+      properties:
+        teamId:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+          enum: [travel, accommodation, flights, visas, insurance, tournament_registration, other]
+        status:
+          type: string
+          enum: [todo, in_progress, done]
+        dueDate:
+          type: string
+        assignedTo:
+          type: string
+        notes:
+          type: string
+      required:
+        - title
+        - category
+        - status
