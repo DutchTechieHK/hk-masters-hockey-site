@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-hk-green: #006B3C;
+  --color-hk-green-light: #00914F;
+  --color-hk-green-dark: #004A2A;
+  --color-hk-red: #DE2910;
+  --color-hk-white: #FFFFFF;
+  --color-hk-gray: #F5F5F5;
+  --color-hk-gray-dark: #374151;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #1f2937;
+    background-color: #ffffff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    transition: color 0.15s ease, opacity 0.15s ease;
+  }
+}
+
+@layer utilities {
+  .nav-link {
+    position: relative;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background-color: #DE2910;
+    transition: width 0.2s ease;
+  }
+
+  .nav-link:hover::after {
+    width: 100%;
+  }
+
+  .nav-link.active::after {
+    width: 100%;
+  }
+}
