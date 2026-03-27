@@ -39,11 +39,12 @@ export default function Layout({ children }) {
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              {/* Placeholder logo — TODO: replace with actual club crest image */}
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#006B3C] font-bold text-sm shrink-0">
-                HK
-              </div>
+            <Link href="/" className="flex items-center gap-2 group">
+              <img
+                src="/hk-masters-web/logo.jpg"
+                alt="HK Masters Hockey logo"
+                className="h-10 w-10 object-contain rounded-sm bg-white p-0.5 shrink-0"
+              />
               <div className="leading-tight">
                 <p className="text-white font-bold text-sm sm:text-base leading-none">Hong Kong</p>
                 <p className="text-green-200 text-xs font-medium leading-none mt-0.5">Masters Hockey</p>
@@ -103,9 +104,11 @@ export default function Layout({ children }) {
             {/* Club Info */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#006B3C] font-bold text-xs">
-                  HK
-                </div>
+                <img
+                  src="/hk-masters-web/logo.jpg"
+                  alt="HK Masters Hockey logo"
+                  className="h-8 w-8 object-contain rounded-sm bg-white p-0.5 shrink-0"
+                />
                 <span className="font-bold text-white">Hong Kong Masters Hockey</span>
               </div>
               <p className="text-green-200 text-sm leading-relaxed">
