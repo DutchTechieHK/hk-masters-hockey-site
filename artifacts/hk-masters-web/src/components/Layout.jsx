@@ -41,7 +41,7 @@ export default function Layout({ children }) {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 group">
               <img
-                src="/hk-masters-web/logo.jpg"
+                src={`${import.meta.env.BASE_URL}logo.jpg`}
                 alt="HK Masters Hockey logo"
                 className="h-10 w-10 object-contain rounded-sm bg-white p-0.5 shrink-0"
               />
@@ -105,7 +105,7 @@ export default function Layout({ children }) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <img
-                  src="/hk-masters-web/logo.jpg"
+                  src={`${import.meta.env.BASE_URL}logo.jpg`}
                   alt="HK Masters Hockey logo"
                   className="h-8 w-8 object-contain rounded-sm bg-white p-0.5 shrink-0"
                 />
