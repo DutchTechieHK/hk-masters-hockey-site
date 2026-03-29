@@ -1,0 +1,55 @@
+backend:
+  name: github
+  repo: DutchTechHK/hk-masters-hockey-site-public
+  branch: main
+
+media_folder: public/uploads
+public_folder: /uploads
+
+collections:
+  - name: events
+    label: Events
+    folder: src/content/events
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - { label: Title, name: title, widget: string }
+      - { label: Date, name: date, widget: datetime }
+      - { label: Location, name: location, widget: string }
+      - { label: Description, name: description, widget: text }
+      - { label: Category, name: category, widget: select, options: [upcoming, past] }
+      - { label: Image, name: image, widget: image, required: false }
+
+  - name: sponsors
+    label: Sponsors
+    folder: src/content/sponsors
+    create: true
+    slug: "{{slug}}"
+    fields:
+      - { label: Name, name: name, widget: string }
+      - { label: Tier, name: tier, widget: select, options: [gold, silver, bronze] }
+      - { label: Logo, name: logo, widget: image }
+      - { label: Website URL, name: url, widget: string, required: false }
+
+  - name: pages
+    label: Pages
+    files:
+      - label: Home
+        name: home
+        file: src/content/pages/home.md
+        fields:
+          - { label: Hero Title, name: hero_title, widget: string }
+          - { label: Hero Subtitle, name: hero_subtitle, widget: string }
+          - { label: Welcome Text, name: welcome_text, widget: text }
+      - label: About
+        name: about
+        file: src/content/pages/about.md
+        fields:
+          - { label: Mission Statement, name: mission, widget: text }
+          - { label: History, name: history, widget: text }
+      - label: Rotterdam 2026
+        name: rotterdam
+        file: src/content/pages/rotterdam.md
+        fields:
+          - { label: Overview, name: overview, widget: text }
+          - { label: Key Dates, name: key_dates, widget: text }
