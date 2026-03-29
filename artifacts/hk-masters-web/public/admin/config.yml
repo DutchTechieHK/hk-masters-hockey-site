@@ -1,6 +1,5 @@
 backend:
-  name: github
-  repo: DutchTechHK/hk-masters-hockey-site-public
+  name: git-gateway
   branch: main
 
 media_folder: media
