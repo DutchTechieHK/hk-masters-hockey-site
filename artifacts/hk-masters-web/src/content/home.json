@@ -1,0 +1,32 @@
+{
+  "hero_title": "Hong Kong Masters Hockey",
+  "hero_tagline": "Excellence. Camaraderie. The Beautiful Game.",
+  "hero_intro": "We are Hong Kong's premier masters field hockey club, bringing together experienced players who love the sport. From local competitions to the World Masters Cup, we compete with passion and pride.",
+  "welcome_heading": "Welcome to HK Masters Hockey",
+  "welcome_text": "Hong Kong Masters Hockey has been at the forefront of masters-age field hockey in Asia for over two decades. We welcome players aged 35 and above who share a love for the game and a commitment to staying active, competitive, and connected to the global hockey community.",
+  "stats": [
+    { "stat": "80+", "label": "Registered Players" },
+    { "stat": "3", "label": "Competing Squads" },
+    { "stat": "15+", "label": "Years of Excellence" }
+  ],
+  "upcoming_events": [
+    {
+      "name": "Pre-Season Training Camp",
+      "date": "April 5–6, 2026",
+      "location": "HKFC Hockey Pitch, Happy Valley",
+      "description": "Two-day intensive training camp to prepare squads for the Rotterdam World Cup."
+    },
+    {
+      "name": "Friendly vs Singapore Masters",
+      "date": "April 18, 2026",
+      "location": "Siu Sai Wan Sports Ground",
+      "description": "International friendly match against Singapore Masters as part of our Rotterdam preparation."
+    },
+    {
+      "name": "Rotterdam 2026 World Masters Cup",
+      "date": "May 23 – June 6, 2026",
+      "location": "Rotterdam, Netherlands",
+      "description": "HK Masters compete in the premier field hockey tournament for masters-age players worldwide."
+    }
+  ]
+}

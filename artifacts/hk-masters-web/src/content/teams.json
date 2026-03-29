@@ -1,0 +1,47 @@
+{
+  "page_subtitle": "Four squads, one club — representing Hong Kong Masters Hockey on the world stage.",
+  "join_heading": "Join the Team",
+  "join_text": "Are you 35 or above and passionate about field hockey? We welcome players of all abilities. Trials are held at the start of each season — get in touch to find out more.",
+  "squads": [
+    {
+      "id": "men-o35",
+      "name": "Men's Over-35",
+      "short_name": "M35",
+      "description": "Our Men's Over-35 squad is the largest and most competitive squad in the club. Drawing from a deep pool of experienced local and expat players, the M35 team competes in regional Asia-Pacific tournaments and the World Masters Cup.",
+      "player_count": 22,
+      "coach": "Mark Davidson",
+      "captain": "David Lam",
+      "photo": ""
+    },
+    {
+      "id": "men-o45",
+      "name": "Men's Over-45",
+      "short_name": "M45",
+      "description": "The Men's Over-45 squad combines deep experience with enduring passion for the game. This squad has achieved our club's best international results, including a bronze medal at the 2018 World Masters Cup in Barcelona.",
+      "player_count": 18,
+      "coach": "Peter Hughes",
+      "captain": "Robert Ng",
+      "photo": ""
+    },
+    {
+      "id": "men-o55",
+      "name": "Men's Over-55",
+      "short_name": "M55",
+      "description": "Our newest competitive squad, the Men's Over-55 team was formed in 2023 and competes in selected regional and international tournaments. If you're 55 or above and want to lace up again, this squad is for you.",
+      "player_count": 14,
+      "coach": "Alan Chow",
+      "captain": "Richard Yip",
+      "photo": ""
+    },
+    {
+      "id": "women",
+      "name": "Women's Team",
+      "short_name": "W35+",
+      "description": "Open to women aged 35 and above, our Women's team has grown significantly since its formation in 2012. The squad competes in the Over-35 category internationally and is looking to expand its tournament schedule in 2026 and beyond.",
+      "player_count": 16,
+      "coach": "Linda Siu",
+      "captain": "Grace Ho",
+      "photo": ""
+    }
+  ]
+}

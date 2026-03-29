@@ -2,53 +2,223 @@ backend:
   name: git-gateway
   branch: main
 
-media_folder: media
+media_folder: public/media
 public_folder: /media
 
 collections:
+  # ─── PAGES ───────────────────────────────────────────────────────────────────
+  - name: pages
+    label: Pages
+    files:
+
+      # HOME PAGE
+      - name: home
+        label: Home Page
+        file: src/content/home.json
+        format: json
+        fields:
+          - label: Hero Title
+            name: hero_title
+            widget: string
+            hint: "Main headline in the green hero banner"
+          - label: Hero Tagline
+            name: hero_tagline
+            widget: string
+            hint: "Short tagline shown below the title"
+          - label: Hero Introduction
+            name: hero_intro
+            widget: text
+            hint: "2–3 sentence introduction shown in the hero banner"
+          - label: Welcome Section Heading
+            name: welcome_heading
+            widget: string
+          - label: Welcome Text
+            name: welcome_text
+            widget: text
+            hint: "Main welcome paragraph below the hero"
+          - label: Stats
+            name: stats
+            widget: list
+            hint: "Three stats displayed below the welcome text"
+            fields:
+              - { label: "Number / Value", name: stat, widget: string }
+              - { label: "Label", name: label, widget: string }
+          - label: Upcoming Events (Home Page)
+            name: upcoming_events
+            widget: list
+            hint: "Events shown on the home page preview strip (up to 3 recommended)"
+            fields:
+              - { label: Event Name, name: name, widget: string }
+              - { label: Date, name: date, widget: string }
+              - { label: Location, name: location, widget: string }
+              - { label: Description, name: description, widget: text }
+
+      # ABOUT PAGE
+      - name: about
+        label: About Page
+        file: src/content/about.json
+        format: json
+        fields:
+          - label: Mission Statement (Paragraph 1)
+            name: mission_p1
+            widget: text
+          - label: Mission Statement (Paragraph 2)
+            name: mission_p2
+            widget: text
+          - label: Committee Members
+            name: committee
+            widget: list
+            hint: "Club committee and leadership — displayed with initials avatar"
+            fields:
+              - { label: Name, name: name, widget: string }
+              - { label: Role / Title, name: role, widget: string }
+          - label: Club History Timeline
+            name: timeline
+            widget: list
+            hint: "Key milestones in the club's history, displayed in order"
+            fields:
+              - { label: Year, name: year, widget: string }
+              - { label: Event Title, name: event, widget: string }
+              - { label: Detail, name: detail, widget: text }
+
+      # TEAMS PAGE
+      - name: teams
+        label: Teams Page
+        file: src/content/teams.json
+        format: json
+        fields:
+          - label: Page Subtitle
+            name: page_subtitle
+            widget: string
+            hint: "Short subtitle shown in the green page header"
+          - label: Join the Team Heading
+            name: join_heading
+            widget: string
+          - label: Join the Team Text
+            name: join_text
+            widget: text
+          - label: Squads
+            name: squads
+            widget: list
+            hint: "One entry per squad. Order determines display order on the page."
+            fields:
+              - { label: ID (no spaces), name: id, widget: string, hint: "e.g. men-o35 — do not change once set" }
+              - { label: Full Name, name: name, widget: string, hint: "e.g. Men's Over-35" }
+              - { label: Short Name / Badge, name: short_name, widget: string, hint: "e.g. M35" }
+              - { label: Description, name: description, widget: text }
+              - { label: Player Count, name: player_count, widget: number }
+              - { label: Coach, name: coach, widget: string }
+              - { label: Captain, name: captain, widget: string }
+              - { label: Squad Photo, name: photo, widget: image, required: false, allow_multiple: false }
+
+      # ROTTERDAM 2026 PAGE
+      - name: rotterdam
+        label: Rotterdam 2026 Page
+        file: src/content/rotterdam.json
+        format: json
+        fields:
+          - label: Header Badge Text
+            name: header_badge
+            widget: string
+            hint: "Small red badge in the header, e.g. May – June 2026"
+          - label: Tournament Overview (Paragraph 1)
+            name: overview_p1
+            widget: text
+          - label: Tournament Overview (Paragraph 2)
+            name: overview_p2
+            widget: text
+          - label: Tournament Overview (Paragraph 3)
+            name: overview_p3
+            widget: text
+          - label: Quick Facts
+            name: quick_facts
+            widget: list
+            hint: "Key-value pairs shown in the sidebar box"
+            fields:
+              - { label: Label, name: label, widget: string }
+              - { label: Value, name: value, widget: string }
+          - label: HK Squads at Rotterdam
+            name: squads
+            widget: list
+            hint: "One card per squad — update pools and first matches after the tournament draw"
+            fields:
+              - { label: Squad Name, name: name, widget: string }
+              - { label: Category Badge, name: category, widget: string, hint: "e.g. M35" }
+              - { label: Number of Players, name: players, widget: number }
+              - { label: Pool Group, name: pool_group, widget: string, hint: "e.g. Pool A" }
+              - { label: First Match, name: first_match, widget: string, hint: "e.g. May 24 vs Australia" }
+          - label: Key Dates
+            name: key_dates
+            widget: list
+            hint: "Important dates shown in the timeline table"
+            fields:
+              - { label: Date, name: date, widget: string }
+              - { label: Event Description, name: event, widget: string }
+          - label: Travel & Logistics Cards
+            name: travel
+            widget: list
+            hint: "Info cards for Flights, Accommodation, Kit — update as details are confirmed"
+            fields:
+              - { label: Icon (emoji), name: icon, widget: string }
+              - { label: Title, name: title, widget: string }
+              - { label: Body Text, name: body, widget: text }
+
+      # CONTACT PAGE
+      - name: contact
+        label: Contact Settings
+        file: src/content/contact.json
+        format: json
+        fields:
+          - { label: Email Address, name: email, widget: string }
+          - { label: Phone Number, name: phone, widget: string }
+          - { label: Address, name: address, widget: string }
+          - label: Google Maps Embed URL
+            name: maps_embed_src
+            widget: string
+            required: false
+            hint: "Google Maps → search address → Share → Embed a map → copy the src URL from the iframe code"
+          - label: Social Media Links
+            name: social
+            widget: object
+            fields:
+              - { label: Facebook URL, name: facebook, widget: string }
+              - { label: Instagram URL, name: instagram, widget: string }
+              - { label: Twitter / X URL, name: twitter, widget: string }
+
+  # ─── EVENTS ──────────────────────────────────────────────────────────────────
   - name: events
     label: Events
     folder: src/content/events
     create: true
-    slug: "{{slug}}"
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    format: frontmatter
     fields:
       - { label: Title, name: title, widget: string }
       - { label: Date, name: date, widget: datetime }
+      - { label: End Date, name: end_date, widget: datetime, required: false }
       - { label: Location, name: location, widget: string }
       - { label: Description, name: description, widget: text }
-      - { label: Category, name: category, widget: select, options: [upcoming, past] }
-      - { label: Image, name: image, widget: image, required: false }
+      - label: Event Type
+        name: type
+        widget: select
+        options: ["Tournament", "Friendly", "Training", "Social", "Other"]
+      - { label: Featured on Home Page, name: featured, widget: boolean, default: false }
+      - { label: Body / Additional Details, name: body, widget: markdown, required: false }
 
+  # ─── SPONSORS ────────────────────────────────────────────────────────────────
   - name: sponsors
     label: Sponsors
     folder: src/content/sponsors
     create: true
     slug: "{{slug}}"
+    format: frontmatter
     fields:
-      - { label: Name, name: name, widget: string }
-      - { label: Tier, name: tier, widget: select, options: [gold, silver, bronze] }
-      - { label: Logo, name: logo, widget: image }
-      - { label: Website URL, name: url, widget: string, required: false }
-
-  - name: pages
-    label: Pages
-    files:
-      - label: Home
-        name: home
-        file: src/content/pages/home.md
-        fields:
-          - { label: Hero Title, name: hero_title, widget: string }
-          - { label: Hero Subtitle, name: hero_subtitle, widget: string }
-          - { label: Welcome Text, name: welcome_text, widget: text }
-      - label: About
-        name: about
-        file: src/content/pages/about.md
-        fields:
-          - { label: Mission Statement, name: mission, widget: text }
-          - { label: History, name: history, widget: text }
-      - label: Rotterdam 2026
-        name: rotterdam
-        file: src/content/pages/rotterdam.md
-        fields:
-          - { label: Overview, name: overview, widget: text }
-          - { label: Key Dates, name: key_dates, widget: text }
+      - { label: Sponsor Name, name: title, widget: string }
+      - { label: Logo, name: logo, widget: image, required: false }
+      - { label: Website URL, name: website, widget: string, required: false }
+      - label: Sponsorship Tier
+        name: tier
+        widget: select
+        options: ["Platinum", "Gold", "Silver", "Bronze", "Partner"]
+      - { label: Active, name: active, widget: boolean, default: true }
+      - { label: Notes, name: body, widget: markdown, required: false }

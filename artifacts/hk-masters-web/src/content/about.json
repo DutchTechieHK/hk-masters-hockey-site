@@ -1,0 +1,44 @@
+{
+  "mission_p1": "Hong Kong Masters Hockey exists to provide a high-quality, inclusive, and competitive environment for field hockey players aged 35 and above. We believe that age is no barrier to sporting excellence, and we are committed to fostering camaraderie, physical fitness, and the lifelong love of hockey.",
+  "mission_p2": "We represent Hong Kong with pride on the international stage while building a strong local community of masters players. Whether you're a seasoned international or returning to the sport, there is a place for you here.",
+  "committee": [
+    { "name": "John Chan", "role": "Club President" },
+    { "name": "Sarah Wong", "role": "Vice President" },
+    { "name": "Michael Lee", "role": "Honorary Secretary" },
+    { "name": "Emily Tse", "role": "Treasurer" },
+    { "name": "David Lam", "role": "Men's Captain (O35)" },
+    { "name": "Grace Ho", "role": "Women's Captain" }
+  ],
+  "timeline": [
+    {
+      "year": "2003",
+      "event": "Club Founded",
+      "detail": "Hong Kong Masters Hockey was established by a group of passionate former players determined to keep competing after 35."
+    },
+    {
+      "year": "2008",
+      "event": "First International Tour",
+      "detail": "The club competed in its first overseas tournament in Singapore, finishing runner-up in the Over-45 category."
+    },
+    {
+      "year": "2012",
+      "event": "Women's Squad Formed",
+      "detail": "A women's masters squad was added, broadening the club's reach and competing in regional tournaments."
+    },
+    {
+      "year": "2018",
+      "event": "World Masters Cup, Barcelona",
+      "detail": "HK Masters sent three squads to Spain, achieving best-ever results with a bronze medal in O45."
+    },
+    {
+      "year": "2022",
+      "event": "Club Rebrand",
+      "detail": "Refreshed club identity, updated kit design, and launched a new development programme for players aged 35–40."
+    },
+    {
+      "year": "2026",
+      "event": "Rotterdam World Masters Cup",
+      "detail": "Four squads are preparing to represent Hong Kong at the World Masters Cup in Rotterdam, Netherlands."
+    }
+  ]
+}
