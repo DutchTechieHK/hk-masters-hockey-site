@@ -1,6 +1,6 @@
 [build]
   base    = "."
-  command = "npm install -g pnpm && pnpm install && pnpm --filter @workspace/hk-masters-web run build"
+  command = "corepack enable && pnpm install && pnpm --filter @workspace/hk-masters-web run build"
   publish = "artifacts/hk-masters-web/dist"
 
 [build.environment]
