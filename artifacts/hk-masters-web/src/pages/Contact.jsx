@@ -23,6 +23,7 @@ export default function Contact() {
     try {
       const body = new URLSearchParams({
         "form-name": "contact",
+        "bot-field": "",
         ...formData,
       }).toString();
       const res = await fetch("/", {
