@@ -144,7 +144,7 @@ export default function Home() {
       </section>
 
       {/* Welcome Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
           <p className="text-gray-600 leading-relaxed text-lg">
