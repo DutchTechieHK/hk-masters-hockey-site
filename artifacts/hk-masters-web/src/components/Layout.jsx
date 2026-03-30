@@ -41,9 +41,9 @@ export default function Layout({ children }) {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
               <img
-                src={`${import.meta.env.BASE_URL}logo.jpg`}
+                src={`${import.meta.env.BASE_URL}logo.png`}
                 alt="HK Masters Hockey logo"
-                className="h-14 w-14 object-cover rounded-sm shrink-0"
+                className="h-14 w-14 object-cover rounded-lg shrink-0"
               />
               <div className="leading-tight">
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
@@ -105,9 +105,9 @@ export default function Layout({ children }) {
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <img
-                  src={`${import.meta.env.BASE_URL}logo.jpg`}
+                  src={`${import.meta.env.BASE_URL}logo.png`}
                   alt="HK Masters Hockey logo"
-                  className="h-8 w-8 object-contain rounded-sm bg-white p-0.5 shrink-0"
+                  className="h-8 w-8 object-cover rounded-md shrink-0"
                 />
                 <span className="font-bold text-white">Hong Kong Masters Hockey</span>
               </div>
