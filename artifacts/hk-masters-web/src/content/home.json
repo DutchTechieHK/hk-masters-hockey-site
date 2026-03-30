@@ -11,22 +11,16 @@
   ],
   "upcoming_events": [
     {
-      "name": "Pre-Season Training Camp",
-      "date": "April 5–6, 2026",
-      "location": "HKFC Hockey Pitch, Happy Valley",
-      "description": "Two-day intensive training camp to prepare squads for the Rotterdam World Cup."
+      "name": "Masters Training Night",
+      "date": "24th April 2026",
+      "location": "HKFC Astro Pitch",
+      "description": "Training Night for MO40 & MO40's Men."
     },
     {
-      "name": "Friendly vs Singapore Masters",
-      "date": "April 18, 2026",
-      "location": "Siu Sai Wan Sports Ground",
-      "description": "International friendly match against Singapore Masters as part of our Rotterdam preparation."
-    },
-    {
-      "name": "Rotterdam 2026 World Masters Cup",
-      "date": "May 23 – June 6, 2026",
-      "location": "Rotterdam, Netherlands",
-      "description": "HK Masters compete in the premier field hockey tournament for masters-age players worldwide."
+      "name": "MO50 | Social Night",
+      "date": "20th April 2026",
+      "location": "TBC",
+      "description": "Our first MO50 social event to get to know each other better."
     }
   ]
 }
