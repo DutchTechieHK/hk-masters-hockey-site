@@ -106,11 +106,13 @@ export default function Layout({ children }) {
             {/* Club Info */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <img
-                  src={`${import.meta.env.BASE_URL}logo.png`}
-                  alt="HK Masters Hockey logo"
-                  className="h-8 w-8 object-cover rounded-md shrink-0"
-                />
+                <div className="h-12 w-12 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={`${import.meta.env.BASE_URL}logo.png`}
+                    alt="HK Masters Hockey logo"
+                    className="w-full h-full object-contain scale-150"
+                  />
+                </div>
                 <span className="font-bold text-white">Hong Kong Masters Hockey</span>
               </div>
               <p className="text-green-200 text-sm leading-relaxed">
