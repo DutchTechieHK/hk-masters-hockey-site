@@ -8,5 +8,7 @@
     { "stat": "80+", "label": "Registered Players" },
     { "stat": "3", "label": "Competing Squads" },
     { "stat": "15+", "label": "Years of Excellence" }
-  ]
+  ],
+  "hero_image": "",
+  "gallery_images": []
 }

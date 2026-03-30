@@ -49,6 +49,19 @@ collections:
             fields:
               - { label: "Number / Value", name: stat, widget: string }
               - { label: "Label", name: label, widget: string }
+          - label: Hero Photo
+            name: hero_image
+            widget: image
+            required: false
+            hint: "Team photo shown on the right side of the hero banner on desktop"
+          - label: Gallery Strip Photos
+            name: gallery_images
+            widget: list
+            required: false
+            hint: "Up to 5 photos shown in the strip below the hero — team shots, action photos, events"
+            fields:
+              - { label: Photo, name: url, widget: image }
+              - { label: Caption (optional), name: caption, widget: string, required: false }
 
       # ABOUT PAGE
       - name: about
