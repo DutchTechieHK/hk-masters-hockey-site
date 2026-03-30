@@ -49,15 +49,6 @@ collections:
             fields:
               - { label: "Number / Value", name: stat, widget: string }
               - { label: "Label", name: label, widget: string }
-          - label: Upcoming Events (Home Page)
-            name: upcoming_events
-            widget: list
-            hint: "Events shown on the home page preview strip (up to 3 recommended)"
-            fields:
-              - { label: Event Name, name: name, widget: string }
-              - { label: Date, name: date, widget: string }
-              - { label: Location, name: location, widget: string }
-              - { label: Description, name: description, widget: text }
 
       # ABOUT PAGE
       - name: about

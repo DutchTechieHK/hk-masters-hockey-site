@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import content from "../content/home.json";
+import eventsContent from "../content/events.json";
 
 export default function Home() {
   return (
@@ -63,7 +64,7 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {content.upcoming_events.map((event) => (
+            {eventsContent.upcoming_events.slice(0, 3).map((event) => (
               <div key={event.name} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-150">
                 <span className="inline-block bg-green-100 text-[#006B3C] text-xs font-semibold px-2 py-1 rounded-full mb-3">
                   {event.date}
