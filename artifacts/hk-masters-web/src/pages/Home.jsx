@@ -76,13 +76,15 @@ export default function Home() {
       <section className="bg-[#005030] py-4">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {hasGallery ? (
-            <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
-              {content.gallery_images.slice(0, 5).map((img, i) => (
+            <div className="flex flex-row gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              {content.gallery_images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setActivePhoto(img.url)}
-                  className={`h-28 rounded-lg overflow-hidden focus:outline-none transition-all duration-200 ${
-                    activePhoto === img.url ? "ring-3 ring-white ring-offset-2 ring-offset-[#005030] scale-95" : "hover:scale-95 opacity-80 hover:opacity-100"
+                  className={`h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none transition-opacity duration-150 ${
+                    activePhoto === img.url
+                      ? "ring-2 ring-white ring-offset-2 ring-offset-[#005030]"
+                      : "opacity-75 hover:opacity-100"
                   }`}
                 >
                   <img src={img.url} alt={img.caption || "Club photo"} className="w-full h-full object-cover" />
@@ -90,10 +92,10 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-28 rounded-lg overflow-hidden">
-                  <PhotoPlaceholder label={i === 2 ? "Add photos via CMS → Home Page → Gallery" : ""} />
+            <div className="flex flex-row gap-2 overflow-x-auto pb-1">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden">
+                  <PhotoPlaceholder label={i === 3 ? "Add photos via CMS → Home Page → Gallery" : ""} />
                 </div>
               ))}
             </div>

@@ -58,7 +58,7 @@ collections:
             name: gallery_images
             widget: list
             required: false
-            hint: "Up to 5 photos shown in the strip below the hero — team shots, action photos, events"
+            hint: "Photos shown in the scrollable strip below the hero — add as many as you like, team shots, action photos, events"
             fields:
               - { label: Photo, name: url, widget: image }
               - { label: Caption (optional), name: caption, widget: string, required: false }
