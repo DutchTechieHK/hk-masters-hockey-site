@@ -5,8 +5,8 @@ backend:
 media_library:
   name: cloudinary
   config:
-    cloud_name: REPLACE_WITH_YOUR_CLOUD_NAME
-    api_key: REPLACE_WITH_YOUR_API_KEY
+    cloud_name: djyvdrhal
+    api_key: 467487618148569
 
 media_folder: public/media
 public_folder: /media
