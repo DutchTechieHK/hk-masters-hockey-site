@@ -9,14 +9,37 @@ export default function Contact() {
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitted(true);
+    setSending(true);
+    setError(false);
+    try {
+      const body = new URLSearchParams({
+        "form-name": "contact",
+        ...formData,
+      }).toString();
+      const res = await fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      });
+      if (res.ok) {
+        setSubmitted(true);
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -124,16 +147,17 @@ export default function Contact() {
                 </div>
                 <button
                   type="submit"
-                  className="w-full bg-[#006B3C] text-white font-semibold py-3 rounded-lg hover:bg-green-800 transition-colors duration-150"
+                  disabled={sending}
+                  className="w-full bg-[#006B3C] text-white font-semibold py-3 rounded-lg hover:bg-green-800 transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Send Message
+                  {sending ? "Sending…" : "Send Message"}
                 </button>
-                <p className="text-xs text-gray-400 text-center">
-                  Note: This form is currently for demonstration. Email us directly at{" "}
-                  <a href={`mailto:${content.email}`} className="text-[#006B3C] hover:underline">
-                    {content.email}
-                  </a>
-                </p>
+                {error && (
+                  <p className="text-sm text-red-600 text-center">
+                    Something went wrong — please try again or email us directly at{" "}
+                    <a href={`mailto:${content.email}`} className="underline">{content.email}</a>.
+                  </p>
+                )}
               </form>
             )}
           </div>
