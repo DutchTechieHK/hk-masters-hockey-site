@@ -31,32 +31,19 @@
   ],
   "squads": [
     {
-      "name": "Men's Over-35",
-      "category": "M35",
-      "players": 16,
-      "pool_group": "Pool A",
-      "first_match": "May 24 vs Australia"
-    },
-    {
-      "name": "Men's Over-45",
-      "category": "M45",
-      "players": 16,
-      "pool_group": "Pool B",
-      "first_match": "May 24 vs Germany"
-    },
-    {
-      "name": "Men's Over-55",
-      "category": "M55",
-      "players": 14,
-      "pool_group": "Pool C",
-      "first_match": "May 25 vs Canada"
-    },
-    {
       "name": "Women's Over-35",
       "category": "W35",
-      "players": 16,
-      "pool_group": "Pool A",
-      "first_match": "May 24 vs New Zealand"
+      "players": 16
+    },
+    {
+      "name": "Men's Over-40",
+      "category": "M40",
+      "players": 16
+    },
+    {
+      "name": "Men's Over-50",
+      "category": "M50",
+      "players": 16
     }
   ],
   "key_dates": [

@@ -48,7 +48,7 @@ export default function Rotterdam2026() {
       <section className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Hong Kong Squads</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {content.squads.map((squad) => (
               <div key={squad.category} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-center gap-2 mb-3">
@@ -62,14 +62,21 @@ export default function Rotterdam2026() {
                     <dt className="text-gray-500">Players</dt>
                     <dd className="font-medium text-gray-800">{squad.players}</dd>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <dt className="text-gray-500">Pool</dt>
-                    <dd className="font-medium text-gray-800">{squad.pool_group}</dd>
-                  </div>
-                  <div className="flex flex-col gap-0.5 text-sm mt-2">
-                    <dt className="text-gray-500">First match</dt>
-                    <dd className="font-medium text-gray-800">{squad.first_match}</dd>
-                  </div>
+                  {squad.pool_group && (
+                    <div className="flex justify-between text-sm">
+                      <dt className="text-gray-500">Pool</dt>
+                      <dd className="font-medium text-gray-800">{squad.pool_group}</dd>
+                    </div>
+                  )}
+                  {squad.first_match && (
+                    <div className="flex flex-col gap-0.5 text-sm mt-2">
+                      <dt className="text-gray-500">First match</dt>
+                      <dd className="font-medium text-gray-800">{squad.first_match}</dd>
+                    </div>
+                  )}
+                  {!squad.pool_group && !squad.first_match && (
+                    <p className="text-xs text-gray-400 mt-1">Pool & match schedule TBC</p>
+                  )}
                 </dl>
               </div>
             ))}
