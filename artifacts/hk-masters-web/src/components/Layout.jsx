@@ -143,9 +143,8 @@ export default function Layout({ children }) {
             {/* Contact & Social */}
             <div>
               <h3 className="font-semibold text-white mb-3">Get in Touch</h3>
-              {/* TODO: Replace with actual club email */}
-              <a href="mailto:info@hkmastershockey.com" className="text-green-200 text-sm hover:text-white transition-colors duration-150 block mb-3">
-                info@hkmastershockey.com
+              <a href={`mailto:${contactContent.email}`} className="text-green-200 text-sm hover:text-white transition-colors duration-150 block mb-3">
+                {contactContent.email}
               </a>
               <div className="flex gap-3">
                 {contactContent.social.facebook && (
