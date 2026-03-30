@@ -61,16 +61,18 @@ export default function Events() {
         </section>
 
         {/* Past Events */}
-        {content.past_events.length > 0 && (
-          <section className="mb-16">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Past Events</h2>
+        <section className="mb-16">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Past Events</h2>
+          {content.past_events.length === 0 ? (
+            <p className="text-gray-400 text-sm">No past events yet.</p>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {content.past_events.map((event) => (
                 <EventCard key={event.name} event={event} type="past" />
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Tournament Archive */}
         {content.tournament_archive.length > 0 && (
