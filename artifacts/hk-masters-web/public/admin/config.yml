@@ -8,7 +8,7 @@ media_library:
     cloud_name: djyvdrhal
     api_key: 467487618148569
 
-media_folder: public/media
+media_folder: artifacts/hk-masters-web/public/media
 public_folder: /media
 
 collections:
@@ -20,7 +20,7 @@ collections:
       # HOME PAGE
       - name: home
         label: Home Page
-        file: src/content/home.json
+        file: artifacts/hk-masters-web/src/content/home.json
         format: json
         fields:
           - label: Hero Title
@@ -62,7 +62,7 @@ collections:
       # ABOUT PAGE
       - name: about
         label: About Page
-        file: src/content/about.json
+        file: artifacts/hk-masters-web/src/content/about.json
         format: json
         fields:
           - label: Mission Statement (Paragraph 1)
@@ -90,7 +90,7 @@ collections:
       # TEAMS PAGE
       - name: teams
         label: Teams Page
-        file: src/content/teams.json
+        file: artifacts/hk-masters-web/src/content/teams.json
         format: json
         fields:
           - label: Page Subtitle
@@ -120,7 +120,7 @@ collections:
       # ROTTERDAM 2026 PAGE
       - name: rotterdam
         label: Rotterdam 2026 Page
-        file: src/content/rotterdam.json
+        file: artifacts/hk-masters-web/src/content/rotterdam.json
         format: json
         fields:
           - label: Header Badge Text
@@ -172,7 +172,7 @@ collections:
       # EVENTS PAGE
       - name: events_page
         label: Events Page
-        file: src/content/events.json
+        file: artifacts/hk-masters-web/src/content/events.json
         format: json
         fields:
           - label: Upcoming Events
@@ -208,7 +208,7 @@ collections:
       # CONTACT PAGE
       - name: contact
         label: Contact Settings
-        file: src/content/contact.json
+        file: artifacts/hk-masters-web/src/content/contact.json
         format: json
         fields:
           - { label: Email Address, name: email, widget: string }
@@ -230,7 +230,7 @@ collections:
   # ─── EVENTS ──────────────────────────────────────────────────────────────────
   - name: events
     label: Events
-    folder: src/content/events
+    folder: artifacts/hk-masters-web/src/content/events
     create: true
     slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
     format: frontmatter
@@ -250,7 +250,7 @@ collections:
   # ─── SPONSORS ────────────────────────────────────────────────────────────────
   - name: sponsors
     label: Sponsors
-    folder: src/content/sponsors
+    folder: artifacts/hk-masters-web/src/content/sponsors
     create: true
     slug: "{{slug}}"
     format: frontmatter
