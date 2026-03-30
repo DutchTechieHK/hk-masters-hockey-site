@@ -169,6 +169,42 @@ collections:
               - { label: Title, name: title, widget: string }
               - { label: Body Text, name: body, widget: text }
 
+      # EVENTS PAGE
+      - name: events_page
+        label: Events Page
+        file: src/content/events.json
+        format: json
+        fields:
+          - label: Upcoming Events
+            name: upcoming_events
+            widget: list
+            hint: "Events shown in the Upcoming section — add, edit, or remove as needed"
+            fields:
+              - { label: Event Name, name: name, widget: string }
+              - { label: Date, name: date, widget: string }
+              - { label: Location, name: location, widget: string }
+              - { label: Description, name: description, widget: text }
+          - label: Past Events
+            name: past_events
+            widget: list
+            hint: "Recent past events shown with results"
+            fields:
+              - { label: Event Name, name: name, widget: string }
+              - { label: Date, name: date, widget: string }
+              - { label: Location, name: location, widget: string }
+              - { label: Results, name: result, widget: string, required: false, hint: "e.g. M35: Champions | W35: Semi-finalists" }
+              - { label: Description, name: description, widget: text }
+          - label: Tournament Archive
+            name: tournament_archive
+            widget: list
+            hint: "Past hosted tournaments with links to their full sites"
+            fields:
+              - { label: Tournament Name, name: name, widget: string }
+              - { label: Date, name: date, widget: string }
+              - { label: Location, name: location, widget: string }
+              - { label: Description, name: description, widget: text }
+              - { label: Notion / External Site URL, name: notion_url, widget: string, required: false }
+
       # CONTACT PAGE
       - name: contact
         label: Contact Settings
