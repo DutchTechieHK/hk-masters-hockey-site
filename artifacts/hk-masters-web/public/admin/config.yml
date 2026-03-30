@@ -210,6 +210,38 @@ collections:
               - { label: Description, name: description, widget: text }
               - { label: Notion / External Site URL, name: notion_url, widget: string, required: false }
 
+      # MEDIA PAGE
+      - name: media
+        label: Media Page
+        file: artifacts/hk-masters-web/src/content/media.json
+        format: json
+        fields:
+          - label: Photo Gallery
+            name: gallery
+            widget: list
+            hint: "Add photos — each one appears as a clickable tile in the gallery"
+            fields:
+              - label: Photo
+                name: image
+                widget: image
+                hint: "Upload via Cloudinary or paste a URL"
+              - label: Caption
+                name: caption
+                widget: string
+                required: false
+                hint: "Short description shown below the photo"
+          - label: Videos
+            name: videos
+            widget: list
+            hint: "Add YouTube videos — paste just the video ID (the part after ?v= in the URL)"
+            fields:
+              - { label: Title, name: title, widget: string }
+              - label: YouTube Video ID
+                name: youtube_id
+                widget: string
+                hint: "e.g. for https://youtube.com/watch?v=dQw4w9WgXcQ — enter: dQw4w9WgXcQ"
+              - { label: Description, name: description, widget: text, required: false }
+
       # CONTACT PAGE
       - name: contact
         label: Contact Settings
