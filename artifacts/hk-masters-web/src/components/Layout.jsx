@@ -37,13 +37,13 @@ export default function Layout({ children }) {
       {/* Top Navigation */}
       <header className="bg-[#006B3C] shadow-md sticky top-0 z-50">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between h-24">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
               <img
                 src={`${import.meta.env.BASE_URL}logo.png`}
                 alt="HK Masters Hockey logo"
-                className="h-14 w-14 object-cover rounded-lg shrink-0"
+                className="h-20 w-20 object-cover rounded-lg shrink-0"
               />
               <div className="leading-tight">
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
