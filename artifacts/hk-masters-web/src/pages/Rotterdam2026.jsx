@@ -1,5 +1,6 @@
 import { Link } from "wouter";
 import content from "../content/rotterdam.json";
+import teamsContent from "../content/teams.json";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
@@ -49,7 +50,9 @@ export default function Rotterdam2026() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Hong Kong Squads</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {content.squads.map((squad) => (
+            {content.squads.map((squad) => {
+              const teamData = teamsContent.squads.find(t => t.short_name === squad.category);
+              return (
               <div key={squad.category} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">
@@ -58,10 +61,12 @@ export default function Rotterdam2026() {
                 </div>
                 <h3 className="font-bold text-gray-900 mb-3">{squad.name}</h3>
                 <dl className="space-y-1.5">
+                  {teamData?.player_count && (
                   <div className="flex justify-between text-sm">
                     <dt className="text-gray-500">Players</dt>
-                    <dd className="font-medium text-gray-800">{squad.players}</dd>
+                    <dd className="font-medium text-gray-800">{teamData.player_count}</dd>
                   </div>
+                  )}
                   {squad.pool_group && (
                     <div className="flex justify-between text-sm">
                       <dt className="text-gray-500">Pool</dt>
@@ -79,7 +84,8 @@ export default function Rotterdam2026() {
                   )}
                 </dl>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
