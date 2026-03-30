@@ -124,15 +124,19 @@ export default function Layout({ children }) {
             {/* Quick Links */}
             <div>
               <h3 className="font-semibold text-white mb-3">Quick Links</h3>
-              <ul className="space-y-1">
-                {NAV_LINKS.map((link) => (
-                  <li key={link.href}>
-                    <Link href={link.href} className="text-green-200 text-sm hover:text-white transition-colors duration-150">
-                      {link.label}
-                    </Link>
-                  </li>
+              <div className="grid grid-cols-2 gap-x-4">
+                {[NAV_LINKS.slice(0, 4), NAV_LINKS.slice(4)].map((col, ci) => (
+                  <ul key={ci} className="space-y-1">
+                    {col.map((link) => (
+                      <li key={link.href}>
+                        <Link href={link.href} className="text-green-200 text-sm hover:text-white transition-colors duration-150">
+                          {link.label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 ))}
-              </ul>
+              </div>
             </div>
 
             {/* Contact & Social */}
