@@ -61,8 +61,8 @@ export default function Home() {
             </div>
 
             {/* Right: Hero Photo */}
-            <div className="hidden lg:block">
-              <div className="h-80 w-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
+            <div>
+              <div className="h-56 sm:h-72 lg:h-80 w-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
                 {activePhoto ? (
                   <img
                     src={activePhoto}
