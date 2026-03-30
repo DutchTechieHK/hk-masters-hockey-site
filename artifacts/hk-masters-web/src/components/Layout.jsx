@@ -40,11 +40,13 @@ export default function Layout({ children }) {
           <div className="flex items-center justify-between h-24">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
-              <img
-                src={`${import.meta.env.BASE_URL}logo.png`}
-                alt="HK Masters Hockey logo"
-                className="h-20 w-20 object-contain rounded-lg bg-white p-1 shrink-0"
-              />
+              <div className="h-20 w-20 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center">
+                <img
+                  src={`${import.meta.env.BASE_URL}logo.png`}
+                  alt="HK Masters Hockey logo"
+                  className="w-full h-full object-contain scale-125"
+                />
+              </div>
               <div className="leading-tight">
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
                 <p className="text-green-200 text-sm font-semibold leading-none mt-1">Masters Hockey</p>
