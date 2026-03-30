@@ -6,7 +6,7 @@
   "welcome_text": "Hong Kong Masters Hockey has been at the forefront of masters-age field hockey in Asia for over two decades. We welcome players aged 35 and above who share a love for the game and a commitment to staying active, competitive, and connected to the global hockey community.",
   "stats": [
     {
-      "stat": "80+",
+      "stat": "54+",
       "label": "Registered Players"
     },
     {
@@ -14,8 +14,8 @@
       "label": "Competing Squads"
     },
     {
-      "stat": "15+",
-      "label": "Years of Excellence"
+      "stat": "50+",
+      "label": "Caps"
     }
   ],
   "hero_image": "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853587/HK_M50_d4-0350_hl2po2.jpg",
