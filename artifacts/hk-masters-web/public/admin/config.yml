@@ -228,16 +228,12 @@ collections:
               - label: Photos
                 name: photos
                 widget: list
-                fields:
-                  - label: Photo
-                    name: image
-                    widget: image
-                    hint: "Upload via Cloudinary"
-                  - label: Caption
-                    name: caption
-                    widget: string
-                    required: false
-                    hint: "Optional short description"
+                hint: "Select multiple photos at once from Cloudinary"
+                field:
+                  label: Photo
+                  name: photo
+                  widget: image
+                  allow_multiple: true
           - label: Videos
             name: videos
             widget: list

@@ -75,14 +75,11 @@ export default function Media() {
                         >
                           <div className="aspect-video overflow-hidden rounded-xl">
                             <img
-                              src={photo.image}
-                              alt={photo.caption || displayAlbum.name}
+                              src={typeof photo === "string" ? photo : photo.image}
+                              alt={displayAlbum.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           </div>
-                          {photo.caption && (
-                            <p className="text-xs text-gray-500 mt-1 px-0.5 truncate">{photo.caption}</p>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -125,8 +122,8 @@ export default function Media() {
             )}
 
             <img
-              src={lightbox.photos[lightbox.index].image}
-              alt={lightbox.photos[lightbox.index].caption || ""}
+              src={typeof lightbox.photos[lightbox.index] === "string" ? lightbox.photos[lightbox.index] : lightbox.photos[lightbox.index].image}
+              alt=""
               className="w-full rounded-xl shadow-2xl"
             />
 
@@ -142,12 +139,7 @@ export default function Media() {
               </button>
             )}
 
-            {lightbox.photos[lightbox.index].caption && (
-              <p className="text-white text-sm text-center mt-3 opacity-80">
-                {lightbox.photos[lightbox.index].caption}
-              </p>
-            )}
-            <p className="text-white/40 text-xs text-center mt-1">
+            <p className="text-white/40 text-xs text-center mt-3">
               {lightbox.index + 1} / {lightbox.photos.length}
             </p>
           </div>
