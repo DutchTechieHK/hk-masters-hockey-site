@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import content from "../content/home.json";
 import eventsContent from "../content/events.json";
@@ -16,6 +17,7 @@ function PhotoPlaceholder({ label }) {
 export default function Home() {
   const hasHeroImage = content.hero_image && content.hero_image.trim() !== "";
   const hasGallery = content.gallery_images && content.gallery_images.length > 0;
+  const [activePhoto, setActivePhoto] = useState(hasHeroImage ? content.hero_image : null);
 
   return (
     <div>
@@ -53,10 +55,10 @@ export default function Home() {
 
             {/* Right: Hero Photo */}
             <div className="hidden lg:block">
-              <div className="h-80 w-full rounded-2xl overflow-hidden shadow-2xl">
-                {hasHeroImage ? (
+              <div className="h-80 w-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
+                {activePhoto ? (
                   <img
-                    src={content.hero_image}
+                    src={activePhoto}
                     alt="HK Masters Hockey team"
                     className="w-full h-full object-cover"
                   />
@@ -76,9 +78,15 @@ export default function Home() {
           {hasGallery ? (
             <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {content.gallery_images.slice(0, 5).map((img, i) => (
-                <div key={i} className="h-28 rounded-lg overflow-hidden">
-                  <img src={img.url} alt={img.caption || "Club photo"} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-                </div>
+                <button
+                  key={i}
+                  onClick={() => setActivePhoto(img.url)}
+                  className={`h-28 rounded-lg overflow-hidden focus:outline-none transition-all duration-200 ${
+                    activePhoto === img.url ? "ring-3 ring-white ring-offset-2 ring-offset-[#005030] scale-95" : "hover:scale-95 opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  <img src={img.url} alt={img.caption || "Club photo"} className="w-full h-full object-cover" />
+                </button>
               ))}
             </div>
           ) : (
