@@ -44,7 +44,7 @@ export default function Layout({ children }) {
                 <img
                   src={`${import.meta.env.BASE_URL}logo.png`}
                   alt="HK Masters Hockey logo"
-                  className="w-full h-full object-contain scale-125"
+                  className="w-full h-full object-contain scale-150"
                 />
               </div>
               <div className="leading-tight">
