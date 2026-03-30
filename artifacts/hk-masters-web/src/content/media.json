@@ -1,4 +1,22 @@
 {
-  "albums": [],
+  "albums": [
+    {
+      "name": "WMH | ASIA CHAMPIONSHIP 2025 | Trials & Training",
+      "photos": [
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866922/IMG_20250919_191018_lickar.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866913/IMG_20250905_204611_pxyrsw.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866910/IMG_20250919_191117_d91ubn.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866908/IMG_20251003_192935_yrcws0.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866905/IMG_20250912_192213_tjspxc.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866904/IMG_20251003_193007_gynooj.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866900/IMG_20250919_191551_wqtka9.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866666/IMG_20250817_112914_trnlvp.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866664/IMG_20250905_203940_ci24kr.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866659/IMG_20250905_203924_oqmldy.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866655/IMG_20250817_112922_rt9pcc.jpg",
+        "https://res.cloudinary.com/djyvdrhal/image/upload/v1774866655/IMG_20250905_204240_crito2.jpg"
+      ]
+    }
+  ],
   "videos": []
 }
