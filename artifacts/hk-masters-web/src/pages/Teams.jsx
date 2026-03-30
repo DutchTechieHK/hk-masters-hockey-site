@@ -46,10 +46,14 @@ export default function Teams() {
                 <h2 className="text-3xl font-extrabold text-gray-900 mb-3">{squad.name}</h2>
                 <p className="text-gray-600 leading-relaxed mb-5">{squad.description}</p>
 
-                <div className="grid grid-cols-3 gap-4 mb-5">
+                <div className="grid grid-cols-2 gap-4 mb-5">
                   <div className="bg-gray-50 rounded-lg p-3 text-center">
                     <p className="text-2xl font-bold text-[#006B3C]">{squad.player_count}</p>
                     <p className="text-xs text-gray-500 mt-0.5">Players</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <p className="text-sm font-semibold text-gray-800">{squad.manager}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Manager</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-3 text-center">
                     <p className="text-sm font-semibold text-gray-800">{squad.coach}</p>

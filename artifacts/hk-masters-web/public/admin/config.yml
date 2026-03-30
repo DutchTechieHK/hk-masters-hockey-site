@@ -117,6 +117,7 @@ collections:
               - { label: Short Name / Badge, name: short_name, widget: string, hint: "e.g. M35" }
               - { label: Description, name: description, widget: text }
               - { label: Player Count, name: player_count, widget: number }
+              - { label: Manager, name: manager, widget: string }
               - { label: Coach, name: coach, widget: string }
               - { label: Captain, name: captain, widget: string }
               - { label: Squad Photo, name: photo, widget: image, required: false, allow_multiple: false }
