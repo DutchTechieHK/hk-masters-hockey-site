@@ -227,9 +227,10 @@ collections:
             name: social
             widget: object
             fields:
-              - { label: Facebook URL, name: facebook, widget: string }
-              - { label: Instagram URL, name: instagram, widget: string }
-              - { label: Twitter / X URL, name: twitter, widget: string }
+              - { label: Facebook URL, name: facebook, widget: string, required: false }
+              - { label: Instagram URL, name: instagram, widget: string, required: false }
+              - { label: Twitter / X URL, name: twitter, widget: string, required: false }
+              - { label: YouTube URL, name: youtube, widget: string, required: false }
 
   # ─── EVENTS ──────────────────────────────────────────────────────────────────
   - name: events
