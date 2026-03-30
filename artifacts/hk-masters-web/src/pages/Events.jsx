@@ -57,14 +57,14 @@ const pastEvents = [
   },
 ];
 
-// November 2025 HK tournament — full site available via Notion
+// WMH Asia Championship 2025 — full site available via Notion
 const hkTournament2025 = {
-  name: "HK Masters Hockey Tournament 2025",
+  name: "WMH Asia Championship 2025",
   date: "November 2025",
   location: "Hong Kong",
   description:
-    "Our home tournament — a full international masters hockey event hosted in Hong Kong. Featuring match schedules, visitor information, results, and more.",
-  notionUrl: "NOTION_URL_HERE", // Replace with your real Notion public link
+    "HK Masters hosted the World Masters Hockey Asia Championship 2025 here in Hong Kong. The full tournament site includes match schedules, visitor information, results, and all the details from this landmark event.",
+  notionUrl: "https://soapy-pasta-ee2.notion.site/WMH-Asia-Championship-2025-28563058a27e80ff9b82cc5ee723658e",
 };
 
 function EventCard({ event, type }) {
