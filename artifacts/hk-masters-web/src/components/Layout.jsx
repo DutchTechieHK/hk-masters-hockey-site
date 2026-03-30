@@ -20,7 +20,7 @@ function NavLink({ href, label, onClick }) {
     <Link
       href={href}
       onClick={onClick}
-      className={`nav-link text-sm font-medium transition-colors duration-150 hover:text-red-600 ${
+      className={`nav-link text-base font-medium transition-colors duration-150 hover:text-red-600 ${
         isActive ? "text-red-600 active" : "text-white"
       }`}
     >
@@ -37,17 +37,17 @@ export default function Layout({ children }) {
       {/* Top Navigation */}
       <header className="bg-[#006B3C] shadow-md sticky top-0 z-50">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+          <div className="flex items-center justify-between h-20">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link href="/" className="flex items-center gap-3 group">
               <img
                 src={`${import.meta.env.BASE_URL}logo.jpg`}
                 alt="HK Masters Hockey logo"
-                className="h-10 w-10 object-contain rounded-sm bg-white p-0.5 shrink-0"
+                className="h-14 w-14 object-contain rounded-sm bg-white p-0.5 shrink-0"
               />
               <div className="leading-tight">
-                <p className="text-white font-bold text-sm sm:text-base leading-none">Hong Kong</p>
-                <p className="text-green-200 text-xs font-medium leading-none mt-0.5">Masters Hockey</p>
+                <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
+                <p className="text-green-200 text-sm font-semibold leading-none mt-1">Masters Hockey</p>
               </div>
             </Link>
 
