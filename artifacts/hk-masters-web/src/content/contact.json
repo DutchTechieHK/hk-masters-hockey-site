@@ -1,12 +1,12 @@
 {
-  "email": "info@hkmastershockey.com",
-  "phone": "+852 1234 5678",
+  "email": "play@hkmastershockey.com",
+  "phone": "+852 9765 1133",
   "address": "c/o HKFC, 1 Sports Road, Happy Valley, Hong Kong",
   "maps_embed_src": "",
   "social": {
-    "facebook": "",
-    "instagram": "",
-    "twitter": "",
-    "youtube": ""
+    "facebook": "https://fb.com/hkmastershockey",
+    "instagram": "https://instagram.com/hkmastershockey",
+    "twitter": "X.com/hkmastershockey",
+    "youtube": "https://www.youtube.com/@HongKongMastersHockey"
   }
 }
