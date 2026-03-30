@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "wouter";
 import content from "../content/home.json";
 import eventsContent from "../content/events.json";
@@ -18,6 +18,13 @@ export default function Home() {
   const hasHeroImage = content.hero_image && content.hero_image.trim() !== "";
   const hasGallery = content.gallery_images && content.gallery_images.length > 0;
   const [activePhoto, setActivePhoto] = useState(hasHeroImage ? content.hero_image : null);
+  const stripRef = useRef(null);
+
+  const scrollStrip = (dir) => {
+    if (stripRef.current) {
+      stripRef.current.scrollLeft += dir * 480;
+    }
+  };
 
   return (
     <div>
@@ -74,14 +81,33 @@ export default function Home() {
 
       {/* Photo Gallery Strip */}
       <section className="bg-[#005030] py-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+          {/* Left Arrow */}
+          {hasGallery && (
+            <button
+              onClick={() => scrollStrip(-1)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-black/40 hover:bg-black/60 text-white w-8 h-14 flex items-center justify-center rounded-r-lg"
+              aria-label="Scroll left"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Strip */}
           {hasGallery ? (
-            <div className="flex flex-row gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <div
+              ref={stripRef}
+              className="flex flex-row gap-2 overflow-x-auto"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
               {content.gallery_images.map((img, i) => (
                 <button
                   key={i}
                   onClick={() => setActivePhoto(img.url)}
-                  className={`h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none transition-opacity duration-150 ${
+                  className={`h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none ${
                     activePhoto === img.url
                       ? "ring-2 ring-white ring-offset-2 ring-offset-[#005030]"
                       : "opacity-75 hover:opacity-100"
@@ -92,7 +118,7 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="flex flex-row gap-2 overflow-x-auto pb-1">
+            <div className="flex flex-row gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
               {[...Array(7)].map((_, i) => (
                 <div key={i} className="h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden">
                   <PhotoPlaceholder label={i === 3 ? "Add photos via CMS → Home Page → Gallery" : ""} />
@@ -100,6 +126,20 @@ export default function Home() {
               ))}
             </div>
           )}
+
+          {/* Right Arrow */}
+          {hasGallery && (
+            <button
+              onClick={() => scrollStrip(1)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-black/40 hover:bg-black/60 text-white w-8 h-14 flex items-center justify-center rounded-l-lg"
+              aria-label="Scroll right"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+
         </div>
       </section>
 
