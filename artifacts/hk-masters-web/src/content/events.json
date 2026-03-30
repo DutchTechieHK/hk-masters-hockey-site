@@ -1,46 +1,6 @@
 {
-  "upcoming_events": [
-    {
-      "name": "Pre-Season Training Camp",
-      "date": "April 5–6, 2026",
-      "location": "HKFC Hockey Pitch, Happy Valley",
-      "description": "Two-day intensive training camp open to all squads. Focus on fitness, team structures, and Rotterdam preparation. Attendance strongly encouraged for Rotterdam-bound players."
-    },
-    {
-      "name": "Friendly vs Singapore Masters",
-      "date": "April 18, 2026",
-      "location": "Siu Sai Wan Sports Ground, HK",
-      "description": "International friendly match against Singapore Masters. All four squads in action over a full day of competitive hockey."
-    },
-    {
-      "name": "Annual Club Dinner",
-      "date": "May 2, 2026",
-      "location": "The Harbourview Hotel, Hong Kong",
-      "description": "Our annual club dinner and awards night. Celebrating the season's achievements and bidding farewell to the Rotterdam-bound squads."
-    },
-    {
-      "name": "Rotterdam 2026 World Masters Cup",
-      "date": "May 23 – June 6, 2026",
-      "location": "Rotterdam, Netherlands",
-      "description": "The premier masters field hockey tournament in the world. HK Masters sends four squads to compete against nations from across the globe."
-    }
-  ],
-  "past_events": [
-    {
-      "name": "Asia Pacific Masters Championship",
-      "date": "October 12–16, 2025",
-      "location": "Kuala Lumpur, Malaysia",
-      "result": "M35: Semi-finalists | M45: Champions | W35: Group stage",
-      "description": "Outstanding performance from our M45 squad who claimed gold, while M35 reached the semi-finals. A memorable tournament for the club."
-    },
-    {
-      "name": "HK Club Championship",
-      "date": "September 6–7, 2025",
-      "location": "Siu Sai Wan Sports Ground, HK",
-      "result": "M35: Runners-up | M45: Winners",
-      "description": "The annual Hong Kong Club Championship brought all local masters clubs together for a weekend of great hockey."
-    }
-  ],
+  "upcoming_events": [],
+  "past_events": [],
   "tournament_archive": [
     {
       "name": "WMH Asia Championship 2025",
