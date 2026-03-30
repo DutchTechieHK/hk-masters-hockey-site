@@ -1,46 +1,36 @@
 {
-  "page_subtitle": "Four squads, one club — representing Hong Kong Masters Hockey on the world stage.",
-  "join_heading": "Join the Team",
-  "join_text": "Are you 35 or above and passionate about field hockey? We welcome players of all abilities. Trials are held at the start of each season — get in touch to find out more.",
+  "page_subtitle": "Three squads, one club — representing Hong Kong Masters Hockey at Rotterdam 2026.",
+  "join_heading": "Want to Play for HK Masters?",
+  "join_text": "Are you 35 or above and passionate about field hockey? We welcome players of all abilities. Get in touch to find out more about joining one of our squads.",
   "squads": [
     {
-      "id": "men-o35",
-      "name": "Men's Over-35",
-      "short_name": "M35",
-      "description": "Our Men's Over-35 squad is the largest and most competitive squad in the club. Drawing from a deep pool of experienced local and expat players, the M35 team competes in regional Asia-Pacific tournaments and the World Masters Cup.",
-      "player_count": 22,
-      "coach": "Mark Davidson",
-      "captain": "David Lam",
-      "photo": ""
-    },
-    {
-      "id": "men-o45",
-      "name": "Men's Over-45",
-      "short_name": "M45",
-      "description": "The Men's Over-45 squad combines deep experience with enduring passion for the game. This squad has achieved our club's best international results, including a bronze medal at the 2018 World Masters Cup in Barcelona.",
-      "player_count": 18,
-      "coach": "Peter Hughes",
-      "captain": "Robert Ng",
-      "photo": ""
-    },
-    {
-      "id": "men-o55",
-      "name": "Men's Over-55",
-      "short_name": "M55",
-      "description": "Our newest competitive squad, the Men's Over-55 team was formed in 2023 and competes in selected regional and international tournaments. If you're 55 or above and want to lace up again, this squad is for you.",
-      "player_count": 14,
-      "coach": "Alan Chow",
-      "captain": "Richard Yip",
-      "photo": ""
-    },
-    {
-      "id": "women",
-      "name": "Women's Team",
-      "short_name": "W35+",
-      "description": "Open to women aged 35 and above, our Women's team has grown significantly since its formation in 2012. The squad competes in the Over-35 category internationally and is looking to expand its tournament schedule in 2026 and beyond.",
+      "id": "women-o35",
+      "name": "Women's Over-35",
+      "short_name": "W35",
+      "description": "Our Women's Over-35 squad brings together experienced and passionate players from across Hong Kong. Competing at the highest level of masters hockey, this team combines skill, determination and great team spirit.",
       "player_count": 16,
-      "coach": "Linda Siu",
-      "captain": "Grace Ho",
+      "coach": "TBC",
+      "captain": "TBC",
+      "photo": ""
+    },
+    {
+      "id": "men-o40",
+      "name": "Men's Over-40",
+      "short_name": "M40",
+      "description": "The Men's Over-40 squad is a blend of experience and energy. With players drawn from Hong Kong's vibrant hockey community, this team is gearing up for a strong showing in Rotterdam.",
+      "player_count": 16,
+      "coach": "TBC",
+      "captain": "TBC",
+      "photo": ""
+    },
+    {
+      "id": "men-o50",
+      "name": "Men's Over-50",
+      "short_name": "M50",
+      "description": "The Men's Over-50 squad has a proud history on the international masters stage. Seasoned, tactical and never short of passion, this group is ready to fly the HK flag once again in Rotterdam.",
+      "player_count": 16,
+      "coach": "TBC",
+      "captain": "TBC",
       "photo": ""
     }
   ]
