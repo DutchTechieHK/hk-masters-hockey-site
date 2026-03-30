@@ -26,13 +26,13 @@
       "description": "The Men's Over-40 squad is a blend of experience and energy. With players drawn from Hong Kong's vibrant hockey community, this team is gearing up for a strong showing in Rotterdam."
     },
     {
-      "captain": "TBC",
+      "captain": "Ali Asghar (Senachi)",
       "name": "Men's Over-50",
-      "manager": "TBC",
+      "manager": "Simon Shepherdson",
       "short_name": "M50",
-      "player_count": 16,
+      "player_count": 18,
       "photo": "",
-      "coach": "TBC",
+      "coach": "Simon Chapman",
       "id": "men-o50",
       "description": "The Men's Over-50 squad has a proud history on the international masters stage. Seasoned, tactical and never short of passion, this group is ready to fly the HK flag once again in Rotterdam."
     }
