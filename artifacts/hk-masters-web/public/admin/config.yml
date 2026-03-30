@@ -155,9 +155,8 @@ collections:
             fields:
               - { label: Squad Name, name: name, widget: string }
               - { label: Category Badge, name: category, widget: string, hint: "e.g. M35" }
-              - { label: Number of Players, name: players, widget: number }
-              - { label: Pool Group, name: pool_group, widget: string, hint: "e.g. Pool A" }
-              - { label: First Match, name: first_match, widget: string, hint: "e.g. May 24 vs Australia" }
+              - { label: Pool Group, name: pool_group, widget: string, required: false, hint: "e.g. Pool A — leave blank until draw is announced" }
+              - { label: First Match, name: first_match, widget: string, required: false, hint: "e.g. July 23 vs Australia — leave blank until schedule is published" }
           - label: Key Dates
             name: key_dates
             widget: list
