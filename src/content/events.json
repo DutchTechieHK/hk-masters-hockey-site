@@ -7,5 +7,13 @@
       "result": "https://worldmastershockey.org/wmhevents/2024-wc-auckland/#Results",
       "description": "WMH is thrilled with the number of registered teams for the WMH World Cup, 2024.\n113 teams have registered for Cape Town, including 29 International Masters Cup teams, and\n141 have registered for Auckland, including 33 International Masters Cup teams.\n\nWe were there with our Hong Kong Masters MO50 Team."
     }
+  ],
+  "upcoming_events": [
+    {
+      "name": "Masters Training Night",
+      "date": "24th of April 2026 ",
+      "location": "HKFC Astro",
+      "description": "Training Night for MO40 & MO40's Men."
+    }
   ]
 }
