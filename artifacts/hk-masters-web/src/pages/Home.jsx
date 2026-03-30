@@ -141,6 +141,17 @@ export default function Home() {
           )}
 
         </div>
+
+        {/* Stats Bar */}
+        <div className="mt-4 grid grid-cols-3 divide-x divide-green-600">
+          {content.stats.map((item) => (
+            <div key={item.label} className="text-center py-3">
+              <p className="text-3xl font-extrabold text-white">{item.stat}</p>
+              <p className="text-green-300 text-xs font-medium mt-0.5">{item.label}</p>
+            </div>
+          ))}
+        </div>
+
       </section>
 
       {/* Welcome Section */}
@@ -150,14 +161,6 @@ export default function Home() {
           <p className="text-gray-600 leading-relaxed text-lg">
             {content.welcome_text}
           </p>
-          <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-            {content.stats.map((item) => (
-              <div key={item.label} className="bg-green-50 rounded-xl p-6">
-                <p className="text-4xl font-extrabold text-[#006B3C]">{item.stat}</p>
-                <p className="text-gray-600 mt-1 text-sm font-medium">{item.label}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
