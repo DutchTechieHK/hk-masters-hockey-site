@@ -43,7 +43,7 @@ export default function Layout({ children }) {
               <img
                 src={`${import.meta.env.BASE_URL}logo.jpg`}
                 alt="HK Masters Hockey logo"
-                className="h-14 w-14 object-contain rounded-sm bg-white p-0.5 shrink-0"
+                className="h-14 w-14 object-cover rounded-sm shrink-0"
               />
               <div className="leading-tight">
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
