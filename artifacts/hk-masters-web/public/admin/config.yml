@@ -216,20 +216,28 @@ collections:
         file: artifacts/hk-masters-web/src/content/media.json
         format: json
         fields:
-          - label: Photo Gallery
-            name: gallery
+          - label: Photo Albums
+            name: albums
             widget: list
-            hint: "Add photos — each one appears as a clickable tile in the gallery"
+            hint: "Create one album per event or occasion (e.g. 'Training — April 2026', 'Rotterdam Departure')"
             fields:
-              - label: Photo
-                name: image
-                widget: image
-                hint: "Upload via Cloudinary or paste a URL"
-              - label: Caption
-                name: caption
+              - label: Album Name
+                name: name
                 widget: string
-                required: false
-                hint: "Short description shown below the photo"
+                hint: "e.g. Training Session — April 2026"
+              - label: Photos
+                name: photos
+                widget: list
+                fields:
+                  - label: Photo
+                    name: image
+                    widget: image
+                    hint: "Upload via Cloudinary"
+                  - label: Caption
+                    name: caption
+                    widget: string
+                    required: false
+                    hint: "Optional short description"
           - label: Videos
             name: videos
             widget: list
