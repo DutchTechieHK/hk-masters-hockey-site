@@ -4,6 +4,8 @@ import content from "../content/home.json";
 import eventsContent from "../content/events.json";
 
 const ROTTERDAM_START = new Date("2026-07-22T09:00:00");
+const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
+const isRotterdamMode = () => Date.now() < ROTTERDAM_MODE_END.getTime();
 
 function useCountdown(target) {
   const calc = () => {
@@ -51,7 +53,7 @@ function RotterdamCountdown() {
   return (
     <section className="bg-[#004A2A] py-12 sm:py-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p className="text-[#DE2910] text-xs sm:text-sm font-bold uppercase tracking-widest mb-2">
+        <p className="text-[#DE2910] text-sm sm:text-base font-bold uppercase tracking-widest mb-2">
           Rotterdam 2026 Masters World Cup
         </p>
         <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-8">
@@ -112,32 +114,63 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
 
-            {/* Left: Text */}
-            <div>
-              <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-                {content.hero_title}
-              </h1>
-              <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
-                {content.hero_tagline}
-              </p>
-              <p className="text-green-200 mb-8 max-w-xl leading-relaxed">
-                {content.hero_intro}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <Link
-                  href="/rotterdam-2026"
-                  className="inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
-                >
-                  Rotterdam 2026 &rarr;
-                </Link>
-                <Link
-                  href="/about"
-                  className="inline-block bg-white/10 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg hover:bg-white/20 transition-colors duration-150"
-                >
-                  About the Club
-                </Link>
+            {/* Left: Text — Rotterdam mode until 15 Sep 2026, then standard */}
+            {isRotterdamMode() ? (
+              <div>
+                <span className="inline-block bg-[#DE2910] text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-5">
+                  Rotterdam 2026 · World Masters Cup
+                </span>
+                <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
+                  Three Teams Representing Hong Kong
+                </h1>
+                <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
+                  W35 · M40 · M50 &mdash; at the World Masters Hockey World Cup
+                </p>
+                <p className="text-green-200 mb-8 max-w-xl leading-relaxed">
+                  Hong Kong Masters Hockey is proud to send three squads to Rotterdam this July. Three categories, one city, one flag — competing on the world stage from 22 July to 1 August 2026.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/rotterdam-2026"
+                    className="inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                  >
+                    Meet the Squads &rarr;
+                  </Link>
+                  <Link
+                    href="/about"
+                    className="inline-block bg-white/10 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg hover:bg-white/20 transition-colors duration-150"
+                  >
+                    About the Club
+                  </Link>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
+                  {content.hero_title}
+                </h1>
+                <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
+                  {content.hero_tagline}
+                </p>
+                <p className="text-green-200 mb-8 max-w-xl leading-relaxed">
+                  {content.hero_intro}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Link
+                    href="/rotterdam-2026"
+                    className="inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                  >
+                    Rotterdam 2026 &rarr;
+                  </Link>
+                  <Link
+                    href="/about"
+                    className="inline-block bg-white/10 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg hover:bg-white/20 transition-colors duration-150"
+                  >
+                    About the Club
+                  </Link>
+                </div>
+              </div>
+            )}
 
             {/* Right: Hero Photo */}
             <div>
