@@ -62,6 +62,11 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
                           {player.shirt_number || "—"}
                         </span>
                         <span className="flex-1 font-medium text-gray-900">{player.name}</span>
+                        {player.role && (
+                          <span className="text-xs bg-[#006B3C]/10 text-[#006B3C] px-2 py-0.5 rounded-full font-medium shrink-0">
+                            {player.role}
+                          </span>
+                        )}
                       </div>
                     ))}
                   </div>
