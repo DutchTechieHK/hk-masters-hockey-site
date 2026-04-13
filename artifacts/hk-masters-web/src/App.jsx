@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { useEffect } from "react";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import About from "./pages/About";
@@ -9,9 +10,20 @@ import Media from "./pages/Media";
 import Sponsors from "./pages/Sponsors";
 import Contact from "./pages/Contact";
 
+function ScrollToTop() {
+  const [location] = useLocation();
+  useEffect(() => {
+    if (!window.location.hash) {
+      window.scrollTo(0, 0);
+    }
+  }, [location]);
+  return null;
+}
+
 function Router() {
   return (
     <Layout>
+      <ScrollToTop />
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/about" component={About} />

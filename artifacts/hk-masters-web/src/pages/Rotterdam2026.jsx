@@ -14,6 +14,8 @@ export default function Rotterdam2026() {
         const el = document.getElementById(id);
         if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
+    } else {
+      window.scrollTo(0, 0);
     }
   }, []);
 
