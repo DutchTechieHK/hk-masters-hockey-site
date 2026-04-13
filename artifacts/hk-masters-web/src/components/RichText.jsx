@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 
 export default function RichText({ content, className = "" }) {
   if (!content) return null;
+  const processed = content.replace(/\\\n/g, "  \n");
   return (
     <div className={className}>
       <ReactMarkdown
@@ -30,7 +31,7 @@ export default function RichText({ content, className = "" }) {
           li: ({ children }) => <li className="mb-1">{children}</li>,
         }}
       >
-        {content}
+        {processed}
       </ReactMarkdown>
     </div>
   );
