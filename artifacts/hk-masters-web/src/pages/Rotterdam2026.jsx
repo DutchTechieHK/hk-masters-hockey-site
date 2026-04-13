@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
@@ -6,6 +6,16 @@ import teamsContent from "../content/teams.json";
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
   const [expandedSquad, setExpandedSquad] = useState(null);
+
+  useEffect(() => {
+    if (window.location.hash) {
+      const id = window.location.hash.slice(1);
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, []);
 
   return (
     <div>
@@ -48,7 +58,7 @@ export default function Rotterdam2026() {
       </section>
 
       {/* HK Squads */}
-      <section className="bg-gray-50 py-16">
+      <section id="squads" className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-8">Hong Kong Squads</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

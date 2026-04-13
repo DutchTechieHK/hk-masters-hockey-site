@@ -135,7 +135,7 @@ export default function Home() {
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
-                    href="/rotterdam-2026"
+                    href="/rotterdam-2026#squads"
                     className="inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
                   >
                     Meet the Squads &rarr;
