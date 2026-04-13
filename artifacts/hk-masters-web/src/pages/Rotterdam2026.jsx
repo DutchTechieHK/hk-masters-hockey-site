@@ -124,7 +124,12 @@ export default function Rotterdam2026() {
                                 <span className="w-6 h-6 bg-[#006B3C]/10 rounded-full flex items-center justify-center text-xs font-bold text-[#006B3C] shrink-0">
                                   {player.shirt_number || "—"}
                                 </span>
-                                <span className="text-sm font-medium text-gray-800">{player.name}</span>
+                                <span className="flex-1 text-sm font-medium text-gray-800">{player.name}</span>
+                                {player.role && (
+                                  <span className="text-xs bg-[#006B3C]/10 text-[#006B3C] px-2 py-0.5 rounded-full font-medium shrink-0">
+                                    {player.role}
+                                  </span>
+                                )}
                               </div>
                             ))}
                           </div>
