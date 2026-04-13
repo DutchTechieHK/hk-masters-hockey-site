@@ -1,15 +1,25 @@
 {
   "mission_p1": "Hong Kong Masters Hockey exists to provide a high-quality, inclusive, and competitive environment for field hockey players aged 35 and above. We believe that age is no barrier to sporting excellence, and we are committed to fostering camaraderie, physical fitness, and the lifelong love of hockey.",
-  "mission_p2": "We represent Hong Kong with pride on the international stage while building a strong local community of masters players. Whether you're a seasoned international or returning to the sport, there is a place for you here.",
+  "mission_p2": "Hong Kong Masters Hockey refers to the masters (typically 35+ and older age groups) field hockey community in Hong Kong, organized under Hockey Hong Kong, China (HockeyHK), the national governing body affiliated with the FIH since 1952.\n\nIt focuses on players aged 35+ for tours, training, local leagues, and international events, with a dedicated Masters' Section Committee handling circulars, fixtures, results, and standings for divisions like Veterans.\n\nKey social channels include Instagram (@hkmastershockey, 778 followers, 284 posts on events and medals) and Facebook (official page for 35+ players' updates).\n\nRecent highlights: Hosted the 2025 Asian Continental Championships (Nov 26-30, 2025) with HK teams in O35-O40 Women and O40-O60 Men leagues; preparing for 2026 World Masters Hockey in Rotterdam.\n",
   "committee": [
-    { "name": "John Chan", "role": "Club President" },
-    { "name": "Sarah Wong", "role": "Vice President" },
-    { "name": "Michael Lee", "role": "Honorary Secretary" },
-    { "name": "Emily Tse", "role": "Treasurer" },
-    { "name": "David Lam", "role": "Men's Captain (O35)" },
-    { "name": "Grace Ho", "role": "Women's Captain" }
+    {
+      "name": "John Chan",
+      "role": "Club President"
+    },
+    {
+      "name": "Sarah Wong",
+      "role": "Vice President"
+    },
+    {
+      "name": "Michael Lee",
+      "role": "Honorary Secretary"
+    },
+    {
+      "name": "Emily Tse",
+      "role": "Treasurer"
+    }
   ],
-  "history_intro": "Write your club history here. Describe the story, the people, and the journey that shaped Hong Kong Masters Hockey. This text appears above the timeline below.",
+  "history_intro": "The Hong Kong Masters Hockey section was officially formed in 1983 within the Hong Kong Hockey Association (HKHA, now HockeyHK), after a group led by Peter Corley (nominated Chairman) and Jimmy Keir (Secretary) gained approval from president Krishan Lall to establish it as a dedicated section for veteran/masters players.\n\nThis followed early informal participation, with inspiration from Gerard Sharman after witnessing Australian Veterans events in Perth in 1980; the first HK representative team (managed/played by Jimmy Keir, captained by Zia Hussain) toured Perth in 1981 for games against Australia (initially triangular, becoming four nations including Malaysia/Singapore by 1982, marking the start of Pacific Rim Masters internationals).\n\nLocal leagues and tournaments began post-1983, with the Veterans Division (core of masters play) evident in records from 2014-15 (fixtures/results), and ongoing seasons like 2020-21 (starting Dec 2020), 2021-22 (starting Oct 2021), confirming structured Veterans League operations by the early 2010s at latest, though exact inaugural league date isn't specified beyond section formation.\n\nHKHK (founded 1933) has hosted major masters events like the 2008 Grand Masters World Cup (O60+), and HK teams competed internationally from 2011 (e.g., Singapore Masters Classics).",
   "timeline": [
     {
       "year": "2003",
