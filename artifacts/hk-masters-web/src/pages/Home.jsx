@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import content from "../content/home.json";
 import eventsContent from "../content/events.json";
+import teamsContent from "../content/teams.json";
 
 const ROTTERDAM_START = new Date("2026-07-22T09:00:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
@@ -136,12 +137,6 @@ export default function Home() {
                   >
                     Meet the Squads &rarr;
                   </Link>
-                  <Link
-                    href="/about"
-                    className="inline-block bg-white/10 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg hover:bg-white/20 transition-colors duration-150"
-                  >
-                    About the Club
-                  </Link>
                 </div>
               </div>
             ) : (
@@ -166,7 +161,7 @@ export default function Home() {
                     href="/about"
                     className="inline-block bg-white/10 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg hover:bg-white/20 transition-colors duration-150"
                   >
-                    About the Club
+                    About HK Masters
                   </Link>
                 </div>
               </div>
@@ -269,15 +264,59 @@ export default function Home() {
       {/* Rotterdam Countdown */}
       <RotterdamCountdown />
 
-      {/* Welcome Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-        <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
-          <p className="text-gray-600 leading-relaxed text-lg">
-            {content.welcome_text}
-          </p>
-        </div>
-      </section>
+      {/* Welcome / Rotterdam Squads Section */}
+      {isRotterdamMode() ? (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          {/* Tournament context */}
+          <div className="max-w-3xl mx-auto text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">About the Tournament</h2>
+            <p className="text-gray-600 leading-relaxed text-lg">
+              The FIH Masters Hockey World Cup is the world's premier tournament for masters-age field hockey players. Rotterdam 2026 will bring together nations from across the globe, competing across multiple age categories. For HK Masters, this is our biggest tournament in years — with three squads making the trip to the Netherlands to fly the Hong Kong flag on the world stage.
+            </p>
+          </div>
+
+          {/* Squad cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {teamsContent.squads.map((squad) => (
+              <div key={squad.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
+                    {squad.short_name}
+                  </span>
+                  <h3 className="font-bold text-gray-900">{squad.name}</h3>
+                </div>
+                <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
+                  {squad.description}
+                </p>
+                <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
+                  <span>{squad.player_count} players</span>
+                  {squad.captain && squad.captain !== "TBC" && (
+                    <span>Captain: {squad.captain}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <Link
+              href="/rotterdam-2026"
+              className="inline-block bg-[#006B3C] text-white font-semibold px-8 py-3 rounded-lg hover:bg-green-800 transition-colors duration-150"
+            >
+              Full Rotterdam 2026 details &rarr;
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
+            <p className="text-gray-600 leading-relaxed text-lg">
+              {content.welcome_text}
+            </p>
+          </div>
+        </section>
+      )}
 
       {/* Upcoming Events Strip */}
       <section className="bg-gray-50 py-16">
