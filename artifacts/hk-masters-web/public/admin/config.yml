@@ -273,6 +273,13 @@ collections:
             widget: string
             required: false
             hint: "Google Maps → search address → Share → Embed a map → copy the src URL from the iframe code"
+          - label: Form Subject Options
+            name: subjects
+            widget: list
+            hint: "These are the options shown in the Subject dropdown on the contact form."
+            fields:
+              - { label: Display Label, name: label, widget: string }
+              - { label: Value (no spaces), name: value, widget: string, hint: "Used internally — no spaces e.g. joining_club" }
           - label: Social Media Links
             name: social
             widget: object

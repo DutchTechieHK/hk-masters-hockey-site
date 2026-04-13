@@ -124,11 +124,9 @@ export default function Contact() {
                     className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/40 focus:border-[#006B3C] transition-colors duration-150 bg-white"
                   >
                     <option value="">Select a subject</option>
-                    <option value="joining">Joining the Club</option>
-                    <option value="sponsorship">Sponsorship Enquiry</option>
-                    <option value="rotterdam">Rotterdam 2026</option>
-                    <option value="media">Media Enquiry</option>
-                    <option value="general">General Enquiry</option>
+                    {(content.subjects || []).map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

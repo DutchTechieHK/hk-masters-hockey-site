@@ -3,6 +3,13 @@
   "phone": "+852 9765 1133",
   "address": "c/o HKFC, 1 Sports Road, Happy Valley, Hong Kong",
   "maps_embed_src": "",
+  "subjects": [
+    { "label": "Joining the Club", "value": "joining" },
+    { "label": "Sponsorship Enquiry", "value": "sponsorship" },
+    { "label": "Rotterdam 2026", "value": "rotterdam" },
+    { "label": "Media Enquiry", "value": "media" },
+    { "label": "General Enquiry", "value": "general" }
+  ],
   "social": {
     "facebook": "https://fb.com/hkmastershockey",
     "instagram": "https://instagram.com/hkmastershockey",
