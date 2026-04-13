@@ -49,9 +49,8 @@ export default function Layout({ children }) {
                 />
               </div>
               <div className="leading-tight">
-                <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
-                <p className="text-green-200 text-sm font-semibold leading-none mt-1">Masters Hockey</p>
-                <p className="text-[#DE2910] text-sm font-semibold italic leading-none mt-3 tracking-wide">— Hockey For Life —</p>
+                <p className="text-white font-bold text-base sm:text-lg leading-none">Hong Kong Masters Hockey</p>
+                <p className="text-[#DE2910] text-sm font-semibold italic leading-none mt-2 tracking-wide">— Hockey For Life —</p>
               </div>
             </Link>
 
