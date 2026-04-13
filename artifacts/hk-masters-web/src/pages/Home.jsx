@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import content from "../content/home.json";
 import RichText from "../components/RichText";
+import { cloudinaryResize } from "../utils/cloudinary";
 import eventsContent from "../content/events.json";
 import teamsContent from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
@@ -174,7 +175,7 @@ export default function Home() {
               <div className="h-56 sm:h-72 lg:h-80 w-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
                 {activePhoto ? (
                   <img
-                    src={activePhoto}
+                    src={cloudinaryResize(activePhoto, 1200, 640)}
                     alt="HK Masters Hockey team"
                     className="w-full h-full object-cover"
                   />
@@ -222,7 +223,7 @@ export default function Home() {
                       : "opacity-75 hover:opacity-100"
                   }`}
                 >
-                  <img src={img.url} alt={img.caption || "Club photo"} className="w-full h-full object-cover" />
+                  <img src={cloudinaryResize(img.url, 400, 250)} alt={img.caption || "Club photo"} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

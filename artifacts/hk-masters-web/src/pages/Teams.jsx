@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import content from "../content/teams.json";
+import { cloudinaryResize } from "../utils/cloudinary";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import RichText from "../components/RichText";
@@ -49,7 +50,7 @@ export default function Teams() {
                 <div className="w-full lg:w-1/2 shrink-0">
                   {squad.photo ? (
                     <img
-                      src={squad.photo}
+                      src={cloudinaryResize(squad.photo, 900, 500)}
                       alt={`${squad.name} squad photo`}
                       className="rounded-2xl w-full h-72 object-cover shadow-md"
                     />

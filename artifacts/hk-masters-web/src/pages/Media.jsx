@@ -1,5 +1,6 @@
 import { useState } from "react";
 import content from "../content/media.json";
+import { cloudinaryResize } from "../utils/cloudinary";
 
 export default function Media() {
   const [lightbox, setLightbox] = useState(null);
@@ -75,7 +76,7 @@ export default function Media() {
                         >
                           <div className="aspect-video overflow-hidden rounded-xl">
                             <img
-                              src={typeof photo === "string" ? photo : photo.image}
+                              src={cloudinaryResize(typeof photo === "string" ? photo : photo.image, 800, 450)}
                               alt={displayAlbum.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
