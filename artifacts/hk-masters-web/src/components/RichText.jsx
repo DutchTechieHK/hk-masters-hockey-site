@@ -1,11 +1,13 @@
 import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
+import remarkGfm from "remark-gfm";
 
 export default function RichText({ content, className = "" }) {
   if (!content) return null;
   return (
     <div className={className}>
       <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         components={{
           p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
