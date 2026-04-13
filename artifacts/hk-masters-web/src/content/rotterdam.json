@@ -33,17 +33,17 @@
     {
       "name": "Women's Over-35",
       "category": "W35",
-      "players": 16
+      "player_list": []
     },
     {
       "name": "Men's Over-40",
       "category": "M40",
-      "players": 16
+      "player_list": []
     },
     {
       "name": "Men's Over-50",
       "category": "M50",
-      "players": 16
+      "player_list": []
     }
   ],
   "key_dates": [

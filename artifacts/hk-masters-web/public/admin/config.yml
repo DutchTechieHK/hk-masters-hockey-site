@@ -151,12 +151,21 @@ collections:
           - label: HK Squads at Rotterdam
             name: squads
             widget: list
-            hint: "One card per squad — update pools and first matches after the tournament draw"
+            hint: "One card per squad — update pools, first matches and player lists here"
             fields:
               - { label: Squad Name, name: name, widget: string }
-              - { label: Category Badge, name: category, widget: string, hint: "e.g. M35" }
+              - { label: Category Badge, name: category, widget: string, hint: "e.g. W35, M40, M50" }
               - { label: Pool Group, name: pool_group, widget: string, required: false, hint: "e.g. Pool A — leave blank until draw is announced" }
               - { label: First Match, name: first_match, widget: string, required: false, hint: "e.g. July 23 vs Australia — leave blank until schedule is published" }
+              - label: Player List
+                name: player_list
+                widget: list
+                required: false
+                hint: "Add each player — shirt number, name, and mark reserves with role 'Reserve'"
+                fields:
+                  - { label: Shirt Number, name: shirt_number, widget: number, required: false }
+                  - { label: Player Name, name: name, widget: string }
+                  - { label: Role, name: role, widget: string, required: false, hint: "Leave blank for squad players. Type 'Reserve' for travel reserves." }
           - label: Key Dates
             name: key_dates
             widget: list

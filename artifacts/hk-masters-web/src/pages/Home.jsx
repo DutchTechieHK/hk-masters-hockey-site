@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import content from "../content/home.json";
 import eventsContent from "../content/events.json";
 import teamsContent from "../content/teams.json";
+import rotterdamContent from "../content/rotterdam.json";
+import SquadModal from "../components/SquadModal";
 
 const ROTTERDAM_START = new Date("2026-07-22T09:00:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
@@ -31,12 +33,12 @@ function useCountdown(target) {
 function CountdownUnit({ value, label }) {
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white/10 border border-white/20 rounded-2xl px-6 py-4 min-w-[80px] sm:min-w-[100px] text-center shadow-inner">
-        <span className="text-4xl sm:text-6xl font-extrabold text-white tabular-nums leading-none tracking-tight">
+      <div className="bg-white/10 border border-white/20 rounded-xl sm:rounded-2xl px-3 py-3 sm:px-6 sm:py-4 min-w-[62px] sm:min-w-[100px] text-center shadow-inner">
+        <span className="text-3xl sm:text-6xl font-extrabold text-white tabular-nums leading-none tracking-tight">
           {String(value).padStart(2, "0")}
         </span>
       </div>
-      <span className="mt-2 text-xs sm:text-sm font-semibold text-green-300 uppercase tracking-widest">
+      <span className="mt-2 text-[10px] sm:text-sm font-semibold text-green-300 uppercase tracking-widest">
         {label}
       </span>
     </div>
@@ -45,7 +47,7 @@ function CountdownUnit({ value, label }) {
 
 function CountdownSeparator() {
   return (
-    <span className="text-3xl sm:text-5xl font-extrabold text-white/40 pb-6 select-none">:</span>
+    <span className="text-2xl sm:text-5xl font-extrabold text-white/40 pb-6 select-none">:</span>
   );
 }
 
@@ -100,6 +102,7 @@ export default function Home() {
   const hasHeroImage = content.hero_image && content.hero_image.trim() !== "";
   const hasGallery = content.gallery_images && content.gallery_images.length > 0;
   const [activePhoto, setActivePhoto] = useState(hasHeroImage ? content.hero_image : null);
+  const [openSquad, setOpenSquad] = useState(null);
   const stripRef = useRef(null);
 
   const scrollStrip = (dir) => {
@@ -277,7 +280,9 @@ export default function Home() {
 
           {/* Squad cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {teamsContent.squads.map((squad) => (
+            {teamsContent.squads.map((squad) => {
+              const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
+              return (
               <div key={squad.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
                 <div className="flex items-center gap-3 mb-4">
                   <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
@@ -290,12 +295,16 @@ export default function Home() {
                 </p>
                 <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
                   <span>{squad.player_count} players</span>
-                  {squad.captain && squad.captain !== "TBC" && (
-                    <span>Captain: {squad.captain}</span>
-                  )}
+                  <button
+                    onClick={() => setOpenSquad({ squad: rotterdamSquad || { name: squad.name, category: squad.short_name, player_list: [] }, teamInfo: squad })}
+                    className="text-[#006B3C] font-semibold text-xs hover:text-green-800 transition-colors"
+                  >
+                    View Squad →
+                  </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="text-center mt-8">
@@ -370,6 +379,14 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {openSquad && (
+        <SquadModal
+          squad={openSquad.squad}
+          teamInfo={openSquad.teamInfo}
+          onClose={() => setOpenSquad(null)}
+        />
+      )}
     </div>
   );
 }

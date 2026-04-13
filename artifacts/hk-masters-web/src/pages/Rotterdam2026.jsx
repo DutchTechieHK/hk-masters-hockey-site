@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
+  const [expandedSquad, setExpandedSquad] = useState(null);
 
   return (
     <div>
@@ -52,15 +54,19 @@ export default function Rotterdam2026() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {content.squads.map((squad) => {
               const teamData = teamsContent.squads.find(t => t.short_name === squad.category);
+              const players = squad.player_list || [];
+              const squadPlayers = players.filter(p => !p.role || p.role.toLowerCase() !== "reserve");
+              const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
+              const isExpanded = expandedSquad === squad.category;
               return (
-              <div key={squad.category} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <div key={squad.category} className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">
                     {squad.category}
                   </span>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-3">{squad.name}</h3>
-                <dl className="space-y-1.5">
+                <dl className="space-y-1.5 mb-4">
                   {teamData?.player_count && (
                   <div className="flex justify-between text-sm">
                     <dt className="text-gray-500">Players</dt>
@@ -83,6 +89,54 @@ export default function Rotterdam2026() {
                     <p className="text-xs text-gray-400 mt-1">Pool & match schedule TBC</p>
                   )}
                 </dl>
+
+                <button
+                  onClick={() => setExpandedSquad(isExpanded ? null : squad.category)}
+                  className="w-full flex items-center justify-between text-xs font-semibold text-[#006B3C] border-t border-gray-100 pt-3 hover:text-green-800 transition-colors"
+                >
+                  <span>{isExpanded ? "Hide squad list" : "View squad list"}</span>
+                  <svg className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {isExpanded && (
+                  <div className="mt-3 pt-3 border-t border-gray-50">
+                    {players.length === 0 ? (
+                      <p className="text-xs text-gray-400 text-center py-2">Squad list coming soon</p>
+                    ) : (
+                      <>
+                        {squadPlayers.length > 0 && (
+                          <div className="mb-3">
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Squad</p>
+                            {squadPlayers.map((player, i) => (
+                              <div key={i} className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
+                                <span className="w-6 h-6 bg-[#006B3C]/10 rounded-full flex items-center justify-center text-xs font-bold text-[#006B3C] shrink-0">
+                                  {player.shirt_number || "—"}
+                                </span>
+                                <span className="text-sm font-medium text-gray-800">{player.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {reserves.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Reserves</p>
+                            {reserves.map((player, i) => (
+                              <div key={i} className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
+                                <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-400 shrink-0">
+                                  {player.shirt_number || "—"}
+                                </span>
+                                <span className="text-sm font-medium text-gray-500 flex-1">{player.name}</span>
+                                <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Reserve</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               );
             })}
