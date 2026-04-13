@@ -51,7 +51,7 @@ export default function Layout({ children }) {
               <div className="leading-tight">
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
                 <p className="text-green-200 text-sm font-semibold leading-none mt-1">Masters Hockey</p>
-                <p className="text-[#DE2910] text-xs font-semibold italic leading-none mt-3 tracking-wide">— Hockey For Life —</p>
+                <p className="text-[#DE2910] text-sm font-semibold italic leading-none mt-3 tracking-wide">— Hockey For Life —</p>
               </div>
             </Link>
 
@@ -107,7 +107,7 @@ export default function Layout({ children }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Club Info */}
             <div>
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-start gap-2 mb-3">
                 <div className="h-12 w-12 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center">
                   <img
                     src={`${import.meta.env.BASE_URL}logo.png`}
@@ -115,9 +115,11 @@ export default function Layout({ children }) {
                     className="w-full h-full object-contain scale-150"
                   />
                 </div>
-                <span className="font-bold text-white">Hong Kong Masters Hockey</span>
+                <div>
+                  <span className="font-bold text-white block leading-tight">Hong Kong Masters Hockey</span>
+                  <p className="text-[#DE2910] text-sm font-semibold italic mt-1">— Hockey For Life —</p>
+                </div>
               </div>
-              <p className="text-[#DE2910] text-sm font-semibold italic mb-2">— Hockey For Life —</p>
               <p className="text-green-200 text-sm leading-relaxed">
                 Promoting field hockey excellence and sportsmanship among masters-age players in Hong Kong.
               </p>
