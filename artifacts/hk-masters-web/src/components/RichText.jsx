@@ -26,7 +26,9 @@ export default function RichText({ content, className = "" }) {
           ol: ({ children }) => <ol className="list-decimal pl-5 mb-2">{children}</ol>,
           li: ({ children }) => <li className="mb-1">{children}</li>,
         }}
-      />
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
