@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
+import AutoLink from "../components/AutoLink";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
@@ -39,9 +40,9 @@ export default function Rotterdam2026() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">About the Tournament</h2>
-            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line">{content.overview_p1}</p>
-            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line">{content.overview_p2}</p>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-line">{content.overview_p3}</p>
+            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line"><AutoLink text={content.overview_p1} /></p>
+            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line"><AutoLink text={content.overview_p2} /></p>
+            <p className="text-gray-600 leading-relaxed whitespace-pre-line"><AutoLink text={content.overview_p3} /></p>
           </div>
 
           {/* Quick Facts */}
@@ -51,7 +52,7 @@ export default function Rotterdam2026() {
               {content.quick_facts.map(({ label, value }) => (
                 <div key={label} className="flex justify-between gap-2">
                   <dt className="text-sm text-gray-500">{label}</dt>
-                  <dd className="text-sm font-medium text-gray-900 text-right">{value}</dd>
+                  <dd className="text-sm font-medium text-gray-900 text-right"><AutoLink text={value} /></dd>
                 </div>
               ))}
             </dl>
@@ -189,7 +190,7 @@ export default function Rotterdam2026() {
               <div key={item.title} className="bg-white rounded-xl p-6 shadow-sm border border-[#006B3C]/10">
                 <div className="text-3xl mb-3">{item.icon}</div>
                 <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">{item.body}</p>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"><AutoLink text={item.body} /></p>
               </div>
             ))}
           </div>

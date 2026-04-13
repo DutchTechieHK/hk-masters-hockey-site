@@ -1,4 +1,5 @@
 import content from "../content/events.json";
+import AutoLink from "../components/AutoLink";
 
 function EventCard({ event, type }) {
   return (
@@ -25,7 +26,7 @@ function EventCard({ event, type }) {
         </svg>
         {event.location}
       </p>
-      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{event.description}</p>
+      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"><AutoLink text={event.description} /></p>
     </div>
   );
 }
@@ -99,7 +100,7 @@ export default function Events() {
                       </span>
                     </div>
                     <h3 className="text-xl font-extrabold text-gray-900 mb-2">{tournament.name}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-4 whitespace-pre-line">{tournament.description}</p>
+                    <p className="text-gray-600 text-sm leading-relaxed mb-4 whitespace-pre-line"><AutoLink text={tournament.description} /></p>
                     {tournament.notion_url && (
                       <a
                         href={tournament.notion_url}

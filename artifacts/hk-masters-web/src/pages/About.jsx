@@ -1,4 +1,5 @@
 import content from "../content/about.json";
+import AutoLink from "../components/AutoLink";
 
 export default function About() {
   return (
@@ -18,10 +19,10 @@ export default function About() {
         <div className="max-w-3xl">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
           <p className="text-gray-600 leading-relaxed text-lg mb-4 whitespace-pre-line">
-            {content.mission_p1}
+            <AutoLink text={content.mission_p1} />
           </p>
           <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-line">
-            {content.mission_p2}
+            <AutoLink text={content.mission_p2} />
           </p>
         </div>
       </section>
