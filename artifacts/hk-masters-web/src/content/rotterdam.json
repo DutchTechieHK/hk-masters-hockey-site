@@ -43,7 +43,24 @@
     {
       "name": "Men's Over-50",
       "category": "M50",
-      "player_list": []
+      "player_list": [
+        {
+          "name": "René Theil",
+          "shirt_number": 17
+        },
+        {
+          "name": "Justin Davidson",
+          "role": "Defender"
+        },
+        {
+          "name": "Andy Boulton",
+          "role": "Goal Keeper"
+        },
+        {
+          "name": "Bernd Sauer",
+          "role": "Midfield "
+        }
+      ]
     }
   ],
   "key_dates": [
