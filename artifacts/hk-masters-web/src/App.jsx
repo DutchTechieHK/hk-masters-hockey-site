@@ -13,9 +13,7 @@ import Contact from "./pages/Contact";
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
-    if (!window.location.hash) {
-      window.scrollTo(0, 0);
-    }
+    window.scrollTo(0, 0);
   }, [location]);
   return null;
 }
