@@ -51,6 +51,7 @@ export default function Layout({ children }) {
               <div className="leading-tight">
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-none">Hong Kong</p>
                 <p className="text-green-200 text-sm font-semibold leading-none mt-1">Masters Hockey</p>
+                <p className="text-[#DE2910] text-xs font-semibold italic leading-none mt-1.5 tracking-wide">Hockey For Life</p>
               </div>
             </Link>
 
@@ -116,8 +117,8 @@ export default function Layout({ children }) {
                 </div>
                 <span className="font-bold text-white">Hong Kong Masters Hockey</span>
               </div>
+              <p className="text-[#DE2910] text-sm font-semibold italic mb-2">Hockey For Life</p>
               <p className="text-green-200 text-sm leading-relaxed">
-                {/* TODO: Replace with actual club tagline */}
                 Promoting field hockey excellence and sportsmanship among masters-age players in Hong Kong.
               </p>
             </div>
@@ -180,8 +181,8 @@ export default function Layout({ children }) {
           </div>
 
           <div className="mt-8 pt-6 border-t border-green-700 text-center">
+            <p className="text-white font-bold italic text-base mb-2 tracking-wide">Hockey For Life</p>
             <p className="text-green-300 text-xs">
-              {/* TODO: Update year as needed */}
               &copy; 2026 Hong Kong Masters Hockey. All rights reserved.
             </p>
           </div>
