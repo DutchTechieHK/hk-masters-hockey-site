@@ -46,7 +46,8 @@
       "player_list": [
         {
           "name": "René Theil",
-          "shirt_number": 17
+          "shirt_number": 17,
+          "role": "Foreward/Midfield"
         },
         {
           "name": "Justin Davidson",
