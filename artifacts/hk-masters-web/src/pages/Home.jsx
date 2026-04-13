@@ -307,14 +307,6 @@ export default function Home() {
             })}
           </div>
 
-          <div className="text-center mt-8">
-            <Link
-              href="/rotterdam-2026"
-              className="inline-block bg-[#006B3C] text-white font-semibold px-8 py-3 rounded-lg hover:bg-green-800 transition-colors duration-150"
-            >
-              Full Rotterdam 2026 details &rarr;
-            </Link>
-          </div>
         </section>
       ) : (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
