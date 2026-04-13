@@ -27,24 +27,6 @@ export default function About() {
         </div>
       </section>
 
-      {/* Committee Grid */}
-      <section className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Club Committee &amp; Leadership</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
-            {content.committee.map((person) => (
-              <div key={person.name} className="text-center">
-                <div className="w-20 h-20 rounded-full bg-[#006B3C]/10 border-2 border-[#006B3C]/20 mx-auto mb-3 flex items-center justify-center text-[#006B3C] font-bold text-lg">
-                  {person.name.split(" ").map(n => n[0]).join("")}
-                </div>
-                <p className="font-semibold text-gray-900 text-sm">{person.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{person.role}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* History Timeline */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Club History</h2>
@@ -70,6 +52,24 @@ export default function About() {
                   </div>
                   <p className="text-sm text-gray-600 leading-relaxed">{item.detail}</p>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Committee Grid */}
+      <section className="bg-gray-50 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">Club Committee &amp; Leadership</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
+            {content.committee.map((person) => (
+              <div key={person.name} className="text-center">
+                <div className="w-20 h-20 rounded-full bg-[#006B3C]/10 border-2 border-[#006B3C]/20 mx-auto mb-3 flex items-center justify-center text-[#006B3C] font-bold text-lg">
+                  {person.name.split(" ").map(n => n[0]).join("")}
+                </div>
+                <p className="font-semibold text-gray-900 text-sm">{person.name}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{person.role}</p>
               </div>
             ))}
           </div>
