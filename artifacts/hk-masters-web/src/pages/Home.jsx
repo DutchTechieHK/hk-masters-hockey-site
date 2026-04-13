@@ -1,7 +1,86 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import content from "../content/home.json";
 import eventsContent from "../content/events.json";
+
+const ROTTERDAM_START = new Date("2026-07-22T09:00:00");
+
+function useCountdown(target) {
+  const calc = () => {
+    const diff = target - Date.now();
+    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, over: true };
+    return {
+      days: Math.floor(diff / 86400000),
+      hours: Math.floor((diff % 86400000) / 3600000),
+      minutes: Math.floor((diff % 3600000) / 60000),
+      seconds: Math.floor((diff % 60000) / 1000),
+      over: false,
+    };
+  };
+  const [time, setTime] = useState(calc);
+  useEffect(() => {
+    const id = setInterval(() => setTime(calc()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return time;
+}
+
+function CountdownUnit({ value, label }) {
+  return (
+    <div className="flex flex-col items-center">
+      <div className="bg-white/10 border border-white/20 rounded-2xl px-6 py-4 min-w-[80px] sm:min-w-[100px] text-center shadow-inner">
+        <span className="text-4xl sm:text-6xl font-extrabold text-white tabular-nums leading-none tracking-tight">
+          {String(value).padStart(2, "0")}
+        </span>
+      </div>
+      <span className="mt-2 text-xs sm:text-sm font-semibold text-green-300 uppercase tracking-widest">
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function CountdownSeparator() {
+  return (
+    <span className="text-3xl sm:text-5xl font-extrabold text-white/40 pb-6 select-none">:</span>
+  );
+}
+
+function RotterdamCountdown() {
+  const countdown = useCountdown(ROTTERDAM_START);
+  return (
+    <section className="bg-[#004A2A] py-12 sm:py-16">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <p className="text-[#DE2910] text-xs sm:text-sm font-bold uppercase tracking-widest mb-2">
+          Rotterdam 2026 Masters World Cup
+        </p>
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-8">
+          {countdown.over ? "The tournament has begun!" : "The clock is ticking…"}
+        </h2>
+        {!countdown.over && (
+          <div className="flex items-end justify-center gap-3 sm:gap-5">
+            <CountdownUnit value={countdown.days} label="Days" />
+            <CountdownSeparator />
+            <CountdownUnit value={countdown.hours} label="Hours" />
+            <CountdownSeparator />
+            <CountdownUnit value={countdown.minutes} label="Minutes" />
+            <CountdownSeparator />
+            <CountdownUnit value={countdown.seconds} label="Seconds" />
+          </div>
+        )}
+        <p className="mt-8 text-green-400 text-sm">
+          22 July – 1 August 2026 &nbsp;·&nbsp; Rotterdam, Netherlands
+        </p>
+        <Link
+          href="/rotterdam-2026"
+          className="inline-block mt-5 bg-[#DE2910] text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-red-700 transition-colors duration-150"
+        >
+          Tournament details &rarr;
+        </Link>
+      </div>
+    </section>
+  );
+}
 
 function PhotoPlaceholder({ label }) {
   return (
@@ -153,6 +232,9 @@ export default function Home() {
         </div>
 
       </section>
+
+      {/* Rotterdam Countdown */}
+      <RotterdamCountdown />
 
       {/* Welcome Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
