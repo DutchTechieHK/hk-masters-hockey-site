@@ -117,7 +117,7 @@ export default function Layout({ children }) {
                 </div>
                 <span className="font-bold text-white">Hong Kong Masters Hockey</span>
               </div>
-              <p className="text-[#DE2910] text-sm font-semibold italic mb-2">Hockey For Life</p>
+              <p className="text-[#DE2910] text-sm font-semibold italic mb-2">— Hockey For Life —</p>
               <p className="text-green-200 text-sm leading-relaxed">
                 Promoting field hockey excellence and sportsmanship among masters-age players in Hong Kong.
               </p>
@@ -181,7 +181,7 @@ export default function Layout({ children }) {
           </div>
 
           <div className="mt-8 pt-6 border-t border-green-700 text-center">
-            <p className="text-white font-bold italic text-base mb-2 tracking-wide">Hockey For Life</p>
+            <p className="text-white font-bold italic text-base mb-2 tracking-wide">— Hockey For Life —</p>
             <p className="text-green-300 text-xs">
               &copy; 2026 Hong Kong Masters Hockey. All rights reserved.
             </p>
