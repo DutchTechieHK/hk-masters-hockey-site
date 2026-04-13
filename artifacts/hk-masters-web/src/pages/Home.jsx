@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import content from "../content/home.json";
+import RichText from "../components/RichText";
 import eventsContent from "../content/events.json";
 import teamsContent from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
@@ -150,9 +151,7 @@ export default function Home() {
                 <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
                   {content.hero_tagline}
                 </p>
-                <p className="text-green-200 mb-8 max-w-xl leading-relaxed">
-                  {content.hero_intro}
-                </p>
+                <RichText content={content.hero_intro} className="text-green-200 mb-8 max-w-xl leading-relaxed" />
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="/rotterdam-2026"
@@ -312,9 +311,7 @@ export default function Home() {
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
-            <p className="text-gray-600 leading-relaxed text-lg">
-              {content.welcome_text}
-            </p>
+            <RichText content={content.welcome_text} className="text-gray-600 leading-relaxed text-lg" />
           </div>
         </section>
       )}

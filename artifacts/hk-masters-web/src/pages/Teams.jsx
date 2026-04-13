@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import content from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
-import AutoLink from "../components/AutoLink";
+import RichText from "../components/RichText";
 
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 
@@ -67,7 +67,7 @@ export default function Teams() {
                     {squad.short_name}
                   </span>
                   <h2 className="text-3xl font-extrabold text-gray-900 mb-3">{squad.name}</h2>
-                  <p className="text-gray-600 leading-relaxed mb-5 whitespace-pre-line"><AutoLink text={squad.description} /></p>
+                  <RichText content={squad.description} className="text-gray-600 leading-relaxed mb-5" />
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -122,9 +122,7 @@ export default function Teams() {
           ) : (
             <>
               <h2 className="text-3xl font-extrabold text-white mb-4">{content.join_heading}</h2>
-              <p className="text-green-100 max-w-xl mx-auto mb-6 leading-relaxed">
-                {content.join_text}
-              </p>
+              <RichText content={content.join_text} className="text-green-100 max-w-xl mx-auto mb-6 leading-relaxed" />
               <Link
                 href="/contact"
                 className="inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"

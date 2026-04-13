@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
 import AutoLink from "../components/AutoLink";
+import RichText from "../components/RichText";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
@@ -40,9 +41,9 @@ export default function Rotterdam2026() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">About the Tournament</h2>
-            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line"><AutoLink text={content.overview_p1} /></p>
-            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line"><AutoLink text={content.overview_p2} /></p>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-line"><AutoLink text={content.overview_p3} /></p>
+            <RichText content={content.overview_p1} className="text-gray-600 leading-relaxed mb-4" />
+            <RichText content={content.overview_p2} className="text-gray-600 leading-relaxed mb-4" />
+            <RichText content={content.overview_p3} className="text-gray-600 leading-relaxed" />
           </div>
 
           {/* Quick Facts */}
@@ -190,7 +191,7 @@ export default function Rotterdam2026() {
               <div key={item.title} className="bg-white rounded-xl p-6 shadow-sm border border-[#006B3C]/10">
                 <div className="text-3xl mb-3">{item.icon}</div>
                 <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
-                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"><AutoLink text={item.body} /></p>
+                <RichText content={item.body} className="text-sm text-gray-600 leading-relaxed" />
               </div>
             ))}
           </div>

@@ -1,5 +1,5 @@
 import content from "../content/events.json";
-import AutoLink from "../components/AutoLink";
+import RichText from "../components/RichText";
 
 function EventCard({ event, type }) {
   return (
@@ -26,7 +26,7 @@ function EventCard({ event, type }) {
         </svg>
         {event.location}
       </p>
-      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line"><AutoLink text={event.description} /></p>
+      <RichText content={event.description} className="text-sm text-gray-600 leading-relaxed" />
     </div>
   );
 }
@@ -100,7 +100,7 @@ export default function Events() {
                       </span>
                     </div>
                     <h3 className="text-xl font-extrabold text-gray-900 mb-2">{tournament.name}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-4 whitespace-pre-line"><AutoLink text={tournament.description} /></p>
+                    <RichText content={tournament.description} className="text-gray-600 text-sm leading-relaxed mb-4" />
                     {tournament.notion_url && (
                       <a
                         href={tournament.notion_url}

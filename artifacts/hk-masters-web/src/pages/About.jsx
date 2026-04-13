@@ -1,5 +1,5 @@
 import content from "../content/about.json";
-import AutoLink from "../components/AutoLink";
+import RichText from "../components/RichText";
 
 export default function About() {
   return (
@@ -18,12 +18,8 @@ export default function About() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
         <div className="max-w-3xl">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
-          <p className="text-gray-600 leading-relaxed text-lg mb-4 whitespace-pre-line">
-            <AutoLink text={content.mission_p1} />
-          </p>
-          <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-line">
-            <AutoLink text={content.mission_p2} />
-          </p>
+          <RichText content={content.mission_p1} className="text-gray-600 leading-relaxed text-lg mb-4" />
+          <RichText content={content.mission_p2} className="text-gray-600 leading-relaxed text-lg" />
         </div>
       </section>
 
@@ -31,9 +27,7 @@ export default function About() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Club History</h2>
         {content.history_intro && (
-          <p className="text-gray-600 leading-relaxed text-lg mb-10 max-w-3xl whitespace-pre-line">
-            <AutoLink text={content.history_intro} />
-          </p>
+          <RichText content={content.history_intro} className="text-gray-600 leading-relaxed text-lg mb-10 max-w-3xl" />
         )}
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-green-200 hidden sm:block" />
@@ -50,7 +44,7 @@ export default function About() {
                     </span>
                     <h3 className="font-bold text-gray-900">{item.event}</h3>
                   </div>
-                  <p className="text-sm text-gray-600 leading-relaxed">{item.detail}</p>
+                  <RichText content={item.detail} className="text-sm text-gray-600 leading-relaxed" />
                 </div>
               </div>
             ))}

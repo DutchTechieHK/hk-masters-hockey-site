@@ -33,14 +33,14 @@ collections:
             hint: "Short tagline shown below the title"
           - label: Hero Introduction
             name: hero_intro
-            widget: text
+            widget: markdown
             hint: "2–3 sentence introduction shown in the hero banner"
           - label: Welcome Section Heading
             name: welcome_heading
             widget: string
           - label: Welcome Text
             name: welcome_text
-            widget: text
+            widget: markdown
             hint: "Main welcome paragraph below the hero"
           - label: Stats
             name: stats
@@ -71,10 +71,10 @@ collections:
         fields:
           - label: Mission Statement (Paragraph 1)
             name: mission_p1
-            widget: text
+            widget: markdown
           - label: Mission Statement (Paragraph 2)
             name: mission_p2
-            widget: text
+            widget: markdown
           - label: Committee Members
             name: committee
             widget: list
@@ -84,7 +84,7 @@ collections:
               - { label: Role / Title, name: role, widget: string }
           - label: Club History (Introductory Text)
             name: history_intro
-            widget: text
+            widget: markdown
             hint: "A paragraph describing the club's story and background — displayed above the timeline"
           - label: Club History Timeline
             name: timeline
@@ -93,7 +93,7 @@ collections:
             fields:
               - { label: Year, name: year, widget: string }
               - { label: Event Title, name: event, widget: string }
-              - { label: Detail, name: detail, widget: text }
+              - { label: Detail, name: detail, widget: markdown }
 
       # TEAMS PAGE
       - name: teams
@@ -110,7 +110,7 @@ collections:
             widget: string
           - label: Join the Team Text
             name: join_text
-            widget: text
+            widget: markdown
           - label: Squads
             name: squads
             widget: list
@@ -119,7 +119,7 @@ collections:
               - { label: ID (no spaces), name: id, widget: string, hint: "e.g. men-o35 — do not change once set" }
               - { label: Full Name, name: name, widget: string, hint: "e.g. Men's Over-35" }
               - { label: Short Name / Badge, name: short_name, widget: string, hint: "e.g. M35" }
-              - { label: Description, name: description, widget: text }
+              - { label: Description, name: description, widget: markdown }
               - { label: Player Count, name: player_count, widget: number }
               - { label: Manager, name: manager, widget: string }
               - { label: Coach, name: coach, widget: string }
@@ -138,13 +138,13 @@ collections:
             hint: "Small red badge in the header, e.g. May – June 2026"
           - label: Tournament Overview (Paragraph 1)
             name: overview_p1
-            widget: text
+            widget: markdown
           - label: Tournament Overview (Paragraph 2)
             name: overview_p2
-            widget: text
+            widget: markdown
           - label: Tournament Overview (Paragraph 3)
             name: overview_p3
-            widget: text
+            widget: markdown
           - label: Quick Facts
             name: quick_facts
             widget: list
@@ -185,7 +185,7 @@ collections:
             fields:
               - { label: Icon (emoji), name: icon, widget: string }
               - { label: Title, name: title, widget: string }
-              - { label: Body Text, name: body, widget: text }
+              - { label: Body Text, name: body, widget: markdown }
 
       # EVENTS PAGE
       - name: events_page
@@ -201,7 +201,7 @@ collections:
               - { label: Event Name, name: name, widget: string }
               - { label: Date, name: date, widget: string }
               - { label: Location, name: location, widget: string }
-              - { label: Description, name: description, widget: text }
+              - { label: Description, name: description, widget: markdown }
           - label: Past Events
             name: past_events
             widget: list
@@ -211,7 +211,7 @@ collections:
               - { label: Date, name: date, widget: string }
               - { label: Location, name: location, widget: string }
               - { label: Results, name: result, widget: string, required: false, hint: "e.g. M35: Champions | W35: Semi-finalists" }
-              - { label: Description, name: description, widget: text }
+              - { label: Description, name: description, widget: markdown }
           - label: Tournament Archive
             name: tournament_archive
             widget: list
@@ -220,7 +220,7 @@ collections:
               - { label: Tournament Name, name: name, widget: string }
               - { label: Date, name: date, widget: string }
               - { label: Location, name: location, widget: string }
-              - { label: Description, name: description, widget: text }
+              - { label: Description, name: description, widget: markdown }
               - { label: Notion / External Site URL, name: notion_url, widget: string, required: false }
 
       # MEDIA PAGE
