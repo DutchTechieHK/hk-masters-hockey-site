@@ -82,6 +82,10 @@ collections:
             fields:
               - { label: Name, name: name, widget: string }
               - { label: Role / Title, name: role, widget: string }
+          - label: Club History (Introductory Text)
+            name: history_intro
+            widget: text
+            hint: "A paragraph describing the club's story and background — displayed above the timeline"
           - label: Club History Timeline
             name: timeline
             widget: list

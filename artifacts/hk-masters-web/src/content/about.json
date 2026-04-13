@@ -9,6 +9,7 @@
     { "name": "David Lam", "role": "Men's Captain (O35)" },
     { "name": "Grace Ho", "role": "Women's Captain" }
   ],
+  "history_intro": "Write your club history here. Describe the story, the people, and the journey that shaped Hong Kong Masters Hockey. This text appears above the timeline below.",
   "timeline": [
     {
       "year": "2003",

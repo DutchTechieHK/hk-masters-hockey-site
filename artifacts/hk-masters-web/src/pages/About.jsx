@@ -47,7 +47,12 @@ export default function About() {
 
       {/* History Timeline */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-10">Club History</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Club History</h2>
+        {content.history_intro && (
+          <p className="text-gray-600 leading-relaxed text-lg mb-10 max-w-3xl whitespace-pre-line">
+            <AutoLink text={content.history_intro} />
+          </p>
+        )}
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-green-200 hidden sm:block" />
           <div className="space-y-8">
