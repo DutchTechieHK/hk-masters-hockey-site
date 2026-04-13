@@ -161,11 +161,12 @@ collections:
                 name: player_list
                 widget: list
                 required: false
+                identifier_field: name
                 hint: "Add each player — shirt number, name, and mark reserves with role 'Reserve'"
                 fields:
-                  - { label: Shirt Number, name: shirt_number, widget: number, required: false }
                   - { label: Player Name, name: name, widget: string }
-                  - { label: Role, name: role, widget: string, required: false, hint: "Leave blank for squad players. Type 'Reserve' for travel reserves." }
+                  - { label: Shirt Number, name: shirt_number, widget: number, required: false }
+                  - { label: Role / Position, name: role, widget: string, required: false, hint: "Player position (e.g. GK, Defender). Type 'Reserve' for travel reserves." }
           - label: Key Dates
             name: key_dates
             widget: list
