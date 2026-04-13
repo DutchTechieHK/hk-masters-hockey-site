@@ -25,7 +25,7 @@ function EventCard({ event, type }) {
         </svg>
         {event.location}
       </p>
-      <p className="text-sm text-gray-600 leading-relaxed">{event.description}</p>
+      <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{event.description}</p>
     </div>
   );
 }
@@ -99,7 +99,7 @@ export default function Events() {
                       </span>
                     </div>
                     <h3 className="text-xl font-extrabold text-gray-900 mb-2">{tournament.name}</h3>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-4">{tournament.description}</p>
+                    <p className="text-gray-600 text-sm leading-relaxed mb-4 whitespace-pre-line">{tournament.description}</p>
                     {tournament.notion_url && (
                       <a
                         href={tournament.notion_url}

@@ -17,10 +17,10 @@ export default function About() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="max-w-3xl">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
-          <p className="text-gray-600 leading-relaxed text-lg mb-4">
+          <p className="text-gray-600 leading-relaxed text-lg mb-4 whitespace-pre-line">
             {content.mission_p1}
           </p>
-          <p className="text-gray-600 leading-relaxed text-lg">
+          <p className="text-gray-600 leading-relaxed text-lg whitespace-pre-line">
             {content.mission_p2}
           </p>
         </div>

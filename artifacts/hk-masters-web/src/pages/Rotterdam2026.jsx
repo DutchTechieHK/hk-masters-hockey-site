@@ -37,9 +37,9 @@ export default function Rotterdam2026() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">About the Tournament</h2>
-            <p className="text-gray-600 leading-relaxed mb-4">{content.overview_p1}</p>
-            <p className="text-gray-600 leading-relaxed mb-4">{content.overview_p2}</p>
-            <p className="text-gray-600 leading-relaxed">{content.overview_p3}</p>
+            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line">{content.overview_p1}</p>
+            <p className="text-gray-600 leading-relaxed mb-4 whitespace-pre-line">{content.overview_p2}</p>
+            <p className="text-gray-600 leading-relaxed whitespace-pre-line">{content.overview_p3}</p>
           </div>
 
           {/* Quick Facts */}
