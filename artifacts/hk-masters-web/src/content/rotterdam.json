@@ -51,7 +51,8 @@
         },
         {
           "name": "Justin Davidson",
-          "role": "Defender"
+          "role": "Defender",
+          "shirt_number": 4
         },
         {
           "name": "Andy Boulton",
@@ -59,7 +60,8 @@
         },
         {
           "name": "Bernd Sauer",
-          "role": "Midfield "
+          "role": "Midfield ",
+          "shirt_number": 10
         }
       ]
     }
