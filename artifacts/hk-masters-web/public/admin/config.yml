@@ -241,14 +241,11 @@ collections:
               - label: Photos
                 name: photos
                 widget: list
-                hint: "Click 'Add Photos +' — in the Cloudinary picker you can select multiple images before clicking Insert"
+                hint: "Add photos one at a time — click 'Add Photos +', pick one image from Cloudinary, then repeat"
                 field:
                   label: Photo
                   name: photo
                   widget: image
-                  media_library:
-                    config:
-                      multiple: true
           - label: Videos
             name: videos
             widget: list
