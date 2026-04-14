@@ -190,7 +190,7 @@ export default function Media() {
                   <div className="aspect-video relative">
                     {playingVideos[index] ? (
                       <iframe
-                        src={`https://www.youtube.com/embed/${video.youtube_id}?autoplay=1`}
+                        src={`https://www.youtube-nocookie.com/embed/${video.youtube_id}?autoplay=1&rel=0`}
                         title={video.title}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
