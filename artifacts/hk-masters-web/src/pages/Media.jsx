@@ -12,6 +12,15 @@ function videoPoster(url) {
     .replace(/\.[^.]+$/, ".jpg");
 }
 
+function getYouTubeId(input) {
+  if (!input) return '';
+  const short = input.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (short) return short[1];
+  const long = input.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (long) return long[1];
+  return input.trim();
+}
+
 export default function Media() {
   const [lightbox, setLightbox] = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
@@ -185,17 +194,19 @@ export default function Media() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {videos.map((video, index) => (
+              {videos.map((video, index) => {
+                const ytId = getYouTubeId(video.youtube_id);
+                return (
                 <div key={index} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                   <a
-                    href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+                    href={`https://www.youtube.com/watch?v=${ytId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="block aspect-video relative group"
                     aria-label={`Watch ${video.title} on YouTube`}
                   >
                     <img
-                      src={video.thumbnail || `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`}
+                      src={video.thumbnail || `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`}
                       alt={video.title}
                       className="w-full h-full object-cover"
                     />
@@ -213,7 +224,7 @@ export default function Media() {
                       <p className="text-xs text-gray-500 leading-relaxed mb-3">{video.description}</p>
                     )}
                     <a
-                      href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+                      href={`https://www.youtube.com/watch?v=${ytId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-xs font-semibold text-red-600 hover:text-red-700"
@@ -225,7 +236,8 @@ export default function Media() {
                     </a>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
