@@ -9,6 +9,13 @@
     return [];
   }
 
+  function thumbUrl(url) {
+    if (url && url.includes('cloudinary.com')) {
+      return url.replace('/upload/', '/upload/w_150,h_100,c_fill,q_auto,f_auto/');
+    }
+    return url;
+  }
+
   var Control = createClass({
     handleSelect: function () {
       var self = this;
@@ -54,7 +61,7 @@
             photos.map(function (url, index) {
               return h('div', { key: index, style: { position: 'relative' } },
                 h('img', {
-                  src: url,
+                  src: thumbUrl(url),
                   style: {
                     width: '100%',
                     height: '70px',
