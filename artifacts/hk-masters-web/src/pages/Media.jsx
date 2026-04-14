@@ -15,6 +15,7 @@ function videoPoster(url) {
 export default function Media() {
   const [lightbox, setLightbox] = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
+  const [playingVideos, setPlayingVideos] = useState({});
 
   const albums = content.albums || [];
   const videos = content.videos || [];
@@ -186,14 +187,35 @@ export default function Media() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {videos.map((video, index) => (
                 <div key={index} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="aspect-video">
-                    <iframe
-                      src={`https://www.youtube.com/embed/${video.youtube_id}`}
-                      title={video.title}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
+                  <div className="aspect-video relative">
+                    {playingVideos[index] ? (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${video.youtube_id}?autoplay=1`}
+                        title={video.title}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="w-full h-full"
+                      />
+                    ) : (
+                      <button
+                        className="w-full h-full relative group"
+                        onClick={() => setPlayingVideos(prev => ({ ...prev, [index]: true }))}
+                        aria-label={`Play ${video.title}`}
+                      >
+                        <img
+                          src={`https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`}
+                          alt={video.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors duration-200">
+                          <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
+                            <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
+                            </svg>
+                          </div>
+                        </div>
+                      </button>
+                    )}
                   </div>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 text-sm mb-1">{video.title}</h3>
