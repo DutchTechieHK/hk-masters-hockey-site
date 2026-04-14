@@ -240,12 +240,8 @@ collections:
                 hint: "e.g. Training Session — April 2026"
               - label: Photos
                 name: photos
-                widget: list
-                hint: "Add photos one at a time — click 'Add Photos +', pick one image from Cloudinary, then repeat"
-                field:
-                  label: Photo
-                  name: photo
-                  widget: image
+                widget: cloudinary-multi-image
+                hint: "Click the green button to open Cloudinary — select as many photos as you like, then click Insert"
           - label: Videos
             name: videos
             widget: list
