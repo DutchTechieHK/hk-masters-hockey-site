@@ -253,6 +253,11 @@ collections:
                 widget: string
                 hint: "e.g. for https://youtube.com/watch?v=dQw4w9WgXcQ — enter: dQw4w9WgXcQ"
               - { label: Description, name: description, widget: text, required: false }
+              - label: "Custom Thumbnail"
+                name: thumbnail
+                widget: image
+                required: false
+                hint: "Upload a thumbnail image via Cloudinary. Recommended if the YouTube auto-thumbnail shows as a grey box."
 
       # CONTACT PAGE
       - name: contact

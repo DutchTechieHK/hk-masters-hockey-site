@@ -203,7 +203,7 @@ export default function Media() {
                         aria-label={`Play ${video.title}`}
                       >
                         <img
-                          src={`https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`}
+                          src={video.thumbnail || `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`}
                           alt={video.title}
                           className="w-full h-full object-cover"
                         />
