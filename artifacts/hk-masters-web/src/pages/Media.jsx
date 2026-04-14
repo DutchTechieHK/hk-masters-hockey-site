@@ -67,20 +67,18 @@ export default function Media() {
                       <p className="text-sm">No photos in this album yet</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="columns-2 sm:columns-3 gap-3">
                       {(displayAlbum.photos || []).map((photo, index) => (
                         <div
                           key={index}
-                          className="cursor-pointer group"
+                          className="break-inside-avoid mb-3 cursor-pointer group"
                           onClick={() => setLightbox({ photos: displayAlbum.photos, index })}
                         >
-                          <div className="aspect-video overflow-hidden rounded-xl">
-                            <img
-                              src={cloudinaryResize(typeof photo === "string" ? photo : photo.image, 800, 450)}
-                              alt={displayAlbum.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          </div>
+                          <img
+                            src={cloudinaryResize(typeof photo === "string" ? photo : photo.image, 600)}
+                            alt={displayAlbum.name}
+                            className="w-full h-auto rounded-xl group-hover:opacity-90 transition-opacity duration-200"
+                          />
                         </div>
                       ))}
                     </div>
