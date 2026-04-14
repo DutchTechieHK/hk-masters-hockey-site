@@ -15,7 +15,7 @@ function videoPoster(url) {
 export default function Media() {
   const [lightbox, setLightbox] = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
-  const [playingVideos, setPlayingVideos] = useState({});
+
 
   const albums = content.albums || [];
   const videos = content.videos || [];
@@ -187,41 +187,42 @@ export default function Media() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {videos.map((video, index) => (
                 <div key={index} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                  <div className="aspect-video relative">
-                    {playingVideos[index] ? (
-                      <iframe
-                        src={`https://www.youtube-nocookie.com/embed/${video.youtube_id}?autoplay=1&rel=0`}
-                        title={video.title}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        className="w-full h-full"
-                      />
-                    ) : (
-                      <button
-                        className="w-full h-full relative group"
-                        onClick={() => setPlayingVideos(prev => ({ ...prev, [index]: true }))}
-                        aria-label={`Play ${video.title}`}
-                      >
-                        <img
-                          src={video.thumbnail || `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`}
-                          alt={video.title}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors duration-200">
-                          <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
-                            <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M8 5v14l11-7z"/>
-                            </svg>
-                          </div>
-                        </div>
-                      </button>
-                    )}
-                  </div>
+                  <a
+                    href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block aspect-video relative group"
+                    aria-label={`Watch ${video.title} on YouTube`}
+                  >
+                    <img
+                      src={video.thumbnail || `https://img.youtube.com/vi/${video.youtube_id}/hqdefault.jpg`}
+                      alt={video.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors duration-200">
+                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
+                        <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </a>
                   <div className="p-4">
                     <h3 className="font-semibold text-gray-900 text-sm mb-1">{video.title}</h3>
                     {video.description && (
-                      <p className="text-xs text-gray-500 leading-relaxed">{video.description}</p>
+                      <p className="text-xs text-gray-500 leading-relaxed mb-3">{video.description}</p>
                     )}
+                    <a
+                      href={`https://www.youtube.com/watch?v=${video.youtube_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 text-xs font-semibold text-red-600 hover:text-red-700"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      Watch on YouTube
+                    </a>
                   </div>
                 </div>
               ))}
