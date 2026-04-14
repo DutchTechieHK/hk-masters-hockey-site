@@ -2,6 +2,16 @@ import { useState } from "react";
 import content from "../content/media.json";
 import { cloudinaryResize } from "../utils/cloudinary";
 
+function isVideo(url) {
+  return url && url.includes("/video/upload/");
+}
+
+function videoPoster(url) {
+  return url
+    .replace("/video/upload/", "/video/upload/w_600,q_auto,f_jpg,so_0/")
+    .replace(/\.[^.]+$/, ".jpg");
+}
+
 export default function Media() {
   const [lightbox, setLightbox] = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
@@ -68,19 +78,31 @@ export default function Media() {
                     </div>
                   ) : (
                     <div className="columns-2 sm:columns-3 gap-3">
-                      {(displayAlbum.photos || []).map((photo, index) => (
-                        <div
-                          key={index}
-                          className="break-inside-avoid mb-3 cursor-pointer group"
-                          onClick={() => setLightbox({ photos: displayAlbum.photos, index })}
-                        >
-                          <img
-                            src={cloudinaryResize(typeof photo === "string" ? photo : photo.image, 600)}
-                            alt={displayAlbum.name}
-                            className="w-full h-auto rounded-xl group-hover:opacity-90 transition-opacity duration-200"
-                          />
-                        </div>
-                      ))}
+                      {(displayAlbum.photos || []).map((photo, index) => {
+                        const src = typeof photo === "string" ? photo : photo.image;
+                        return (
+                          <div
+                            key={index}
+                            className="break-inside-avoid mb-3 cursor-pointer group relative"
+                            onClick={() => setLightbox({ photos: displayAlbum.photos, index })}
+                          >
+                            <img
+                              src={isVideo(src) ? videoPoster(src) : cloudinaryResize(src, 600)}
+                              alt={displayAlbum.name}
+                              className="w-full h-auto rounded-xl group-hover:opacity-90 transition-opacity duration-200"
+                            />
+                            {isVideo(src) && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="bg-black/50 rounded-full p-3 group-hover:bg-black/70 transition-colors duration-200">
+                                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z"/>
+                                  </svg>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </>
@@ -120,11 +142,14 @@ export default function Media() {
               </button>
             )}
 
-            <img
-              src={typeof lightbox.photos[lightbox.index] === "string" ? lightbox.photos[lightbox.index] : lightbox.photos[lightbox.index].image}
-              alt=""
-              className="w-full rounded-xl shadow-2xl"
-            />
+            {(() => {
+              const src = typeof lightbox.photos[lightbox.index] === "string"
+                ? lightbox.photos[lightbox.index]
+                : lightbox.photos[lightbox.index].image;
+              return isVideo(src)
+                ? <video src={src} controls autoPlay className="w-full rounded-xl shadow-2xl max-h-[80vh]" />
+                : <img src={src} alt="" className="w-full rounded-xl shadow-2xl" />;
+            })()}
 
             {/* Next */}
             {lightbox.index < lightbox.photos.length - 1 && (

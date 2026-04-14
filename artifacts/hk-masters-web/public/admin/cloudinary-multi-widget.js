@@ -9,11 +9,18 @@
     return [];
   }
 
+  function isVideo(url) {
+    return url && url.includes('/video/upload/');
+  }
+
   function thumbUrl(url) {
-    if (url && url.includes('cloudinary.com')) {
-      return url.replace('/upload/', '/upload/w_150,h_100,c_fill,q_auto,f_auto/');
+    if (!url || !url.includes('cloudinary.com')) return url;
+    if (isVideo(url)) {
+      return url
+        .replace('/video/upload/', '/video/upload/w_150,h_100,c_fill,q_auto,f_jpg,so_0/')
+        .replace(/\.[^.]+$/, '.jpg');
     }
-    return url;
+    return url.replace('/upload/', '/upload/w_150,h_100,c_fill,q_auto,f_auto/');
   }
 
   var Control = createClass({
@@ -70,6 +77,14 @@
                     display: 'block',
                   },
                 }),
+                isVideo(url) ? h('div', {
+                  style: {
+                    position: 'absolute', inset: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.35)', borderRadius: '4px',
+                    fontSize: '16px', color: 'white', pointerEvents: 'none',
+                  },
+                }, '▶') : null,
                 h('button', {
                   type: 'button',
                   onClick: function () { self.handleRemove(index); },
