@@ -19,7 +19,7 @@ export default function Teams() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {rotterdamMode && (
             <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
-              Rotterdam 2026 · World Masters Cup
+              Rotterdam 2026 Masters World Cup
             </span>
           )}
           <h1 className="text-4xl font-extrabold mb-3">

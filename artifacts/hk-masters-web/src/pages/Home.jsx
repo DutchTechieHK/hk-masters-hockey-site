@@ -124,7 +124,7 @@ export default function Home() {
             {isRotterdamMode() ? (
               <div>
                 <span className="inline-block bg-[#DE2910] text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-5">
-                  Rotterdam 2026 · World Masters Cup
+                  Rotterdam 2026 Masters World Cup
                 </span>
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
                   Three Teams Representing Hong Kong
