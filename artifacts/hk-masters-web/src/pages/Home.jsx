@@ -127,13 +127,13 @@ export default function Home() {
                   Rotterdam 2026 Masters World Cup
                 </span>
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-                  Three Teams Representing Hong Kong
+                  Two Teams Representing Hong Kong
                 </h1>
                 <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
-                  W35 · M40 · M50 &mdash; at the World Masters Hockey World Cup
+                  MO40 · MO50 &mdash; at the World Masters Hockey World Cup
                 </p>
                 <p className="text-green-200 mb-8 max-w-xl leading-relaxed">
-                  Hong Kong Masters Hockey is proud to send three squads to Rotterdam this July. Three categories, one city, one flag — competing on the world stage from 22 July to 1 August 2026.
+                  Hong Kong Masters Hockey is proud to send two squads to Rotterdam this July. Two categories, one city, one flag — competing on the world stage from 22 July to 1 August 2026.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
@@ -274,7 +274,7 @@ export default function Home() {
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">About the Tournament</h2>
             <p className="text-gray-600 leading-relaxed text-lg">
-              The FIH Masters Hockey World Cup is the world's premier tournament for masters-age field hockey players. Rotterdam 2026 will bring together nations from across the globe, competing across multiple age categories. For HK Masters, this is our biggest tournament in years — with three squads making the trip to the Netherlands to fly the Hong Kong flag on the world stage.
+              The FIH Masters Hockey World Cup is the world's premier tournament for masters-age field hockey players. Rotterdam 2026 will bring together nations from across the globe, competing across multiple age categories. For HK Masters, this is our biggest tournament in years — with two squads making the trip to the Netherlands to fly the Hong Kong flag on the world stage.
             </p>
           </div>
 

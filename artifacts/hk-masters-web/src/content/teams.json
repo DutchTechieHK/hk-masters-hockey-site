@@ -1,24 +1,13 @@
 {
-  "page_subtitle": "Three squads, one club — representing Hong Kong Masters Hockey at Rotterdam 2026.",
+  "page_subtitle": "Two squads, one club — representing Hong Kong Masters Hockey at Rotterdam 2026.",
   "join_heading": "Want to Play for HK Masters?",
   "join_text": "Are you 35 or above and passionate about field hockey? We welcome players of all abilities. Get in touch to find out more about joining one of our squads.",
   "squads": [
     {
-      "captain": "TBC",
-      "name": "Women's Over-35",
-      "manager": "TBC",
-      "short_name": "W35",
-      "player_count": 18,
-      "photo": "",
-      "coach": "Shirndrée-Lee Simmons",
-      "id": "women-o35",
-      "description": "Our Women's Over-35 squad brings together experienced and passionate players from across Hong Kong. Competing at the highest level of masters hockey, this team combines skill, determination and great team spirit."
-    },
-    {
       "captain": "Thomas Cousins",
       "name": "Men's Over-40",
       "manager": "TBC",
-      "short_name": "M40",
+      "short_name": "MO40",
       "player_count": 18,
       "photo": "",
       "coach": "Dev Dhillon",
@@ -29,7 +18,7 @@
       "captain": "Ali Asghar (Senachi)",
       "name": "Men's Over-50",
       "manager": "Simon Shepherdson",
-      "short_name": "M50",
+      "short_name": "MO50",
       "player_count": 18,
       "photo": "",
       "coach": "Simon Chapman",

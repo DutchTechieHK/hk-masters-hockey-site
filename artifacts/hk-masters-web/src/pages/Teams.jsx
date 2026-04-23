@@ -27,7 +27,7 @@ export default function Teams() {
           </h1>
           <p className="text-green-200 text-lg max-w-xl">
             {rotterdamMode
-              ? "Three HK squads competing at the World Masters Hockey Cup — Rotterdam, Netherlands."
+              ? "Two HK squads competing at the World Masters Hockey Cup — Rotterdam, Netherlands."
               : content.page_subtitle}
           </p>
         </div>
