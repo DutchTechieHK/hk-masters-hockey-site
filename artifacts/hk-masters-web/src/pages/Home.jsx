@@ -279,7 +279,7 @@ export default function Home() {
           </div>
 
           {/* Squad cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {teamsContent.squads.map((squad) => {
               const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
               return (
