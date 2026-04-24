@@ -69,7 +69,7 @@ export default function Media() {
                       : "text-gray-700 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="block truncate">{album.name}</span>
+                  <span className="block leading-snug">{album.name}</span>
                   <span className={`text-xs mt-0.5 block ${displayAlbum?.name === album.name ? "text-green-200" : "text-gray-400"}`}>
                     {(album.photos || []).length} photo{(album.photos || []).length !== 1 ? "s" : ""}
                   </span>
