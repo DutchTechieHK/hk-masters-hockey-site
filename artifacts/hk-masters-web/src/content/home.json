@@ -10,7 +10,7 @@
       "label": "Registered Players"
     },
     {
-      "stat": "2",
+      "stat": "3",
       "label": "Competing Squads"
     },
     {
@@ -49,6 +49,9 @@
     },
     {
       "url": "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853919/A32I6153_pwqfwv.jpg"
+    },
+    {
+      "url": "https://res.cloudinary.com/djyvdrhal/image/upload/v1777016038/Wajid_mbg2po.jpg"
     }
   ]
 }
