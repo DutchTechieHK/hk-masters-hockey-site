@@ -315,9 +315,10 @@ export default function JournalArticle() {
   if (notFound || !article) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Article not found</h1>
-        <p className="text-gray-500 mb-8">This article may have been removed or the link is incorrect.</p>
-        <Link href="/journal" className="text-[#006B3C] font-semibold hover:text-green-800 transition-colors">
+        <div className="text-5xl mb-6">📄</div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">This article is no longer available</h1>
+        <p className="text-gray-500 mb-8">It may have been removed. Head back to the Journal to browse other stories.</p>
+        <Link href="/journal" className="inline-flex items-center gap-1.5 text-[#006B3C] font-semibold hover:text-green-800 transition-colors">
           &larr; Back to Journal
         </Link>
       </div>
