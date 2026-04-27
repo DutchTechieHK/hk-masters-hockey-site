@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { contributionsTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import {
   CreateContributionBody,
   UpdateContributionBody,
   UpdateContributionParams,
   ListContributionsQueryParams,
+  LookupContributionBody,
 } from "@workspace/api-zod";
 import { sendNewContributionEmail, sendContributionDecisionEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
@@ -92,6 +93,35 @@ router.get("/approved/:id", async (req, res) => {
     return;
   }
   res.json(mapContributionPublic(row));
+});
+
+router.post("/lookup", async (req, res) => {
+  let body;
+  try {
+    body = LookupContributionBody.parse(req.body);
+  } catch (err) {
+    if (err != null && typeof err === "object" && "issues" in err) {
+      res.status(400).json({ error: "Invalid email address" });
+      return;
+    }
+    throw err;
+  }
+  const normalizedEmail = body.email.toLowerCase().trim();
+  const rows = await db
+    .select()
+    .from(contributionsTable)
+    .where(sql`lower(${contributionsTable.authorEmail}) = ${normalizedEmail}`)
+    .orderBy(desc(contributionsTable.createdAt));
+  const results = rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    contentType: row.contentType,
+    status: row.status,
+    adminNote: row.adminNote ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
+  }));
+  res.json(results);
 });
 
 router.get("/", requireAdminAccess, async (req, res) => {

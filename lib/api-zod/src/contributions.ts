@@ -24,5 +24,10 @@ export const ListContributionsQueryParams = z.object({
   status: z.enum(["pending", "approved", "declined"]).optional(),
 });
 
+export const LookupContributionBody = z.object({
+  email: z.string().email(),
+});
+
 export type CreateContribution = z.infer<typeof CreateContributionBody>;
 export type UpdateContribution = z.infer<typeof UpdateContributionBody>;
+export type LookupContribution = z.infer<typeof LookupContributionBody>;

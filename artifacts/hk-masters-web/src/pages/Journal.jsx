@@ -381,17 +381,22 @@ function ContributeForm() {
         <p className="text-gray-600 leading-relaxed">
           Your contribution has been submitted for review. Once approved by the admin team, it will appear in the Journal for all members to read.
         </p>
-        <button
-          onClick={() => {
-            setStatus("idle");
-            setForm({ authorName: "", authorEmail: "", contentType: "article", title: "", articleBody: "" });
-            setPhotoUrls([]);
-            setUploadingPhotos([]);
-          }}
-          className="mt-6 text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
-        >
-          Submit another contribution →
-        </button>
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <button
+            onClick={() => {
+              setStatus("idle");
+              setForm({ authorName: "", authorEmail: "", contentType: "article", title: "", articleBody: "" });
+              setPhotoUrls([]);
+              setUploadingPhotos([]);
+            }}
+            className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+          >
+            Submit another contribution →
+          </button>
+          <Link href="/my-submission" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            Check your submission status →
+          </Link>
+        </div>
       </div>
     );
   }
@@ -767,6 +772,9 @@ export default function Journal() {
             <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
               Got a match report, travel diary, or photos from a recent game or tournament? We'd love to feature it in the Journal.
             </p>
+            <Link href="/my-submission" className="inline-block mt-3 text-sm text-[#006B3C] hover:text-green-800 transition-colors font-medium">
+              Already submitted? Check your submission status &rarr;
+            </Link>
           </div>
           <ContributeForm />
         </div>

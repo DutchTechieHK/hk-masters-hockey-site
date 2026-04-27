@@ -11,6 +11,7 @@ import JournalArticle from "./pages/JournalArticle";
 import Media from "./pages/Media";
 import Sponsors from "./pages/Sponsors";
 import Contact from "./pages/Contact";
+import SubmissionStatus from "./pages/SubmissionStatus";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -35,6 +36,7 @@ function Router() {
         <Route path="/media" component={Media} />
         <Route path="/sponsors" component={Sponsors} />
         <Route path="/contact" component={Contact} />
+        <Route path="/my-submission" component={SubmissionStatus} />
         <Route>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">
