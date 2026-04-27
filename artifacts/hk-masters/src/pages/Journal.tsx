@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -174,6 +174,11 @@ export default function Journal() {
   const [editTitle, setEditTitle] = useState("")
   const [editArticleBody, setEditArticleBody] = useState("")
   const [editPhotoUrls, setEditPhotoUrls] = useState<string[]>([])
+  const editDragIndex = useRef<number | null>(null)
+  const [editTouchDrag, setEditTouchDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
+  const [editDragPos, setEditDragPos] = useState<{ x: number; y: number } | null>(null)
+  const editTouchDragRef = useRef<{ active: boolean; fromIndex: number | null; toIndex: number | null; timer: ReturnType<typeof setTimeout> | null; lastX: number; lastY: number }>({ active: false, fromIndex: null, toIndex: null, timer: null, lastX: 0, lastY: 0 })
+  const editTouchDidDragRef = useRef(false)
   const [expandedSections, setExpandedSections] = useState<Record<Status, boolean>>({
     pending: true, approved: false, declined: false,
   })
@@ -222,6 +227,8 @@ export default function Journal() {
       setEditTitle("")
       setEditArticleBody("")
       setEditPhotoUrls([])
+      setEditTouchDrag({ from: null, over: null })
+      setEditDragPos(null)
       toast({ title: `Submission ${updated.status}` })
     },
     onError: () => {
@@ -287,6 +294,64 @@ export default function Journal() {
       articleBody: articleBodyChanged ? editArticleBody : undefined,
       photoUrls: photosChanged ? editPhotoUrls : undefined,
     })
+  }
+
+  const handlePhotoTileTouchStart = (i: number) => (e: React.TouchEvent) => {
+    const td = editTouchDragRef.current
+    if (td.timer) clearTimeout(td.timer)
+    const touch = e.touches[0]
+    td.lastX = touch.clientX
+    td.lastY = touch.clientY
+    td.timer = setTimeout(() => {
+      td.active = true
+      td.fromIndex = i
+      td.toIndex = i
+      if (navigator.vibrate) navigator.vibrate(30)
+      setEditTouchDrag({ from: i, over: i })
+      setEditDragPos({ x: td.lastX, y: td.lastY })
+    }, 400)
+  }
+
+  const handlePhotoGridTouchMove = (e: React.TouchEvent) => {
+    const td = editTouchDragRef.current
+    const touch = e.touches[0]
+    td.lastX = touch.clientX
+    td.lastY = touch.clientY
+    if (!td.active) return
+    e.preventDefault()
+    setEditDragPos({ x: touch.clientX, y: touch.clientY })
+    const el = document.elementFromPoint(touch.clientX, touch.clientY)
+    const cell = el && (el as HTMLElement).closest("[data-edit-drag-index]")
+    if (cell) {
+      const idx = parseInt((cell as HTMLElement).dataset.editDragIndex!, 10)
+      if (!isNaN(idx) && idx !== td.toIndex) {
+        td.toIndex = idx
+        setEditTouchDrag((prev) => ({ ...prev, over: idx }))
+      }
+    }
+  }
+
+  const handlePhotoGridTouchEnd = () => {
+    const td = editTouchDragRef.current
+    if (td.timer) clearTimeout(td.timer)
+    if (td.active) {
+      editTouchDidDragRef.current = true
+      setTimeout(() => { editTouchDidDragRef.current = false }, 300)
+      if (td.fromIndex !== null && td.toIndex !== null && td.fromIndex !== td.toIndex) {
+        setEditPhotoUrls((prev) => {
+          const next = [...prev]
+          const [moved] = next.splice(td.fromIndex!, 1)
+          next.splice(td.toIndex!, 0, moved)
+          return next
+        })
+      }
+    }
+    td.active = false
+    td.fromIndex = null
+    td.toIndex = null
+    td.timer = null
+    setEditTouchDrag({ from: null, over: null })
+    setEditDragPos(null)
   }
 
   return (
@@ -383,7 +448,7 @@ export default function Journal() {
       {selectedContribution && (
         <Modal
           isOpen={true}
-          onClose={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]) }}
+          onClose={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]); setEditTouchDrag({ from: null, over: null }); setEditDragPos(null) }}
           title={editTitle || selectedContribution.title}
           description={`Submitted by ${selectedContribution.authorName} · ${format(parseISO(selectedContribution.createdAt), "d MMM yyyy")}`}
         >
@@ -428,56 +493,116 @@ export default function Journal() {
 
             {editPhotoUrls.length > 0 && (
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                   Photos ({editPhotoUrls.length})
                 </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {editPhotoUrls.map((url, i) => (
-                    <div key={i} className="relative rounded-lg overflow-hidden border border-border group">
-                      <a href={url} target="_blank" rel="noreferrer" className="block">
-                        <img src={url} alt={`Photo ${i + 1}`} className="w-full h-32 object-cover" loading="lazy" />
-                      </a>
-                      <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <p className="text-xs text-muted-foreground mb-2">Drag to reorder · long-press on mobile</p>
+                <div
+                  className="grid grid-cols-3 gap-2"
+                  onTouchMove={handlePhotoGridTouchMove}
+                  onTouchEnd={handlePhotoGridTouchEnd}
+                  onTouchCancel={handlePhotoGridTouchEnd}
+                  style={{ touchAction: editTouchDrag.from !== null ? "none" : "auto" }}
+                >
+                  {editPhotoUrls.map((url, i) => {
+                    const isBeingDragged = editTouchDrag.from === i
+                    const isDropTarget = editTouchDrag.from !== null && editTouchDrag.over === i && editTouchDrag.from !== i
+                    return (
+                      <div
+                        key={url + i}
+                        data-edit-drag-index={i}
+                        draggable
+                        onDragStart={() => { editDragIndex.current = i }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          const from = editDragIndex.current
+                          if (from === null || from === i) return
+                          setEditPhotoUrls((prev) => {
+                            const next = [...prev]
+                            const [moved] = next.splice(from, 1)
+                            next.splice(i, 0, moved)
+                            return next
+                          })
+                          editDragIndex.current = null
+                        }}
+                        onDragEnd={() => { editDragIndex.current = null }}
+                        onTouchStart={handlePhotoTileTouchStart(i)}
+                        className={[
+                          "relative aspect-square rounded-lg overflow-hidden border border-border group cursor-grab active:cursor-grabbing transition-all duration-150",
+                          isBeingDragged ? "opacity-40 scale-95 ring-2 ring-emerald-500" : "",
+                          isDropTarget ? "ring-2 ring-rose-400 scale-105" : "",
+                        ].join(" ")}
+                      >
+                        <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" loading="lazy" draggable={false} />
+                        <div className="absolute top-1 left-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editTouchDidDragRef.current || editTouchDrag.from !== null) return
+                              setEditPhotoUrls((prev) => {
+                                if (i === 0) return prev
+                                const next = [...prev]
+                                ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                                return next
+                              })
+                            }}
+                            disabled={i === 0}
+                            className="bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded p-0.5 shadow"
+                            title="Move up"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editTouchDidDragRef.current || editTouchDrag.from !== null) return
+                              setEditPhotoUrls((prev) => {
+                                if (i === prev.length - 1) return prev
+                                const next = [...prev]
+                                ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                                return next
+                              })
+                            }}
+                            disabled={i === editPhotoUrls.length - 1}
+                            className="bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded p-0.5 shadow"
+                            title="Move down"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </button>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setEditPhotoUrls((prev) => {
-                            if (i === 0) return prev
-                            const next = [...prev]
-                            ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
-                            return next
-                          })}
-                          disabled={i === 0}
-                          className="bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded p-0.5 shadow"
-                          title="Move up"
+                          onClick={() => {
+                            if (editTouchDidDragRef.current || editTouchDrag.from !== null) return
+                            setEditPhotoUrls((prev) => prev.filter((_, j) => j !== i))
+                          }}
+                          className="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                          title="Remove photo"
                         >
-                          <ArrowUp className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditPhotoUrls((prev) => {
-                            if (i === prev.length - 1) return prev
-                            const next = [...prev]
-                            ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
-                            return next
-                          })}
-                          disabled={i === editPhotoUrls.length - 1}
-                          className="bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded p-0.5 shadow"
-                          title="Move down"
-                        >
-                          <ArrowDown className="w-3 h-3" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setEditPhotoUrls((prev) => prev.filter((_, j) => j !== i))}
-                        className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow"
-                        title="Remove photo"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
+                {editDragPos && editTouchDrag.from !== null && (
+                  <div
+                    className="fixed pointer-events-none z-50 rounded-lg overflow-hidden shadow-2xl border-2 border-emerald-500 opacity-80"
+                    style={{
+                      left: editDragPos.x - 36,
+                      top: editDragPos.y - 36,
+                      width: 72,
+                      height: 72,
+                    }}
+                  >
+                    <img
+                      src={editPhotoUrls[editTouchDrag.from]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                )}
                 {editPhotoUrls.length < selectedContribution.photoUrls.length && (
                   <p className="text-xs text-amber-700 mt-1.5">
                     {selectedContribution.photoUrls.length - editPhotoUrls.length} photo{selectedContribution.photoUrls.length - editPhotoUrls.length !== 1 ? "s" : ""} will be removed on approval/decline.
@@ -507,7 +632,7 @@ export default function Journal() {
             </div>
 
             <div className="flex justify-between gap-3 pt-2 border-t">
-              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]) }}>
+              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]); setEditTouchDrag({ from: null, over: null }); setEditDragPos(null) }}>
                 Close
               </Button>
               <div className="flex gap-2">
@@ -522,11 +647,11 @@ export default function Journal() {
                 </Button>
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={updateMutation.isPending || selectedContribution.status === "approved" || !editTitle.trim()}
+                  disabled={updateMutation.isPending || !editTitle.trim()}
                   onClick={() => handleDecision("approved")}
                 >
                   <CheckCircle className="w-4 h-4 mr-1.5" />
-                  {updateMutation.isPending ? "Saving..." : "Approve"}
+                  {updateMutation.isPending ? "Saving..." : selectedContribution.status === "approved" ? "Save changes" : "Approve"}
                 </Button>
               </div>
             </div>
