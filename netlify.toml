@@ -8,6 +8,10 @@
   BASE_PATH           = "/"
   VITE_API_BASE_URL   = "https://masters-world-hub.replit.app"
 
+[[edge_functions]]
+  function = "og-inject"
+  path     = "/journal/*"
+
 [[redirects]]
   from   = "/api/*"
   to     = "https://masters-world-hub.replit.app/api/:splat"

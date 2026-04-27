@@ -3,6 +3,7 @@ import { Link, useParams, useLocation } from "wouter";
 import { format, parseISO } from "date-fns";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
+import { useOpenGraph } from "../utils/useOpenGraph";
 
 function PhotoLightbox({ urls, startIndex, onClose }) {
   const [current, setCurrent] = useState(startIndex);
@@ -271,6 +272,28 @@ function ShareMenu({ title, variant = "hero" }) {
   );
 }
 
+function useArticleOpenGraph(article) {
+  const ogTitle = article ? `${article.title} — HK Masters Hockey` : null;
+  const rawDescription = article?.articleBody || "";
+  const ogDescription = rawDescription.trim().slice(0, 160).replace(/\s+/g, " ") || null;
+  const hasPhoto = article?.photoUrls?.length > 0;
+  const ogImage = hasPhoto
+    ? cloudinaryResize(article.photoUrls[0], 1200, 630)
+    : null;
+  const identifier = article?.slug || article?.id;
+  const ogUrl = identifier
+    ? `${window.location.origin}/journal/${identifier}`
+    : null;
+
+  useOpenGraph({
+    title: ogTitle,
+    description: ogDescription,
+    image: ogImage,
+    url: ogUrl,
+    type: "article",
+  });
+}
+
 export default function JournalArticle() {
   const { slug } = useParams();
   const [, navigate] = useLocation();
@@ -278,6 +301,8 @@ export default function JournalArticle() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+
+  useArticleOpenGraph(article);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/contributions/approved/${slug}`)
