@@ -145,19 +145,19 @@ function LatestJournalCard() {
             href="/journal"
             className="text-[#006B3C] font-medium hover:text-green-800 transition-colors duration-150 text-sm"
           >
-            Read more in the Journal &rarr;
+            All Journal articles &rarr;
           </Link>
         </div>
         <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
           {article.photoUrls && article.photoUrls.length > 0 && (
-            <div className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden bg-gray-200">
+            <Link href={`/journal/${article.id}`} className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden bg-gray-200">
               <img
                 src={cloudinaryResize(article.photoUrls[0], 600, 400)}
                 alt={article.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
                 loading="lazy"
               />
-            </div>
+            </Link>
           )}
           <div className="p-6 sm:p-8 flex flex-col justify-center">
             <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -180,10 +180,10 @@ function LatestJournalCard() {
               </p>
             )}
             <Link
-              href="/journal"
+              href={`/journal/${article.id}`}
               className="self-start text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors duration-150"
             >
-              Read more in the Journal &rarr;
+              Read this article &rarr;
             </Link>
           </div>
         </div>

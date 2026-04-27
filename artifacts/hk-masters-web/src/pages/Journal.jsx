@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "wouter";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { format, parseISO } from "date-fns";
 
@@ -57,7 +58,9 @@ function ArticleCard({ contribution }) {
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 leading-snug">
-          {contribution.title}
+          <Link href={`/journal/${contribution.id}`} className="hover:text-[#006B3C] transition-colors">
+            {contribution.title}
+          </Link>
         </h2>
         <p className="text-sm text-[#006B3C] font-semibold mb-4">
           By {contribution.authorName}
@@ -96,6 +99,15 @@ function ArticleCard({ contribution }) {
             )}
           </div>
         )}
+
+        <div className="mt-5 pt-4 border-t border-gray-50">
+          <Link
+            href={`/journal/${contribution.id}`}
+            className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+          >
+            Read full article &rarr;
+          </Link>
+        </div>
       </div>
     </article>
   );

@@ -7,6 +7,7 @@ import Teams from "./pages/Teams";
 import Events from "./pages/Events";
 import Rotterdam2026 from "./pages/Rotterdam2026";
 import Journal from "./pages/Journal";
+import JournalArticle from "./pages/JournalArticle";
 import Media from "./pages/Media";
 import Sponsors from "./pages/Sponsors";
 import Contact from "./pages/Contact";
@@ -29,6 +30,7 @@ function Router() {
         <Route path="/teams" component={Teams} />
         <Route path="/events" component={Events} />
         <Route path="/rotterdam-2026" component={Rotterdam2026} />
+        <Route path="/journal/:id" component={JournalArticle} />
         <Route path="/journal" component={Journal} />
         <Route path="/media" component={Media} />
         <Route path="/sponsors" component={Sponsors} />

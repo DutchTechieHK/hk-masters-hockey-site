@@ -73,6 +73,27 @@ router.get("/approved", async (_req, res) => {
   res.json(rows.map(mapContributionPublic));
 });
 
+router.get("/approved/:id", async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    res.status(404).json({ error: "Article not found" });
+    return;
+  }
+  const numericId = parseInt(req.params.id, 10);
+  if (isNaN(numericId)) {
+    res.status(404).json({ error: "Article not found" });
+    return;
+  }
+  const [row] = await db
+    .select()
+    .from(contributionsTable)
+    .where(eq(contributionsTable.id, numericId));
+  if (!row || row.status !== "approved") {
+    res.status(404).json({ error: "Article not found" });
+    return;
+  }
+  res.json(mapContributionPublic(row));
+});
+
 router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListContributionsQueryParams.parse(req.query);
   let rows;
