@@ -159,6 +159,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     reviewedAt: new Date(),
   };
   if (body.title !== undefined) updateValues.title = body.title;
+  if (body.articleBody !== undefined) updateValues.articleBody = body.articleBody;
   if (body.photoUrls !== undefined) updateValues.photoUrls = body.photoUrls;
 
   const [contribution] = await db

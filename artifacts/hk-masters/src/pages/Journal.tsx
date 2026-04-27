@@ -71,7 +71,7 @@ async function fetchContributions(token: string): Promise<Contribution[]> {
 async function updateContribution(
   token: string,
   id: number,
-  body: { status: "approved" | "declined"; adminNote?: string; title?: string; photoUrls?: string[] }
+  body: { status: "approved" | "declined"; adminNote?: string; title?: string; articleBody?: string; photoUrls?: string[] }
 ): Promise<Contribution> {
   const res = await fetch(`/api/contributions/${id}`, {
     method: "PUT",
@@ -172,6 +172,7 @@ export default function Journal() {
   const [selectedContribution, setSelectedContribution] = useState<Contribution | null>(null)
   const [adminNote, setAdminNote] = useState("")
   const [editTitle, setEditTitle] = useState("")
+  const [editArticleBody, setEditArticleBody] = useState("")
   const [editPhotoUrls, setEditPhotoUrls] = useState<string[]>([])
   const [expandedSections, setExpandedSections] = useState<Record<Status, boolean>>({
     pending: true, approved: false, declined: false,
@@ -210,8 +211,8 @@ export default function Journal() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status, note, title, photoUrls }: { id: number; status: "approved" | "declined"; note?: string; title?: string; photoUrls?: string[] }) =>
-      updateContribution(sessionToken!, id, { status, adminNote: note, title, photoUrls }),
+    mutationFn: ({ id, status, note, title, articleBody, photoUrls }: { id: number; status: "approved" | "declined"; note?: string; title?: string; articleBody?: string; photoUrls?: string[] }) =>
+      updateContribution(sessionToken!, id, { status, adminNote: note, title, articleBody, photoUrls }),
     onSuccess: (updated) => {
       queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
         old.map((c) => (c.id === updated.id ? updated : c))
@@ -219,6 +220,7 @@ export default function Journal() {
       setSelectedContribution(null)
       setAdminNote("")
       setEditTitle("")
+      setEditArticleBody("")
       setEditPhotoUrls([])
       toast({ title: `Submission ${updated.status}` })
     },
@@ -263,6 +265,7 @@ export default function Journal() {
     setSelectedContribution(c)
     setAdminNote(c.adminNote ?? "")
     setEditTitle(c.title)
+    setEditArticleBody(c.articleBody ?? "")
     setEditPhotoUrls(c.photoUrls)
   }
 
@@ -273,6 +276,7 @@ export default function Journal() {
   const handleDecision = (status: "approved" | "declined") => {
     if (!selectedContribution) return
     const titleChanged = editTitle.trim() !== selectedContribution.title
+    const articleBodyChanged = editArticleBody !== (selectedContribution.articleBody ?? "")
     const photosChanged = editPhotoUrls.length !== selectedContribution.photoUrls.length ||
       editPhotoUrls.some((url, i) => url !== selectedContribution.photoUrls[i])
     updateMutation.mutate({
@@ -280,6 +284,7 @@ export default function Journal() {
       status,
       note: adminNote || undefined,
       title: titleChanged ? editTitle.trim() : undefined,
+      articleBody: articleBodyChanged ? editArticleBody : undefined,
       photoUrls: photosChanged ? editPhotoUrls : undefined,
     })
   }
@@ -378,7 +383,7 @@ export default function Journal() {
       {selectedContribution && (
         <Modal
           isOpen={true}
-          onClose={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditPhotoUrls([]) }}
+          onClose={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]) }}
           title={editTitle || selectedContribution.title}
           description={`Submitted by ${selectedContribution.authorName} · ${format(parseISO(selectedContribution.createdAt), "d MMM yyyy")}`}
         >
@@ -401,12 +406,17 @@ export default function Journal() {
               />
             </div>
 
-            {selectedContribution.articleBody && (
+            {selectedContribution.articleBody !== undefined && (
               <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Article</h4>
-                <div className="bg-muted/20 rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap border border-border">
-                  {selectedContribution.articleBody}
-                </div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+                  Article Body
+                </label>
+                <textarea
+                  value={editArticleBody}
+                  onChange={(e) => setEditArticleBody(e.target.value)}
+                  rows={8}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
             )}
 
@@ -497,7 +507,7 @@ export default function Journal() {
             </div>
 
             <div className="flex justify-between gap-3 pt-2 border-t">
-              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditPhotoUrls([]) }}>
+              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]) }}>
                 Close
               </Button>
               <div className="flex gap-2">

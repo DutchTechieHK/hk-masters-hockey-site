@@ -13,6 +13,7 @@ export const UpdateContributionBody = z.object({
   status: z.enum(["approved", "declined"]),
   adminNote: z.string().optional(),
   title: z.string().min(1).optional(),
+  articleBody: z.string().optional(),
   photoUrls: z.array(z.string().url()).optional(),
 });
 
