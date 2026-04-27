@@ -68,6 +68,14 @@ async function fetchContributions(token: string): Promise<Contribution[]> {
   return res.json()
 }
 
+async function deleteContribution(token: string, id: number): Promise<void> {
+  const res = await fetch(`/api/contributions/${id}`, {
+    method: "DELETE",
+    headers: { "x-session-token": token },
+  })
+  if (!res.ok) throw new Error(`Failed to delete: ${res.status}`)
+}
+
 async function updateContribution(
   token: string,
   id: number,
@@ -233,6 +241,26 @@ export default function Journal() {
     },
     onError: () => {
       toast({ title: "Failed to update submission", variant: "destructive" })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => deleteContribution(sessionToken!, id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
+        old.filter((c) => c.id !== id)
+      )
+      setSelectedContribution(null)
+      setAdminNote("")
+      setEditTitle("")
+      setEditArticleBody("")
+      setEditPhotoUrls([])
+      setEditTouchDrag({ from: null, over: null })
+      setEditDragPos(null)
+      toast({ title: "Submission deleted" })
+    },
+    onError: () => {
+      toast({ title: "Failed to delete submission", variant: "destructive" })
     },
   })
 
@@ -646,9 +674,24 @@ export default function Journal() {
             </div>
 
             <div className="flex justify-between gap-3 pt-2 border-t">
-              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]); setEditTouchDrag({ from: null, over: null }); setEditDragPos(null) }}>
-                Close
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]); setEditTouchDrag({ from: null, over: null }); setEditDragPos(null) }}>
+                  Close
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-red-200 text-red-700 hover:bg-red-50"
+                  disabled={deleteMutation.isPending || updateMutation.isPending}
+                  onClick={() => {
+                    if (!selectedContribution) return
+                    if (!window.confirm(`Delete "${selectedContribution.title}"? This cannot be undone.`)) return
+                    deleteMutation.mutate(selectedContribution.id)
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-1.5" />
+                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"

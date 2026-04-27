@@ -214,4 +214,21 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   res.json(mapContributionAdmin(contribution));
 });
 
+router.delete("/:id", requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid ID" });
+    return;
+  }
+  const [deleted] = await db
+    .delete(contributionsTable)
+    .where(eq(contributionsTable.id, id))
+    .returning();
+  if (!deleted) {
+    res.status(404).json({ error: "Contribution not found" });
+    return;
+  }
+  res.status(204).send();
+});
+
 export default router;
