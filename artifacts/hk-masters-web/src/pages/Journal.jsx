@@ -518,6 +518,15 @@ function ContributeForm() {
 
           {(photoUrls.length > 0 || uploadingPhotos.length > 0) && (
             <>
+              {uploadingPhotos.some((p) => !p.error) && (
+                <p className="text-sm text-gray-500 mb-2">
+                  {(() => {
+                    const total = photoUrls.length + uploadingPhotos.length;
+                    const completed = photoUrls.length;
+                    return `Uploading ${completed} of ${total} photo${total !== 1 ? "s" : ""}…`;
+                  })()}
+                </p>
+              )}
               <div
                 className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2"
                 onTouchMove={handleGridTouchMove}
