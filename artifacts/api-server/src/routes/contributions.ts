@@ -199,6 +199,16 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   if (body.articleBody !== undefined) updateValues.articleBody = body.articleBody;
   if (body.photoUrls !== undefined) updateValues.photoUrls = body.photoUrls;
 
+  if (body.title !== undefined && existing.status === "pending") {
+    updateValues.slug = await generateUniqueSlug(body.title, async (candidate) => {
+      const [existingSlug] = await db
+        .select({ id: contributionsTable.id })
+        .from(contributionsTable)
+        .where(eq(contributionsTable.slug, candidate));
+      return !!existingSlug && existingSlug.id !== id;
+    });
+  }
+
   const [contribution] = await db
     .update(contributionsTable)
     .set(updateValues)
