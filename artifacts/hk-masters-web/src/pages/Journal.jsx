@@ -256,6 +256,15 @@ function ContributeForm() {
     document.head.appendChild(script);
   }, [needsPhotos]);
 
+  useEffect(() => {
+    return () => {
+      setUploadingPhotos((prev) => {
+        prev.forEach((p) => { if (p.previewUrl) URL.revokeObjectURL(p.previewUrl); });
+        return prev;
+      });
+    };
+  }, []);
+
   const openUploadWidget = useCallback(() => {
     if (!window.cloudinary) return;
     const widget = window.cloudinary.createUploadWidget(
@@ -289,7 +298,11 @@ function ContributeForm() {
         if (!result) return;
         if (result.event === "upload-added") {
           const id = result.info.id;
-          setUploadingPhotos((prev) => [...prev, { id, progress: 0, error: false }]);
+          const previewUrl =
+            result.info.file instanceof Blob
+              ? URL.createObjectURL(result.info.file)
+              : null;
+          setUploadingPhotos((prev) => [...prev, { id, progress: 0, error: false, previewUrl }]);
         } else if (result.event === "progress") {
           const id = result.info.id;
           const raw = result.info.progress ?? 0;
@@ -299,7 +312,11 @@ function ContributeForm() {
           );
         } else if (result.event === "success") {
           const id = result.info.id;
-          setUploadingPhotos((prev) => prev.filter((p) => p.id !== id));
+          setUploadingPhotos((prev) => {
+            const match = prev.find((p) => p.id === id);
+            if (match?.previewUrl) URL.revokeObjectURL(match.previewUrl);
+            return prev.filter((p) => p.id !== id);
+          });
           setPhotoUrls((prev) => [...prev, result.info.secure_url]);
         } else if (result.event === "error") {
           const id = result.info && result.info.id;
@@ -651,39 +668,47 @@ function ContributeForm() {
                 {uploadingPhotos.map((up) => (
                   <div
                     key={up.id}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 flex flex-col items-center justify-center"
+                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100"
                   >
+                    {up.previewUrl && (
+                      <img
+                        src={up.previewUrl}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
                     {up.error ? (
-                      <>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
                         <svg className="w-6 h-6 text-red-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <span className="text-[10px] text-red-500 font-semibold mb-1.5 px-1 text-center leading-tight">Upload failed</span>
+                        <span className="text-[10px] text-white font-semibold mb-1.5 px-1 text-center leading-tight">Upload failed</span>
                         <button
                           type="button"
                           onClick={() => {
+                            if (up.previewUrl) URL.revokeObjectURL(up.previewUrl);
                             setUploadingPhotos((prev) => prev.filter((p) => p.id !== up.id));
                             openUploadWidget();
                           }}
-                          className="text-[10px] bg-red-100 hover:bg-red-200 text-red-600 font-semibold px-2 py-0.5 rounded transition-colors"
+                          className="text-[10px] bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-0.5 rounded transition-colors"
                         >
                           Retry
                         </button>
-                      </>
+                      </div>
                     ) : (
-                      <>
-                        <svg className="w-6 h-6 text-[#006B3C] animate-spin mb-2" fill="none" viewBox="0 0 24 24">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
+                        <svg className="w-6 h-6 text-white animate-spin mb-2" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
-                        <div className="w-3/4 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-3/4 h-1.5 bg-white/30 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#006B3C] rounded-full transition-all duration-300"
+                            className="h-full bg-white rounded-full transition-all duration-300"
                             style={{ width: `${up.progress}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-gray-400 mt-1">{up.progress}%</span>
-                      </>
+                        <span className="text-[10px] text-white/80 mt-1">{up.progress}%</span>
+                      </div>
                     )}
                   </div>
                 ))}
