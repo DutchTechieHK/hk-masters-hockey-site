@@ -4,7 +4,7 @@ import { cloudinaryResize } from "../utils/cloudinary";
 import { format, parseISO } from "date-fns";
 
 const CLOUD_NAME = "djyvdrhal";
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "";
+const UPLOAD_PRESET = "hk_masters_unsigned";
 
 function useApprovedContributions() {
   const [data, setData] = useState([]);
