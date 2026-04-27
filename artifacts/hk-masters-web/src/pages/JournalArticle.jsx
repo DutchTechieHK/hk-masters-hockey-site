@@ -89,6 +89,50 @@ function useArticleOpenGraph(article) {
   });
 }
 
+function useArticleJsonLd(article) {
+  useEffect(() => {
+    if (!article) return;
+
+    const identifier = article.slug || article.id;
+    const url = `${window.location.origin}/journal/${identifier}`;
+    const hasPhoto = article.photoUrls?.length > 0;
+    const image = hasPhoto ? cloudinaryResize(article.photoUrls[0], 1200, 630) : undefined;
+    const rawDescription = article.articleBody || "";
+    const description = rawDescription.trim().slice(0, 160).replace(/\s+/g, " ") || undefined;
+
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "Article",
+      headline: article.title,
+      ...(description && { description }),
+      ...(image && { image }),
+      ...(article.authorName && {
+        author: {
+          "@type": "Person",
+          name: article.authorName,
+        },
+      }),
+      ...(article.createdAt && { datePublished: article.createdAt }),
+      url,
+    };
+
+    const scriptId = "article-json-ld";
+    let el = document.getElementById(scriptId);
+    if (!el) {
+      el = document.createElement("script");
+      el.id = scriptId;
+      el.type = "application/ld+json";
+      document.head.appendChild(el);
+    }
+    el.textContent = JSON.stringify(schema);
+
+    return () => {
+      const existing = document.getElementById(scriptId);
+      if (existing) existing.remove();
+    };
+  }, [article]);
+}
+
 export default function JournalArticle() {
   const { slug } = useParams();
   const [, navigate] = useLocation();
@@ -98,6 +142,7 @@ export default function JournalArticle() {
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useArticleOpenGraph(article);
+  useArticleJsonLd(article);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/contributions/approved/${slug}`)
