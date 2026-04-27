@@ -7,6 +7,7 @@ import ShareMenu from "../components/ShareMenu";
 
 const CLOUD_NAME = "djyvdrhal";
 const UPLOAD_PRESET = "hk_masters_unsigned";
+const MAX_PHOTOS = 10;
 
 function useApprovedContributions() {
   const [data, setData] = useState([]);
@@ -200,6 +201,7 @@ function ContributeForm() {
 
   const needsPhotos = form.contentType === "photo" || form.contentType === "both";
   const needsArticle = form.contentType === "article" || form.contentType === "both";
+  const atPhotoLimit = photoUrls.length + uploadingPhotos.length >= MAX_PHOTOS;
 
   useEffect(() => {
     if (!UPLOAD_PRESET || !needsPhotos) return;
@@ -219,14 +221,17 @@ function ContributeForm() {
     };
   }, []);
 
-  const openUploadWidget = useCallback(() => {
+  const openUploadWidget = useCallback((currentPhotoUrls, currentUploadingPhotos) => {
     if (!window.cloudinary) return;
+    const totalQueued = currentPhotoUrls.length + currentUploadingPhotos.length;
+    if (totalQueued >= MAX_PHOTOS) return;
+    const remaining = MAX_PHOTOS - totalQueued;
     const widget = window.cloudinary.createUploadWidget(
       {
         cloudName: CLOUD_NAME,
         uploadPreset: UPLOAD_PRESET,
         multiple: true,
-        maxFiles: 10,
+        maxFiles: remaining,
         resourceType: "image",
         sources: ["local", "camera", "url"],
         showUploadMoreButton: true,
@@ -646,8 +651,9 @@ function ContributeForm() {
                           type="button"
                           onClick={() => {
                             if (up.previewUrl) URL.revokeObjectURL(up.previewUrl);
-                            setUploadingPhotos((prev) => prev.filter((p) => p.id !== up.id));
-                            openUploadWidget();
+                            const remainingUploading = uploadingPhotos.filter((p) => p.id !== up.id);
+                            setUploadingPhotos(remainingUploading);
+                            openUploadWidget(photoUrls, remainingUploading);
                           }}
                           className="text-[10px] bg-white/20 hover:bg-white/30 text-white font-semibold px-2 py-0.5 rounded transition-colors"
                         >
@@ -728,8 +734,9 @@ function ContributeForm() {
             <div className="flex flex-col items-start gap-1">
               <button
                 type="button"
-                onClick={openUploadWidget}
-                disabled={!widgetLoaded || uploadingPhotos.some((p) => !p.error)}
+                onClick={() => openUploadWidget(photoUrls, uploadingPhotos)}
+                disabled={!widgetLoaded || uploadingPhotos.some((p) => !p.error) || atPhotoLimit}
+                title={atPhotoLimit ? `Maximum of ${MAX_PHOTOS} photos reached` : undefined}
                 className="inline-flex items-center gap-2 bg-[#006B3C] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -737,11 +744,18 @@ function ContributeForm() {
                 </svg>
                 {uploadingPhotos.some((p) => !p.error)
                   ? `Uploading… (${photoUrls.length} done)`
-                  : photoUrls.length > 0
-                    ? `Add more photos (${photoUrls.length} added)`
-                    : "Upload photos"}
+                  : atPhotoLimit
+                    ? `Limit reached (${MAX_PHOTOS}/${MAX_PHOTOS})`
+                    : photoUrls.length > 0
+                      ? `Add more photos (${photoUrls.length}/${MAX_PHOTOS})`
+                      : "Upload photos"}
               </button>
-              {uploadingPhotos.some((p) => !p.error) && (
+              {atPhotoLimit && (
+                <p className="text-xs text-gray-500 font-medium">
+                  Maximum of {MAX_PHOTOS} photos reached. Remove a photo to add more.
+                </p>
+              )}
+              {!atPhotoLimit && uploadingPhotos.some((p) => !p.error) && (
                 <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
                   <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
