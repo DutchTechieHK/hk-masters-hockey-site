@@ -232,6 +232,7 @@ function buildDecisionEmailHtml(opts: {
   title: string;
   status: "approved" | "declined";
   adminNote?: string;
+  contributionId?: number;
   editDetails?: {
     titleChanged?: { from: string; to: string };
     photosRemovedCount?: number;
@@ -291,6 +292,17 @@ function buildDecisionEmailHtml(opts: {
       </table>`
       : "";
 
+  const journalUrl = opts.contributionId
+    ? `${PUBLIC_URL}/journal/${opts.contributionId}`
+    : `${PUBLIC_URL}/journal`;
+
+  const viewInJournalButton = isApproved
+    ? `
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="${journalUrl}" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">View in Journal</a>
+    </p>`
+    : "";
+
   return emailShell(
     "#006B3C",
     `${badgeText}: ${safeTitle}`,
@@ -303,6 +315,7 @@ function buildDecisionEmailHtml(opts: {
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">${bodyMessage}</p>
     ${editSection}
     ${noteSection}
+    ${viewInJournalButton}
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
       Questions? <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>
     </p>`
@@ -314,12 +327,14 @@ function buildDecisionEmailText(opts: {
   title: string;
   status: "approved" | "declined";
   adminNote?: string;
+  contributionId?: number;
   editDetails?: {
     titleChanged?: { from: string; to: string };
     photosRemovedCount?: number;
   };
 }): string {
-  const decision = opts.status === "approved" ? "approved" : "declined";
+  const isApproved = opts.status === "approved";
+  const decision = isApproved ? "approved" : "declined";
   const noteSection = opts.adminNote
     ? `\nNote from the team:\n${opts.adminNote}\n`
     : "";
@@ -339,12 +354,19 @@ function buildDecisionEmailText(opts: {
       ? `\n${editSectionLabel}:\n${editLines.join("\n")}\n`
       : "";
 
+  const journalUrl = opts.contributionId
+    ? `${PUBLIC_URL}/journal/${opts.contributionId}`
+    : `${PUBLIC_URL}/journal`;
+  const viewInJournalSection = isApproved
+    ? `\nView your published piece in the journal:\n${journalUrl}\n`
+    : "";
+
   return `Hi ${opts.authorName},
 
 Thank you for your submission to the HK Masters Hockey Journal.
 
 Your submission "${opts.title}" has been ${decision}.
-${editSection}${noteSection}
+${editSection}${noteSection}${viewInJournalSection}
 If you have any questions, feel free to reach out to us at ${ADMIN_EMAIL}.
 
 The HK Masters Hockey Team`.trim();
