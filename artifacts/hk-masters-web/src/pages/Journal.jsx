@@ -196,6 +196,7 @@ function ContributeForm() {
   const [dragPos, setDragPos] = useState(null);
   const touchDragRef = useRef({ active: false, fromIndex: null, toIndex: null, timer: null, lastX: 0, lastY: 0 });
   const touchDidDragRef = useRef(false);
+  const canceledUploadIdsRef = useRef(new Set());
 
   const needsPhotos = form.contentType === "photo" || form.contentType === "both";
   const needsArticle = form.contentType === "article" || form.contentType === "both";
@@ -265,15 +266,20 @@ function ContributeForm() {
           );
         } else if (result.event === "success") {
           const id = result.info.id;
+          const wasCanceled = canceledUploadIdsRef.current.has(id);
+          canceledUploadIdsRef.current.delete(id);
           setUploadingPhotos((prev) => {
             const match = prev.find((p) => p.id === id);
             if (match?.previewUrl) URL.revokeObjectURL(match.previewUrl);
             return prev.filter((p) => p.id !== id);
           });
-          setPhotoUrls((prev) => [...prev, result.info.secure_url]);
+          if (!wasCanceled) {
+            setPhotoUrls((prev) => [...prev, result.info.secure_url]);
+          }
         } else if (result.event === "error") {
           const id = result.info && result.info.id;
           if (id) {
+            canceledUploadIdsRef.current.delete(id);
             setUploadingPhotos((prev) =>
               prev.map((p) => (p.id === id ? { ...p, error: true } : p))
             );
@@ -650,6 +656,18 @@ function ContributeForm() {
                       </div>
                     ) : (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            canceledUploadIdsRef.current.add(up.id);
+                            if (up.previewUrl) URL.revokeObjectURL(up.previewUrl);
+                            setUploadingPhotos((prev) => prev.filter((p) => p.id !== up.id));
+                          }}
+                          className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center rounded-full bg-black/50 hover:bg-black/70 text-white text-xs leading-none transition-colors"
+                          aria-label="Cancel upload"
+                        >
+                          ×
+                        </button>
                         <svg className="w-6 h-6 text-white animate-spin mb-2" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
