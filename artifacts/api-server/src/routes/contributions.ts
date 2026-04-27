@@ -19,6 +19,7 @@ const router = Router();
 function mapContributionAdmin(row: typeof contributionsTable.$inferSelect) {
   return {
     id: row.id,
+    slug: row.slug ?? undefined,
     title: row.title,
     authorName: row.authorName,
     authorEmail: row.authorEmail,
