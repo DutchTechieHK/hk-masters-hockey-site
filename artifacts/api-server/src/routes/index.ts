@@ -7,6 +7,7 @@ import fundraisingRouter from "./fundraising";
 import logisticsRouter from "./logistics";
 import dashboardRouter from "./dashboard";
 import contributionsRouter from "./contributions";
+import adminAuthRouter from "./adminAuth";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use("/fundraising", fundraisingRouter);
 router.use("/logistics", logisticsRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/contributions", contributionsRouter);
+router.use("/admin/auth", adminAuthRouter);
 
 export default router;

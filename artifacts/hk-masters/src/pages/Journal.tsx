@@ -1,14 +1,28 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
-import { CheckCircle, XCircle, Clock, FileText, Image, FileImage, ChevronDown, ChevronUp } from "lucide-react"
+import {
+  CheckCircle, XCircle, Clock, FileText, Image, FileImage,
+  ChevronDown, ChevronUp, LogOut, Lock,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
-const ADMIN_KEY = import.meta.env.VITE_ADMIN_API_KEY as string
+const SESSION_KEY = "hkm_admin_session"
+
+function getStoredToken(): string | null {
+  try { return localStorage.getItem(SESSION_KEY) } catch { return null }
+}
+function storeToken(token: string) {
+  try { localStorage.setItem(SESSION_KEY, token) } catch { /* noop */ }
+}
+function clearToken() {
+  try { localStorage.removeItem(SESSION_KEY) } catch { /* noop */ }
+}
 
 type ContentType = "article" | "photo" | "both"
 type Status = "pending" | "approved" | "declined"
@@ -27,70 +41,124 @@ interface Contribution {
   reviewedAt?: string
 }
 
-async function fetchContributions(status?: Status): Promise<Contribution[]> {
-  const url = status ? `/api/contributions?status=${status}` : `/api/contributions`
-  const res = await fetch(url, { headers: { "x-admin-key": ADMIN_KEY } })
-  if (!res.ok) throw new Error(`Failed to fetch contributions: ${res.status}`)
+async function apiLogin(password: string): Promise<string> {
+  const res = await fetch("/api/admin/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? "Login failed")
+  }
+  const data = await res.json() as { token: string }
+  return data.token
+}
+
+async function apiCheckSession(token: string): Promise<boolean> {
+  const res = await fetch("/api/admin/auth", { headers: { "x-session-token": token } })
+  const data = await res.json() as { authenticated: boolean }
+  return data.authenticated
+}
+
+async function fetchContributions(token: string): Promise<Contribution[]> {
+  const res = await fetch("/api/contributions", { headers: { "x-session-token": token } })
+  if (res.status === 401) throw Object.assign(new Error("Unauthorized"), { status: 401 })
+  if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`)
   return res.json()
 }
 
 async function updateContribution(
+  token: string,
   id: number,
   body: { status: "approved" | "declined"; adminNote?: string }
 ): Promise<Contribution> {
   const res = await fetch(`/api/contributions/${id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", "x-admin-key": ADMIN_KEY },
+    headers: { "Content-Type": "application/json", "x-session-token": token },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`Failed to update contribution: ${res.status}`)
+  if (!res.ok) throw new Error(`Failed to update: ${res.status}`)
   return res.json()
 }
 
-const STATUS_CONFIG: Record<Status, { label: string; className: string; icon: React.ElementType }> = {
-  pending: { label: "Pending", className: "bg-amber-100 text-amber-800", icon: Clock },
-  approved: { label: "Approved", className: "bg-emerald-100 text-emerald-800", icon: CheckCircle },
-  declined: { label: "Declined", className: "bg-rose-100 text-rose-800", icon: XCircle },
+const STATUS_CONFIG: Record<Status, { label: string; className: string; Icon: React.ElementType }> = {
+  pending:  { label: "Pending",  className: "bg-amber-100 text-amber-800",   Icon: Clock },
+  approved: { label: "Approved", className: "bg-emerald-100 text-emerald-800", Icon: CheckCircle },
+  declined: { label: "Declined", className: "bg-rose-100 text-rose-800",    Icon: XCircle },
 }
 
-const CONTENT_TYPE_CONFIG: Record<ContentType, { label: string; icon: React.ElementType }> = {
-  article: { label: "Article", icon: FileText },
-  photo: { label: "Photos", icon: Image },
-  both: { label: "Article + Photos", icon: FileImage },
+const CONTENT_TYPE_CONFIG: Record<ContentType, { label: string; Icon: React.ElementType }> = {
+  article: { label: "Article",          Icon: FileText },
+  photo:   { label: "Photos",           Icon: Image },
+  both:    { label: "Article + Photos", Icon: FileImage },
 }
 
 const STATUS_ORDER: Status[] = ["pending", "approved", "declined"]
 
 function StatusBadge({ status }: { status: Status }) {
-  const config = STATUS_CONFIG[status]
-  const Icon = config.icon
+  const { label, className, Icon } = STATUS_CONFIG[status]
   return (
-    <Badge className={`${config.className} gap-1 border-0 shadow-none capitalize whitespace-nowrap`}>
-      <Icon className="w-3 h-3" />
-      {config.label}
+    <Badge className={`${className} gap-1 border-0 shadow-none capitalize whitespace-nowrap`}>
+      <Icon className="w-3 h-3" /> {label}
     </Badge>
   )
 }
 
 function TypeBadge({ type }: { type: ContentType }) {
-  const config = CONTENT_TYPE_CONFIG[type]
-  const Icon = config.icon
+  const { label, Icon } = CONTENT_TYPE_CONFIG[type]
   return (
     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-      <Icon className="w-3.5 h-3.5" />
-      {config.label}
+      <Icon className="w-3.5 h-3.5" /> {label}
     </span>
   )
 }
 
-function SectionHeading({ status, count }: { status: Status; count: number }) {
-  const config = STATUS_CONFIG[status]
-  const Icon = config.icon
+function LoginPanel({ onLogin }: { onLogin: (token: string) => void }) {
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError("")
+    setLoading(true)
+    try {
+      const token = await apiLogin(password)
+      onLogin(token)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
-    <div className="flex items-center gap-2 px-6 py-3 bg-muted/30 border-b border-border">
-      <Icon className={`w-4 h-4 ${status === "pending" ? "text-amber-600" : status === "approved" ? "text-emerald-600" : "text-rose-600"}`} />
-      <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{config.label}</span>
-      <span className="ml-auto text-xs text-muted-foreground font-medium">{count} submission{count !== 1 ? "s" : ""}</span>
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="bg-white rounded-2xl shadow-sm border border-border p-10 w-full max-w-sm">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-bold text-lg">Admin Login</h2>
+            <p className="text-sm text-muted-foreground">Enter the admin password to continue</p>
+          </div>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <Input
+            type="password"
+            placeholder="Admin password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoFocus
+          />
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <Button type="submit" className="w-full" disabled={loading || !password}>
+            {loading ? "Signing in..." : "Sign In"}
+          </Button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -99,24 +167,51 @@ export default function Journal() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
+  const [sessionChecked, setSessionChecked] = useState(false)
   const [selectedContribution, setSelectedContribution] = useState<Contribution | null>(null)
   const [adminNote, setAdminNote] = useState("")
   const [expandedSections, setExpandedSections] = useState<Record<Status, boolean>>({
-    pending: true,
-    approved: false,
-    declined: false,
+    pending: true, approved: false, declined: false,
   })
 
+  useEffect(() => {
+    const token = getStoredToken()
+    if (!token) { setSessionChecked(true); return }
+    apiCheckSession(token).then((valid) => {
+      if (valid) setSessionToken(token)
+      else clearToken()
+    }).finally(() => setSessionChecked(true))
+  }, [])
+
+  const handleLogin = useCallback((token: string) => {
+    storeToken(token)
+    setSessionToken(token)
+  }, [])
+
+  const handleLogout = useCallback(async () => {
+    if (sessionToken) {
+      await fetch("/api/admin/auth", {
+        method: "DELETE",
+        headers: { "x-session-token": sessionToken },
+      }).catch(() => { /* noop */ })
+    }
+    clearToken()
+    setSessionToken(null)
+    queryClient.removeQueries({ queryKey: ["contributions"] })
+  }, [sessionToken, queryClient])
+
   const { data: contributions = [], isLoading, error } = useQuery<Contribution[]>({
-    queryKey: ["contributions"],
-    queryFn: () => fetchContributions(),
+    queryKey: ["contributions", sessionToken],
+    queryFn: () => fetchContributions(sessionToken!),
+    enabled: !!sessionToken,
   })
 
   const updateMutation = useMutation({
     mutationFn: ({ id, status, note }: { id: number; status: "approved" | "declined"; note?: string }) =>
-      updateContribution(id, { status, adminNote: note }),
+      updateContribution(sessionToken!, id, { status, adminNote: note }),
     onSuccess: (updated) => {
-      queryClient.setQueryData<Contribution[]>(["contributions"], (old = []) =>
+      queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
         old.map((c) => (c.id === updated.id ? updated : c))
       )
       setSelectedContribution(null)
@@ -127,6 +222,22 @@ export default function Journal() {
       toast({ title: "Failed to update submission", variant: "destructive" })
     },
   })
+
+  if (!sessionChecked) {
+    return (
+      <PageLayout title="Journal" description="Review and moderate community-submitted articles and photos.">
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
+      </PageLayout>
+    )
+  }
+
+  if (!sessionToken) {
+    return (
+      <PageLayout title="Journal" description="Review and moderate community-submitted articles and photos.">
+        <LoginPanel onLogin={handleLogin} />
+      </PageLayout>
+    )
+  }
 
   const grouped = STATUS_ORDER.reduce<Record<Status, Contribution[]>>(
     (acc, s) => ({ ...acc, [s]: contributions.filter((c) => c.status === s) }),
@@ -147,25 +258,29 @@ export default function Journal() {
     updateMutation.mutate({ id: selectedContribution.id, status, note: adminNote || undefined })
   }
 
-  if (error) {
-    return (
-      <PageLayout title="Journal" description="Review community submissions.">
-        <div className="bg-white rounded-2xl border border-border p-12 text-center">
-          <XCircle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-          <p className="text-muted-foreground">Failed to load submissions. Check that the admin API key is configured.</p>
-        </div>
-      </PageLayout>
-    )
+  const isUnauthorized = error && (error as { status?: number }).status === 401
+
+  if (isUnauthorized) {
+    clearToken()
+    setSessionToken(null)
+    return null
   }
 
   return (
     <PageLayout
       title="Journal"
       description="Review and moderate community-submitted articles and photos."
+      action={
+        <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
+          <LogOut className="w-4 h-4" /> Sign Out
+        </Button>
+      }
     >
       <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
         {isLoading ? (
           <div className="px-6 py-12 text-center text-muted-foreground">Loading submissions...</div>
+        ) : error ? (
+          <div className="px-6 py-12 text-center text-muted-foreground">Failed to load submissions.</div>
         ) : contributions.length === 0 ? (
           <div className="px-6 py-12 text-center text-muted-foreground">
             No submissions yet. They will appear here once community members contribute via the public website.
@@ -174,31 +289,22 @@ export default function Journal() {
           STATUS_ORDER.map((status) => {
             const items = grouped[status]
             const isExpanded = expandedSections[status]
+            const { label, Icon } = STATUS_CONFIG[status]
+            const iconColor = status === "pending" ? "text-amber-600" : status === "approved" ? "text-emerald-600" : "text-rose-600"
             return (
               <div key={status} className="border-b border-border last:border-0">
-                <button
-                  className="w-full text-left hover:bg-muted/10 transition-colors"
-                  onClick={() => toggleSection(status)}
-                >
+                <button className="w-full text-left hover:bg-muted/10 transition-colors" onClick={() => toggleSection(status)}>
                   <div className="flex items-center gap-2 px-6 py-3 bg-muted/30">
-                    {(() => {
-                      const Icon = STATUS_CONFIG[status].icon
-                      return <Icon className={`w-4 h-4 ${status === "pending" ? "text-amber-600" : status === "approved" ? "text-emerald-600" : "text-rose-600"}`} />
-                    })()}
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      {STATUS_CONFIG[status].label}
-                    </span>
+                    <Icon className={`w-4 h-4 ${iconColor}`} />
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
                     <span className="ml-2 text-xs text-muted-foreground font-medium">
                       {items.length} submission{items.length !== 1 ? "s" : ""}
                     </span>
                     <span className="ml-auto">
-                      {isExpanded
-                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                        : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                     </span>
                   </div>
                 </button>
-
                 {isExpanded && (
                   items.length === 0 ? (
                     <div className="px-6 py-6 text-sm text-muted-foreground italic">No {status} submissions.</div>
@@ -215,27 +321,17 @@ export default function Journal() {
                       </thead>
                       <tbody className="divide-y divide-border">
                         {items.map((c) => (
-                          <tr
-                            key={c.id}
-                            className="hover:bg-muted/10 transition-colors cursor-pointer"
-                            onClick={() => openDetail(c)}
-                          >
+                          <tr key={c.id} className="hover:bg-muted/10 transition-colors cursor-pointer" onClick={() => openDetail(c)}>
                             <td className="px-6 py-4">
                               <div className="font-semibold text-foreground">{c.authorName}</div>
                               <div className="text-xs text-muted-foreground">{c.authorEmail}</div>
                             </td>
-                            <td className="px-6 py-4 font-medium text-foreground max-w-xs truncate">
-                              {c.title}
-                            </td>
-                            <td className="px-6 py-4 hidden md:table-cell">
-                              <TypeBadge type={c.contentType} />
-                            </td>
+                            <td className="px-6 py-4 font-medium text-foreground max-w-xs truncate">{c.title}</td>
+                            <td className="px-6 py-4 hidden md:table-cell"><TypeBadge type={c.contentType} /></td>
                             <td className="px-6 py-4 hidden sm:table-cell text-muted-foreground text-xs">
                               {format(parseISO(c.createdAt), "d MMM yyyy")}
                             </td>
-                            <td className="px-6 py-4">
-                              <StatusBadge status={c.status as Status} />
-                            </td>
+                            <td className="px-6 py-4"><StatusBadge status={c.status} /></td>
                           </tr>
                         ))}
                       </tbody>
@@ -257,7 +353,7 @@ export default function Journal() {
         >
           <div className="space-y-5">
             <div className="flex items-center gap-3 flex-wrap">
-              <StatusBadge status={selectedContribution.status as Status} />
+              <StatusBadge status={selectedContribution.status} />
               <TypeBadge type={selectedContribution.contentType} />
               <span className="text-xs text-muted-foreground">{selectedContribution.authorEmail}</span>
             </div>
@@ -307,10 +403,7 @@ export default function Journal() {
             </div>
 
             <div className="flex justify-between gap-3 pt-2 border-t">
-              <Button
-                variant="outline"
-                onClick={() => { setSelectedContribution(null); setAdminNote("") }}
-              >
+              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote("") }}>
                 Close
               </Button>
               <div className="flex gap-2">

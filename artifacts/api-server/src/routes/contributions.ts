@@ -9,7 +9,7 @@ import {
   ListContributionsQueryParams,
 } from "@workspace/api-zod";
 import { sendNewContributionEmail } from "../utils/email.js";
-import { requireAdminKey } from "../middleware/adminAuth.js";
+import { requireAdminAccess } from "../middleware/adminAuth.js";
 
 const router = Router();
 
@@ -73,7 +73,7 @@ router.get("/approved", async (_req, res) => {
   res.json(rows.map(mapContributionPublic));
 });
 
-router.get("/", requireAdminKey, async (req, res) => {
+router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListContributionsQueryParams.parse(req.query);
   let rows;
   if (query.status) {
@@ -91,7 +91,7 @@ router.get("/", requireAdminKey, async (req, res) => {
   res.json(rows.map(mapContributionAdmin));
 });
 
-router.put("/:id", requireAdminKey, async (req, res) => {
+router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateContributionParams.parse(req.params);
   const body = UpdateContributionBody.parse(req.body);
   const [contribution] = await db

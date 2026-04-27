@@ -1,4 +1,5 @@
 import { type Request, type Response, type NextFunction } from "express";
+import { validateSession } from "./adminSession.js";
 
 export function requireAdminKey(req: Request, res: Response, next: NextFunction) {
   const adminKey = process.env.ADMIN_API_KEY;
@@ -15,4 +16,14 @@ export function requireAdminKey(req: Request, res: Response, next: NextFunction)
     return;
   }
   next();
+}
+
+export function requireAdminAccess(req: Request, res: Response, next: NextFunction) {
+  const sessionToken =
+    (req.headers["x-session-token"] as string | undefined) ||
+    undefined;
+  if (sessionToken && validateSession(sessionToken)) {
+    return next();
+  }
+  return requireAdminKey(req, res, next);
 }
