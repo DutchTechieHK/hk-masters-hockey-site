@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import {
   CheckCircle, XCircle, Clock, FileText, Image, FileImage,
-  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown, Wrench,
+  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
@@ -29,6 +29,7 @@ type Status = "pending" | "approved" | "declined"
 
 interface Contribution {
   id: number
+  slug?: string
   title: string
   authorName: string
   authorEmail: string
@@ -261,7 +262,21 @@ export default function Journal() {
       setEditPhotoUrls([])
       setEditTouchDrag({ from: null, over: null })
       setEditDragPos(null)
-      toast({ title: `Submission ${updated.status}` })
+      const articleSlug = updated.status === "approved" ? updated.slug : undefined
+      toast({
+        title: `Submission ${updated.status}`,
+        description: articleSlug ? (
+          <a
+            href={`/hk-masters-web/journal/${articleSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 underline underline-offset-2 text-sm"
+          >
+            <ExternalLink className="w-3 h-3" />
+            /journal/{articleSlug}
+          </a>
+        ) : undefined,
+      })
     },
     onError: () => {
       toast({ title: "Failed to update submission", variant: "destructive" })
@@ -535,6 +550,18 @@ export default function Journal() {
               <TypeBadge type={selectedContribution.contentType} />
               <span className="text-xs text-muted-foreground">{selectedContribution.authorEmail}</span>
             </div>
+
+            {selectedContribution.status === "approved" && selectedContribution.slug && (
+              <a
+                href={`/hk-masters-web/journal/${selectedContribution.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
+              >
+                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                /journal/{selectedContribution.slug}
+              </a>
+            )}
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
