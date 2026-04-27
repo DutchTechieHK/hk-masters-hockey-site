@@ -260,11 +260,14 @@ export default function Journal() {
 
   const isUnauthorized = error && (error as { status?: number }).status === 401
 
-  if (isUnauthorized) {
-    clearToken()
-    setSessionToken(null)
-    return null
-  }
+  useEffect(() => {
+    if (isUnauthorized) {
+      clearToken()
+      setSessionToken(null)
+    }
+  }, [isUnauthorized])
+
+  if (isUnauthorized) return null
 
   return (
     <PageLayout
