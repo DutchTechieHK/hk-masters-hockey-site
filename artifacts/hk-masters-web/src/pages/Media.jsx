@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import content from "../content/media.json";
 import { cloudinaryResize } from "../utils/cloudinary";
 
@@ -21,12 +21,31 @@ function getYouTubeId(input) {
   return input.trim();
 }
 
+function useCommunityAlbum() {
+  const [album, setAlbum] = useState(null);
+  useEffect(() => {
+    fetch("/api/contributions/approved")
+      .then((r) => r.ok ? r.json() : [])
+      .then((contributions) => {
+        const photos = contributions
+          .filter((c) => c.contentType === "photo" || c.contentType === "both")
+          .flatMap((c) => c.photoUrls || []);
+        if (photos.length > 0) {
+          setAlbum({ name: "Community Contributions", photos, isCommunity: true });
+        }
+      })
+      .catch(() => {});
+  }, []);
+  return album;
+}
+
 export default function Media() {
   const [lightbox, setLightbox] = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
+  const communityAlbum = useCommunityAlbum();
 
-
-  const albums = content.albums || [];
+  const baseAlbums = content.albums || [];
+  const albums = communityAlbum ? [...baseAlbums, communityAlbum] : baseAlbums;
   const videos = content.videos || [];
 
   const displayAlbum = activeAlbum ?? (albums.length > 0 ? albums[0] : null);

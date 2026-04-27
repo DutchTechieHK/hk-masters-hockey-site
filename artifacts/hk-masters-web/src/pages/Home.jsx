@@ -84,6 +84,12 @@ function RotterdamCountdown() {
         >
           Tournament details &rarr;
         </Link>
+        <p className="mt-6 text-green-300 text-sm">
+          Got a match report or photos?{" "}
+          <Link href="/journal" className="text-white font-semibold underline hover:text-green-200 transition-colors duration-150">
+            Share it in the HK Masters Journal &rarr;
+          </Link>
+        </p>
       </div>
     </section>
   );
