@@ -182,6 +182,7 @@ function ContributeForm() {
     articleBody: "",
   });
   const [photoUrls, setPhotoUrls] = useState([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState([]);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [widgetLoaded, setWidgetLoaded] = useState(false);
@@ -233,8 +234,27 @@ function ContributeForm() {
         },
       },
       (err, result) => {
-        if (!err && result && result.event === "success") {
+        if (!result) return;
+        if (result.event === "upload-added") {
+          const id = result.info.id;
+          setUploadingPhotos((prev) => [...prev, { id, progress: 0, error: false }]);
+        } else if (result.event === "progress") {
+          const id = result.info.id;
+          const progress = result.info.progress ?? 0;
+          setUploadingPhotos((prev) =>
+            prev.map((p) => (p.id === id ? { ...p, progress } : p))
+          );
+        } else if (result.event === "success") {
+          const id = result.info.id;
+          setUploadingPhotos((prev) => prev.filter((p) => p.id !== id));
           setPhotoUrls((prev) => [...prev, result.info.secure_url]);
+        } else if (result.event === "error") {
+          const id = result.info && result.info.id;
+          if (id) {
+            setUploadingPhotos((prev) =>
+              prev.map((p) => (p.id === id ? { ...p, error: true } : p))
+            );
+          }
         }
       }
     );
@@ -298,7 +318,7 @@ function ContributeForm() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
-    if (name === "contentType") setPhotoUrls([]);
+    if (name === "contentType") { setPhotoUrls([]); setUploadingPhotos([]); }
   };
 
   const handleSubmit = async (e) => {
@@ -315,6 +335,10 @@ function ContributeForm() {
     }
     if (needsPhotos && photoUrls.length === 0) {
       setError("Please add at least one photo.");
+      return;
+    }
+    if (needsPhotos && uploadingPhotos.some((p) => !p.error)) {
+      setError("Please wait for all photos to finish uploading.");
       return;
     }
 
@@ -361,6 +385,7 @@ function ContributeForm() {
             setStatus("idle");
             setForm({ authorName: "", authorEmail: "", contentType: "article", title: "", articleBody: "" });
             setPhotoUrls([]);
+            setUploadingPhotos([]);
           }}
           className="mt-6 text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
         >
@@ -476,7 +501,7 @@ function ContributeForm() {
             Photos <span className="text-[#DE2910]">*</span>
           </label>
 
-          {photoUrls.length > 0 && (
+          {(photoUrls.length > 0 || uploadingPhotos.length > 0) && (
             <>
               <div
                 className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2"
@@ -547,6 +572,46 @@ function ContributeForm() {
                     </div>
                   );
                 })}
+
+                {uploadingPhotos.map((up) => (
+                  <div
+                    key={up.id}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 flex flex-col items-center justify-center"
+                  >
+                    {up.error ? (
+                      <>
+                        <svg className="w-6 h-6 text-red-400 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-[10px] text-red-500 font-semibold mb-1.5 px-1 text-center leading-tight">Upload failed</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUploadingPhotos((prev) => prev.filter((p) => p.id !== up.id));
+                            openUploadWidget();
+                          }}
+                          className="text-[10px] bg-red-100 hover:bg-red-200 text-red-600 font-semibold px-2 py-0.5 rounded transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-6 h-6 text-[#006B3C] animate-spin mb-2" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        <div className="w-3/4 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#006B3C] rounded-full transition-all duration-300"
+                            style={{ width: `${up.progress}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-gray-400 mt-1">{up.progress}%</span>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
               {photoUrls.length > 1 && (
                 <p className="text-xs text-gray-400 mb-3">
@@ -573,7 +638,11 @@ function ContributeForm() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              {photoUrls.length > 0 ? `Add more photos (${photoUrls.length} added)` : "Upload photos"}
+              {uploadingPhotos.some((p) => !p.error)
+                ? `Uploading… (${photoUrls.length} done)`
+                : photoUrls.length > 0
+                  ? `Add more photos (${photoUrls.length} added)`
+                  : "Upload photos"}
             </button>
           ) : (
             <div className="rounded-xl border-2 border-dashed border-gray-200 py-8 text-center text-gray-400">
