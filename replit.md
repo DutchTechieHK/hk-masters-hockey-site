@@ -1,73 +1,120 @@
-# HK 2026 Masters World Cup
+# HK Masters Hockey — Project Overview
 
-## Overview
+## What This Is
 
-Full-stack web application for managing 3 Hong Kong field hockey teams travelling to the Masters World Cup in Rotterdam, Netherlands, July/August 2026. The three teams are: Women 35+, Men 40+, Men 50+.
+Two separate web applications managed in a pnpm monorepo:
+
+1. **Public website** (`hk-masters-web`) — the club's public-facing site promoting the MO40 and MO50 teams at the Rotterdam 2026 World Masters Hockey Cup. Live at **hkmastershockey.com**.
+2. **Management app** (`hk-masters`) — internal admin tool for managing players, kits, fundraising, logistics, and the Journal moderation queue.
+3. **API server** (`api-server`) — shared Express backend used by both apps.
+
+## Deploying to the Live Site
+
+The live site at **hkmastershockey.com** is deployed via **GitHub** → automatic deployment pipeline.
+
+To push changes live, run in the Shell:
+```
+git pull -X ours origin main
+git push origin main
+```
+
+GitHub repo: `https://github.com/DutchTechieHK/hk-masters-hockey-site.git`
+
+Replit's **Publish** button is also wired to the same deployment — clicking it and confirming also pushes to the live domain.
 
 ## Stack
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **Frontend**: React + Vite (artifacts/hk-masters)
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **UI**: TailwindCSS, Shadcn-style components, Recharts, React Hook Form, Framer Motion
+- **Monorepo**: pnpm workspaces, Node.js 24
+- **Frontend**: React + Vite (both apps), TailwindCSS, Shadcn-style components
+- **API**: Express 5, PostgreSQL + Drizzle ORM, Zod validation
+- **Public CMS**: Decap CMS at `/hk-masters-web/public/admin/` — content stored in `src/content/*.json`
+- **Media**: Cloudinary (cloud: `djyvdrhal`, API key: `467487618148569`)
+- **Email**: Resend (`RESEND_API_KEY` secret set). Domain hkmastershockey.com not yet verified in Resend — emails fall back to `onboarding@resend.dev`
 
-## Structure
+## Secrets / Environment Variables
 
-```text
-artifacts-monorepo/
-├── artifacts/
-│   ├── api-server/         # Express API server
-│   └── hk-masters/         # React + Vite frontend (served at /)
-├── lib/
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts
-└── pnpm-workspace.yaml     # pnpm workspace config
+- `ADMIN_API_KEY` — protects admin API routes and Journal admin login
+- `RESEND_API_KEY` — for sending email notifications on new Journal submissions
+- `VITE_CLOUDINARY_UPLOAD_PRESET` — unsigned Cloudinary upload preset for public photo uploads in the Journal contribution form
+
+## Teams
+
+Only **MO40** (Men's Over-40) and **MO50** (Men's Over-50). W35 was fully removed.
+
+## Monorepo Structure
+
+```
+artifacts/
+├── hk-masters-web/     # Public website (React + Vite, static)
+│   ├── src/pages/      # Home, About, Teams, Events, Rotterdam2026, Journal, JournalArticle, Media, Sponsors, Contact
+│   ├── src/content/    # CMS-managed JSON content files
+│   └── public/admin/   # Decap CMS
+├── hk-masters/         # Management app (React + Vite, static)
+│   └── src/pages/      # Dashboard, Teams, Players, Kits, Fundraising, Logistics, Journal (admin moderation)
+└── api-server/         # Express API (serves /api/...)
+    └── src/
+        ├── routes/     # contributions, teams, players, kits, fundraising, logistics, health, adminAuth
+        └── middleware/ # adminAuth (requireAdminAccess), adminSession (session tokens)
+lib/
+├── db/                 # Drizzle ORM schema + migrations
+├── api-spec/           # OpenAPI spec
+├── api-zod/            # Generated Zod schemas
+└── api-client-react/   # Generated React Query hooks (Orval)
 ```
 
-## Pages / Sections
+## Routing (dev)
 
-1. **Dashboard** - Stats overview: total players, fees paid vs outstanding, funds raised vs HK$300,000 target, clickable key deadlines panel
-2. **Teams** - 3 teams with manager + assistant manager, WhatsApp link, target player count, kit notes; clickable cards open team detail with full player roster
-3. **Players** - Full player list with shirt number, team, position, nationality, fee status, passport expiry (green/red color indicator). Form includes DOB, nationality, passport details, emergency contact, flight arrival/departure, accommodation preferences, kit sizes, payment tracking, dietary requirements, medical notes
-4. **Kits & Clothing** - Kit orders per player linked to categories (Playing Kit, Training Kit, Travel/Leisure Kit, Accessories); tracks item name, size, quantity, unit cost, supplier, and order status (Not Ordered → Ordered → Received → Distributed); summary view shows total per category and kit budget
-5. **Fundraising** - Sponsor/donor tracking: name, amounts pledged/received, date, team, status
-6. **Logistics** - Kanban board with 22 pre-built tasks across 5 categories: Travel, Accommodation, Tournament, Kits & Equipment, Finance; filterable by category
+| Path | Artifact |
+|------|----------|
+| `/` | Management app (hk-masters) |
+| `/hk-masters-web/` | Public website |
+| `/api/...` | API server |
 
-## Database Schema
+## Public Website Pages
 
-Tables in PostgreSQL:
-- `teams` - id, name, category, manager_name, manager_email, manager_phone, assistant_manager_name, assistant_manager_contact, whatsapp_group_link, target_player_count, kit_notes, notes
-- `players` - Full profile: team_id, name, shirt_number, email, phone, position, date_of_birth, nationality, passport_number, passport_expiry, emergency_contact_name, emergency_contact_phone, flight_arrival_date_time, flight_departure_date_time, arrival_city, room_sharing_preference, room_sharing_with, shirt_size, shorts_size, jacket_size, travel_dates, fee_paid, payment_amount_due, payment_amount_paid, payment_date, dietary_requirements, medical_notes, notes
-- `kits` - player_id, item_type (playing_kit/training_kit/travel_leisure_kit/accessories), item_name, size, quantity, unit_cost, supplier, order_status (not_ordered/ordered/received/distributed), notes
-- `fundraising` - Sponsor/donor records optionally linked to a team
-- `logistics` - Task items: title, category (travel/accommodation/tournament/kits_equipment/finance/other), status (todo/in_progress/done), due_date, assigned_to, notes, team_id
+1. Home — hero, photo strip, Rotterdam countdown, squad cards, events, sponsors
+2. About
+3. Teams
+4. Events
+5. Rotterdam 2026 — squad details, schedule
+6. Journal — community articles/photos feed + contribution form + individual article pages (`/journal/:id`)
+7. Media — photo albums (CMS) + "Community Contributions" album auto-populated from approved photo submissions
+8. Sponsors
+9. Contact
 
-## API Routes
+## Journal Feature
 
-All routes under `/api`:
-- GET/POST `/teams`, PUT/DELETE `/teams/:id`
-- GET/POST `/players` (filterable by teamId), PUT/DELETE `/players/:id`
-- GET/POST `/kits` (filterable by playerId), PUT/DELETE `/kits/:id`
-- GET/POST `/fundraising`, PUT/DELETE `/fundraising/:id`
-- GET/POST `/logistics` (filterable by teamId), PUT/DELETE `/logistics/:id`
-- GET `/dashboard` - Aggregated stats
+Community members can submit articles and photos via the public Journal page. Submissions are reviewed in the Management app's Journal section before appearing publicly.
 
-## Design
+**Auth model**: Browser login POSTs the `ADMIN_API_KEY` as a password to `POST /api/admin/auth`, receives a session token (stored in localStorage), used as `x-session-token` header. Server-to-server calls use `x-admin-key` header directly.
 
-- Dark green (#1a5c35 range) and white colour scheme
-- Responsive and mobile-friendly with hamburger menu on mobile
-- Clean top navigation bar
+**API endpoints**:
+- `GET /api/contributions/approved` — public; returns approved submissions
+- `GET /api/contributions/approved/:id` — public; single approved article
+- `GET /api/contributions` — admin only; all submissions with status filter
+- `POST /api/contributions` — public; submit a contribution (triggers Resend email)
+- `PUT /api/contributions/:id` — admin only; approve/decline
+- `POST /api/admin/auth` — exchange password for session token
+- `DELETE /api/admin/auth` — logout
+- `GET /api/admin/auth` — check session validity
 
-## Seeded Data
+## Management App Pages
 
-- 3 teams: Women 35+, Men 40+, Men 50+
-- 7 initial logistics tasks covering flights, accommodation, tournament registration, insurance, visas
+1. Dashboard — stats, deadlines
+2. Teams — MO40 & MO50 with roster
+3. Players — full player profiles with kit sizes, passport, fees, flights
+4. Kits — per-player kit orders with status tracking
+5. Fundraising — sponsor/donor records
+6. Logistics — Kanban board
+7. Journal — admin moderation (login required, session-based)
+
+## Database Tables
+
+- `teams`, `players`, `kits`, `fundraising`, `logistics`
+- `contributions` — id, title, author_name, author_email, content_type (article|photo|both), article_body, photo_urls (text[]), status (pending|approved|declined), admin_note, created_at, reviewed_at
+
+## Rotterdam 2026
+
+- Dates: 22 July – 1 August 2026
+- "Rotterdam mode" on homepage active until 15 Sep 2026
+- Rotterdam content managed via `src/content/rotterdam.json`
