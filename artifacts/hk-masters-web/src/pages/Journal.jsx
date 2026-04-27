@@ -727,21 +727,31 @@ function ContributeForm() {
           )}
 
           {UPLOAD_PRESET ? (
-            <button
-              type="button"
-              onClick={openUploadWidget}
-              disabled={!widgetLoaded || uploadingPhotos.some((p) => !p.error)}
-              className="inline-flex items-center gap-2 bg-[#006B3C] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              {uploadingPhotos.some((p) => !p.error)
-                ? `Uploading… (${photoUrls.length} done)`
-                : photoUrls.length > 0
-                  ? `Add more photos (${photoUrls.length} added)`
-                  : "Upload photos"}
-            </button>
+            <div className="flex flex-col items-start gap-1">
+              <button
+                type="button"
+                onClick={openUploadWidget}
+                disabled={!widgetLoaded || uploadingPhotos.some((p) => !p.error)}
+                className="inline-flex items-center gap-2 bg-[#006B3C] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {uploadingPhotos.some((p) => !p.error)
+                  ? `Uploading… (${photoUrls.length} done)`
+                  : photoUrls.length > 0
+                    ? `Add more photos (${photoUrls.length} added)`
+                    : "Upload photos"}
+              </button>
+              {uploadingPhotos.some((p) => !p.error) && (
+                <p className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                  <svg className="w-3 h-3 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Uploads in progress — please wait before adding more
+                </p>
+              )}
+            </div>
           ) : (
             <div className="rounded-xl border-2 border-dashed border-gray-200 py-8 text-center text-gray-400">
               <svg className="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
