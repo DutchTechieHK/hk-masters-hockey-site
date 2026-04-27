@@ -31,7 +31,7 @@ function Router() {
         <Route path="/teams" component={Teams} />
         <Route path="/events" component={Events} />
         <Route path="/rotterdam-2026" component={Rotterdam2026} />
-        <Route path="/journal/:id" component={JournalArticle} />
+        <Route path="/journal/:slug" component={JournalArticle} />
         <Route path="/journal" component={Journal} />
         <Route path="/media" component={Media} />
         <Route path="/sponsors" component={Sponsors} />

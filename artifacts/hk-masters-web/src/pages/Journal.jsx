@@ -39,7 +39,8 @@ function ArticleCard({ contribution }) {
   useEffect(() => () => clearTimeout(copyTimerRef.current), []);
 
   const handleShare = async () => {
-    const url = `${window.location.origin}/journal/${contribution.id}`;
+    const identifier = contribution.slug || contribution.id;
+    const url = `${window.location.origin}/journal/${identifier}`;
     let success = false;
     try {
       await navigator.clipboard.writeText(url);
@@ -86,7 +87,7 @@ function ArticleCard({ contribution }) {
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 leading-snug">
-          <Link href={`/journal/${contribution.id}`} className="hover:text-[#006B3C] transition-colors">
+          <Link href={`/journal/${contribution.slug || contribution.id}`} className="hover:text-[#006B3C] transition-colors">
             {contribution.title}
           </Link>
         </h2>
@@ -130,7 +131,7 @@ function ArticleCard({ contribution }) {
 
         <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-between gap-3">
           <Link
-            href={`/journal/${contribution.id}`}
+            href={`/journal/${contribution.slug || contribution.id}`}
             className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
           >
             Read full article &rarr;

@@ -1,4 +1,9 @@
 #!/bin/bash
 set -e
 pnpm install --frozen-lockfile
-pnpm --filter db push
+
+# Run explicit SQL migrations (idempotent)
+psql "$DATABASE_URL" -f lib/db/migrations/add_contributions_slug.sql
+
+# Sync any remaining schema changes
+pnpm --filter db push-force

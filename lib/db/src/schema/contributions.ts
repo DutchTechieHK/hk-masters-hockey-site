@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const contributionsTable = pgTable("contributions", {
   id: serial("id").primaryKey(),
+  slug: text("slug").unique(),
   title: text("title").notNull(),
   authorName: text("author_name").notNull(),
   authorEmail: text("author_email").notNull(),

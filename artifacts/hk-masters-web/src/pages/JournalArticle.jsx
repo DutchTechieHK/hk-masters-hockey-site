@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { format, parseISO } from "date-fns";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
@@ -272,23 +272,31 @@ function ShareMenu({ title, variant = "hero" }) {
 }
 
 export default function JournalArticle() {
-  const { id } = useParams();
+  const { slug } = useParams();
+  const [, navigate] = useLocation();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/contributions/approved/${id}`)
+    fetch(`${API_BASE}/api/contributions/approved/${slug}`)
       .then((r) => {
         if (r.status === 404) { setNotFound(true); return null; }
         if (!r.ok) throw new Error("Failed to load");
         return r.json();
       })
-      .then((data) => { if (data) setArticle(data); })
+      .then((data) => {
+        if (data) {
+          setArticle(data);
+          if (data.slug && data.slug !== slug) {
+            navigate(`/journal/${data.slug}`, { replace: true });
+          }
+        }
+      })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [slug]);
 
   if (loading) {
     return (

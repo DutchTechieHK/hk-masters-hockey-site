@@ -11,6 +11,7 @@ import {
 } from "@workspace/api-zod";
 import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
+import { generateUniqueSlug } from "../utils/slug.js";
 
 const router = Router();
 
@@ -33,6 +34,7 @@ function mapContributionAdmin(row: typeof contributionsTable.$inferSelect) {
 function mapContributionPublic(row: typeof contributionsTable.$inferSelect) {
   return {
     id: row.id,
+    slug: row.slug ?? undefined,
     title: row.title,
     authorName: row.authorName,
     contentType: row.contentType,
@@ -45,10 +47,18 @@ function mapContributionPublic(row: typeof contributionsTable.$inferSelect) {
 
 router.post("/", async (req, res) => {
   const body = CreateContributionBody.parse(req.body);
+  const slug = await generateUniqueSlug(body.title, async (candidate) => {
+    const [existing] = await db
+      .select({ id: contributionsTable.id })
+      .from(contributionsTable)
+      .where(eq(contributionsTable.slug, candidate));
+    return !!existing;
+  });
   const [contribution] = await db
     .insert(contributionsTable)
     .values({
       ...body,
+      slug,
       photoUrls: body.photoUrls ?? null,
       status: "pending",
     })
@@ -82,25 +92,42 @@ router.get("/approved", async (_req, res) => {
   res.json(rows.map(mapContributionPublic));
 });
 
-router.get("/approved/:id", async (req, res) => {
-  if (!/^\d+$/.test(req.params.id)) {
-    res.status(404).json({ error: "Article not found" });
-    return;
-  }
-  const numericId = parseInt(req.params.id, 10);
-  if (isNaN(numericId)) {
-    res.status(404).json({ error: "Article not found" });
-    return;
-  }
-  const [row] = await db
+router.get("/approved/:slug", async (req, res) => {
+  const param = req.params.slug;
+
+  const [slugRow] = await db
     .select()
     .from(contributionsTable)
-    .where(eq(contributionsTable.id, numericId));
-  if (!row || row.status !== "approved") {
-    res.status(404).json({ error: "Article not found" });
+    .where(eq(contributionsTable.slug, param));
+
+  if (slugRow) {
+    if (slugRow.status !== "approved") {
+      res.status(404).json({ error: "Article not found" });
+      return;
+    }
+    res.json(mapContributionPublic(slugRow));
     return;
   }
-  res.json(mapContributionPublic(row));
+
+  if (/^\d+$/.test(param)) {
+    const numericId = parseInt(param, 10);
+    const [idRow] = await db
+      .select()
+      .from(contributionsTable)
+      .where(eq(contributionsTable.id, numericId));
+    if (!idRow || idRow.status !== "approved") {
+      res.status(404).json({ error: "Article not found" });
+      return;
+    }
+    if (idRow.slug) {
+      res.redirect(301, `/api/contributions/approved/${idRow.slug}`);
+      return;
+    }
+    res.json(mapContributionPublic(idRow));
+    return;
+  }
+
+  res.status(404).json({ error: "Article not found" });
 });
 
 router.post("/lookup", async (req, res) => {
@@ -207,6 +234,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
       status: body.status,
       adminNote: contribution.adminNote ?? undefined,
       contributionId: contribution.id,
+      slug: contribution.slug ?? undefined,
       editDetails: Object.keys(editDetails).length > 0 ? editDetails : undefined,
     }).catch((err: unknown) => console.error("[email] Unexpected error:", err));
   }

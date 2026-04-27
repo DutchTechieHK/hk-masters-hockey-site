@@ -233,6 +233,7 @@ function buildDecisionEmailHtml(opts: {
   status: "approved" | "declined";
   adminNote?: string;
   contributionId?: number;
+  slug?: string;
   editDetails?: {
     titleChanged?: { from: string; to: string };
     photosRemovedCount?: number;
@@ -292,7 +293,9 @@ function buildDecisionEmailHtml(opts: {
       </table>`
       : "";
 
-  const journalUrl = opts.contributionId
+  const journalUrl = opts.slug
+    ? `${PUBLIC_URL}/journal/${opts.slug}`
+    : opts.contributionId
     ? `${PUBLIC_URL}/journal/${opts.contributionId}`
     : `${PUBLIC_URL}/journal`;
 
@@ -328,6 +331,7 @@ function buildDecisionEmailText(opts: {
   status: "approved" | "declined";
   adminNote?: string;
   contributionId?: number;
+  slug?: string;
   editDetails?: {
     titleChanged?: { from: string; to: string };
     photosRemovedCount?: number;
@@ -354,7 +358,9 @@ function buildDecisionEmailText(opts: {
       ? `\n${editSectionLabel}:\n${editLines.join("\n")}\n`
       : "";
 
-  const journalUrl = opts.contributionId
+  const journalUrl = opts.slug
+    ? `${PUBLIC_URL}/journal/${opts.slug}`
+    : opts.contributionId
     ? `${PUBLIC_URL}/journal/${opts.contributionId}`
     : `${PUBLIC_URL}/journal`;
   const viewInJournalSection = isApproved
@@ -379,6 +385,7 @@ export async function sendContributionDecisionEmail(opts: {
   status: "approved" | "declined";
   adminNote?: string;
   contributionId: number;
+  slug?: string;
   editDetails?: {
     titleChanged?: { from: string; to: string };
     photosRemovedCount?: number;
