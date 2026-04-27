@@ -805,6 +805,45 @@ export default function Journal() {
 
   const articles = contributions;
 
+  useEffect(() => {
+    if (!articles || articles.length === 0) return;
+    const origin = window.location.origin;
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": "HK Masters Hockey Community Journal",
+      "url": `${origin}/journal`,
+      "itemListElement": articles.map((c, index) => {
+        const item = {
+          "@type": "ListItem",
+          "position": index + 1,
+          "url": `${origin}/journal/${c.slug || c.id}`,
+          "name": c.title,
+        };
+        if (c.photoUrls && c.photoUrls.length > 0) {
+          item.image = c.photoUrls[0];
+        }
+        if (c.articleBody) {
+          item.description = c.articleBody.slice(0, 200).trim();
+        }
+        return item;
+      }),
+    };
+    const id = "journal-itemlist-schema";
+    let tag = document.getElementById(id);
+    if (!tag) {
+      tag = document.createElement("script");
+      tag.type = "application/ld+json";
+      tag.id = id;
+      document.head.appendChild(tag);
+    }
+    tag.textContent = JSON.stringify(schema);
+    return () => {
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+    };
+  }, [articles]);
+
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
