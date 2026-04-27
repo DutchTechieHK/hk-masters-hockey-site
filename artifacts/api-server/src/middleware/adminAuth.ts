@@ -3,8 +3,9 @@ import { type Request, type Response, type NextFunction } from "express";
 export function requireAdminKey(req: Request, res: Response, next: NextFunction) {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
-    console.warn("[adminAuth] ADMIN_API_KEY not set — admin endpoints are unprotected");
-    return next();
+    console.error("[adminAuth] ADMIN_API_KEY is not set — blocking all admin requests");
+    res.status(503).json({ error: "Admin access not configured" });
+    return;
   }
   const provided =
     req.headers["x-admin-key"] ||
