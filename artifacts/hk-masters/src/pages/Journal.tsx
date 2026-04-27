@@ -217,7 +217,7 @@ export default function Journal() {
     queryClient.removeQueries({ queryKey: ["contributions"] })
   }, [sessionToken, queryClient])
 
-  const { data: contributions = [], isLoading, error } = useQuery<Contribution[]>({
+  const { data: contributions = [], isLoading, isSuccess, error } = useQuery<Contribution[]>({
     queryKey: ["contributions", sessionToken],
     queryFn: () => fetchContributions(sessionToken!),
     enabled: !!sessionToken,
@@ -274,18 +274,24 @@ export default function Journal() {
   }, [isUnauthorized])
 
   useEffect(() => {
-    if (!contributions.length) return
+    if (!sessionChecked || !sessionToken || !isSuccess) return
     const params = new URLSearchParams(window.location.search)
     const idParam = params.get("id")
     if (!idParam) return
     const target = contributions.find((c) => c.id === Number(idParam))
     if (target) {
       openDetail(target)
+    } else {
+      toast({
+        title: "Submission not found",
+        description: "This submission may have been deleted or is no longer accessible.",
+        variant: "destructive",
+      })
     }
     params.delete("id")
     const newSearch = params.toString()
     history.replaceState(null, "", newSearch ? `?${newSearch}` : window.location.pathname)
-  }, [contributions])
+  }, [sessionChecked, sessionToken, isSuccess, contributions])
 
   if (!sessionChecked) {
     return (
