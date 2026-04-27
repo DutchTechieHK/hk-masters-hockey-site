@@ -174,7 +174,7 @@ export async function sendNewContributionEmail(opts: {
         ? "Photo submission"
         : "Article + Photos";
 
-  const reviewUrl = `${ADMIN_APP_URL}/journal`;
+  const reviewUrl = `${ADMIN_APP_URL}/journal?id=${opts.contributionId}`;
   const safeName = escapeHtml(opts.authorName);
   const safeTitle = escapeHtml(opts.title);
   const safeEmail = escapeHtml(opts.authorEmail);

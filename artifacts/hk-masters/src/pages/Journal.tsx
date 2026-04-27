@@ -245,6 +245,20 @@ export default function Journal() {
     }
   }, [isUnauthorized])
 
+  useEffect(() => {
+    if (!contributions.length) return
+    const params = new URLSearchParams(window.location.search)
+    const idParam = params.get("id")
+    if (!idParam) return
+    const target = contributions.find((c) => c.id === Number(idParam))
+    if (target) {
+      openDetail(target)
+      params.delete("id")
+      const newSearch = params.toString()
+      history.replaceState(null, "", newSearch ? `?${newSearch}` : window.location.pathname)
+    }
+  }, [contributions])
+
   if (!sessionChecked) {
     return (
       <PageLayout title="Journal" description="Review and moderate community-submitted articles and photos.">
