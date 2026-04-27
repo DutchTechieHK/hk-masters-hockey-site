@@ -27,3 +27,8 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+VITE_CLOUDINARY_UPLOAD_PRESET = "MAGe4GOu+qUO4h4OTNwDTyC+KRf5vPAzKaFVykguiH2oXB4r9Esw9UEvwtZ7TDiowAnTITQGDXrr3HvSO6xYIg=="
