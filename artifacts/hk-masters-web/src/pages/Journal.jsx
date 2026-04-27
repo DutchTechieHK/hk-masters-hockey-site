@@ -101,6 +101,66 @@ function ArticleCard({ contribution }) {
   );
 }
 
+function PhotoLightbox({ urls, startIndex, onClose }) {
+  const [current, setCurrent] = useState(startIndex);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setCurrent((c) => (c + 1) % urls.length);
+      if (e.key === "ArrowLeft") setCurrent((c) => (c - 1 + urls.length) % urls.length);
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [urls.length, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+      onClick={onClose}
+    >
+      <div
+        className="relative max-w-4xl w-full mx-4 flex flex-col items-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <img
+          src={cloudinaryResize(urls[current], 1200, 900)}
+          alt={`Photo ${current + 1}`}
+          className="max-h-[80vh] max-w-full rounded-xl object-contain shadow-2xl"
+        />
+        <p className="text-white/60 text-sm mt-3">{current + 1} / {urls.length}</p>
+
+        {urls.length > 1 && (
+          <>
+            <button
+              onClick={() => setCurrent((c) => (c - 1 + urls.length) % urls.length)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 sm:-translate-x-8 bg-white/10 hover:bg-white/20 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors"
+              aria-label="Previous photo"
+            >
+              ‹
+            </button>
+            <button
+              onClick={() => setCurrent((c) => (c + 1) % urls.length)}
+              className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 sm:translate-x-8 bg-white/10 hover:bg-white/20 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors"
+              aria-label="Next photo"
+            >
+              ›
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-2 bg-black/50 hover:bg-black/70 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg transition-colors"
+          aria-label="Close preview"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ContributeForm() {
   const [form, setForm] = useState({
     authorName: "",
@@ -113,6 +173,8 @@ function ContributeForm() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const dragIndex = useRef(null);
 
   const needsPhotos = form.contentType === "photo" || form.contentType === "both";
   const needsArticle = form.contentType === "article" || form.contentType === "both";
@@ -350,26 +412,72 @@ function ContributeForm() {
           </label>
 
           {photoUrls.length > 0 && (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-3">
-              {photoUrls.map((url, i) => (
-                <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group">
-                  <img
-                    src={cloudinaryResize(url, 200, 200)}
-                    alt=""
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(i)}
-                    className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100"
-                    aria-label="Remove photo"
+            <>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
+                {photoUrls.map((url, i) => (
+                  <div
+                    key={url}
+                    draggable
+                    onDragStart={() => { dragIndex.current = i; }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      const from = dragIndex.current;
+                      if (from === null || from === i) return;
+                      setPhotoUrls((prev) => {
+                        const next = [...prev];
+                        const [moved] = next.splice(from, 1);
+                        next.splice(i, 0, moved);
+                        return next;
+                      });
+                      dragIndex.current = null;
+                    }}
+                    onDragEnd={() => { dragIndex.current = null; }}
+                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group cursor-grab active:cursor-grabbing"
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <img
+                      src={cloudinaryResize(url, 200, 200)}
+                      alt={`Photo ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLightboxIndex(i)}
+                      className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
+                      aria-label={`Preview photo ${i + 1}`}
+                    >
+                      <svg className="w-6 h-6 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100 z-10"
+                      aria-label="Remove photo"
+                    >
+                      ×
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none">
+                        Cover
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {photoUrls.length > 1 && (
+                <p className="text-xs text-gray-400 mb-3">Drag thumbnails to reorder · click to preview</p>
+              )}
+            </>
+          )}
+          {lightboxIndex !== null && (
+            <PhotoLightbox
+              urls={photoUrls}
+              startIndex={lightboxIndex}
+              onClose={() => setLightboxIndex(null)}
+            />
           )}
 
           {UPLOAD_PRESET ? (
