@@ -187,6 +187,9 @@ function ContributeForm() {
   const [widgetLoaded, setWidgetLoaded] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const dragIndex = useRef(null);
+  const [touchDrag, setTouchDrag] = useState({ from: null, over: null });
+  const touchDragRef = useRef({ active: false, fromIndex: null, toIndex: null, timer: null });
+  const touchDidDragRef = useRef(false);
 
   const needsPhotos = form.contentType === "photo" || form.contentType === "both";
   const needsArticle = form.contentType === "article" || form.contentType === "both";
@@ -240,6 +243,56 @@ function ContributeForm() {
 
   const removePhoto = (index) => {
     setPhotoUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleTileTouchStart = (i) => (e) => {
+    const td = touchDragRef.current;
+    clearTimeout(td.timer);
+    td.timer = setTimeout(() => {
+      td.active = true;
+      td.fromIndex = i;
+      td.toIndex = i;
+      if (navigator.vibrate) navigator.vibrate(30);
+      setTouchDrag({ from: i, over: i });
+    }, 400);
+  };
+
+  const handleGridTouchMove = (e) => {
+    const td = touchDragRef.current;
+    if (!td.active) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cell = el && el.closest("[data-drag-index]");
+    if (cell) {
+      const idx = parseInt(cell.dataset.dragIndex, 10);
+      if (!isNaN(idx) && idx !== td.toIndex) {
+        td.toIndex = idx;
+        setTouchDrag((prev) => ({ ...prev, over: idx }));
+      }
+    }
+  };
+
+  const handleGridTouchEnd = () => {
+    const td = touchDragRef.current;
+    clearTimeout(td.timer);
+    if (td.active) {
+      touchDidDragRef.current = true;
+      setTimeout(() => { touchDidDragRef.current = false; }, 300);
+      if (td.fromIndex !== null && td.toIndex !== null && td.fromIndex !== td.toIndex) {
+        setPhotoUrls((prev) => {
+          const next = [...prev];
+          const [moved] = next.splice(td.fromIndex, 1);
+          next.splice(td.toIndex, 0, moved);
+          return next;
+        });
+      }
+    }
+    td.active = false;
+    td.fromIndex = null;
+    td.toIndex = null;
+    td.timer = null;
+    setTouchDrag({ from: null, over: null });
   };
 
   const handleChange = (e) => {
@@ -425,62 +478,80 @@ function ContributeForm() {
 
           {photoUrls.length > 0 && (
             <>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2">
-                {photoUrls.map((url, i) => (
-                  <div
-                    key={url}
-                    draggable
-                    onDragStart={() => { dragIndex.current = i; }}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => {
-                      const from = dragIndex.current;
-                      if (from === null || from === i) return;
-                      setPhotoUrls((prev) => {
-                        const next = [...prev];
-                        const [moved] = next.splice(from, 1);
-                        next.splice(i, 0, moved);
-                        return next;
-                      });
-                      dragIndex.current = null;
-                    }}
-                    onDragEnd={() => { dragIndex.current = null; }}
-                    className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group cursor-grab active:cursor-grabbing"
-                  >
-                    <img
-                      src={cloudinaryResize(url, 200, 200)}
-                      alt={`Photo ${i + 1}`}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      draggable={false}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setLightboxIndex(i)}
-                      className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
-                      aria-label={`Preview photo ${i + 1}`}
+              <div
+                className="grid grid-cols-3 sm:grid-cols-4 gap-2 mb-2"
+                onTouchMove={handleGridTouchMove}
+                onTouchEnd={handleGridTouchEnd}
+                onTouchCancel={handleGridTouchEnd}
+                style={{ touchAction: touchDrag.from !== null ? "none" : "auto" }}
+              >
+                {photoUrls.map((url, i) => {
+                  const isBeingDragged = touchDrag.from === i;
+                  const isDropTarget = touchDrag.from !== null && touchDrag.over === i && touchDrag.from !== i;
+                  return (
+                    <div
+                      key={url}
+                      data-drag-index={i}
+                      draggable
+                      onDragStart={() => { dragIndex.current = i; }}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        const from = dragIndex.current;
+                        if (from === null || from === i) return;
+                        setPhotoUrls((prev) => {
+                          const next = [...prev];
+                          const [moved] = next.splice(from, 1);
+                          next.splice(i, 0, moved);
+                          return next;
+                        });
+                        dragIndex.current = null;
+                      }}
+                      onDragEnd={() => { dragIndex.current = null; }}
+                      onTouchStart={handleTileTouchStart(i)}
+                      className={[
+                        "relative aspect-square rounded-lg overflow-hidden bg-gray-100 group cursor-grab active:cursor-grabbing transition-all duration-150",
+                        isBeingDragged ? "opacity-40 scale-95 ring-2 ring-[#006B3C]" : "",
+                        isDropTarget ? "ring-2 ring-[#DE2910] scale-105" : "",
+                      ].join(" ")}
                     >
-                      <svg className="w-6 h-6 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-                      </svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => removePhoto(i)}
-                      className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100 z-10"
-                      aria-label="Remove photo"
-                    >
-                      ×
-                    </button>
-                    {i === 0 && (
-                      <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none">
-                        Cover
-                      </span>
-                    )}
-                  </div>
-                ))}
+                      <img
+                        src={cloudinaryResize(url, 200, 200)}
+                        alt={`Photo ${i + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        draggable={false}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { if (!touchDidDragRef.current && touchDrag.from === null) setLightboxIndex(i); }}
+                        className="absolute inset-0 w-full h-full flex items-center justify-center opacity-0 group-hover:opacity-100 bg-black/20 transition-opacity"
+                        aria-label={`Preview photo ${i + 1}`}
+                      >
+                        <svg className="w-6 h-6 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { if (!touchDidDragRef.current && touchDrag.from === null) removePhoto(i); }}
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100 z-10"
+                        aria-label="Remove photo"
+                      >
+                        ×
+                      </button>
+                      {i === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none">
+                          Cover
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               {photoUrls.length > 1 && (
-                <p className="text-xs text-gray-400 mb-3">Drag thumbnails to reorder · click to preview</p>
+                <p className="text-xs text-gray-400 mb-3">
+                  Drag to reorder · tap &amp; hold on mobile · tap to preview
+                </p>
               )}
             </>
           )}
