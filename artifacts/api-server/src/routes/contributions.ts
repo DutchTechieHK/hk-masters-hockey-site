@@ -9,7 +9,7 @@ import {
   ListContributionsQueryParams,
   LookupContributionBody,
 } from "@workspace/api-zod";
-import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail } from "../utils/email.js";
+import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail, sendContributionDeletedEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
 import { generateUniqueSlug } from "../utils/slug.js";
 
@@ -266,6 +266,16 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
     res.status(404).json({ error: "Contribution not found" });
     return;
   }
+
+  sendContributionDeletedEmail({
+    authorName: deleted.authorName,
+    authorEmail: deleted.authorEmail,
+    title: deleted.title,
+    contentType: deleted.contentType,
+    contributionId: deleted.id,
+    status: deleted.status,
+  }).catch((err: unknown) => console.error("[email] Unexpected error (deletion notify):", err));
+
   res.status(204).send();
 });
 

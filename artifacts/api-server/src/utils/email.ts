@@ -378,6 +378,78 @@ If you have any questions, feel free to reach out to us at ${ADMIN_EMAIL}.
 The HK Masters Hockey Team`.trim();
 }
 
+export async function sendContributionDeletedEmail(opts: {
+  authorName: string;
+  authorEmail: string;
+  title: string;
+  contentType: string;
+  contributionId: number;
+  status: "pending" | "approved" | "declined";
+}) {
+  const typeLabel =
+    opts.contentType === "article"
+      ? "Article"
+      : opts.contentType === "photo"
+        ? "Photo submission"
+        : "Article + Photos";
+
+  const safeName = escapeHtml(opts.authorName);
+  const safeTitle = escapeHtml(opts.title);
+  const safeEmail = escapeHtml(opts.authorEmail);
+  const safeStatus = escapeHtml(opts.status);
+
+  const html = emailShell(
+    "#7f1d1d",
+    "Submission deleted",
+    `<p style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:#1f2937;">Submission Deleted</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      A journal submission that you received a review link for has been <strong>permanently deleted</strong>.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:140px;">Type</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${typeLabel}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Title</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-weight:600;">${safeTitle}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Author</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${safeName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Author Email</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;"><a href="mailto:${safeEmail}" style="color:#006B3C;text-decoration:none;">${safeEmail}</a></td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Status at deletion</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;text-transform:capitalize;">${safeStatus}</td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">Contribution #${opts.contributionId} has been removed from the system.</p>`
+  );
+
+  const text = `Journal Submission Deleted
+
+A submission you received a review link for has been permanently deleted.
+
+Type: ${typeLabel}
+Title: ${opts.title}
+Author: ${opts.authorName} <${opts.authorEmail}>
+Status at deletion: ${opts.status}
+
+Contribution #${opts.contributionId} has been removed from the system.`;
+
+  await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[HK Masters Journal] Submission deleted: "${opts.title}"`,
+    html,
+    text,
+  });
+  console.log(`[email] Admin deletion notification sent for contribution #${opts.contributionId}`);
+}
+
 export async function sendContributionDecisionEmail(opts: {
   authorName: string;
   authorEmail: string;
