@@ -8,7 +8,7 @@ import {
   UpdateContributionParams,
   ListContributionsQueryParams,
 } from "@workspace/api-zod";
-import { sendNewContributionEmail } from "../utils/email.js";
+import { sendNewContributionEmail, sendContributionDecisionEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
 
 const router = Router();
@@ -128,6 +128,18 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     res.status(404).json({ error: "Contribution not found" });
     return;
   }
+
+  if (body.status === "approved" || body.status === "declined") {
+    sendContributionDecisionEmail({
+      authorName: contribution.authorName,
+      authorEmail: contribution.authorEmail,
+      title: contribution.title,
+      status: body.status,
+      adminNote: contribution.adminNote ?? undefined,
+      contributionId: contribution.id,
+    }).catch((err: unknown) => console.error("[email] Unexpected error:", err));
+  }
+
   res.json(mapContributionAdmin(contribution));
 });
 
