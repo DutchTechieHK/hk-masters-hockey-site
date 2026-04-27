@@ -9,7 +9,7 @@ import {
   ListContributionsQueryParams,
   LookupContributionBody,
 } from "@workspace/api-zod";
-import { sendNewContributionEmail, sendContributionDecisionEmail } from "../utils/email.js";
+import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
 
 const router = Router();
@@ -60,7 +60,15 @@ router.post("/", async (req, res) => {
     contentType: contribution.contentType,
     title: contribution.title,
     contributionId: contribution.id,
-  }).catch((err: unknown) => console.error("[email] Unexpected error:", err));
+  }).catch((err: unknown) => console.error("[email] Unexpected error (admin notify):", err));
+
+  sendContributionConfirmationEmail({
+    authorName: contribution.authorName,
+    authorEmail: contribution.authorEmail,
+    contentType: contribution.contentType,
+    title: contribution.title,
+    contributionId: contribution.id,
+  }).catch((err: unknown) => console.error("[email] Unexpected error (confirmation):", err));
 
   res.status(201).json(mapContributionPublic(contribution));
 });
