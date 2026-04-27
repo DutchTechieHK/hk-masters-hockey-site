@@ -281,10 +281,10 @@ export default function Journal() {
     const target = contributions.find((c) => c.id === Number(idParam))
     if (target) {
       openDetail(target)
-      params.delete("id")
-      const newSearch = params.toString()
-      history.replaceState(null, "", newSearch ? `?${newSearch}` : window.location.pathname)
     }
+    params.delete("id")
+    const newSearch = params.toString()
+    history.replaceState(null, "", newSearch ? `?${newSearch}` : window.location.pathname)
   }, [contributions])
 
   if (!sessionChecked) {
