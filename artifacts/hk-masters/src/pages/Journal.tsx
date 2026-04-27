@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import {
   CheckCircle, XCircle, Clock, FileText, Image, FileImage,
-  ChevronDown, ChevronUp, LogOut, Lock,
+  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
@@ -71,7 +71,7 @@ async function fetchContributions(token: string): Promise<Contribution[]> {
 async function updateContribution(
   token: string,
   id: number,
-  body: { status: "approved" | "declined"; adminNote?: string }
+  body: { status: "approved" | "declined"; adminNote?: string; title?: string; photoUrls?: string[] }
 ): Promise<Contribution> {
   const res = await fetch(`/api/contributions/${id}`, {
     method: "PUT",
@@ -171,6 +171,8 @@ export default function Journal() {
   const [sessionChecked, setSessionChecked] = useState(false)
   const [selectedContribution, setSelectedContribution] = useState<Contribution | null>(null)
   const [adminNote, setAdminNote] = useState("")
+  const [editTitle, setEditTitle] = useState("")
+  const [editPhotoUrls, setEditPhotoUrls] = useState<string[]>([])
   const [expandedSections, setExpandedSections] = useState<Record<Status, boolean>>({
     pending: true, approved: false, declined: false,
   })
@@ -208,20 +210,31 @@ export default function Journal() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status, note }: { id: number; status: "approved" | "declined"; note?: string }) =>
-      updateContribution(sessionToken!, id, { status, adminNote: note }),
+    mutationFn: ({ id, status, note, title, photoUrls }: { id: number; status: "approved" | "declined"; note?: string; title?: string; photoUrls?: string[] }) =>
+      updateContribution(sessionToken!, id, { status, adminNote: note, title, photoUrls }),
     onSuccess: (updated) => {
       queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
         old.map((c) => (c.id === updated.id ? updated : c))
       )
       setSelectedContribution(null)
       setAdminNote("")
+      setEditTitle("")
+      setEditPhotoUrls([])
       toast({ title: `Submission ${updated.status}` })
     },
     onError: () => {
       toast({ title: "Failed to update submission", variant: "destructive" })
     },
   })
+
+  const isUnauthorized = error && (error as { status?: number }).status === 401
+
+  useEffect(() => {
+    if (isUnauthorized) {
+      clearToken()
+      setSessionToken(null)
+    }
+  }, [isUnauthorized])
 
   if (!sessionChecked) {
     return (
@@ -239,6 +252,8 @@ export default function Journal() {
     )
   }
 
+  if (isUnauthorized) return null
+
   const grouped = STATUS_ORDER.reduce<Record<Status, Contribution[]>>(
     (acc, s) => ({ ...acc, [s]: contributions.filter((c) => c.status === s) }),
     { pending: [], approved: [], declined: [] }
@@ -247,6 +262,8 @@ export default function Journal() {
   const openDetail = (c: Contribution) => {
     setSelectedContribution(c)
     setAdminNote(c.adminNote ?? "")
+    setEditTitle(c.title)
+    setEditPhotoUrls(c.photoUrls)
   }
 
   const toggleSection = (status: Status) => {
@@ -255,19 +272,17 @@ export default function Journal() {
 
   const handleDecision = (status: "approved" | "declined") => {
     if (!selectedContribution) return
-    updateMutation.mutate({ id: selectedContribution.id, status, note: adminNote || undefined })
+    const titleChanged = editTitle.trim() !== selectedContribution.title
+    const photosChanged = editPhotoUrls.length !== selectedContribution.photoUrls.length ||
+      editPhotoUrls.some((url, i) => url !== selectedContribution.photoUrls[i])
+    updateMutation.mutate({
+      id: selectedContribution.id,
+      status,
+      note: adminNote || undefined,
+      title: titleChanged ? editTitle.trim() : undefined,
+      photoUrls: photosChanged ? editPhotoUrls : undefined,
+    })
   }
-
-  const isUnauthorized = error && (error as { status?: number }).status === 401
-
-  useEffect(() => {
-    if (isUnauthorized) {
-      clearToken()
-      setSessionToken(null)
-    }
-  }, [isUnauthorized])
-
-  if (isUnauthorized) return null
 
   return (
     <PageLayout
@@ -363,8 +378,8 @@ export default function Journal() {
       {selectedContribution && (
         <Modal
           isOpen={true}
-          onClose={() => { setSelectedContribution(null); setAdminNote("") }}
-          title={selectedContribution.title}
+          onClose={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditPhotoUrls([]) }}
+          title={editTitle || selectedContribution.title}
           description={`Submitted by ${selectedContribution.authorName} · ${format(parseISO(selectedContribution.createdAt), "d MMM yyyy")}`}
         >
           <div className="space-y-5">
@@ -372,6 +387,18 @@ export default function Journal() {
               <StatusBadge status={selectedContribution.status} />
               <TypeBadge type={selectedContribution.contentType} />
               <span className="text-xs text-muted-foreground">{selectedContribution.authorEmail}</span>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+                Title
+              </label>
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Submission title"
+                className="w-full"
+              />
             </div>
 
             {selectedContribution.articleBody && (
@@ -383,18 +410,69 @@ export default function Journal() {
               </div>
             )}
 
-            {selectedContribution.photoUrls.length > 0 && (
+            {editPhotoUrls.length === 0 && selectedContribution.photoUrls.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                All {selectedContribution.photoUrls.length} photo{selectedContribution.photoUrls.length !== 1 ? "s" : ""} removed — they will not be published.
+              </div>
+            )}
+
+            {editPhotoUrls.length > 0 && (
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                  Photos ({selectedContribution.photoUrls.length})
+                  Photos ({editPhotoUrls.length})
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {selectedContribution.photoUrls.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noreferrer" className="block rounded-lg overflow-hidden border border-border hover:opacity-80 transition-opacity">
-                      <img src={url} alt={`Photo ${i + 1}`} className="w-full h-32 object-cover" loading="lazy" />
-                    </a>
+                  {editPhotoUrls.map((url, i) => (
+                    <div key={i} className="relative rounded-lg overflow-hidden border border-border group">
+                      <a href={url} target="_blank" rel="noreferrer" className="block">
+                        <img src={url} alt={`Photo ${i + 1}`} className="w-full h-32 object-cover" loading="lazy" />
+                      </a>
+                      <div className="absolute top-1.5 left-1.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setEditPhotoUrls((prev) => {
+                            if (i === 0) return prev
+                            const next = [...prev]
+                            ;[next[i - 1], next[i]] = [next[i], next[i - 1]]
+                            return next
+                          })}
+                          disabled={i === 0}
+                          className="bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded p-0.5 shadow"
+                          title="Move up"
+                        >
+                          <ArrowUp className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditPhotoUrls((prev) => {
+                            if (i === prev.length - 1) return prev
+                            const next = [...prev]
+                            ;[next[i], next[i + 1]] = [next[i + 1], next[i]]
+                            return next
+                          })}
+                          disabled={i === editPhotoUrls.length - 1}
+                          className="bg-black/60 hover:bg-black/80 disabled:opacity-30 text-white rounded p-0.5 shadow"
+                          title="Move down"
+                        >
+                          <ArrowDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setEditPhotoUrls((prev) => prev.filter((_, j) => j !== i))}
+                        className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                        title="Remove photo"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
+                {editPhotoUrls.length < selectedContribution.photoUrls.length && (
+                  <p className="text-xs text-amber-700 mt-1.5">
+                    {selectedContribution.photoUrls.length - editPhotoUrls.length} photo{selectedContribution.photoUrls.length - editPhotoUrls.length !== 1 ? "s" : ""} will be removed on approval/decline.
+                  </p>
+                )}
               </div>
             )}
 
@@ -419,14 +497,14 @@ export default function Journal() {
             </div>
 
             <div className="flex justify-between gap-3 pt-2 border-t">
-              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote("") }}>
+              <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditPhotoUrls([]) }}>
                 Close
               </Button>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   className="border-rose-200 text-rose-700 hover:bg-rose-50"
-                  disabled={updateMutation.isPending || selectedContribution.status === "declined"}
+                  disabled={updateMutation.isPending || selectedContribution.status === "declined" || !editTitle.trim()}
                   onClick={() => handleDecision("declined")}
                 >
                   <XCircle className="w-4 h-4 mr-1.5" />
@@ -434,7 +512,7 @@ export default function Journal() {
                 </Button>
                 <Button
                   className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={updateMutation.isPending || selectedContribution.status === "approved"}
+                  disabled={updateMutation.isPending || selectedContribution.status === "approved" || !editTitle.trim()}
                   onClick={() => handleDecision("approved")}
                 >
                   <CheckCircle className="w-4 h-4 mr-1.5" />

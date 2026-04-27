@@ -115,13 +115,17 @@ router.get("/", requireAdminAccess, async (req, res) => {
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateContributionParams.parse(req.params);
   const body = UpdateContributionBody.parse(req.body);
+  const updateValues: Partial<typeof contributionsTable.$inferInsert> = {
+    status: body.status,
+    adminNote: body.adminNote ?? null,
+    reviewedAt: new Date(),
+  };
+  if (body.title !== undefined) updateValues.title = body.title;
+  if (body.photoUrls !== undefined) updateValues.photoUrls = body.photoUrls;
+
   const [contribution] = await db
     .update(contributionsTable)
-    .set({
-      status: body.status,
-      adminNote: body.adminNote ?? null,
-      reviewedAt: new Date(),
-    })
+    .set(updateValues)
     .where(eq(contributionsTable.id, id))
     .returning();
   if (!contribution) {
