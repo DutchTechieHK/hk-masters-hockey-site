@@ -315,6 +315,7 @@ export default function Journal() {
                     <table className="w-full text-sm text-left">
                       <thead className="text-xs text-muted-foreground uppercase bg-muted/10 border-b border-border">
                         <tr>
+                          <th className="px-3 py-3 font-semibold w-12 hidden md:table-cell"></th>
                           <th className="px-6 py-3 font-semibold">Contributor</th>
                           <th className="px-6 py-3 font-semibold">Title</th>
                           <th className="px-6 py-3 font-semibold hidden md:table-cell">Type</th>
@@ -325,6 +326,18 @@ export default function Journal() {
                       <tbody className="divide-y divide-border">
                         {items.map((c) => (
                           <tr key={c.id} className="hover:bg-muted/10 transition-colors cursor-pointer" onClick={() => openDetail(c)}>
+                            <td className="px-3 py-3 hidden md:table-cell">
+                              {c.photoUrls.length > 0 ? (
+                                <img
+                                  src={c.photoUrls[0]}
+                                  alt=""
+                                  className="w-10 h-10 rounded-lg object-cover border border-border flex-shrink-0"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-lg bg-muted/30 border border-border flex-shrink-0" />
+                              )}
+                            </td>
                             <td className="px-6 py-4">
                               <div className="font-semibold text-foreground">{c.authorName}</div>
                               <div className="text-xs text-muted-foreground">{c.authorEmail}</div>

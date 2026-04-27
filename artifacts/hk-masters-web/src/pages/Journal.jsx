@@ -423,9 +423,7 @@ export default function Journal() {
   const { data: contributions, loading, error } = useApprovedContributions();
   const formRef = useRef(null);
 
-  const articles = contributions.filter((c) =>
-    c.contentType === "article" || c.contentType === "both"
-  );
+  const articles = contributions;
 
   const scrollToForm = () => {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -487,7 +485,7 @@ export default function Journal() {
           <div className="space-y-8">
             <h2 className="text-2xl font-bold text-gray-900">
               Latest from the Community
-              <span className="ml-2 text-base font-normal text-gray-400">({articles.length} {articles.length === 1 ? "story" : "stories"})</span>
+              <span className="ml-2 text-base font-normal text-gray-400">({articles.length} {articles.length === 1 ? "entry" : "entries"})</span>
             </h2>
             {articles.map((c) => (
               <ArticleCard key={c.id} contribution={c} />
