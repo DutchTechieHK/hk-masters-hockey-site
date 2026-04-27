@@ -215,11 +215,11 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
+  if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: "Invalid ID" });
     return;
   }
+  const id = parseInt(req.params.id, 10);
   const [deleted] = await db
     .delete(contributionsTable)
     .where(eq(contributionsTable.id, id))
