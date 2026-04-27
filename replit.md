@@ -8,19 +8,27 @@ Two separate web applications managed in a pnpm monorepo:
 2. **Management app** (`hk-masters`) — internal admin tool for managing players, kits, fundraising, logistics, and the Journal moderation queue.
 3. **API server** (`api-server`) — shared Express backend used by both apps.
 
-## Deploying to the Live Site
+## Deployment Architecture
 
-The live site at **hkmastershockey.com** is deployed via **GitHub** → automatic deployment pipeline.
+**IMPORTANT**: There are two separate deployments:
 
-To push changes live, run in the Shell:
-```
-git pull -X ours origin main
-git push origin main
-```
+### 1. Public website → Netlify (hkmastershockey.com)
+- Code lives here in Replit
+- Push to GitHub triggers Netlify build automatically: `git pull -X ours origin main && git push origin main`
+- GitHub repo: `https://github.com/DutchTechieHK/hk-masters-hockey-site.git`
+- Netlify builds with: `pnpm --filter @workspace/hk-masters-web run build`
+- Publishes from: `artifacts/hk-masters-web/dist`
+- Config: `netlify.toml` at project root
+- API calls from the public website are **proxied by Netlify** to the Replit deployment (see netlify.toml `[[redirects]]`)
 
-GitHub repo: `https://github.com/DutchTechieHK/hk-masters-hockey-site.git`
+### 2. Management app + API server → Replit deployment
+- Replit deployment URL: `https://hk-masters.replit.app`
+- Contains: management app (hk-masters) and the Express API server
+- Deploy via: Replit "Republish" button
+- The API at `https://hk-masters.replit.app/api/...` is used by the Netlify proxy
 
-Replit's **Publish** button is also wired to the same deployment — clicking it and confirming also pushes to the live domain.
+### How the proxy works
+The `netlify.toml` has a redirect rule: any `/api/*` request to hkmastershockey.com is forwarded server-to-server by Netlify to `https://hk-masters.replit.app/api/:splat`. The browser never makes a cross-origin request, so no CORS needed. **Both deployments must be live for the public website to fully function.**
 
 ## Stack
 
