@@ -149,16 +149,24 @@ function LatestJournalCard() {
           </Link>
         </div>
         <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
-          {article.photoUrls && article.photoUrls.length > 0 && (
-            <Link href={`/journal/${article.id}`} className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden bg-gray-200">
+          <Link href={`/journal/${article.id}`} className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden">
+            {article.photoUrls && article.photoUrls.length > 0 ? (
               <img
                 src={cloudinaryResize(article.photoUrls[0], 600, 400)}
                 alt={article.title}
                 className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
                 loading="lazy"
               />
-            </Link>
-          )}
+            ) : (
+              <div className="w-full h-full min-h-[192px] bg-[#004A2A] flex flex-col items-center justify-center gap-2">
+                <svg className="w-10 h-10 text-green-500 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V8a2 2 0 012-2h3l2-3h4l2 3h3a2 2 0 012 2v10a2 2 0 01-2 2z" />
+                  <circle cx="12" cy="13" r="3" strokeWidth={1.5} />
+                </svg>
+                <span className="text-green-600 text-xs font-semibold uppercase tracking-widest opacity-60">HK Masters</span>
+              </div>
+            )}
+          </Link>
           <div className="p-6 sm:p-8 flex flex-col justify-center">
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <span className="text-xs font-semibold bg-green-100 text-green-800 px-2.5 py-1 rounded-full">
