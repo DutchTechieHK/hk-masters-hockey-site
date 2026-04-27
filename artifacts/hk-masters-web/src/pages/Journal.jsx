@@ -190,7 +190,8 @@ function ContributeForm() {
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const dragIndex = useRef(null);
   const [touchDrag, setTouchDrag] = useState({ from: null, over: null });
-  const touchDragRef = useRef({ active: false, fromIndex: null, toIndex: null, timer: null });
+  const [dragPos, setDragPos] = useState(null);
+  const touchDragRef = useRef({ active: false, fromIndex: null, toIndex: null, timer: null, lastX: 0, lastY: 0 });
   const touchDidDragRef = useRef(false);
 
   const needsPhotos = form.contentType === "photo" || form.contentType === "both";
@@ -269,20 +270,27 @@ function ContributeForm() {
   const handleTileTouchStart = (i) => (e) => {
     const td = touchDragRef.current;
     clearTimeout(td.timer);
+    const touch = e.touches[0];
+    td.lastX = touch.clientX;
+    td.lastY = touch.clientY;
     td.timer = setTimeout(() => {
       td.active = true;
       td.fromIndex = i;
       td.toIndex = i;
       if (navigator.vibrate) navigator.vibrate(30);
       setTouchDrag({ from: i, over: i });
+      setDragPos({ x: td.lastX, y: td.lastY });
     }, 400);
   };
 
   const handleGridTouchMove = (e) => {
     const td = touchDragRef.current;
+    const touch = e.touches[0];
+    td.lastX = touch.clientX;
+    td.lastY = touch.clientY;
     if (!td.active) return;
     e.preventDefault();
-    const touch = e.touches[0];
+    setDragPos({ x: touch.clientX, y: touch.clientY });
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     const cell = el && el.closest("[data-drag-index]");
     if (cell) {
@@ -314,6 +322,7 @@ function ContributeForm() {
     td.toIndex = null;
     td.timer = null;
     setTouchDrag({ from: null, over: null });
+    setDragPos(null);
   };
 
   const handleChange = (e) => {
@@ -623,6 +632,31 @@ function ContributeForm() {
                 <p className="text-xs text-gray-400 mb-3">
                   Drag to reorder · tap &amp; hold on mobile · tap to preview
                 </p>
+              )}
+              {dragPos && touchDrag.from !== null && photoUrls[touchDrag.from] && (
+                <div
+                  style={{
+                    position: "fixed",
+                    left: dragPos.x - 44,
+                    top: dragPos.y - 80,
+                    width: 72,
+                    height: 72,
+                    zIndex: 9999,
+                    pointerEvents: "none",
+                    borderRadius: 10,
+                    overflow: "hidden",
+                    opacity: 0.88,
+                    boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+                    border: "2px solid #fff",
+                  }}
+                >
+                  <img
+                    src={cloudinaryResize(photoUrls[touchDrag.from], 150, 150)}
+                    alt="Dragging"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    draggable={false}
+                  />
+                </div>
               )}
             </>
           )}
