@@ -291,7 +291,8 @@ function ContributeForm() {
           setUploadingPhotos((prev) => [...prev, { id, progress: 0, error: false }]);
         } else if (result.event === "progress") {
           const id = result.info.id;
-          const progress = result.info.progress ?? 0;
+          const raw = result.info.progress ?? 0;
+          const progress = Math.round(raw <= 1 ? raw * 100 : raw);
           setUploadingPhotos((prev) =>
             prev.map((p) => (p.id === id ? { ...p, progress } : p))
           );
