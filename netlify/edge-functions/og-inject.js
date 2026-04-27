@@ -88,6 +88,34 @@ export default async function handler(request, context) {
     `  <meta property="og:url" content="${escapeHtml(ogUrl)}" />\n</head>`
   );
 
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    ...(ogDescription && { description: ogDescription }),
+    ...(hasPhoto && { image: ogImage }),
+    ...(article.authorName && {
+      author: {
+        "@type": "Person",
+        name: article.authorName,
+      },
+    }),
+    ...(article.createdAt && { datePublished: article.createdAt }),
+    url: ogUrl,
+  };
+
+  const safeJsonLd = JSON.stringify(schema)
+    .replace(/&/g, "\\u0026")
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+
+  html = html.replace(
+    "</head>",
+    `  <script type="application/ld+json">${safeJsonLd}</script>\n</head>`
+  );
+
   const responseHeaders = new Headers(spaResponse.headers);
   responseHeaders.set("content-type", "text/html; charset=utf-8");
 
