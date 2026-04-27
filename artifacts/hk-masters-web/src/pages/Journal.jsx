@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "wouter";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { format, parseISO } from "date-fns";
 
@@ -103,7 +102,6 @@ function ArticleCard({ contribution }) {
 }
 
 function ContributeForm() {
-  const formRef = useRef(null);
   const [form, setForm] = useState({
     authorName: "",
     authorEmail: "",
