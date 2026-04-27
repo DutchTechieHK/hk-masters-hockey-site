@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
+import { format, parseISO } from "date-fns";
 import content from "../content/home.json";
 import RichText from "../components/RichText";
 import { cloudinaryResize } from "../utils/cloudinary";
@@ -103,6 +104,91 @@ function PhotoPlaceholder({ label }) {
       </svg>
       <p className="text-xs text-green-500 opacity-60 text-center px-4">{label}</p>
     </div>
+  );
+}
+
+function useLatestJournalArticle() {
+  const [article, setArticle] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/contributions/approved")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => {
+        const articles = data.filter(
+          (c) => c.contentType === "article" || c.contentType === "both"
+        );
+        setArticle(articles.length > 0 ? articles[0] : null);
+      })
+      .catch(() => setArticle(null))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { article, loading };
+}
+
+function LatestJournalCard() {
+  const { article, loading } = useLatestJournalArticle();
+
+  if (loading || !article) return null;
+
+  const excerpt = article.articleBody
+    ? article.articleBody.slice(0, 200).trimEnd() + (article.articleBody.length > 200 ? "…" : "")
+    : null;
+
+  return (
+    <section className="bg-white border-t border-gray-100 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Latest from the Journal</h2>
+          <Link
+            href="/journal"
+            className="text-[#006B3C] font-medium hover:text-green-800 transition-colors duration-150 text-sm"
+          >
+            Read more in the Journal &rarr;
+          </Link>
+        </div>
+        <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
+          {article.photoUrls && article.photoUrls.length > 0 && (
+            <div className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden bg-gray-200">
+              <img
+                src={cloudinaryResize(article.photoUrls[0], 600, 400)}
+                alt={article.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          )}
+          <div className="p-6 sm:p-8 flex flex-col justify-center">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs font-semibold bg-green-100 text-green-800 px-2.5 py-1 rounded-full">
+                {article.contentType === "photo" ? "Photos" : article.contentType === "both" ? "Article + Photos" : "Article"}
+              </span>
+              <span className="text-xs text-gray-400">
+                {format(parseISO(article.createdAt), "d MMM yyyy")}
+              </span>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-1 leading-snug">
+              {article.title}
+            </h3>
+            <p className="text-sm text-[#006B3C] font-semibold mb-3">
+              By {article.authorName}
+            </p>
+            {excerpt && (
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                {excerpt}
+              </p>
+            )}
+            <Link
+              href="/journal"
+              className="self-start text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors duration-150"
+            >
+              Read more in the Journal &rarr;
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -322,6 +408,9 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Latest Journal Article */}
+      <LatestJournalCard />
 
       {/* Upcoming Events Strip */}
       <section className="bg-gray-50 py-16">
