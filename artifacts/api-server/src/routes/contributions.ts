@@ -153,6 +153,16 @@ router.get("/", requireAdminAccess, async (req, res) => {
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateContributionParams.parse(req.params);
   const body = UpdateContributionBody.parse(req.body);
+
+  const [existing] = await db
+    .select()
+    .from(contributionsTable)
+    .where(eq(contributionsTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Contribution not found" });
+    return;
+  }
+
   const updateValues: Partial<typeof contributionsTable.$inferInsert> = {
     status: body.status,
     adminNote: body.adminNote ?? null,
@@ -173,6 +183,23 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   }
 
   if (body.status === "approved" || body.status === "declined") {
+    const editDetails: {
+      titleChanged?: { from: string; to: string };
+      photosRemovedCount?: number;
+    } = {};
+
+    if (body.title !== undefined && body.title !== existing.title) {
+      editDetails.titleChanged = { from: existing.title, to: body.title };
+    }
+
+    if (body.photoUrls !== undefined) {
+      const oldCount = (existing.photoUrls ?? []).length;
+      const newCount = body.photoUrls.length;
+      if (newCount < oldCount) {
+        editDetails.photosRemovedCount = oldCount - newCount;
+      }
+    }
+
     sendContributionDecisionEmail({
       authorName: contribution.authorName,
       authorEmail: contribution.authorEmail,
@@ -180,6 +207,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
       status: body.status,
       adminNote: contribution.adminNote ?? undefined,
       contributionId: contribution.id,
+      editDetails: Object.keys(editDetails).length > 0 ? editDetails : undefined,
     }).catch((err: unknown) => console.error("[email] Unexpected error:", err));
   }
 

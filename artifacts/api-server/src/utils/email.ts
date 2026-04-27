@@ -229,6 +229,10 @@ function buildDecisionEmailHtml(opts: {
   title: string;
   status: "approved" | "declined";
   adminNote?: string;
+  editDetails?: {
+    titleChanged?: { from: string; to: string };
+    photosRemovedCount?: number;
+  };
 }): string {
   const isApproved = opts.status === "approved";
 
@@ -255,6 +259,35 @@ function buildDecisionEmailHtml(opts: {
       </table>`
     : "";
 
+  const editLines: string[] = [];
+  if (opts.editDetails?.titleChanged) {
+    const { from, to } = opts.editDetails.titleChanged;
+    editLines.push(
+      `<li style="margin:0 0 6px 0;">Your title was updated from <em>&ldquo;${escapeHtml(from)}&rdquo;</em> to <strong>&ldquo;${escapeHtml(to)}&rdquo;</strong>.</li>`
+    );
+  }
+  if (opts.editDetails?.photosRemovedCount) {
+    const n = opts.editDetails.photosRemovedCount;
+    editLines.push(
+      `<li style="margin:0 0 6px 0;"><strong>${n} photo${n !== 1 ? "s were" : " was"}</strong> removed from your submission.</li>`
+    );
+  }
+  const editSectionLabel = isApproved ? "Edits made before approval" : "Edits made during review";
+  const editSection =
+    editLines.length > 0
+      ? `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+        <tr>
+          <td style="border-left: 4px solid #f59e0b; padding: 12px 16px; background-color: #fffbeb; border-radius: 0 6px 6px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #b45309;">${editSectionLabel}</p>
+            <ul style="margin: 0; padding: 0 0 0 18px; font-size: 15px; color: #374151; line-height: 1.6;">
+              ${editLines.join("\n              ")}
+            </ul>
+          </td>
+        </tr>
+      </table>`
+      : "";
+
   return emailShell(
     "#006B3C",
     `${badgeText}: ${safeTitle}`,
@@ -265,6 +298,7 @@ function buildDecisionEmailHtml(opts: {
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">Thank you for your submission to the <strong>HK Masters Hockey Journal</strong>.</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">Your submission <strong>&ldquo;${safeTitle}&rdquo;</strong> has been <strong>${opts.status}</strong>.</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">${bodyMessage}</p>
+    ${editSection}
     ${noteSection}
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
       Questions? <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>
@@ -277,18 +311,37 @@ function buildDecisionEmailText(opts: {
   title: string;
   status: "approved" | "declined";
   adminNote?: string;
+  editDetails?: {
+    titleChanged?: { from: string; to: string };
+    photosRemovedCount?: number;
+  };
 }): string {
   const decision = opts.status === "approved" ? "approved" : "declined";
   const noteSection = opts.adminNote
     ? `\nNote from the team:\n${opts.adminNote}\n`
     : "";
 
+  const editLines: string[] = [];
+  if (opts.editDetails?.titleChanged) {
+    const { from, to } = opts.editDetails.titleChanged;
+    editLines.push(`- Your title was updated from "${from}" to "${to}".`);
+  }
+  if (opts.editDetails?.photosRemovedCount) {
+    const n = opts.editDetails.photosRemovedCount;
+    editLines.push(`- ${n} photo${n !== 1 ? "s were" : " was"} removed from your submission.`);
+  }
+  const editSectionLabel = opts.status === "approved" ? "Edits made before approval" : "Edits made during review";
+  const editSection =
+    editLines.length > 0
+      ? `\n${editSectionLabel}:\n${editLines.join("\n")}\n`
+      : "";
+
   return `Hi ${opts.authorName},
 
 Thank you for your submission to the HK Masters Hockey Journal.
 
 Your submission "${opts.title}" has been ${decision}.
-${noteSection}
+${editSection}${noteSection}
 If you have any questions, feel free to reach out to us at ${ADMIN_EMAIL}.
 
 The HK Masters Hockey Team`.trim();
@@ -301,6 +354,10 @@ export async function sendContributionDecisionEmail(opts: {
   status: "approved" | "declined";
   adminNote?: string;
   contributionId: number;
+  editDetails?: {
+    titleChanged?: { from: string; to: string };
+    photosRemovedCount?: number;
+  };
 }) {
   const subject =
     opts.status === "approved"
