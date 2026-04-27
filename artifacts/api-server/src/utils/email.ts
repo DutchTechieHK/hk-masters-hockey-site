@@ -2,6 +2,9 @@ const ADMIN_EMAIL = "play@hkmastershockey.com";
 const VERIFIED_FROM = "HK Masters Hockey <noreply@hkmastershockey.com>";
 const FALLBACK_FROM = "HK Masters Hockey <onboarding@resend.dev>";
 
+const ADMIN_APP_URL =
+  process.env.ADMIN_APP_URL || "https://hk-masters.replit.app";
+
 export async function sendNewContributionEmail(opts: {
   authorName: string;
   authorEmail: string;
@@ -25,6 +28,8 @@ export async function sendNewContributionEmail(opts: {
         ? "Photo submission"
         : "Article + Photos";
 
+  const reviewUrl = `${ADMIN_APP_URL}/journal`;
+
   const body = `
 New Journal submission received:
 
@@ -32,7 +37,8 @@ Type: ${typeLabel}
 Title: ${opts.title}
 From: ${opts.authorName} <${opts.authorEmail}>
 
-Log in to the HK Masters management app to review and approve or decline this submission.
+Review and approve or decline this submission:
+${reviewUrl}
 `.trim();
 
   const subject = `[HK Masters Journal] New submission: "${opts.title}"`;

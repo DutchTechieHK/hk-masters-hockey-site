@@ -9,10 +9,11 @@ import {
   ListContributionsQueryParams,
 } from "@workspace/api-zod";
 import { sendNewContributionEmail } from "../utils/email.js";
+import { requireAdminKey } from "../middleware/adminAuth.js";
 
 const router = Router();
 
-function mapContribution(row: typeof contributionsTable.$inferSelect) {
+function mapContributionAdmin(row: typeof contributionsTable.$inferSelect) {
   return {
     id: row.id,
     title: row.title,
@@ -23,6 +24,19 @@ function mapContribution(row: typeof contributionsTable.$inferSelect) {
     photoUrls: row.photoUrls ?? [],
     status: row.status,
     adminNote: row.adminNote ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
+  };
+}
+
+function mapContributionPublic(row: typeof contributionsTable.$inferSelect) {
+  return {
+    id: row.id,
+    title: row.title,
+    authorName: row.authorName,
+    contentType: row.contentType,
+    articleBody: row.articleBody ?? undefined,
+    photoUrls: row.photoUrls ?? [],
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
   };
@@ -47,7 +61,7 @@ router.post("/", async (req, res) => {
     contributionId: contribution.id,
   }).catch((err: unknown) => console.error("[email] Unexpected error:", err));
 
-  res.status(201).json(mapContribution(contribution));
+  res.status(201).json(mapContributionPublic(contribution));
 });
 
 router.get("/approved", async (_req, res) => {
@@ -56,10 +70,10 @@ router.get("/approved", async (_req, res) => {
     .from(contributionsTable)
     .where(eq(contributionsTable.status, "approved"))
     .orderBy(desc(contributionsTable.reviewedAt));
-  res.json(rows.map(mapContribution));
+  res.json(rows.map(mapContributionPublic));
 });
 
-router.get("/", async (req, res) => {
+router.get("/", requireAdminKey, async (req, res) => {
   const query = ListContributionsQueryParams.parse(req.query);
   let rows;
   if (query.status) {
@@ -74,10 +88,10 @@ router.get("/", async (req, res) => {
       .from(contributionsTable)
       .orderBy(desc(contributionsTable.createdAt));
   }
-  res.json(rows.map(mapContribution));
+  res.json(rows.map(mapContributionAdmin));
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdminKey, async (req, res) => {
   const { id } = UpdateContributionParams.parse(req.params);
   const body = UpdateContributionBody.parse(req.body);
   const [contribution] = await db
@@ -93,7 +107,7 @@ router.put("/:id", async (req, res) => {
     res.status(404).json({ error: "Contribution not found" });
     return;
   }
-  res.json(mapContribution(contribution));
+  res.json(mapContributionAdmin(contribution));
 });
 
 export default router;
