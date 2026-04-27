@@ -28,11 +28,38 @@ function useApprovedContributions() {
 
 function ArticleCard({ contribution }) {
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef(null);
   const hasPhotos = contribution.photoUrls && contribution.photoUrls.length > 0;
   const hasArticle = !!contribution.articleBody;
   const body = contribution.articleBody || "";
   const isLong = body.length > 400;
   const displayBody = isLong && !expanded ? body.slice(0, 400) + "…" : body;
+
+  useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/journal/${contribution.id}`;
+    let success = false;
+    try {
+      await navigator.clipboard.writeText(url);
+      success = true;
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      success = document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    if (!success) return;
+    setCopied(true);
+    clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -101,13 +128,35 @@ function ArticleCard({ contribution }) {
           </div>
         )}
 
-        <div className="mt-5 pt-4 border-t border-gray-50">
+        <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-between gap-3">
           <Link
             href={`/journal/${contribution.id}`}
             className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
           >
             Read full article &rarr;
           </Link>
+          <button
+            onClick={handleShare}
+            title="Copy link to article"
+            aria-label="Copy link to article"
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-[#006B3C] transition-colors shrink-0"
+          >
+            {copied ? (
+              <>
+                <svg className="w-4 h-4 text-[#006B3C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span className="text-[#006B3C]">Link copied!</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-4 10h6a2 2 0 002-2v-8a2 2 0 00-2-2h-6a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+                <span>Share</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </article>
