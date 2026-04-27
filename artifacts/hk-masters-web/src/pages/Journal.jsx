@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "wouter";
 import { cloudinaryResize } from "../utils/cloudinary";
+import { API_BASE } from "../utils/api";
 import { format, parseISO } from "date-fns";
 
 const CLOUD_NAME = "djyvdrhal";
@@ -12,7 +13,7 @@ function useApprovedContributions() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch("/api/contributions/approved")
+    fetch(`${API_BASE}/api/contributions/approved`)
       .then((r) => {
         if (!r.ok) throw new Error("Failed to load");
         return r.json();
@@ -352,7 +353,7 @@ function ContributeForm() {
         ...(needsArticle && { articleBody: form.articleBody.trim() }),
         ...(needsPhotos && { photoUrls }),
       };
-      const res = await fetch("/api/contributions", {
+      const res = await fetch(`${API_BASE}/api/contributions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

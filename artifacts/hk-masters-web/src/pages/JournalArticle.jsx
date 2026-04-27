@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
 import { cloudinaryResize } from "../utils/cloudinary";
+import { API_BASE } from "../utils/api";
 
 function PhotoLightbox({ urls, startIndex, onClose }) {
   const [current, setCurrent] = useState(startIndex);
@@ -71,7 +72,7 @@ export default function JournalArticle() {
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
-    fetch(`/api/contributions/approved/${id}`)
+    fetch(`${API_BASE}/api/contributions/approved/${id}`)
       .then((r) => {
         if (r.status === 404) { setNotFound(true); return null; }
         if (!r.ok) throw new Error("Failed to load");

@@ -4,6 +4,7 @@ import { format, parseISO } from "date-fns";
 import content from "../content/home.json";
 import RichText from "../components/RichText";
 import { cloudinaryResize } from "../utils/cloudinary";
+import { API_BASE } from "../utils/api";
 import eventsContent from "../content/events.json";
 import teamsContent from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
@@ -112,7 +113,7 @@ function useLatestJournalArticle() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/contributions/approved")
+    fetch(`${API_BASE}/api/contributions/approved`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
         const articles = data.filter(

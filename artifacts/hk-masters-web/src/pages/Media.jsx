@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import content from "../content/media.json";
 import { cloudinaryResize } from "../utils/cloudinary";
+import { API_BASE } from "../utils/api";
 
 function isVideo(url) {
   return url && url.includes("/video/upload/");
@@ -24,7 +25,7 @@ function getYouTubeId(input) {
 function useCommunityAlbum() {
   const [album, setAlbum] = useState(null);
   useEffect(() => {
-    fetch("/api/contributions/approved")
+    fetch(`${API_BASE}/api/contributions/approved`)
       .then((r) => r.ok ? r.json() : [])
       .then((contributions) => {
         const photos = contributions

@@ -4,8 +4,9 @@
   publish = "artifacts/hk-masters-web/dist"
 
 [build.environment]
-  NODE_VERSION = "20"
-  BASE_PATH    = "/"
+  NODE_VERSION        = "20"
+  BASE_PATH           = "/"
+  VITE_API_BASE_URL   = "https://masters-world-hub.replit.app"
 
 [[redirects]]
   from   = "/api/*"
