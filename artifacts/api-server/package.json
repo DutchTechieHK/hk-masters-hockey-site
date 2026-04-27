@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "NODE_ENV=development tsx ./src/index.ts",
     "build": "tsx ./build.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "backfill-slugs": "tsx ./src/scripts/backfill-slugs.ts"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
