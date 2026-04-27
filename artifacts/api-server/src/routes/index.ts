@@ -6,6 +6,7 @@ import kitsRouter from "./kits";
 import fundraisingRouter from "./fundraising";
 import logisticsRouter from "./logistics";
 import dashboardRouter from "./dashboard";
+import contributionsRouter from "./contributions";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/kits", kitsRouter);
 router.use("/fundraising", fundraisingRouter);
 router.use("/logistics", logisticsRouter);
 router.use("/dashboard", dashboardRouter);
+router.use("/contributions", contributionsRouter);
 
 export default router;
