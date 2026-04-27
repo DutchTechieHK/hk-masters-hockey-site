@@ -22,13 +22,13 @@ Two separate web applications managed in a pnpm monorepo:
 - API calls from the public website are **proxied by Netlify** to the Replit deployment (see netlify.toml `[[redirects]]`)
 
 ### 2. Management app + API server → Replit deployment
-- Replit deployment URL: `https://hk-masters.replit.app`
+- Replit deployment URL: `https://masters-world-hub.replit.app`
 - Contains: management app (hk-masters) and the Express API server
 - Deploy via: Replit "Republish" button
-- The API at `https://hk-masters.replit.app/api/...` is used by the Netlify proxy
+- The API at `https://masters-world-hub.replit.app/api/...` is used by the Netlify proxy
 
 ### How the proxy works
-The `netlify.toml` has a redirect rule: any `/api/*` request to hkmastershockey.com is forwarded server-to-server by Netlify to `https://hk-masters.replit.app/api/:splat`. The browser never makes a cross-origin request, so no CORS needed. **Both deployments must be live for the public website to fully function.**
+The `netlify.toml` has a redirect rule: any `/api/*` request to hkmastershockey.com is forwarded server-to-server by Netlify to `https://masters-world-hub.replit.app/api/:splat`. The browser never makes a cross-origin request, so no CORS needed. **Both deployments must be live for the public website to fully function.**
 
 ## Stack
 
