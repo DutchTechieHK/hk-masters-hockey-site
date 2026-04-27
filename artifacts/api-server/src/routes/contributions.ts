@@ -12,6 +12,7 @@ import {
 import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail, sendContributionDeletedEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
 import { generateUniqueSlug } from "../utils/slug.js";
+import { backfillSlugs } from "../utils/backfillSlugs.js";
 
 const router = Router();
 
@@ -250,6 +251,11 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   }
 
   res.json(mapContributionAdmin(contribution));
+});
+
+router.post("/backfill-slugs", requireAdminAccess, async (_req, res) => {
+  const updated = await backfillSlugs();
+  res.json({ updated });
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import {
   CheckCircle, XCircle, Clock, FileText, Image, FileImage,
-  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown,
+  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown, Wrench,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
@@ -217,6 +217,30 @@ export default function Journal() {
     queryClient.removeQueries({ queryKey: ["contributions"] })
   }, [sessionToken, queryClient])
 
+  const [backfillLoading, setBackfillLoading] = useState(false)
+
+  const handleBackfillSlugs = useCallback(async () => {
+    if (!sessionToken) return
+    setBackfillLoading(true)
+    try {
+      const res = await fetch("/api/contributions/backfill-slugs", {
+        method: "POST",
+        headers: { "x-session-token": sessionToken },
+      })
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`)
+      const data = await res.json() as { updated: number }
+      toast({
+        title: data.updated === 0
+          ? "All slugs are already set"
+          : `Repaired ${data.updated} slug${data.updated !== 1 ? "s" : ""}`,
+      })
+    } catch {
+      toast({ title: "Slug repair failed", variant: "destructive" })
+    } finally {
+      setBackfillLoading(false)
+    }
+  }, [sessionToken, toast])
+
   const { data: contributions = [], isLoading, isSuccess, error } = useQuery<Contribution[]>({
     queryKey: ["contributions", sessionToken],
     queryFn: () => fetchContributions(sessionToken!),
@@ -407,9 +431,14 @@ export default function Journal() {
       title="Journal"
       description="Review and moderate community-submitted articles and photos."
       action={
-        <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
-          <LogOut className="w-4 h-4" /> Sign Out
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleBackfillSlugs} disabled={backfillLoading} className="gap-2">
+            <Wrench className="w-4 h-4" /> {backfillLoading ? "Repairing..." : "Repair Slugs"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
+            <LogOut className="w-4 h-4" /> Sign Out
+          </Button>
+        </div>
       }
     >
       <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
