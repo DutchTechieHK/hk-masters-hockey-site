@@ -28,6 +28,9 @@ if (!basePath) {
 
 export default defineConfig({
   base: basePath,
+  define: {
+    "import.meta.env.VITE_ADMIN_API_KEY": JSON.stringify(process.env.ADMIN_API_KEY ?? ""),
+  },
   plugins: [
     react(),
     tailwindcss(),
