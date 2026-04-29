@@ -21,6 +21,8 @@ tags:
     description: Logistics operations
   - name: dashboard
     description: Dashboard operations
+  - name: sponsors
+    description: Sponsor operations
 
 paths:
   /healthz:
@@ -407,6 +409,76 @@ paths:
       operationId: deleteLogisticsTask
       tags: [logistics]
       summary: Delete a logistics task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /sponsors:
+    get:
+      operationId: listSponsors
+      tags: [sponsors]
+      summary: List all sponsors
+      responses:
+        "200":
+          description: List of sponsors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sponsor"
+    post:
+      operationId: createSponsor
+      tags: [sponsors]
+      summary: Create a sponsor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSponsor"
+      responses:
+        "201":
+          description: Created sponsor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sponsor"
+
+  /sponsors/{id}:
+    put:
+      operationId: updateSponsor
+      tags: [sponsors]
+      summary: Update a sponsor
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSponsor"
+      responses:
+        "200":
+          description: Updated sponsor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sponsor"
+    delete:
+      operationId: deleteSponsor
+      tags: [sponsors]
+      summary: Delete a sponsor
       parameters:
         - name: id
           in: path
@@ -877,3 +949,46 @@ components:
         - title
         - category
         - status
+
+    Sponsor:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        logoUrl:
+          type: string
+        websiteUrl:
+          type: string
+        tier:
+          type: string
+          enum: [Gold, Silver, Bronze]
+        active:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - tier
+        - active
+
+    CreateSponsor:
+      type: object
+      properties:
+        name:
+          type: string
+        logoUrl:
+          type: string
+        websiteUrl:
+          type: string
+        tier:
+          type: string
+          enum: [Gold, Silver, Bronze]
+        active:
+          type: boolean
+      required:
+        - name
+        - tier
+        - active

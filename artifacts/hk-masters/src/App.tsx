@@ -11,6 +11,7 @@ import Fundraising from "@/pages/Fundraising";
 import Logistics from "@/pages/Logistics";
 import Journal from "@/pages/Journal";
 import Travel from "@/pages/Travel";
+import Sponsors from "@/pages/Sponsors";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/logistics" component={Logistics} />
       <Route path="/travel" component={Travel} />
       <Route path="/journal" component={Journal} />
+      <Route path="/sponsors" component={Sponsors} />
       <Route component={NotFound} />
     </Switch>
   );

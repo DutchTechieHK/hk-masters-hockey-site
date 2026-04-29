@@ -304,6 +304,41 @@ export interface CreateLogisticsTask {
   notes?: string;
 }
 
+export type SponsorTier = (typeof SponsorTier)[keyof typeof SponsorTier];
+
+export const SponsorTier = {
+  Gold: "Gold",
+  Silver: "Silver",
+  Bronze: "Bronze",
+} as const;
+
+export interface Sponsor {
+  id: number;
+  name: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  tier: SponsorTier;
+  active: boolean;
+  createdAt?: string;
+}
+
+export type CreateSponsorTier =
+  (typeof CreateSponsorTier)[keyof typeof CreateSponsorTier];
+
+export const CreateSponsorTier = {
+  Gold: "Gold",
+  Silver: "Silver",
+  Bronze: "Bronze",
+} as const;
+
+export interface CreateSponsor {
+  name: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+  tier: CreateSponsorTier;
+  active: boolean;
+}
+
 export type ListPlayersParams = {
   teamId?: number;
 };

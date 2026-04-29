@@ -548,3 +548,60 @@ export const UpdateLogisticsTaskResponse = zod.object({
 export const DeleteLogisticsTaskParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary List all sponsors
+ */
+export const ListSponsorsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  logoUrl: zod.string().optional(),
+  websiteUrl: zod.string().optional(),
+  tier: zod.enum(["Gold", "Silver", "Bronze"]),
+  active: zod.boolean(),
+  createdAt: zod.string().optional(),
+});
+export const ListSponsorsResponse = zod.array(ListSponsorsResponseItem);
+
+/**
+ * @summary Create a sponsor
+ */
+export const CreateSponsorBody = zod.object({
+  name: zod.string(),
+  logoUrl: zod.string().optional(),
+  websiteUrl: zod.string().optional(),
+  tier: zod.enum(["Gold", "Silver", "Bronze"]),
+  active: zod.boolean(),
+});
+
+/**
+ * @summary Update a sponsor
+ */
+export const UpdateSponsorParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateSponsorBody = zod.object({
+  name: zod.string(),
+  logoUrl: zod.string().optional(),
+  websiteUrl: zod.string().optional(),
+  tier: zod.enum(["Gold", "Silver", "Bronze"]),
+  active: zod.boolean(),
+});
+
+export const UpdateSponsorResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  logoUrl: zod.string().optional(),
+  websiteUrl: zod.string().optional(),
+  tier: zod.enum(["Gold", "Silver", "Bronze"]),
+  active: zod.boolean(),
+  createdAt: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a sponsor
+ */
+export const DeleteSponsorParams = zod.object({
+  id: zod.coerce.number(),
+});

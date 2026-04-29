@@ -1,4 +1,4 @@
-import sponsorsData from "../content/sponsors.json";
+import { useState, useEffect } from "react";
 import FundraisingThermometer from "../components/FundraisingThermometer";
 import PledgeForm from "../components/PledgeForm";
 
@@ -29,12 +29,14 @@ const TIER_STYLES = {
   },
 };
 
+const TIER_ORDER = ["Gold", "Silver", "Bronze"];
+
 const sponsorshipEmail = "sponsorship@hkmastershockey.com";
 
 function SponsorLogo({ sponsor }) {
-  const inner = sponsor.logo ? (
+  const inner = sponsor.logoUrl ? (
     <img
-      src={sponsor.logo}
+      src={sponsor.logoUrl}
       alt={sponsor.name}
       className="max-h-16 max-w-[180px] object-contain"
     />
@@ -45,10 +47,10 @@ function SponsorLogo({ sponsor }) {
     </div>
   );
 
-  if (sponsor.website) {
+  if (sponsor.websiteUrl) {
     return (
       <a
-        href={sponsor.website}
+        href={sponsor.websiteUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center justify-center min-h-[100px] hover:shadow-md transition-shadow"
@@ -66,13 +68,28 @@ function SponsorLogo({ sponsor }) {
 }
 
 export default function Sponsors() {
-  const tiers = sponsorsData.tiers.map((tier) => ({
-    ...tier,
-    ...(TIER_STYLES[tier.name] || TIER_STYLES.Bronze),
-  }));
+  const [sponsors, setSponsors] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeTiers = tiers.filter((t) => t.sponsors && t.sponsors.length > 0);
-  const hasSponsors = activeTiers.length > 0;
+  useEffect(() => {
+    fetch("/api/sponsors")
+      .then((res) => res.json())
+      .then((data) => {
+        setSponsors(Array.isArray(data) ? data : []);
+      })
+      .catch(() => setSponsors([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const activeSponsors = sponsors.filter((s) => s.active);
+
+  const tierGroups = TIER_ORDER.map((tierName) => ({
+    name: tierName,
+    sponsors: activeSponsors.filter((s) => s.tier === tierName),
+    ...TIER_STYLES[tierName],
+  })).filter((t) => t.sponsors.length > 0);
+
+  const hasSponsors = tierGroups.length > 0;
 
   return (
     <div>
@@ -85,9 +102,15 @@ export default function Sponsors() {
         </div>
       </div>
 
-      {hasSponsors ? (
+      {loading ? (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
+          <div className="bg-gray-50 rounded-2xl p-12">
+            <p className="text-gray-400 text-sm">Loading sponsors...</p>
+          </div>
+        </section>
+      ) : hasSponsors ? (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-          {activeTiers.map((tier) => (
+          {tierGroups.map((tier) => (
             <div key={tier.name}>
               <div className="flex items-center gap-3 mb-6">
                 <span
@@ -107,7 +130,7 @@ export default function Sponsors() {
                 }`}
               >
                 {tier.sponsors.map((sponsor, i) => (
-                  <SponsorLogo key={sponsor.name || i} sponsor={sponsor} />
+                  <SponsorLogo key={sponsor.id ?? i} sponsor={sponsor} />
                 ))}
               </div>
             </div>

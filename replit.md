@@ -5,7 +5,7 @@
 Two separate web applications managed in a pnpm monorepo:
 
 1. **Public website** (`hk-masters-web`) — the club's public-facing site promoting the MO40 and MO50 teams at the Rotterdam 2026 World Masters Hockey Cup. Live at **hkmastershockey.com**.
-2. **Management app** (`hk-masters`) — internal admin tool for managing players, kits, fundraising, logistics, and the Journal moderation queue.
+2. **Management app** (`hk-masters`) — internal admin tool for managing players, kits, fundraising, sponsors, logistics, and the Journal moderation queue.
 3. **API server** (`api-server`) — shared Express backend used by both apps.
 
 ## Deployment Architecture

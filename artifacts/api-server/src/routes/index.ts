@@ -9,6 +9,7 @@ import logisticsRouter from "./logistics";
 import dashboardRouter from "./dashboard";
 import contributionsRouter from "./contributions";
 import adminAuthRouter from "./adminAuth";
+import sponsorsRouter from "./sponsors";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/logistics", logisticsRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/contributions", contributionsRouter);
 router.use("/admin/auth", adminAuthRouter);
+router.use("/sponsors", sponsorsRouter);
 
 export default router;

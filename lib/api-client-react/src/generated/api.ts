@@ -21,6 +21,7 @@ import type {
   CreateKitOrder,
   CreateLogisticsTask,
   CreatePlayer,
+  CreateSponsor,
   CreateTeam,
   DashboardStats,
   FundraisingEntry,
@@ -31,6 +32,7 @@ import type {
   ListPlayersParams,
   LogisticsTask,
   Player,
+  Sponsor,
   Team,
 } from "./api.schemas";
 
@@ -1898,4 +1900,336 @@ export const useDeleteLogisticsTask = <
   TContext
 > => {
   return useMutation(getDeleteLogisticsTaskMutationOptions(options));
+};
+
+/**
+ * @summary List all sponsors
+ */
+export const getListSponsorsUrl = () => {
+  return `/api/sponsors`;
+};
+
+export const listSponsors = async (
+  options?: RequestInit,
+): Promise<Sponsor[]> => {
+  return customFetch<Sponsor[]>(getListSponsorsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSponsorsQueryKey = () => {
+  return [`/api/sponsors`] as const;
+};
+
+export const getListSponsorsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSponsors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSponsors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSponsorsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSponsors>>> = ({
+    signal,
+  }) => listSponsors({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSponsors>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSponsorsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSponsors>>
+>;
+export type ListSponsorsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all sponsors
+ */
+
+export function useListSponsors<
+  TData = Awaited<ReturnType<typeof listSponsors>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSponsors>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSponsorsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a sponsor
+ */
+export const getCreateSponsorUrl = () => {
+  return `/api/sponsors`;
+};
+
+export const createSponsor = async (
+  createSponsor: CreateSponsor,
+  options?: RequestInit,
+): Promise<Sponsor> => {
+  return customFetch<Sponsor>(getCreateSponsorUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSponsor),
+  });
+};
+
+export const getCreateSponsorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSponsor>>,
+    TError,
+    { data: BodyType<CreateSponsor> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSponsor>>,
+  TError,
+  { data: BodyType<CreateSponsor> },
+  TContext
+> => {
+  const mutationKey = ["createSponsor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSponsor>>,
+    { data: BodyType<CreateSponsor> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createSponsor(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSponsorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSponsor>>
+>;
+export type CreateSponsorMutationBody = BodyType<CreateSponsor>;
+export type CreateSponsorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a sponsor
+ */
+export const useCreateSponsor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSponsor>>,
+    TError,
+    { data: BodyType<CreateSponsor> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSponsor>>,
+  TError,
+  { data: BodyType<CreateSponsor> },
+  TContext
+> => {
+  return useMutation(getCreateSponsorMutationOptions(options));
+};
+
+/**
+ * @summary Update a sponsor
+ */
+export const getUpdateSponsorUrl = (id: number) => {
+  return `/api/sponsors/${id}`;
+};
+
+export const updateSponsor = async (
+  id: number,
+  createSponsor: CreateSponsor,
+  options?: RequestInit,
+): Promise<Sponsor> => {
+  return customFetch<Sponsor>(getUpdateSponsorUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSponsor),
+  });
+};
+
+export const getUpdateSponsorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSponsor>>,
+    TError,
+    { id: number; data: BodyType<CreateSponsor> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSponsor>>,
+  TError,
+  { id: number; data: BodyType<CreateSponsor> },
+  TContext
+> => {
+  const mutationKey = ["updateSponsor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSponsor>>,
+    { id: number; data: BodyType<CreateSponsor> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSponsor(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSponsorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSponsor>>
+>;
+export type UpdateSponsorMutationBody = BodyType<CreateSponsor>;
+export type UpdateSponsorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a sponsor
+ */
+export const useUpdateSponsor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSponsor>>,
+    TError,
+    { id: number; data: BodyType<CreateSponsor> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSponsor>>,
+  TError,
+  { id: number; data: BodyType<CreateSponsor> },
+  TContext
+> => {
+  return useMutation(getUpdateSponsorMutationOptions(options));
+};
+
+/**
+ * @summary Delete a sponsor
+ */
+export const getDeleteSponsorUrl = (id: number) => {
+  return `/api/sponsors/${id}`;
+};
+
+export const deleteSponsor = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteSponsorUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSponsorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSponsor>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSponsor>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSponsor"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSponsor>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSponsor(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSponsorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSponsor>>
+>;
+
+export type DeleteSponsorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a sponsor
+ */
+export const useDeleteSponsor = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSponsor>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSponsor>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSponsorMutationOptions(options));
 };
