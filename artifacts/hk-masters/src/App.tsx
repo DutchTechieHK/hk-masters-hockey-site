@@ -10,6 +10,7 @@ import Kits from "@/pages/Kits";
 import Fundraising from "@/pages/Fundraising";
 import Logistics from "@/pages/Logistics";
 import Journal from "@/pages/Journal";
+import Travel from "@/pages/Travel";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/kits" component={Kits} />
       <Route path="/fundraising" component={Fundraising} />
       <Route path="/logistics" component={Logistics} />
+      <Route path="/travel" component={Travel} />
       <Route path="/journal" component={Journal} />
       <Route component={NotFound} />
     </Switch>
