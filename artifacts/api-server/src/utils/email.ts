@@ -508,6 +508,76 @@ Pledge #${opts.pledgeId} — status: pending`;
   console.log(`[email] Admin pledge notification sent for pledge #${opts.pledgeId}`);
 }
 
+export async function sendPledgeConfirmationEmail(opts: {
+  donorName: string;
+  donorEmail: string;
+  amount: number;
+  note?: string;
+  pledgeId: number;
+}) {
+  const safeName = escapeHtml(opts.donorName);
+  const safeNote = opts.note ? escapeHtml(opts.note) : null;
+  const formattedAmount = `HK$${opts.amount.toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+  const noteSection = safeNote
+    ? `<p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+        Your message: <em>&ldquo;${safeNote}&rdquo;</em>
+      </p>`
+    : "";
+
+  const html = emailShell(
+    "#006B3C",
+    "Thank you for your pledge",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Thank you for your generous support of the <strong>HK Masters Hockey 2026 World Cup</strong>! We've received your pledge and truly appreciate your commitment to the team.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:12px 16px;font-size:13px;font-weight:600;color:#6b7280;width:160px;">Pledge amount</td>
+        <td style="padding:12px 16px;font-size:16px;font-weight:700;color:#006B3C;">${formattedAmount}</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Reference</td>
+        <td style="padding:12px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">Pledge #${opts.pledgeId}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:12px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Status</td>
+        <td style="padding:12px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">Pending — a team member will be in touch</td>
+      </tr>
+    </table>
+    ${noteSection}
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      A member of our team will follow up with you shortly to arrange the next steps for your pledge.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.donorName},
+
+Thank you for your generous support of the HK Masters Hockey 2026 World Cup! We've received your pledge and truly appreciate your commitment to the team.
+
+Pledge amount: ${formattedAmount}
+Reference: Pledge #${opts.pledgeId}
+Status: Pending — a team member will be in touch${opts.note ? `\n\nYour message: "${opts.note}"` : ""}
+
+A member of our team will follow up with you shortly to arrange the next steps for your pledge.
+
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  await sendEmail({
+    to: opts.donorEmail,
+    subject: `Thank you for your pledge — HK Masters Hockey 2026`,
+    html,
+    text,
+  });
+  console.log(`[email] Pledge confirmation sent to ${opts.donorEmail} for pledge #${opts.pledgeId}`);
+}
+
 export async function sendContributionDecisionEmail(opts: {
   authorName: string;
   authorEmail: string;

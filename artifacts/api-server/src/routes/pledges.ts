@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { fundraisingTable } from "@workspace/db/schema";
-import { sendNewPledgeEmail } from "../utils/email";
+import { sendNewPledgeEmail, sendPledgeConfirmationEmail } from "../utils/email";
 
 const router = Router();
 
@@ -62,6 +62,14 @@ router.post("/", async (req, res) => {
     note: cleanNote || undefined,
     pledgeId: entry.id,
   }).catch((err) => console.error("[email] Failed to send pledge notification:", err));
+
+  sendPledgeConfirmationEmail({
+    donorName: cleanName,
+    donorEmail: cleanEmail,
+    amount: parsedAmount,
+    note: cleanNote || undefined,
+    pledgeId: entry.id,
+  }).catch((err) => console.error("[email] Failed to send pledge confirmation:", err));
 
   res.status(201).json({
     id: entry.id,
