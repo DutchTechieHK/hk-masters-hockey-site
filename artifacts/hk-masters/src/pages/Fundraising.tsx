@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useListFundraising, useCreateFundraising, useUpdateFundraising, useDeleteFundraising, getListFundraisingQueryKey, useListTeams } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins } from "lucide-react"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -15,6 +15,32 @@ import type { FundraisingEntry } from "@workspace/api-client-react/src/generated
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
+
+const SESSION_KEY = "hkm_admin_session"
+function getStoredToken(): string | null {
+  try { return localStorage.getItem(SESSION_KEY) } catch { return null }
+}
+function storeToken(token: string) {
+  try { localStorage.setItem(SESSION_KEY, token) } catch { /* noop */ }
+}
+async function apiLogin(password: string): Promise<string> {
+  const res = await fetch("/api/admin/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? "Login failed")
+  }
+  const data = await res.json() as { token: string }
+  return data.token
+}
+async function apiCheckSession(token: string): Promise<boolean> {
+  const res = await fetch("/api/admin/auth", { headers: { "x-session-token": token } })
+  const data = await res.json() as { authenticated: boolean }
+  return data.authenticated
+}
 
 const fundSchema = z.object({
   donorName: z.string().min(1, "Donor name is required"),
@@ -37,9 +63,43 @@ const STATUS_COLORS = {
 export default function Fundraising() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
+  const [sessionChecked, setSessionChecked] = useState(false)
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [loginLoading, setLoginLoading] = useState(false)
+
+  useEffect(() => {
+    const stored = getStoredToken()
+    if (stored) {
+      apiCheckSession(stored).then((valid) => {
+        if (valid) setSessionToken(stored)
+        setSessionChecked(true)
+      }).catch(() => setSessionChecked(true))
+    } else {
+      setSessionChecked(true)
+    }
+  }, [])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginLoading(true)
+    setLoginError(null)
+    try {
+      const token = await apiLogin(loginPassword)
+      storeToken(token)
+      setSessionToken(token)
+      setLoginPassword("")
+      queryClient.invalidateQueries()
+    } catch (err) {
+      setLoginError((err as Error).message || "Login failed")
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
   const { data: teams = [] } = useListTeams()
-  const { data: entries = [], isLoading } = useListFundraising()
+  const { data: entries = [], isLoading } = useListFundraising({ query: { enabled: !!sessionToken } })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FundraisingEntry | null>(null)
@@ -108,6 +168,43 @@ export default function Fundraising() {
 
   const totalPledged = entries.reduce((sum, e) => sum + e.amountPledged, 0)
   const totalReceived = entries.reduce((sum, e) => sum + e.amountReceived, 0)
+
+  if (!sessionChecked) {
+    return (
+      <PageLayout title="Sponsors & Fundraising" description="Checking access...">
+        <div className="flex items-center justify-center py-24 text-muted-foreground">Loading...</div>
+      </PageLayout>
+    )
+  }
+
+  if (!sessionToken) {
+    return (
+      <PageLayout title="Sponsors & Fundraising" description="Admin access required to view fundraising records.">
+        <div className="max-w-sm mx-auto mt-12">
+          <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
+            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-5">
+              <Lock className="w-6 h-6 text-primary" />
+            </div>
+            <h2 className="text-lg font-bold text-center mb-1">Admin Login</h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">Enter your admin password to access fundraising records.</p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <Input
+                type="password"
+                placeholder="Admin password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                autoFocus
+              />
+              {loginError && <p className="text-xs text-destructive">{loginError}</p>}
+              <Button type="submit" className="w-full" disabled={loginLoading || !loginPassword}>
+                {loginLoading ? "Signing in…" : "Sign in"}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </PageLayout>
+    )
+  }
 
   return (
     <PageLayout

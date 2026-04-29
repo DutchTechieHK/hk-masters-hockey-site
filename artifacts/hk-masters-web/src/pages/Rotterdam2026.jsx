@@ -4,6 +4,8 @@ import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
 import AutoLink from "../components/AutoLink";
 import RichText from "../components/RichText";
+import FundraisingThermometer from "../components/FundraisingThermometer";
+import PledgeForm from "../components/PledgeForm";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
@@ -194,6 +196,26 @@ export default function Rotterdam2026() {
                 <RichText content={item.body} className="text-sm text-gray-600 leading-relaxed" />
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Fundraising Thermometer & Pledge Form */}
+      <section id="fundraising" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Fundraising Progress</h2>
+            <p className="text-gray-600 text-sm mb-6">
+              Help Hong Kong Masters Hockey reach their goal for Rotterdam 2026.
+            </p>
+            <FundraisingThermometer />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Pledge Your Support</h2>
+            <p className="text-gray-600 text-sm mb-6">
+              No payment is taken now — a team member will follow up with you directly.
+            </p>
+            <PledgeForm />
           </div>
         </div>
       </section>

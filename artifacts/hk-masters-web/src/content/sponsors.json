@@ -1,0 +1,16 @@
+{
+  "tiers": [
+    {
+      "name": "Gold",
+      "sponsors": []
+    },
+    {
+      "name": "Silver",
+      "sponsors": []
+    },
+    {
+      "name": "Bronze",
+      "sponsors": []
+    }
+  ]
+}

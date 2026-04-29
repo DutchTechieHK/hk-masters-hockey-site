@@ -450,6 +450,64 @@ Contribution #${opts.contributionId} has been removed from the system.`;
   console.log(`[email] Admin deletion notification sent for contribution #${opts.contributionId}`);
 }
 
+export async function sendNewPledgeEmail(opts: {
+  donorName: string;
+  donorEmail: string;
+  amount: number;
+  note?: string;
+  pledgeId: number;
+}) {
+  const safeName = escapeHtml(opts.donorName);
+  const safeEmail = escapeHtml(opts.donorEmail);
+  const safeNote = opts.note ? escapeHtml(opts.note) : null;
+  const formattedAmount = `HK$${opts.amount.toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+  const noteRow = safeNote
+    ? `<tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;width:120px;">Note</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${safeNote}</td>
+      </tr>`
+    : "";
+
+  const html = emailShell(
+    "#006B3C",
+    "New Pledge Received",
+    `<p style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:#1f2937;">New Fundraising Pledge</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:120px;">Name</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Email</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;"><a href="mailto:${safeEmail}" style="color:#006B3C;text-decoration:none;">${safeEmail}</a></td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Amount Pledged</td>
+        <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#006B3C;border-top:1px solid #e5e7eb;">${formattedAmount}</td>
+      </tr>
+      ${noteRow}
+    </table>
+    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">Pledge #${opts.pledgeId} — status: pending</p>`
+  );
+
+  const text = `New Fundraising Pledge Received
+
+Name: ${opts.donorName}
+Email: ${opts.donorEmail}
+Amount Pledged: ${formattedAmount}${opts.note ? `\nNote: ${opts.note}` : ""}
+
+Pledge #${opts.pledgeId} — status: pending`;
+
+  await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[HK Masters] New pledge from ${opts.donorName} — ${formattedAmount}`,
+    html,
+    text,
+  });
+  console.log(`[email] Admin pledge notification sent for pledge #${opts.pledgeId}`);
+}
+
 export async function sendContributionDecisionEmail(opts: {
   authorName: string;
   authorEmail: string;

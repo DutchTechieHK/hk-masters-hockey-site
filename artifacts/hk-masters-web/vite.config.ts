@@ -5,6 +5,7 @@ import path from "path";
 
 const isReplit = !!process.env.REPL_ID;
 const isNetlify = !!process.env.NETLIFY;
+const replitDevDomain = process.env.REPLIT_DEV_DOMAIN;
 
 const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
@@ -26,6 +27,11 @@ const replitPlugins =
 
 export default defineConfig({
   base: basePath,
+  define: {
+    ...(isReplit && replitDevDomain && !process.env.VITE_API_BASE_URL
+      ? { "import.meta.env.VITE_API_BASE_URL": JSON.stringify(`https://${replitDevDomain}`) }
+      : {}),
+  },
   plugins: [react(), tailwindcss(), ...replitPlugins],
   resolve: {
     alias: {
@@ -46,6 +52,12 @@ export default defineConfig({
     fs: {
       strict: true,
       deny: ["**/.*"],
+    },
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.API_PORT || 8080}`,
+        changeOrigin: true,
+      },
     },
   },
   preview: {

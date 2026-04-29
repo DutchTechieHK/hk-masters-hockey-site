@@ -1,17 +1,33 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { fundraisingTable, teamsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   CreateFundraisingBody,
   UpdateFundraisingBody,
   UpdateFundraisingParams,
   DeleteFundraisingParams,
 } from "@workspace/api-zod";
+import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
+router.get("/summary", async (_req, res) => {
+  const [row] = await db
+    .select({
+      totalPledged: sql<string>`COALESCE(SUM(${fundraisingTable.amountPledged}), 0)`,
+      totalReceived: sql<string>`COALESCE(SUM(${fundraisingTable.amountReceived}), 0)`,
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(fundraisingTable);
+  res.json({
+    totalPledged: parseFloat(row.totalPledged),
+    totalReceived: parseFloat(row.totalReceived),
+    count: Number(row.count),
+  });
+});
+
+router.get("/", requireAdminAccess, async (_req, res) => {
   const entries = await db
     .select({ f: fundraisingTable, teamName: teamsTable.name })
     .from(fundraisingTable)
@@ -31,7 +47,7 @@ router.get("/", async (_req, res) => {
   })));
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdminAccess, async (req, res) => {
   const body = CreateFundraisingBody.parse(req.body);
   const [entry] = await db.insert(fundraisingTable).values({
     donorName: body.donorName,
@@ -61,7 +77,7 @@ router.post("/", async (req, res) => {
   });
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateFundraisingParams.parse(req.params);
   const body = UpdateFundraisingBody.parse(req.body);
   const [entry] = await db.update(fundraisingTable).set({
@@ -92,7 +108,7 @@ router.put("/:id", async (req, res) => {
   });
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteFundraisingParams.parse(req.params);
   await db.delete(fundraisingTable).where(eq(fundraisingTable.id, id));
   res.status(204).send();

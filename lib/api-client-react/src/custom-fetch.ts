@@ -271,6 +271,18 @@ async function parseSuccessBody(
   }
 }
 
+const ADMIN_SESSION_KEY = "hkm_admin_session";
+
+function getAdminSessionHeader(): HeadersInit | undefined {
+  try {
+    if (typeof localStorage === "undefined") return undefined;
+    const token = localStorage.getItem(ADMIN_SESSION_KEY);
+    return token ? { "x-session-token": token } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function customFetch<T = unknown>(
   input: RequestInfo | URL,
   options: CustomFetchOptions = {},
@@ -283,7 +295,11 @@ export async function customFetch<T = unknown>(
     throw new TypeError(`customFetch: ${method} requests cannot have a body.`);
   }
 
-  const headers = mergeHeaders(isRequest(input) ? input.headers : undefined, headersInit);
+  const headers = mergeHeaders(
+    isRequest(input) ? input.headers : undefined,
+    getAdminSessionHeader(),
+    headersInit,
+  );
 
   if (
     typeof init.body === "string" &&
