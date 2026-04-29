@@ -9,6 +9,7 @@ import {
   DeleteFundraisingParams,
 } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { sendPledgeReceivedEmail } from "../utils/email";
 
 const router = Router();
 
@@ -83,6 +84,10 @@ router.post("/", requireAdminAccess, async (req, res) => {
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateFundraisingParams.parse(req.params);
   const body = UpdateFundraisingBody.parse(req.body);
+
+  const [existing] = await db.select().from(fundraisingTable).where(eq(fundraisingTable.id, id));
+  const previousStatus = existing?.status;
+
   const paidAt = body.paidAt !== undefined ? new Date(body.paidAt) : undefined;
   const [entry] = await db.update(fundraisingTable).set({
     donorName: body.donorName,
@@ -94,11 +99,24 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     notes: body.notes,
     paidAt,
   }).where(eq(fundraisingTable.id, id)).returning();
+
   let teamName: string | undefined;
   if (entry.teamId) {
     const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, entry.teamId));
     teamName = team?.name;
   }
+
+  if (body.status === "received" && previousStatus !== "received" && entry.donorEmail) {
+    sendPledgeReceivedEmail({
+      donorName: entry.donorName,
+      donorEmail: entry.donorEmail,
+      amount: parseFloat(entry.amountReceived ?? "0") > 0
+        ? parseFloat(entry.amountReceived ?? "0")
+        : parseFloat(entry.amountPledged ?? "0"),
+      pledgeId: entry.id,
+    }).catch((err) => console.error("[email] Failed to send pledge received email:", err));
+  }
+
   res.json({
     id: entry.id,
     donorName: entry.donorName,
