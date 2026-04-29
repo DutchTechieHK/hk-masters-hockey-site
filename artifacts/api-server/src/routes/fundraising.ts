@@ -44,6 +44,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     teamName: teamName ?? undefined,
     status: f.status,
     notes: f.notes,
+    paidAt: f.paidAt?.toISOString(),
     createdAt: f.createdAt?.toISOString(),
   })));
 });
@@ -74,6 +75,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     teamName,
     status: entry.status,
     notes: entry.notes,
+    paidAt: entry.paidAt?.toISOString(),
     createdAt: entry.createdAt?.toISOString(),
   });
 });
@@ -81,6 +83,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateFundraisingParams.parse(req.params);
   const body = UpdateFundraisingBody.parse(req.body);
+  const paidAt = body.paidAt !== undefined ? new Date(body.paidAt) : undefined;
   const [entry] = await db.update(fundraisingTable).set({
     donorName: body.donorName,
     amountPledged: body.amountPledged !== undefined ? String(body.amountPledged) : undefined,
@@ -89,6 +92,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     teamId: body.teamId,
     status: body.status,
     notes: body.notes,
+    paidAt,
   }).where(eq(fundraisingTable.id, id)).returning();
   let teamName: string | undefined;
   if (entry.teamId) {
@@ -105,6 +109,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     teamName,
     status: entry.status,
     notes: entry.notes,
+    paidAt: entry.paidAt?.toISOString(),
     createdAt: entry.createdAt?.toISOString(),
   });
 });

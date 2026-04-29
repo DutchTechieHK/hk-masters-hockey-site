@@ -217,6 +217,7 @@ export interface FundraisingEntry {
   teamName?: string;
   status: FundraisingEntryStatus;
   notes?: string;
+  paidAt?: string;
   createdAt?: string;
 }
 
@@ -237,6 +238,7 @@ export interface CreateFundraisingEntry {
   teamId?: number;
   status: CreateFundraisingEntryStatus;
   notes?: string;
+  paidAt?: string;
 }
 
 export type LogisticsTaskCategory =

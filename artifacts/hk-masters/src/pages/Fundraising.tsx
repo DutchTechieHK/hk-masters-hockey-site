@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock } from "lucide-react"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -147,6 +147,28 @@ export default function Fundraising() {
     }
   }
 
+  const handleMarkAsPaid = async (entry: FundraisingEntry) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: entry.id,
+        data: {
+          donorName: entry.donorName,
+          amountPledged: entry.amountPledged,
+          amountReceived: entry.amountReceived,
+          date: entry.date,
+          teamId: entry.teamId,
+          status: "received",
+          notes: entry.notes || undefined,
+          paidAt: new Date().toISOString(),
+        },
+      })
+      queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
+      toast({ title: "Marked as paid", description: `Payment recorded for ${entry.donorName}` })
+    } catch {
+      toast({ title: "Failed to mark as paid", variant: "destructive" })
+    }
+  }
+
   const onSubmit = async (data: FundFormValues) => {
     try {
       // API expects undefined rather than null for absent teamId if not assigned to specific team
@@ -250,14 +272,15 @@ export default function Fundraising() {
                 <th className="px-6 py-4 font-semibold text-right">Received</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold">Date</th>
+                <th className="px-6 py-4 font-semibold">Paid Date</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
+                <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
               ) : entries.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
+                <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
               ) : (
                 entries.map(entry => (
                   <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
@@ -281,8 +304,23 @@ export default function Fundraising() {
                     <td className="px-6 py-4 text-muted-foreground">
                       {entry.date ? format(parseISO(entry.date), 'MMM d, yyyy') : '-'}
                     </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {entry.paidAt
+                        ? <span className="text-emerald-600 font-medium">{format(parseISO(entry.paidAt), 'MMM d, yyyy')}</span>
+                        : <span className="text-xs italic">—</span>
+                      }
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {entry.status !== "received" && (
+                          <button
+                            onClick={() => handleMarkAsPaid(entry)}
+                            title="Mark as paid"
+                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
+                          >
+                            <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => openEditModal(entry)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
                           <Edit2 className="w-4 h-4" />
                         </button>

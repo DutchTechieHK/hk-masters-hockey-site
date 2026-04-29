@@ -18,5 +18,6 @@ export interface FundraisingEntry {
   teamName?: string;
   status: FundraisingEntryStatus;
   notes?: string;
+  paidAt?: string;
   createdAt?: string;
 }
