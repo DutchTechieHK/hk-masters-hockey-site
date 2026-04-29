@@ -245,6 +245,7 @@ export default function Fundraising() {
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
               <tr>
                 <th className="px-6 py-4 font-semibold">Donor / Sponsor</th>
+                <th className="px-6 py-4 font-semibold">Email</th>
                 <th className="px-6 py-4 font-semibold text-right">Pledged</th>
                 <th className="px-6 py-4 font-semibold text-right">Received</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
@@ -254,15 +255,21 @@ export default function Fundraising() {
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
               ) : entries.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
+                <tr><td colSpan={7} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
               ) : (
                 entries.map(entry => (
                   <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
                     <td className="px-6 py-4">
                       <div className="font-bold text-foreground">{entry.donorName}</div>
                       <div className="text-xs text-muted-foreground">{entry.teamName || 'All Teams (General)'}</div>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      {entry.donorEmail
+                        ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors">{entry.donorEmail}</a>
+                        : <span className="text-xs italic">—</span>
+                      }
                     </td>
                     <td className="px-6 py-4 text-right font-medium text-foreground">{formatCurrency(entry.amountPledged)}</td>
                     <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(entry.amountReceived)}</td>

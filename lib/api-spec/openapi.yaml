@@ -773,6 +773,8 @@ components:
           type: integer
         donorName:
           type: string
+        donorEmail:
+          type: string
         amountPledged:
           type: number
         amountReceived:

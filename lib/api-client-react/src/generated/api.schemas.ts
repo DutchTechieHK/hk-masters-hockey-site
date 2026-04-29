@@ -209,6 +209,7 @@ export const FundraisingEntryStatus = {
 export interface FundraisingEntry {
   id: number;
   donorName: string;
+  donorEmail?: string;
   amountPledged: number;
   amountReceived: number;
   date?: string;

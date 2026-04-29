@@ -6,6 +6,7 @@ import { teamsTable } from "./teams";
 export const fundraisingTable = pgTable("fundraising", {
   id: serial("id").primaryKey(),
   donorName: text("donor_name").notNull(),
+  donorEmail: text("donor_email"),
   amountPledged: numeric("amount_pledged", { precision: 10, scale: 2 }).notNull(),
   amountReceived: numeric("amount_received", { precision: 10, scale: 2 }).notNull().default("0"),
   date: text("date"),

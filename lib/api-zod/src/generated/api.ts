@@ -387,6 +387,7 @@ export const DeleteKitParams = zod.object({
 export const ListFundraisingResponseItem = zod.object({
   id: zod.number(),
   donorName: zod.string(),
+  donorEmail: zod.string().optional(),
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),
@@ -431,6 +432,7 @@ export const UpdateFundraisingBody = zod.object({
 export const UpdateFundraisingResponse = zod.object({
   id: zod.number(),
   donorName: zod.string(),
+  donorEmail: zod.string().optional(),
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),

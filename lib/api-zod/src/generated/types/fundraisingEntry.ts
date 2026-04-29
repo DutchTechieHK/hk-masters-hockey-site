@@ -10,6 +10,7 @@ import type { FundraisingEntryStatus } from "./fundraisingEntryStatus";
 export interface FundraisingEntry {
   id: number;
   donorName: string;
+  donorEmail?: string;
   amountPledged: number;
   amountReceived: number;
   date?: string;

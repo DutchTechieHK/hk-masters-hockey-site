@@ -39,14 +39,13 @@ router.post("/", async (req, res) => {
   const cleanNote = typeof note === "string" ? note.trim() : "";
   const today = new Date().toISOString().slice(0, 10);
 
-  const noteParts: string[] = [`Email: ${cleanEmail}`];
-  if (cleanNote) noteParts.push(`Note: ${cleanNote}`);
-  const notes = noteParts.join("\n\n");
+  const notes = cleanNote || undefined;
 
   const [entry] = await db
     .insert(fundraisingTable)
     .values({
       donorName: cleanName,
+      donorEmail: cleanEmail,
       amountPledged: String(parsedAmount),
       amountReceived: "0",
       date: today,

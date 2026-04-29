@@ -36,6 +36,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   res.json(entries.map(({ f, teamName }) => ({
     id: f.id,
     donorName: f.donorName,
+    donorEmail: f.donorEmail ?? undefined,
     amountPledged: parseFloat(f.amountPledged ?? "0"),
     amountReceived: parseFloat(f.amountReceived ?? "0"),
     date: f.date,
