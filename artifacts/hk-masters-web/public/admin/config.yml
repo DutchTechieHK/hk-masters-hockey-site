@@ -158,7 +158,7 @@ collections:
             hint: "One card per squad — update pools, first matches and player lists here"
             fields:
               - { label: Squad Name, name: name, widget: string }
-              - { label: Category Badge, name: category, widget: string, hint: "e.g. W35, M40, M50" }
+              - { label: Category Badge, name: category, widget: string, hint: "e.g. M40, M50" }
               - { label: Pool Group, name: pool_group, widget: string, required: false, hint: "e.g. Pool A — leave blank until draw is announced" }
               - { label: First Match, name: first_match, widget: string, required: false, hint: "e.g. July 23 vs Australia — leave blank until schedule is published" }
               - label: Player List
@@ -210,7 +210,7 @@ collections:
               - { label: Event Name, name: name, widget: string }
               - { label: Date, name: date, widget: string }
               - { label: Location, name: location, widget: string }
-              - { label: Results, name: result, widget: string, required: false, hint: "e.g. M35: Champions | W35: Semi-finalists" }
+              - { label: Results, name: result, widget: string, required: false, hint: "e.g. MO40: Champions | MO50: Semi-finalists" }
               - { label: Description, name: description, widget: markdown }
           - label: Tournament Archive
             name: tournament_archive
