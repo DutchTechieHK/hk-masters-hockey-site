@@ -44,6 +44,7 @@ async function apiCheckSession(token: string): Promise<boolean> {
 
 const fundSchema = z.object({
   donorName: z.string().min(1, "Donor name is required"),
+  donorEmail: z.string().email("Invalid email address").optional().or(z.literal("")),
   amountPledged: z.coerce.number().min(0),
   amountReceived: z.coerce.number().min(0),
   date: z.string().optional(),
@@ -115,7 +116,7 @@ export default function Fundraising() {
   const openAddModal = () => {
     setEditingEntry(null)
     reset({ 
-      donorName: "", amountPledged: 0, amountReceived: 0, 
+      donorName: "", donorEmail: "", amountPledged: 0, amountReceived: 0, 
       date: new Date().toISOString().split('T')[0],
       teamId: null, status: "pending", notes: "" 
     })
@@ -126,6 +127,7 @@ export default function Fundraising() {
     setEditingEntry(entry)
     reset({
       donorName: entry.donorName,
+      donorEmail: entry.donorEmail || "",
       amountPledged: entry.amountPledged,
       amountReceived: entry.amountReceived,
       date: entry.date ? entry.date.split('T')[0] : "",
@@ -171,8 +173,11 @@ export default function Fundraising() {
 
   const onSubmit = async (data: FundFormValues) => {
     try {
-      // API expects undefined rather than null for absent teamId if not assigned to specific team
-      const payload = { ...data, teamId: data.teamId === 0 || !data.teamId ? undefined : data.teamId }
+      const payload = {
+        ...data,
+        teamId: data.teamId === 0 || !data.teamId ? undefined : data.teamId,
+        donorEmail: data.donorEmail || undefined,
+      }
       
       if (editingEntry) {
         await updateMutation.mutateAsync({ id: editingEntry.id, data: payload as any })
@@ -343,6 +348,12 @@ export default function Fundraising() {
             <label className="text-sm font-semibold">Donor / Sponsor Name</label>
             <Input {...register("donorName")} placeholder="Company X or Individual Name" />
             {errors.donorName && <p className="text-xs text-destructive">{errors.donorName.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Donor Email <span className="font-normal text-muted-foreground">(Optional)</span></label>
+            <Input type="email" {...register("donorEmail")} placeholder="donor@example.com" />
+            {errors.donorEmail && <p className="text-xs text-destructive">{errors.donorEmail.message}</p>}
           </div>
           
           <div className="grid grid-cols-2 gap-4">

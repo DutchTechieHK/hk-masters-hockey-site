@@ -54,6 +54,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
   const body = CreateFundraisingBody.parse(req.body);
   const [entry] = await db.insert(fundraisingTable).values({
     donorName: body.donorName,
+    donorEmail: body.donorEmail,
     amountPledged: String(body.amountPledged),
     amountReceived: String(body.amountReceived),
     date: body.date,
@@ -69,6 +70,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
   res.status(201).json({
     id: entry.id,
     donorName: entry.donorName,
+    donorEmail: entry.donorEmail ?? undefined,
     amountPledged: parseFloat(entry.amountPledged ?? "0"),
     amountReceived: parseFloat(entry.amountReceived ?? "0"),
     date: entry.date,
@@ -91,6 +93,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   const paidAt = body.paidAt !== undefined ? new Date(body.paidAt) : undefined;
   const [entry] = await db.update(fundraisingTable).set({
     donorName: body.donorName,
+    donorEmail: body.donorEmail,
     amountPledged: body.amountPledged !== undefined ? String(body.amountPledged) : undefined,
     amountReceived: body.amountReceived !== undefined ? String(body.amountReceived) : undefined,
     date: body.date,
@@ -120,6 +123,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   res.json({
     id: entry.id,
     donorName: entry.donorName,
+    donorEmail: entry.donorEmail ?? undefined,
     amountPledged: parseFloat(entry.amountPledged ?? "0"),
     amountReceived: parseFloat(entry.amountReceived ?? "0"),
     date: entry.date,
