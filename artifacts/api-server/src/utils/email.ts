@@ -21,11 +21,11 @@ async function sendEmail(opts: {
   subject: string;
   html: string;
   text: string;
-}) {
+}): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[email] RESEND_API_KEY not set — skipping email to", opts.to);
-    return;
+    return false;
   }
 
   const { Resend } = await import("resend");
@@ -52,8 +52,10 @@ async function sendEmail(opts: {
 
   if (error) {
     console.error("[email] Failed to deliver to", opts.to, "—", JSON.stringify(error));
+    return false;
   } else {
     console.log(`[email] Sent to ${opts.to}: "${opts.subject}"`);
+    return true;
   }
 }
 
@@ -630,13 +632,65 @@ Questions? Email us at ${ADMIN_EMAIL}.
 
 The HK Masters Hockey Team`;
 
-  await sendEmail({
+  const donorSent = await sendEmail({
     to: opts.donorEmail,
     subject: `Payment received — thank you for supporting HK Masters Hockey 2026`,
     html,
     text,
   });
+
+  if (!donorSent) {
+    console.error(`[email] Skipping admin confirmation for pledge #${opts.pledgeId} — donor email failed to deliver`);
+    return;
+  }
   console.log(`[email] Pledge received confirmation sent to ${opts.donorEmail} for pledge #${opts.pledgeId}`);
+
+  const adminHtml = emailShell(
+    "#1e3a5f",
+    "Thank-you email dispatched",
+    `<p style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:#1f2937;">Thank-you Email Sent to Donor</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      A payment confirmation / thank-you email was successfully dispatched to the donor listed below.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:160px;">Donor</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${escapeHtml(opts.donorName)}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Email</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;"><a href="mailto:${escapeHtml(opts.donorEmail)}" style="color:#006B3C;text-decoration:none;">${escapeHtml(opts.donorEmail)}</a></td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Amount received</td>
+        <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#006B3C;border-top:1px solid #e5e7eb;">${formattedAmount}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Reference</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">Pledge #${opts.pledgeId}</td>
+      </tr>
+    </table>
+    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">This is an automated confirmation — no action required.</p>`
+  );
+
+  const adminText = `Thank-you Email Dispatched — Pledge #${opts.pledgeId}
+
+A payment confirmation email was successfully sent to the donor.
+
+Donor: ${opts.donorName}
+Email: ${opts.donorEmail}
+Amount received: ${formattedAmount}
+Reference: Pledge #${opts.pledgeId}
+
+This is an automated confirmation — no action required.`;
+
+  await sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[HK Masters] Thank-you email sent to ${opts.donorName} — Pledge #${opts.pledgeId}`,
+    html: adminHtml,
+    text: adminText,
+  });
+  console.log(`[email] Admin confirmation sent for pledge #${opts.pledgeId} thank-you to ${opts.donorEmail}`);
 }
 
 export async function sendContributionDecisionEmail(opts: {
