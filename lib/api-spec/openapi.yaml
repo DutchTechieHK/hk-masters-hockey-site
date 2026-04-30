@@ -847,6 +847,7 @@ components:
           type: string
         donorEmail:
           type: string
+          format: email
         amountPledged:
           type: number
         amountReceived:
@@ -876,6 +877,9 @@ components:
       properties:
         donorName:
           type: string
+        donorEmail:
+          type: string
+          format: email
         amountPledged:
           type: number
         amountReceived:

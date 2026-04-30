@@ -405,7 +405,7 @@ export const ListFundraisingResponse = zod.array(ListFundraisingResponseItem);
  */
 export const CreateFundraisingBody = zod.object({
   donorName: zod.string(),
-  donorEmail: zod.string().optional(),
+  donorEmail: zod.string().email().optional(),
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),
@@ -423,7 +423,7 @@ export const UpdateFundraisingParams = zod.object({
 
 export const UpdateFundraisingBody = zod.object({
   donorName: zod.string(),
-  donorEmail: zod.string().optional(),
+  donorEmail: zod.string().email().optional(),
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),
