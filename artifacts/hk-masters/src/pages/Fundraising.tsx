@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle } from "lucide-react"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { FundraisingEntry } from "@workspace/api-client-react/src/generated/api.schemas"
@@ -109,9 +109,10 @@ export default function Fundraising() {
   const updateMutation = useUpdateFundraising()
   const deleteMutation = useDeleteFundraising()
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FundFormValues>({
+  const { register, handleSubmit, reset, control, formState: { errors, isSubmitting } } = useForm<FundFormValues>({
     resolver: zodResolver(fundSchema)
   })
+  const watchedEmail = useWatch({ control, name: "donorEmail" })
 
   const openAddModal = () => {
     setEditingEntry(null)
@@ -337,6 +338,16 @@ export default function Fundraising() {
                       }
                     </td>
                     <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end items-center space-x-2">
+                        {entry.status === "received" && !entry.donorEmail && (
+                          <span
+                            title="No email on file — receipt cannot be sent. Edit this record to add an email address."
+                            className="p-1.5 text-amber-500 cursor-help"
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                          </span>
+                        )}
+                      </div>
                       <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {entry.status !== "received" && (
                           <button
@@ -383,8 +394,19 @@ export default function Fundraising() {
 
           <div className="space-y-2">
             <label className="text-sm font-semibold">Donor Email <span className="font-normal text-muted-foreground">(Optional)</span></label>
-            <Input type="email" {...register("donorEmail")} placeholder="donor@example.com" />
+            <Input
+              type="email"
+              {...register("donorEmail")}
+              placeholder="donor@example.com"
+              className={editingEntry?.status === "received" && !watchedEmail ? "border-amber-400 focus:ring-amber-400" : ""}
+            />
             {errors.donorEmail && <p className="text-xs text-destructive">{errors.donorEmail.message}</p>}
+            {editingEntry?.status === "received" && !watchedEmail && (
+              <p className="text-xs text-amber-600 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3 shrink-0" />
+                No email on file — add one to enable receipt resending.
+              </p>
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-4">
