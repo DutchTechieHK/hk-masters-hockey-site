@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Star, Lock, ExternalLink, ImageOff } from "lucide-react"
+import { Plus, Trash2, Edit2, Star, Lock, ExternalLink, ImageOff, Upload } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { Sponsor } from "@workspace/api-client-react/src/generated/api.schemas"
 import { useToast } from "@/hooks/use-toast"
+
+const CLOUD_NAME = "djyvdrhal"
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "hk_masters_unsigned"
 
 const SESSION_KEY = "hkm_admin_session"
 function getStoredToken(): string | null {
@@ -66,6 +69,51 @@ export default function Sponsors() {
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState<string | null>(null)
   const [loginLoading, setLoginLoading] = useState(false)
+  const [widgetLoaded, setWidgetLoaded] = useState(false)
+  const [uploading, setUploading] = useState(false)
+
+  useEffect(() => {
+    if (document.getElementById("cloudinary-widget-script")) {
+      setWidgetLoaded(true)
+      return
+    }
+    const script = document.createElement("script")
+    script.id = "cloudinary-widget-script"
+    script.src = "https://upload-widget.cloudinary.com/global/all.js"
+    script.onload = () => setWidgetLoaded(true)
+    document.head.appendChild(script)
+  }, [])
+
+  const openUploadWidget = () => {
+    if (!widgetLoaded || !(window as unknown as { cloudinary: { createUploadWidget: (opts: Record<string, unknown>, cb: (err: unknown, result: { event: string; info: { secure_url: string } }) => void) => { open: () => void } } }).cloudinary) return
+    setUploading(true)
+    const w = (window as unknown as { cloudinary: { createUploadWidget: (opts: Record<string, unknown>, cb: (err: unknown, result: { event: string; info: { secure_url: string } }) => void) => { open: () => void } } }).cloudinary.createUploadWidget(
+      {
+        cloudName: CLOUD_NAME,
+        uploadPreset: UPLOAD_PRESET,
+        multiple: false,
+        maxFiles: 1,
+        resourceType: "image",
+        cropping: false,
+        sources: ["local", "url", "camera"],
+      },
+      (err: unknown, result: { event: string; info: { secure_url: string } }) => {
+        if (err) {
+          setUploading(false)
+          toast({ title: "Upload failed", variant: "destructive" })
+          return
+        }
+        if (result.event === "success") {
+          setValue("logoUrl", result.info.secure_url, { shouldValidate: true })
+          setUploading(false)
+        }
+        if (result.event === "close") {
+          setUploading(false)
+        }
+      }
+    )
+    w.open()
+  }
 
   useEffect(() => {
     const stored = getStoredToken()
@@ -340,8 +388,20 @@ export default function Sponsors() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Logo URL</label>
-            <Input {...register("logoUrl")} placeholder="https://example.com/logo.png" />
+            <label className="text-sm font-semibold">Logo</label>
+            <div className="flex gap-2">
+              <Input {...register("logoUrl")} placeholder="https://example.com/logo.png" className="flex-1" />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={openUploadWidget}
+                disabled={!widgetLoaded || uploading}
+                className="shrink-0 gap-1.5"
+              >
+                <Upload className="w-4 h-4" />
+                {uploading ? "Uploading…" : "Upload"}
+              </Button>
+            </div>
             {errors.logoUrl && <p className="text-xs text-destructive">{errors.logoUrl.message}</p>}
             {watchLogoUrl && (
               <div className="mt-2 p-2 bg-gray-50 rounded border border-gray-100 flex items-center justify-center h-16">
@@ -353,6 +413,7 @@ export default function Sponsors() {
                 />
               </div>
             )}
+            <p className="text-xs text-muted-foreground">Upload a logo image or paste a URL directly.</p>
           </div>
 
           <div className="space-y-2">
