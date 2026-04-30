@@ -172,6 +172,10 @@ export default function Fundraising() {
   }
 
   const handleMarkAsPaid = async (entry: FundraisingEntry) => {
+    if (!entry.donorEmail) {
+      const confirmed = confirm("This donor has no email on file. A receipt cannot be sent. Mark as received anyway?")
+      if (!confirmed) return
+    }
     try {
       await updateMutation.mutateAsync({
         id: entry.id,
