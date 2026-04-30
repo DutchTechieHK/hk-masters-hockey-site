@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import FundraisingThermometer from "../components/FundraisingThermometer";
 import PledgeForm from "../components/PledgeForm";
+import { cloudinaryResize } from "../utils/cloudinary.js";
 
 const TIER_STYLES = {
   Gold: {
@@ -34,9 +35,10 @@ const TIER_ORDER = ["Gold", "Silver", "Bronze"];
 const sponsorshipEmail = "sponsorship@hkmastershockey.com";
 
 function SponsorLogo({ sponsor }) {
-  const inner = sponsor.logoUrl ? (
+  const displayUrl = cloudinaryResize(sponsor.logoUrl, 400);
+  const inner = displayUrl ? (
     <img
-      src={sponsor.logoUrl}
+      src={displayUrl}
       alt={sponsor.name}
       className="max-h-16 max-w-[180px] object-contain"
     />

@@ -104,7 +104,11 @@ export default function Sponsors() {
           return
         }
         if (result.event === "success") {
-          setValue("logoUrl", result.info.secure_url, { shouldValidate: true })
+          const raw = result.info.secure_url
+          const resized = raw.includes("cloudinary.com")
+            ? raw.replace("/upload/", "/upload/c_limit,w_400,q_auto,f_auto/")
+            : raw
+          setValue("logoUrl", resized, { shouldValidate: true })
           setUploading(false)
         }
         if (result.event === "close") {
