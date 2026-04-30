@@ -9,7 +9,7 @@ import {
   DeleteFundraisingParams,
 } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { sendPledgeReceivedEmail } from "../utils/email";
+import { sendPledgeReceivedEmail, sendNewPledgeEmail } from "../utils/email";
 
 const router = Router();
 
@@ -76,6 +76,15 @@ router.post("/", requireAdminAccess, async (req, res) => {
         : parseFloat(entry.amountPledged ?? "0"),
       pledgeId: entry.id,
     }).catch((err) => console.error("[email] Failed to send pledge received email:", err));
+  } else if (entry.status !== "received") {
+    sendNewPledgeEmail({
+      donorName: entry.donorName,
+      donorEmail: entry.donorEmail ?? undefined,
+      amount: parseFloat(entry.amountPledged ?? "0"),
+      note: entry.notes ?? undefined,
+      pledgeId: entry.id,
+      status: entry.status ?? "pending",
+    }).catch((err) => console.error("[email] Failed to send admin new pledge email:", err));
   }
 
   res.status(201).json({

@@ -454,15 +454,23 @@ Contribution #${opts.contributionId} has been removed from the system.`;
 
 export async function sendNewPledgeEmail(opts: {
   donorName: string;
-  donorEmail: string;
+  donorEmail?: string;
   amount: number;
   note?: string;
   pledgeId: number;
+  status?: string;
 }) {
   const safeName = escapeHtml(opts.donorName);
-  const safeEmail = escapeHtml(opts.donorEmail);
   const safeNote = opts.note ? escapeHtml(opts.note) : null;
+  const statusLabel = opts.status ?? "pending";
   const formattedAmount = `HK$${opts.amount.toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+  const emailRow = opts.donorEmail
+    ? `<tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Email</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;"><a href="mailto:${escapeHtml(opts.donorEmail)}" style="color:#006B3C;text-decoration:none;">${escapeHtml(opts.donorEmail)}</a></td>
+      </tr>`
+    : "";
 
   const noteRow = safeNote
     ? `<tr style="background-color:#f9fafb;">
@@ -480,26 +488,22 @@ export async function sendNewPledgeEmail(opts: {
         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:120px;">Name</td>
         <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeName}</td>
       </tr>
-      <tr>
-        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Email</td>
-        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;"><a href="mailto:${safeEmail}" style="color:#006B3C;text-decoration:none;">${safeEmail}</a></td>
-      </tr>
+      ${emailRow}
       <tr style="background-color:#f9fafb;">
         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Amount Pledged</td>
         <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#006B3C;border-top:1px solid #e5e7eb;">${formattedAmount}</td>
       </tr>
       ${noteRow}
     </table>
-    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">Pledge #${opts.pledgeId} — status: pending</p>`
+    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">Pledge #${opts.pledgeId} — status: ${statusLabel}</p>`
   );
 
   const text = `New Fundraising Pledge Received
 
 Name: ${opts.donorName}
-Email: ${opts.donorEmail}
-Amount Pledged: ${formattedAmount}${opts.note ? `\nNote: ${opts.note}` : ""}
+${opts.donorEmail ? `Email: ${opts.donorEmail}\n` : ""}Amount Pledged: ${formattedAmount}${opts.note ? `\nNote: ${opts.note}` : ""}
 
-Pledge #${opts.pledgeId} — status: pending`;
+Pledge #${opts.pledgeId} — status: ${statusLabel}`;
 
   await sendEmail({
     to: ADMIN_EMAIL,
