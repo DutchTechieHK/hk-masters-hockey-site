@@ -243,6 +243,7 @@ export default function Sponsors() {
   })
 
   const activeSponsorCount = sponsors.filter((s) => s.active).length
+  const missingLogoCount = sponsors.filter((s) => !s.logoUrl).length
 
   if (!sessionChecked) {
     return (
@@ -314,6 +315,15 @@ export default function Sponsors() {
         })}
       </div>
 
+      {missingLogoCount > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-3 text-sm text-amber-800">
+          <ImageOff className="w-4 h-4 flex-shrink-0 text-amber-500" />
+          <span>
+            <span className="font-semibold">{missingLogoCount} sponsor{missingLogoCount !== 1 ? "s" : ""}</span> {missingLogoCount !== 1 ? "are" : "is"} missing a logo. Run <span className="font-semibold">Backfill Logos</span> to auto-fill them, or edit each sponsor manually.
+          </span>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -350,7 +360,12 @@ export default function Sponsors() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="font-semibold text-foreground">{sponsor.name}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground">{sponsor.name}</span>
+                        {!sponsor.logoUrl && (
+                          <Badge className="bg-amber-100 text-amber-700 border-0 shadow-none text-xs">No logo</Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <Badge className={`${TIER_COLORS[sponsor.tier] ?? ""} border-0 shadow-none`}>
@@ -394,8 +409,12 @@ export default function Sponsors() {
           </table>
         </div>
         {sponsors.length > 0 && (
-          <div className="px-6 py-3 border-t border-border text-xs text-muted-foreground">
-            {activeSponsorCount} active sponsor{activeSponsorCount !== 1 ? "s" : ""} · {sponsors.length} total
+          <div className="px-6 py-3 border-t border-border text-xs text-muted-foreground flex items-center gap-3">
+            <span>{activeSponsorCount} active sponsor{activeSponsorCount !== 1 ? "s" : ""} · {sponsors.length} total</span>
+            <span className={`flex items-center gap-1 font-medium ${missingLogoCount > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+              <ImageOff className="w-3.5 h-3.5" />
+              {missingLogoCount} missing logo{missingLogoCount !== 1 ? "s" : ""}
+            </span>
           </div>
         )}
       </div>
