@@ -4,6 +4,7 @@ import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
 import { format, parseISO } from "date-fns";
 import ShareMenu from "../components/ShareMenu";
+import SponsorStrip from "../components/SponsorStrip";
 
 const CLOUD_NAME = "djyvdrhal";
 const UPLOAD_PRESET = "hk_masters_unsigned";
@@ -932,6 +933,8 @@ export default function Journal() {
           <ContributeForm />
         </div>
       </section>
+
+      <SponsorStrip />
     </div>
   );
 }

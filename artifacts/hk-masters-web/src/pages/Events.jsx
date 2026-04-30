@@ -1,5 +1,6 @@
 import content from "../content/events.json";
 import RichText from "../components/RichText";
+import SponsorStrip from "../components/SponsorStrip";
 
 function EventCard({ event, type }) {
   return (
@@ -122,6 +123,8 @@ export default function Events() {
         )}
 
       </div>
+
+      <SponsorStrip />
     </div>
   );
 }
