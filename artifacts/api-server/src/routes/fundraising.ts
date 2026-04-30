@@ -76,7 +76,19 @@ router.post("/", requireAdminAccess, async (req, res) => {
         : parseFloat(entry.amountPledged ?? "0"),
       pledgeId: entry.id,
     }).catch((err) => console.error("[email] Failed to send pledge received email:", err));
-  } else if (entry.status !== "received") {
+  }
+  if (entry.status === "received") {
+    sendNewPledgeEmail({
+      donorName: entry.donorName,
+      donorEmail: entry.donorEmail ?? undefined,
+      amount: parseFloat(entry.amountReceived ?? "0") > 0
+        ? parseFloat(entry.amountReceived ?? "0")
+        : parseFloat(entry.amountPledged ?? "0"),
+      note: entry.notes ?? undefined,
+      pledgeId: entry.id,
+      status: "received",
+    }).catch((err) => console.error("[email] Failed to send admin new pledge email:", err));
+  } else {
     sendNewPledgeEmail({
       donorName: entry.donorName,
       donorEmail: entry.donorEmail ?? undefined,
