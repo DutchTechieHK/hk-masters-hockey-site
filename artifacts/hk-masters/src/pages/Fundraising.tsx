@@ -113,6 +113,7 @@ export default function Fundraising() {
     resolver: zodResolver(fundSchema)
   })
   const watchedEmail = useWatch({ control, name: "donorEmail" })
+  const watchedStatus = useWatch({ control, name: "status" })
 
   const openAddModal = () => {
     setEditingEntry(null)
@@ -198,6 +199,10 @@ export default function Fundraising() {
   }
 
   const onSubmit = async (data: FundFormValues) => {
+    if (data.status === "received" && !data.donorEmail) {
+      const confirmed = confirm("This donor has no email on file. A receipt cannot be sent. Save as received anyway?")
+      if (!confirmed) return
+    }
     try {
       const payload = {
         ...data,
@@ -402,13 +407,13 @@ export default function Fundraising() {
               type="email"
               {...register("donorEmail")}
               placeholder="donor@example.com"
-              className={editingEntry?.status === "received" && !watchedEmail ? "border-amber-400 focus:ring-amber-400" : ""}
+              className={watchedStatus === "received" && !watchedEmail ? "border-amber-400 focus:ring-amber-400" : ""}
             />
             {errors.donorEmail && <p className="text-xs text-destructive">{errors.donorEmail.message}</p>}
-            {editingEntry?.status === "received" && !watchedEmail && (
+            {watchedStatus === "received" && !watchedEmail && (
               <p className="text-xs text-amber-600 flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3 shrink-0" />
-                No email on file — add one to enable receipt resending.
+                No email on file — a receipt cannot be sent to this donor.
               </p>
             )}
           </div>
