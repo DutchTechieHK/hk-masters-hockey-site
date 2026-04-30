@@ -67,6 +67,17 @@ router.post("/", requireAdminAccess, async (req, res) => {
     const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, entry.teamId));
     teamName = team?.name;
   }
+  if (entry.status === "received" && entry.donorEmail) {
+    sendPledgeReceivedEmail({
+      donorName: entry.donorName,
+      donorEmail: entry.donorEmail,
+      amount: parseFloat(entry.amountReceived ?? "0") > 0
+        ? parseFloat(entry.amountReceived ?? "0")
+        : parseFloat(entry.amountPledged ?? "0"),
+      pledgeId: entry.id,
+    }).catch((err) => console.error("[email] Failed to send pledge received email:", err));
+  }
+
   res.status(201).json({
     id: entry.id,
     donorName: entry.donorName,
