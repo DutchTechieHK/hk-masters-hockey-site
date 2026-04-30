@@ -1,5 +1,6 @@
 import content from "../content/about.json";
 import RichText from "../components/RichText";
+import SponsorStrip from "../components/SponsorStrip";
 
 export default function About() {
   return (
@@ -69,6 +70,9 @@ export default function About() {
           </div>
         </div>
       </section>
+
+      {/* Sponsor Logos Strip */}
+      <SponsorStrip />
     </div>
   );
 }

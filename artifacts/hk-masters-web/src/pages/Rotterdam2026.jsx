@@ -6,6 +6,7 @@ import AutoLink from "../components/AutoLink";
 import RichText from "../components/RichText";
 import FundraisingThermometer from "../components/FundraisingThermometer";
 import PledgeForm from "../components/PledgeForm";
+import SponsorStrip from "../components/SponsorStrip";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
@@ -242,6 +243,9 @@ export default function Rotterdam2026() {
           </p>
         </div>
       </section>
+
+      {/* Sponsor Logos Strip */}
+      <SponsorStrip />
     </div>
   );
 }
