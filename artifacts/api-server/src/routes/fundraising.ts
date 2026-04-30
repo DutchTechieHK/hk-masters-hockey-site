@@ -156,6 +156,36 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   });
 });
 
+router.post("/:id/resend-receipt", requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [entry] = await db.select().from(fundraisingTable).where(eq(fundraisingTable.id, id));
+  if (!entry) {
+    res.status(404).json({ error: "Record not found" });
+    return;
+  }
+  if (entry.status !== "received") {
+    res.status(400).json({ error: "Receipt can only be resent for records with status 'received'" });
+    return;
+  }
+  if (!entry.donorEmail) {
+    res.status(400).json({ error: "No donor email on record" });
+    return;
+  }
+  await sendPledgeReceivedEmail({
+    donorName: entry.donorName,
+    donorEmail: entry.donorEmail,
+    amount: parseFloat(entry.amountReceived ?? "0") > 0
+      ? parseFloat(entry.amountReceived ?? "0")
+      : parseFloat(entry.amountPledged ?? "0"),
+    pledgeId: entry.id,
+  });
+  res.json({ ok: true });
+});
+
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteFundraisingParams.parse(req.params);
   await db.delete(fundraisingTable).where(eq(fundraisingTable.id, id));

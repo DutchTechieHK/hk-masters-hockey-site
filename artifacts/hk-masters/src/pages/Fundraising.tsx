@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -136,6 +136,27 @@ export default function Fundraising() {
       notes: entry.notes || ""
     })
     setIsModalOpen(true)
+  }
+
+  const [resendingId, setResendingId] = useState<number | null>(null)
+
+  const handleResendReceipt = async (entry: FundraisingEntry) => {
+    setResendingId(entry.id)
+    try {
+      const res = await fetch(`/api/fundraising/${entry.id}/resend-receipt`, {
+        method: "POST",
+        headers: { "x-session-token": sessionToken ?? "" },
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? "Failed to resend receipt")
+      }
+      toast({ title: "Receipt resent", description: `Thank-you email sent to ${entry.donorEmail}` })
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to resend receipt", variant: "destructive" })
+    } finally {
+      setResendingId(null)
+    }
   }
 
   const handleDelete = async (id: number) => {
@@ -324,6 +345,16 @@ export default function Fundraising() {
                             className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
                           >
                             <CheckCircle2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {entry.status === "received" && (
+                          <button
+                            onClick={() => entry.donorEmail ? handleResendReceipt(entry) : undefined}
+                            title={entry.donorEmail ? "Resend receipt email" : "No email on file — cannot resend receipt"}
+                            disabled={resendingId === entry.id || !entry.donorEmail}
+                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <MailCheck className="w-4 h-4" />
                           </button>
                         )}
                         <button onClick={() => openEditModal(entry)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
