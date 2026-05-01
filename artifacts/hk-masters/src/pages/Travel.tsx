@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useListPlayers, useUpdatePlayer, useListTeams, getListPlayersQueryKey, useSendTravelReminders } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin, Mail } from "lucide-react"
+import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin, Mail, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -157,6 +157,9 @@ export default function Travel() {
   const { toast } = useToast()
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [sortField, setSortField] = useState<"arrival" | "departure" | null>(null)
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
 
@@ -236,25 +239,56 @@ export default function Travel() {
     }
   }
 
+  // Toggle sort: same field cycles asc→desc→off, new field starts asc
+  const handleSort = (field: "arrival" | "departure") => {
+    if (sortField === field) {
+      if (sortDir === "asc") setSortDir("desc")
+      else { setSortField(null); setSortDir("asc") }
+    } else {
+      setSortField(field)
+      setSortDir("asc")
+    }
+  }
+
   // Derive unique categories from teams in a stable order
   const uniqueCategories = Array.from(new Set(teams.map(t => t.category)))
 
   // Map team id → category for filtering
   const teamCategoryMap = Object.fromEntries(teams.map(t => [t.id, t.category]))
 
-  // Filter all players by selected category
-  const visiblePlayers = categoryFilter === "all"
-    ? players
-    : players.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+  // Filter all players by selected category and search query, then sort
+  const visiblePlayers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    let filtered = categoryFilter === "all"
+      ? players
+      : players.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+    if (q) {
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(q))
+    }
+    if (sortField) {
+      const key = sortField === "arrival" ? "flightArrivalDateTime" : "flightDepartureDateTime"
+      filtered = [...filtered].sort((a, b) => {
+        const av = a[key] ?? ""
+        const bv = b[key] ?? ""
+        if (av === bv) return 0
+        if (av === "") return 1   // missing values sink to bottom
+        if (bv === "") return -1
+        return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av)
+      })
+    }
+    return filtered
+  }, [players, categoryFilter, searchQuery, sortField, sortDir, teamCategoryMap])
 
   // Group visible players by team, preserving team order
-  const teamGroups = teams
+  const teamGroups = useMemo(() => teams
     .filter(t => categoryFilter === "all" || t.category === categoryFilter)
     .map(team => ({
       team,
       players: visiblePlayers.filter(p => p.teamId === team.id),
     }))
-    .filter(g => g.players.length > 0)
+    .filter(g => g.players.length > 0),
+    [teams, categoryFilter, visiblePlayers]
+  )
 
   const missingCount = visiblePlayers.filter(p => !p.flightArrivalDateTime).length
 
@@ -284,6 +318,16 @@ export default function Travel() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </Select>
+
+        <div className="relative sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            className="pl-9 bg-white"
+            placeholder="Search by name…"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
 
         {!isLoading && missingCount > 0 && (
           <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm font-medium">
@@ -341,10 +385,34 @@ export default function Travel() {
                         <th className="px-4 py-3 font-semibold">#</th>
                         <th className="px-4 py-3 font-semibold">Name</th>
                         <th className="px-4 py-3 font-semibold">
-                          <span className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5" />Arrival</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSort("arrival")}
+                            className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                          >
+                            <Plane className="w-3.5 h-3.5" />
+                            Arrival
+                            {sortField === "arrival" ? (
+                              sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronsUpDown className="w-3.5 h-3.5 opacity-40" />
+                            )}
+                          </button>
                         </th>
                         <th className="px-4 py-3 font-semibold hidden lg:table-cell">
-                          <span className="flex items-center gap-1.5"><Plane className="w-3.5 h-3.5 rotate-180" />Departure</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSort("departure")}
+                            className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+                          >
+                            <Plane className="w-3.5 h-3.5 rotate-180" />
+                            Departure
+                            {sortField === "departure" ? (
+                              sortDir === "asc" ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronsUpDown className="w-3.5 h-3.5 opacity-40" />
+                            )}
+                          </button>
                         </th>
                         <th className="px-4 py-3 font-semibold hidden md:table-cell">Airport</th>
                         <th className="px-4 py-3 font-semibold hidden xl:table-cell">
