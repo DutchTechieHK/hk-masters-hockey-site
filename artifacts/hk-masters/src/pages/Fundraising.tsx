@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle } from "lucide-react"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle, AlertCircle } from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -142,6 +142,21 @@ export default function Fundraising() {
 
   const [resendingId, setResendingId] = useState<number | null>(null)
 
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} })
+
+  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
+    setConfirmDialog({ isOpen: true, title, message, onConfirm })
+  }
+
+  const closeConfirm = () => {
+    setConfirmDialog(prev => ({ ...prev, isOpen: false }))
+  }
+
   const handleResendReceipt = async (entry: FundraisingEntry) => {
     setResendingId(entry.id)
     try {
@@ -161,22 +176,24 @@ export default function Fundraising() {
     }
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this record?")) return
-    try {
-      await deleteMutation.mutateAsync({ id })
-      queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
-      toast({ title: "Record deleted successfully" })
-    } catch {
-      toast({ title: "Failed to delete record", variant: "destructive" })
-    }
+  const handleDelete = (id: number) => {
+    showConfirm(
+      "Delete Record",
+      "Are you sure you want to delete this record? This action cannot be undone.",
+      async () => {
+        closeConfirm()
+        try {
+          await deleteMutation.mutateAsync({ id })
+          queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
+          toast({ title: "Record deleted successfully" })
+        } catch {
+          toast({ title: "Failed to delete record", variant: "destructive" })
+        }
+      }
+    )
   }
 
-  const handleMarkAsPaid = async (entry: FundraisingEntry) => {
-    if (!entry.donorEmail) {
-      const confirmed = confirm("This donor has no email on file. A receipt cannot be sent. Mark as received anyway?")
-      if (!confirmed) return
-    }
+  const doMarkAsPaid = async (entry: FundraisingEntry) => {
     try {
       await updateMutation.mutateAsync({
         id: entry.id,
@@ -198,11 +215,22 @@ export default function Fundraising() {
     }
   }
 
-  const onSubmit = async (data: FundFormValues) => {
-    if (data.status === "received" && !data.donorEmail) {
-      const confirmed = confirm("This donor has no email on file. A receipt cannot be sent. Save as received anyway?")
-      if (!confirmed) return
+  const handleMarkAsPaid = (entry: FundraisingEntry) => {
+    if (!entry.donorEmail) {
+      showConfirm(
+        "No Email on File",
+        "This donor has no email on file. A receipt cannot be sent. Mark as received anyway?",
+        () => {
+          closeConfirm()
+          doMarkAsPaid(entry)
+        }
+      )
+    } else {
+      doMarkAsPaid(entry)
     }
+  }
+
+  const doSaveRecord = async (data: FundFormValues) => {
     try {
       const payload = {
         ...data,
@@ -222,6 +250,21 @@ export default function Fundraising() {
     } catch {
       toast({ title: "An error occurred", variant: "destructive" })
     }
+  }
+
+  const onSubmit = async (data: FundFormValues) => {
+    if (data.status === "received" && !data.donorEmail) {
+      showConfirm(
+        "No Email on File",
+        "This donor has no email on file. A receipt cannot be sent. Save as received anyway?",
+        () => {
+          closeConfirm()
+          doSaveRecord(data)
+        }
+      )
+      return
+    }
+    await doSaveRecord(data)
   }
 
   const totalPledged = entries.reduce((sum, e) => sum + e.amountPledged, 0)
@@ -392,6 +435,31 @@ export default function Fundraising() {
           </table>
         </div>
       </div>
+
+      <Modal
+        isOpen={confirmDialog.isOpen}
+        onClose={closeConfirm}
+        title={confirmDialog.title}
+      >
+        <div className="space-y-5">
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-rose-100">
+              <AlertCircle className="w-5 h-5 text-rose-600" />
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed pt-2">{confirmDialog.message}</p>
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <Button type="button" variant="outline" onClick={closeConfirm}>Cancel</Button>
+            <Button
+              type="button"
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+              onClick={confirmDialog.onConfirm}
+            >
+              Confirm
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingEntry ? "Edit Record" : "New Donation Record"}>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
