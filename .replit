@@ -53,3 +53,6 @@ channel = "stable-25_05"
 
 [userenv.shared]
 VITE_CLOUDINARY_UPLOAD_PRESET = "MAGe4GOu+qUO4h4OTNwDTyC+KRf5vPAzKaFVykguiH2oXB4r9Esw9UEvwtZ7TDiowAnTITQGDXrr3HvSO6xYIg=="
+
+[userenv.production]
+VITE_PUBLIC_SITE_URL = "https://hkmastershockey.com"
