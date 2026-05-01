@@ -751,6 +751,11 @@ function ContributeForm() {
                       ? `Add more photos (${photoUrls.length}/${MAX_PHOTOS})`
                       : "Upload photos"}
               </button>
+              {!atPhotoLimit && photoUrls.length > 0 && (
+                <p className="text-xs text-gray-500 font-medium">
+                  {photoUrls.length} of {MAX_PHOTOS} photos added
+                </p>
+              )}
               {atPhotoLimit && (
                 <p className="text-xs text-gray-500 font-medium">
                   Maximum of {MAX_PHOTOS} photos reached. Remove a photo to add more.
