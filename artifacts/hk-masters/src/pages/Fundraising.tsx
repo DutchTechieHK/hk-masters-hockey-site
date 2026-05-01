@@ -50,7 +50,8 @@ const fundSchema = z.object({
   date: z.string().optional(),
   teamId: z.coerce.number().optional().nullable(),
   status: z.enum(["pending", "confirmed", "received"]),
-  notes: z.string().optional()
+  notes: z.string().optional(),
+  paidAt: z.string().optional()
 })
 
 type FundFormValues = z.infer<typeof fundSchema>
@@ -135,7 +136,8 @@ export default function Fundraising() {
       date: entry.date ? entry.date.split('T')[0] : "",
       teamId: entry.teamId || null,
       status: entry.status,
-      notes: entry.notes || ""
+      notes: entry.notes || "",
+      paidAt: entry.paidAt ? entry.paidAt.split('T')[0] : ""
     })
     setIsModalOpen(true)
   }
@@ -232,17 +234,19 @@ export default function Fundraising() {
 
   const doSaveRecord = async (data: FundFormValues) => {
     try {
-      const payload = {
+      const base = {
         ...data,
         teamId: data.teamId === 0 || !data.teamId ? undefined : data.teamId,
         donorEmail: data.donorEmail || undefined,
       }
       
       if (editingEntry) {
+        const payload = { ...base, paidAt: data.paidAt ? new Date(data.paidAt).toISOString() : null }
         await updateMutation.mutateAsync({ id: editingEntry.id, data: payload as any })
         toast({ title: "Record updated" })
       } else {
-        await createMutation.mutateAsync({ data: payload as any })
+        const { paidAt: _unused, ...createPayload } = base
+        await createMutation.mutateAsync({ data: createPayload as any })
         toast({ title: "Record created" })
       }
       queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
@@ -462,7 +466,7 @@ export default function Fundraising() {
       </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingEntry ? "Edit Record" : "New Donation Record"}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
           <div className="space-y-2">
             <label className="text-sm font-semibold">Donor / Sponsor Name</label>
             <Input {...register("donorName")} placeholder="Company X or Individual Name" />
@@ -515,9 +519,18 @@ export default function Fundraising() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold">Date</label>
-            <Input type="date" {...register("date")} />
+          <div className={editingEntry ? "grid grid-cols-2 gap-4" : ""}>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Date</label>
+              <Input type="date" {...register("date")} />
+            </div>
+            {editingEntry && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Payment Date <span className="font-normal text-muted-foreground">(Optional)</span></label>
+                <Input type="date" {...register("paidAt")} />
+                <p className="text-xs text-muted-foreground">Clear to remove the payment date.</p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

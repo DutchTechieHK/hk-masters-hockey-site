@@ -430,7 +430,7 @@ export const UpdateFundraisingBody = zod.object({
   teamId: zod.number().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
-  paidAt: zod.string().datetime({ offset: true }).optional(),
+  paidAt: zod.string().datetime({ offset: true }).nullable().optional(),
 });
 
 export const UpdateFundraisingResponse = zod.object({

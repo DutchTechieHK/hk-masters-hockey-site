@@ -122,7 +122,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   const [existing] = await db.select().from(fundraisingTable).where(eq(fundraisingTable.id, id));
   const previousStatus = existing?.status;
 
-  const paidAt = body.paidAt !== undefined ? new Date(body.paidAt) : undefined;
+  const paidAt = body.paidAt !== undefined ? (body.paidAt ? new Date(body.paidAt) : null) : undefined;
   const [entry] = await db.update(fundraisingTable).set({
     donorName: body.donorName,
     donorEmail: body.donorEmail,
