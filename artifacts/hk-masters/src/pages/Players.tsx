@@ -27,7 +27,7 @@ const playerSchema = z.object({
   teamId: z.coerce.number().min(1, "Team selection is required"),
   name: z.string().min(1, "Name is required"),
   shirtNumber: z.union([z.coerce.number().int().min(1).max(99), z.literal("")]).optional(),
-  email: z.string().email("Invalid email"),
+  email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   phone: z.string().optional(),
   position: z.string().optional(),
   dateOfBirth: z.string().optional(),
@@ -351,7 +351,7 @@ export default function Players() {
               <Input type="number" min="1" max="99" {...register("shirtNumber")} placeholder="1-99" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Email *</label>
+              <label className="text-sm font-semibold">Email <span className="text-muted-foreground font-normal">(optional)</span></label>
               <Input type="email" {...register("email")} placeholder="jane@example.com" />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
             </div>
