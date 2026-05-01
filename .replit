@@ -56,3 +56,6 @@ VITE_CLOUDINARY_UPLOAD_PRESET = "MAGe4GOu+qUO4h4OTNwDTyC+KRf5vPAzKaFVykguiH2oXB4
 
 [userenv.production]
 VITE_PUBLIC_SITE_URL = "https://hkmastershockey.com"
+
+[userenv.development]
+EMAIL_OVERRIDE = "play@hkmastershockey.com"

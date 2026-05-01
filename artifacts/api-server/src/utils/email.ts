@@ -2,6 +2,8 @@ const ADMIN_EMAIL = "play@hkmastershockey.com";
 const VERIFIED_FROM = "HK Masters Hockey <noreply@hkmastershockey.com>";
 const FALLBACK_FROM = "HK Masters Hockey <onboarding@resend.dev>";
 
+const EMAIL_OVERRIDE = process.env.EMAIL_OVERRIDE?.trim() || null;
+
 const ADMIN_APP_URL =
   process.env.ADMIN_APP_URL || "https://masters-world-hub.replit.app";
 const PUBLIC_URL =
@@ -28,12 +30,17 @@ async function sendEmail(opts: {
     return false;
   }
 
+  const actualTo = EMAIL_OVERRIDE ?? opts.to;
+  if (EMAIL_OVERRIDE) {
+    console.warn(`[email] EMAIL_OVERRIDE active — redirecting email from ${opts.to} to ${EMAIL_OVERRIDE}`);
+  }
+
   const { Resend } = await import("resend");
   const resend = new Resend(apiKey);
 
   let { error } = await resend.emails.send({
     from: VERIFIED_FROM,
-    to: opts.to,
+    to: actualTo,
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
@@ -43,7 +50,7 @@ async function sendEmail(opts: {
     console.warn("[email] Custom domain not yet verified — retrying with fallback sender");
     ({ error } = await resend.emails.send({
       from: FALLBACK_FROM,
-      to: opts.to,
+      to: actualTo,
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
@@ -51,10 +58,10 @@ async function sendEmail(opts: {
   }
 
   if (error) {
-    console.error("[email] Failed to deliver to", opts.to, "—", JSON.stringify(error));
+    console.error("[email] Failed to deliver to", actualTo, "—", JSON.stringify(error));
     return false;
   } else {
-    console.log(`[email] Sent to ${opts.to}: "${opts.subject}"`);
+    console.log(`[email] Sent to ${actualTo}: "${opts.subject}"`);
     return true;
   }
 }
