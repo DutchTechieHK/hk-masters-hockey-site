@@ -71,10 +71,11 @@ async function fetchContributions(token: string): Promise<Contribution[]> {
   return res.json()
 }
 
-async function deleteContribution(token: string, id: number): Promise<void> {
+async function deleteContribution(token: string, id: number, reason?: string): Promise<void> {
   const res = await fetch(`/api/contributions/${id}`, {
     method: "DELETE",
-    headers: { "x-session-token": token },
+    headers: { "Content-Type": "application/json", "x-session-token": token },
+    body: JSON.stringify({ reason: reason?.trim() || undefined }),
   })
   if (!res.ok) throw new Error(`Failed to delete: ${res.status}`)
 }
@@ -218,6 +219,8 @@ export default function Journal() {
     pending: true, approved: false, declined: false,
   })
   const [showTrash, setShowTrash] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteReason, setDeleteReason] = useState("")
 
   useEffect(() => {
     const token = getStoredToken()
@@ -311,8 +314,9 @@ export default function Journal() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => deleteContribution(sessionToken!, id),
-    onSuccess: (_, id) => {
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      deleteContribution(sessionToken!, id, reason),
+    onSuccess: (_, { id }) => {
       queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
         old.filter((c) => c.id !== id)
       )
@@ -324,6 +328,8 @@ export default function Journal() {
       setEditPhotoUrls([])
       setEditTouchDrag({ from: null, over: null })
       setEditDragPos(null)
+      setShowDeleteDialog(false)
+      setDeleteReason("")
       toast({ title: "Moved to trash", description: "You can restore it from the Trash view." })
     },
     onError: () => {
@@ -904,7 +910,8 @@ export default function Journal() {
                   disabled={deleteMutation.isPending || updateMutation.isPending}
                   onClick={() => {
                     if (!selectedContribution) return
-                    deleteMutation.mutate(selectedContribution.id)
+                    setDeleteReason("")
+                    setShowDeleteDialog(true)
                   }}
                 >
                   <Trash2 className="w-4 h-4 mr-1.5" />
@@ -930,6 +937,51 @@ export default function Journal() {
                   {updateMutation.isPending ? "Saving..." : selectedContribution.status === "approved" ? "Save changes" : "Approve"}
                 </Button>
               </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {showDeleteDialog && selectedContribution && (
+        <Modal
+          isOpen={true}
+          onClose={() => { setShowDeleteDialog(false); setDeleteReason("") }}
+          title="Move to Trash"
+          description={`Move "${selectedContribution.title}" to the trash?`}
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                Reason <span className="text-gray-400 font-normal">(optional — included in the author notification email)</span>
+              </label>
+              <textarea
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"
+                rows={3}
+                placeholder="e.g. Duplicate submission, inappropriate content…"
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                disabled={deleteMutation.isPending}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-1">
+              <Button
+                variant="outline"
+                onClick={() => { setShowDeleteDialog(false); setDeleteReason("") }}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                className="border-red-200 text-red-700 hover:bg-red-50"
+                disabled={deleteMutation.isPending}
+                onClick={() => {
+                  deleteMutation.mutate({ id: selectedContribution.id, reason: deleteReason })
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-1.5" />
+                {deleteMutation.isPending ? "Moving..." : "Move to Trash"}
+              </Button>
             </div>
           </div>
         </Modal>

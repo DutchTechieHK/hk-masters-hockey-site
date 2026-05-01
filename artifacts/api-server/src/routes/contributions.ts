@@ -311,6 +311,10 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
     return;
   }
   const id = parseInt(req.params.id, 10);
+  const rawReason =
+    (typeof req.body?.reason === "string" ? req.body.reason : null) ??
+    (typeof req.query.reason === "string" ? req.query.reason : null);
+  const reason = rawReason?.trim() || undefined;
   const [softDeleted] = await db
     .update(contributionsTable)
     .set({ deletedAt: new Date() })
@@ -336,6 +340,7 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
     title: softDeleted.title,
     contentType: softDeleted.contentType,
     contributionId: softDeleted.id,
+    reason,
   }).catch((err: unknown) => console.error("[email] Unexpected error (author deletion notice):", err));
 
   res.status(204).send();

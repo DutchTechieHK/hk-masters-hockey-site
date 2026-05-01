@@ -465,6 +465,7 @@ export async function sendContributionDeletionNoticeToAuthorEmail(opts: {
   title: string;
   contentType: string;
   contributionId: number;
+  reason?: string;
 }) {
   const typeLabel =
     opts.contentType === "article"
@@ -475,6 +476,15 @@ export async function sendContributionDeletionNoticeToAuthorEmail(opts: {
 
   const safeName = escapeHtml(opts.authorName);
   const safeTitle = escapeHtml(opts.title);
+  const safeReason = opts.reason ? escapeHtml(opts.reason.trim()) : null;
+
+  const reasonHtml = safeReason
+    ? `<p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      <strong>Reason:</strong> ${safeReason}
+    </p>`
+    : "";
+
+  const reasonText = safeReason ? `\nReason: ${safeReason}\n` : "";
 
   const html = emailShell(
     "#006B3C",
@@ -483,7 +493,7 @@ export async function sendContributionDeletionNoticeToAuthorEmail(opts: {
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
       We're writing to let you know that your ${typeLabel} <strong>&ldquo;${safeTitle}&rdquo;</strong> has been removed from the <strong>HK Masters Hockey Journal</strong>.
     </p>
-    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+    ${reasonHtml}<p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
       If you believe this was done in error, or if you'd like to resubmit, please don't hesitate to get in touch with us.
     </p>
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
@@ -494,7 +504,7 @@ export async function sendContributionDeletionNoticeToAuthorEmail(opts: {
   const text = `Hi ${opts.authorName},
 
 We're writing to let you know that your ${typeLabel} "${opts.title}" has been removed from the HK Masters Hockey Journal.
-
+${reasonText}
 If you believe this was done in error, or if you'd like to resubmit, please don't hesitate to get in touch.
 
 Questions? Email us at ${ADMIN_EMAIL}.
