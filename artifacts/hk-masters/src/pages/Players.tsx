@@ -209,7 +209,7 @@ export default function Players() {
             onChange={(e) => setSelectedTeamFilter(e.target.value)}
           >
             <option value="all">All Teams</option>
-            {teams.map(t => <option key={t.id} value={t.id.toString()}>{t.name} ({t.category})</option>)}
+            {teams.map(t => <option key={t.id} value={t.id.toString()}>{t.name}</option>)}
           </Select>
         </div>
 
@@ -337,7 +337,7 @@ export default function Players() {
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-semibold">Team *</label>
               <Select {...register("teamId")}>
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name} ({t.category})</option>)}
+                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
               </Select>
               {errors.teamId && <p className="text-xs text-destructive">{errors.teamId.message}</p>}
             </div>
