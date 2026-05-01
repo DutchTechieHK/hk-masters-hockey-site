@@ -660,7 +660,23 @@ export default function Journal() {
                               <div className="font-semibold text-foreground">{c.authorName}</div>
                               <div className="text-xs text-muted-foreground">{c.authorEmail}</div>
                             </td>
-                            <td className="px-6 py-4 font-medium text-foreground max-w-xs truncate">{c.title}</td>
+                            <td className="px-6 py-4 font-medium text-foreground max-w-xs">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="truncate">{c.title}</span>
+                                {c.status === "approved" && c.slug && (
+                                  <a
+                                    href={`/hk-masters-web/journal/${c.slug}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-shrink-0 text-muted-foreground hover:text-emerald-600 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Open live article"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                )}
+                              </div>
+                            </td>
                             <td className="px-6 py-4 hidden md:table-cell"><TypeBadge type={c.contentType} /></td>
                             <td className="px-6 py-4 hidden sm:table-cell text-muted-foreground text-xs">
                               {format(parseISO(c.createdAt), "d MMM yyyy")}
