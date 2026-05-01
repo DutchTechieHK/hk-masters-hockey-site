@@ -616,7 +616,7 @@ function ContributeForm() {
                       <button
                         type="button"
                         onClick={() => { if (!touchDidDragRef.current && touchDrag.from === null) removePhoto(i); }}
-                        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors opacity-0 group-hover:opacity-100 z-10"
+                        className="absolute top-1 right-1 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 z-10"
                         aria-label="Remove photo"
                       >
                         ×
