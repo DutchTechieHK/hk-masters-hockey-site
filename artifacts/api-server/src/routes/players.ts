@@ -47,6 +47,7 @@ function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string |
     dietaryRequirements: player.dietaryRequirements,
     medicalNotes: player.medicalNotes,
     notes: player.notes,
+    travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
     createdAt: player.createdAt?.toISOString(),
   };
 }
@@ -105,8 +106,10 @@ router.post("/send-travel-reminders", requireSession, async (req, res) => {
       playerEmail: player.email,
       teamName: teamName ?? "your team",
     });
-    if (success) sent++;
-    else failed++;
+    if (success) {
+      sent++;
+      await db.update(playersTable).set({ travelReminderSentAt: new Date() }).where(eq(playersTable.id, player.id));
+    } else failed++;
   }
 
   console.log(`[travel-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);

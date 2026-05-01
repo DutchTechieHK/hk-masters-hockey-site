@@ -730,6 +730,9 @@ components:
           type: string
         notes:
           type: string
+        travelReminderSentAt:
+          type: string
+          nullable: true
         createdAt:
           type: string
       required:

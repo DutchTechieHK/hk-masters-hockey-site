@@ -104,6 +104,7 @@ export interface Player {
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
+  travelReminderSentAt?: string | null;
   createdAt?: string;
 }
 

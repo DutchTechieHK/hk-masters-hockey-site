@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin, Mail, Search, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
+import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin, Mail, Search, ChevronUp, ChevronDown, ChevronsUpDown, Clock } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -98,6 +98,17 @@ function formatDateTime(dt?: string | null) {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+  })
+}
+
+function formatReminderDate(dt?: string | null) {
+  if (!dt) return null
+  const d = new Date(dt)
+  if (isNaN(d.getTime())) return null
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   })
 }
 
@@ -225,6 +236,7 @@ export default function Travel() {
     if (missingPlayers.length === 0) return
     try {
       const result = await sendRemindersMutation.mutateAsync({ data: { playerIds: missingPlayers.map(p => p.id) } })
+      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
       if (result.failed === 0) {
         toast({ title: `${result.sent} reminder${result.sent !== 1 ? "s" : ""} sent`, description: `Successfully emailed ${result.sent} player${result.sent !== 1 ? "s" : ""} missing flight details.` })
       } else {
@@ -419,6 +431,9 @@ export default function Travel() {
                           <span className="flex items-center gap-1.5"><BedDouble className="w-3.5 h-3.5" />Room</span>
                         </th>
                         <th className="px-4 py-3 font-semibold hidden xl:table-cell">Sharing With</th>
+                        <th className="px-4 py-3 font-semibold hidden lg:table-cell">
+                          <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Reminded</span>
+                        </th>
                         <th className="px-4 py-3 font-semibold text-right">Edit</th>
                       </tr>
                     </thead>
@@ -498,6 +513,18 @@ export default function Travel() {
                             <td className="px-4 py-3 hidden xl:table-cell">
                               {player.roomSharingWith ? (
                                 <span className="text-foreground">{player.roomSharingWith}</span>
+                              ) : (
+                                <span className="text-muted-foreground text-xs">—</span>
+                              )}
+                            </td>
+
+                            {/* Reminded */}
+                            <td className="px-4 py-3 hidden lg:table-cell">
+                              {player.travelReminderSentAt ? (
+                                <Badge variant="secondary" className="gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 whitespace-nowrap">
+                                  <Clock className="w-3 h-3" />
+                                  {formatReminderDate(player.travelReminderSentAt)}
+                                </Badge>
                               ) : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
