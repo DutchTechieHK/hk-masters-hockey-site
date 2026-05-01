@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
 const SESSION_KEY = "hkm_admin_session"
+const PUBLIC_SITE_URL = ((import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) ?? "/hk-masters-web").replace(/\/$/, "")
 
 function getStoredToken(): string | null {
   try { return localStorage.getItem(SESSION_KEY) } catch { return null }
@@ -293,7 +294,7 @@ export default function Journal() {
         title: `Submission ${updated.status}`,
         description: articleSlug ? (
           <a
-            href={`/hk-masters-web/journal/${articleSlug}`}
+            href={`${PUBLIC_SITE_URL}/journal/${articleSlug}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 underline underline-offset-2 text-sm"
@@ -665,7 +666,7 @@ export default function Journal() {
                                 <span className="truncate">{c.title}</span>
                                 {c.status === "approved" && c.slug && (
                                   <a
-                                    href={`/hk-masters-web/journal/${c.slug}`}
+                                    href={`${PUBLIC_SITE_URL}/journal/${c.slug}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex-shrink-0 text-muted-foreground hover:text-emerald-600 transition-colors"
@@ -710,7 +711,7 @@ export default function Journal() {
 
             {selectedContribution.status === "approved" && selectedContribution.slug && (
               <a
-                href={`/hk-masters-web/journal/${selectedContribution.slug}`}
+                href={`${PUBLIC_SITE_URL}/journal/${selectedContribution.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm text-emerald-700 hover:text-emerald-800 underline underline-offset-2"
