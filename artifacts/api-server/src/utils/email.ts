@@ -452,6 +452,57 @@ Contribution #${opts.contributionId} has been removed from the system.`;
   console.log(`[email] Admin deletion notification sent for contribution #${opts.contributionId}`);
 }
 
+export async function sendContributionDeletionNoticeToAuthorEmail(opts: {
+  authorName: string;
+  authorEmail: string;
+  title: string;
+  contentType: string;
+  contributionId: number;
+}) {
+  const typeLabel =
+    opts.contentType === "article"
+      ? "article"
+      : opts.contentType === "photo"
+        ? "photo submission"
+        : "article and photos";
+
+  const safeName = escapeHtml(opts.authorName);
+  const safeTitle = escapeHtml(opts.title);
+
+  const html = emailShell(
+    "#006B3C",
+    "Submission removed",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      We're writing to let you know that your ${typeLabel} <strong>&ldquo;${safeTitle}&rdquo;</strong> has been removed from the <strong>HK Masters Hockey Journal</strong>.
+    </p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      If you believe this was done in error, or if you'd like to resubmit, please don't hesitate to get in touch with us.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.authorName},
+
+We're writing to let you know that your ${typeLabel} "${opts.title}" has been removed from the HK Masters Hockey Journal.
+
+If you believe this was done in error, or if you'd like to resubmit, please don't hesitate to get in touch.
+
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  await sendEmail({
+    to: opts.authorEmail,
+    subject: `Your submission has been removed: "${opts.title}"`,
+    html,
+    text,
+  });
+  console.log(`[email] Author deletion notice sent for contribution #${opts.contributionId}`);
+}
+
 export async function sendNewPledgeEmail(opts: {
   donorName: string;
   donorEmail?: string;

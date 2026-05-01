@@ -9,7 +9,7 @@ import {
   ListContributionsQueryParams,
   LookupContributionBody,
 } from "@workspace/api-zod";
-import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail, sendContributionDeletedEmail } from "../utils/email.js";
+import { sendNewContributionEmail, sendContributionDecisionEmail, sendContributionConfirmationEmail, sendContributionDeletedEmail, sendContributionDeletionNoticeToAuthorEmail } from "../utils/email.js";
 import { requireAdminAccess } from "../middleware/adminAuth.js";
 import { generateUniqueSlug } from "../utils/slug.js";
 import { backfillSlugs } from "../utils/backfillSlugs.js";
@@ -282,6 +282,14 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
     contributionId: deleted.id,
     status: deleted.status,
   }).catch((err: unknown) => console.error("[email] Unexpected error (deletion notify):", err));
+
+  sendContributionDeletionNoticeToAuthorEmail({
+    authorName: deleted.authorName,
+    authorEmail: deleted.authorEmail,
+    title: deleted.title,
+    contentType: deleted.contentType,
+    contributionId: deleted.id,
+  }).catch((err: unknown) => console.error("[email] Unexpected error (author deletion notice):", err));
 
   res.status(204).send();
 });
