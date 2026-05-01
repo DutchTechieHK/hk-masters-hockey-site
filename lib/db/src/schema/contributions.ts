@@ -15,6 +15,7 @@ export const contributionsTable = pgTable("contributions", {
   adminNote: text("admin_note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   reviewedAt: timestamp("reviewed_at"),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const insertContributionSchema = createInsertSchema(contributionsTable).omit({

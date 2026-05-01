@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { contributionsTable } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, isNull, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -30,7 +30,7 @@ router.get("/sitemap.xml", async (_req, res) => {
       reviewedAt: contributionsTable.reviewedAt,
     })
     .from(contributionsTable)
-    .where(eq(contributionsTable.status, "approved"))
+    .where(and(eq(contributionsTable.status, "approved"), isNull(contributionsTable.deletedAt)))
     .orderBy(desc(contributionsTable.reviewedAt));
 
   const staticEntries = STATIC_PAGES.map(

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { contributionsTable } from "@workspace/db/schema";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, isNull, isNotNull } from "drizzle-orm";
 import {
   CreateContributionBody,
   UpdateContributionBody,
@@ -30,6 +30,7 @@ function mapContributionAdmin(row: typeof contributionsTable.$inferSelect) {
     adminNote: row.adminNote ?? undefined,
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
+    deletedAt: row.deletedAt?.toISOString() ?? undefined,
   };
 }
 
@@ -89,7 +90,7 @@ router.get("/approved", async (_req, res) => {
   const rows = await db
     .select()
     .from(contributionsTable)
-    .where(eq(contributionsTable.status, "approved"))
+    .where(sql`${contributionsTable.status} = 'approved' AND ${contributionsTable.deletedAt} IS NULL`)
     .orderBy(desc(contributionsTable.reviewedAt));
   res.json(rows.map(mapContributionPublic));
 });
@@ -103,7 +104,7 @@ router.get("/approved/:slug", async (req, res) => {
     .where(eq(contributionsTable.slug, param));
 
   if (slugRow) {
-    if (slugRow.status !== "approved") {
+    if (slugRow.status !== "approved" || slugRow.deletedAt) {
       res.status(404).json({ error: "Article not found" });
       return;
     }
@@ -117,7 +118,7 @@ router.get("/approved/:slug", async (req, res) => {
       .select()
       .from(contributionsTable)
       .where(eq(contributionsTable.id, numericId));
-    if (!idRow || idRow.status !== "approved") {
+    if (!idRow || idRow.status !== "approved" || idRow.deletedAt) {
       res.status(404).json({ error: "Article not found" });
       return;
     }
@@ -147,7 +148,7 @@ router.post("/lookup", async (req, res) => {
   const rows = await db
     .select()
     .from(contributionsTable)
-    .where(sql`lower(${contributionsTable.authorEmail}) = ${normalizedEmail}`)
+    .where(sql`lower(${contributionsTable.authorEmail}) = ${normalizedEmail} AND ${contributionsTable.deletedAt} IS NULL`)
     .orderBy(desc(contributionsTable.createdAt));
   const results = rows.map((row) => ({
     id: row.id,
@@ -161,6 +162,15 @@ router.post("/lookup", async (req, res) => {
   res.json(results);
 });
 
+router.get("/trash", requireAdminAccess, async (_req, res) => {
+  const rows = await db
+    .select()
+    .from(contributionsTable)
+    .where(isNotNull(contributionsTable.deletedAt))
+    .orderBy(desc(contributionsTable.deletedAt));
+  res.json(rows.map(mapContributionAdmin));
+});
+
 router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListContributionsQueryParams.parse(req.query);
   let rows;
@@ -168,12 +178,13 @@ router.get("/", requireAdminAccess, async (req, res) => {
     rows = await db
       .select()
       .from(contributionsTable)
-      .where(eq(contributionsTable.status, query.status))
+      .where(sql`${contributionsTable.status} = ${query.status} AND ${contributionsTable.deletedAt} IS NULL`)
       .orderBy(desc(contributionsTable.createdAt));
   } else {
     rows = await db
       .select()
       .from(contributionsTable)
+      .where(isNull(contributionsTable.deletedAt))
       .orderBy(desc(contributionsTable.createdAt));
   }
   res.json(rows.map(mapContributionAdmin));
@@ -259,36 +270,72 @@ router.post("/backfill-slugs", requireAdminAccess, async (_req, res) => {
   res.json({ updated });
 });
 
+router.post("/:id/restore", requireAdminAccess, async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    res.status(400).json({ error: "Invalid ID" });
+    return;
+  }
+  const id = parseInt(req.params.id, 10);
+  const [restored] = await db
+    .update(contributionsTable)
+    .set({ deletedAt: null })
+    .where(sql`${contributionsTable.id} = ${id} AND ${contributionsTable.deletedAt} IS NOT NULL`)
+    .returning();
+  if (!restored) {
+    res.status(404).json({ error: "Contribution not found in trash" });
+    return;
+  }
+  res.json(mapContributionAdmin(restored));
+});
+
+router.delete("/:id/purge", requireAdminAccess, async (req, res) => {
+  if (!/^\d+$/.test(req.params.id)) {
+    res.status(400).json({ error: "Invalid ID" });
+    return;
+  }
+  const id = parseInt(req.params.id, 10);
+  const [purged] = await db
+    .delete(contributionsTable)
+    .where(sql`${contributionsTable.id} = ${id} AND ${contributionsTable.deletedAt} IS NOT NULL`)
+    .returning();
+  if (!purged) {
+    res.status(404).json({ error: "Contribution not found in trash" });
+    return;
+  }
+  res.status(204).send();
+});
+
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   if (!/^\d+$/.test(req.params.id)) {
     res.status(400).json({ error: "Invalid ID" });
     return;
   }
   const id = parseInt(req.params.id, 10);
-  const [deleted] = await db
-    .delete(contributionsTable)
-    .where(eq(contributionsTable.id, id))
+  const [softDeleted] = await db
+    .update(contributionsTable)
+    .set({ deletedAt: new Date() })
+    .where(sql`${contributionsTable.id} = ${id} AND ${contributionsTable.deletedAt} IS NULL`)
     .returning();
-  if (!deleted) {
+  if (!softDeleted) {
     res.status(404).json({ error: "Contribution not found" });
     return;
   }
 
   sendContributionDeletedEmail({
-    authorName: deleted.authorName,
-    authorEmail: deleted.authorEmail,
-    title: deleted.title,
-    contentType: deleted.contentType,
-    contributionId: deleted.id,
-    status: deleted.status,
+    authorName: softDeleted.authorName,
+    authorEmail: softDeleted.authorEmail,
+    title: softDeleted.title,
+    contentType: softDeleted.contentType,
+    contributionId: softDeleted.id,
+    status: softDeleted.status,
   }).catch((err: unknown) => console.error("[email] Unexpected error (deletion notify):", err));
 
   sendContributionDeletionNoticeToAuthorEmail({
-    authorName: deleted.authorName,
-    authorEmail: deleted.authorEmail,
-    title: deleted.title,
-    contentType: deleted.contentType,
-    contributionId: deleted.id,
+    authorName: softDeleted.authorName,
+    authorEmail: softDeleted.authorEmail,
+    title: softDeleted.title,
+    contentType: softDeleted.contentType,
+    contributionId: softDeleted.id,
   }).catch((err: unknown) => console.error("[email] Unexpected error (author deletion notice):", err));
 
   res.status(204).send();

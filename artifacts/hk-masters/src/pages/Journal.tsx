@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import {
   CheckCircle, XCircle, Clock, FileText, Image, FileImage,
-  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink,
+  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink, RotateCcw, AlertTriangle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
@@ -40,6 +40,7 @@ interface Contribution {
   adminNote?: string
   createdAt: string
   reviewedAt?: string
+  deletedAt?: string
 }
 
 async function apiLogin(password: string): Promise<string> {
@@ -75,6 +76,30 @@ async function deleteContribution(token: string, id: number): Promise<void> {
     headers: { "x-session-token": token },
   })
   if (!res.ok) throw new Error(`Failed to delete: ${res.status}`)
+}
+
+async function fetchTrashContributions(token: string): Promise<Contribution[]> {
+  const res = await fetch("/api/contributions/trash", { headers: { "x-session-token": token } })
+  if (res.status === 401) throw Object.assign(new Error("Unauthorized"), { status: 401 })
+  if (!res.ok) throw new Error(`Failed to fetch trash: ${res.status}`)
+  return res.json()
+}
+
+async function restoreContribution(token: string, id: number): Promise<Contribution> {
+  const res = await fetch(`/api/contributions/${id}/restore`, {
+    method: "POST",
+    headers: { "x-session-token": token },
+  })
+  if (!res.ok) throw new Error(`Failed to restore: ${res.status}`)
+  return res.json()
+}
+
+async function purgeContribution(token: string, id: number): Promise<void> {
+  const res = await fetch(`/api/contributions/${id}/purge`, {
+    method: "DELETE",
+    headers: { "x-session-token": token },
+  })
+  if (!res.ok) throw new Error(`Failed to purge: ${res.status}`)
 }
 
 async function updateContribution(
@@ -191,6 +216,7 @@ export default function Journal() {
   const [expandedSections, setExpandedSections] = useState<Record<Status, boolean>>({
     pending: true, approved: false, declined: false,
   })
+  const [showTrash, setShowTrash] = useState(false)
 
   useEffect(() => {
     const token = getStoredToken()
@@ -289,6 +315,7 @@ export default function Journal() {
       queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
         old.filter((c) => c.id !== id)
       )
+      queryClient.invalidateQueries({ queryKey: ["contributions-trash", sessionToken] })
       setSelectedContribution(null)
       setAdminNote("")
       setEditTitle("")
@@ -296,10 +323,45 @@ export default function Journal() {
       setEditPhotoUrls([])
       setEditTouchDrag({ from: null, over: null })
       setEditDragPos(null)
-      toast({ title: "Submission deleted" })
+      toast({ title: "Moved to trash", description: "You can restore it from the Trash view." })
     },
     onError: () => {
-      toast({ title: "Failed to delete submission", variant: "destructive" })
+      toast({ title: "Failed to move to trash", variant: "destructive" })
+    },
+  })
+
+  const { data: trashContributions = [] } = useQuery<Contribution[]>({
+    queryKey: ["contributions-trash", sessionToken],
+    queryFn: () => fetchTrashContributions(sessionToken!),
+    enabled: !!sessionToken,
+  })
+
+  const restoreMutation = useMutation({
+    mutationFn: (id: number) => restoreContribution(sessionToken!, id),
+    onSuccess: (restored) => {
+      queryClient.setQueryData<Contribution[]>(["contributions-trash", sessionToken], (old = []) =>
+        old.filter((c) => c.id !== restored.id)
+      )
+      queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
+        [restored, ...old]
+      )
+      toast({ title: "Submission restored" })
+    },
+    onError: () => {
+      toast({ title: "Failed to restore submission", variant: "destructive" })
+    },
+  })
+
+  const purgeMutation = useMutation({
+    mutationFn: (id: number) => purgeContribution(sessionToken!, id),
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<Contribution[]>(["contributions-trash", sessionToken], (old = []) =>
+        old.filter((c) => c.id !== id)
+      )
+      toast({ title: "Submission permanently deleted" })
+    },
+    onError: () => {
+      toast({ title: "Failed to permanently delete", variant: "destructive" })
     },
   })
 
@@ -450,12 +512,91 @@ export default function Journal() {
           <Button variant="outline" size="sm" onClick={handleBackfillSlugs} disabled={backfillLoading} className="gap-2">
             <Wrench className="w-4 h-4" /> {backfillLoading ? "Repairing..." : "Repair Slugs"}
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowTrash((v) => !v)}
+            className={`gap-2 ${showTrash ? "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" : ""}`}
+          >
+            <Trash2 className="w-4 h-4" />
+            Trash
+            {trashContributions.length > 0 && (
+              <span className="ml-0.5 bg-rose-100 text-rose-700 rounded-full px-1.5 py-0 text-xs font-medium">
+                {trashContributions.length}
+              </span>
+            )}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
             <LogOut className="w-4 h-4" /> Sign Out
           </Button>
         </div>
       }
     >
+      {showTrash && (
+        <div className="bg-white rounded-2xl shadow-sm border border-rose-200 overflow-hidden mb-6">
+          <div className="flex items-center gap-2 px-6 py-4 bg-rose-50 border-b border-rose-200">
+            <Trash2 className="w-4 h-4 text-rose-600" />
+            <span className="text-sm font-semibold text-rose-800">Trash</span>
+            <span className="text-xs text-rose-600 ml-1">— deleted submissions</span>
+          </div>
+          {trashContributions.length === 0 ? (
+            <div className="px-6 py-8 text-center text-muted-foreground text-sm">Trash is empty.</div>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/10 border-b border-border">
+                <tr>
+                  <th className="px-6 py-3 font-semibold">Contributor</th>
+                  <th className="px-6 py-3 font-semibold">Title</th>
+                  <th className="px-6 py-3 font-semibold hidden sm:table-cell">Deleted</th>
+                  <th className="px-6 py-3 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {trashContributions.map((c) => (
+                  <tr key={c.id} className="hover:bg-muted/5">
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-foreground">{c.authorName}</div>
+                      <div className="text-xs text-muted-foreground">{c.authorEmail}</div>
+                    </td>
+                    <td className="px-6 py-4 text-muted-foreground max-w-xs truncate">{c.title}</td>
+                    <td className="px-6 py-4 hidden sm:table-cell text-muted-foreground text-xs">
+                      {c.deletedAt ? format(parseISO(c.deletedAt), "d MMM yyyy, HH:mm") : "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1.5 h-7 text-xs"
+                          disabled={restoreMutation.isPending || purgeMutation.isPending}
+                          onClick={() => restoreMutation.mutate(c.id)}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Restore
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5 h-7 text-xs"
+                          disabled={restoreMutation.isPending || purgeMutation.isPending}
+                          onClick={() => {
+                            if (!window.confirm(`Permanently delete "${c.title}"? This cannot be undone.`)) return
+                            purgeMutation.mutate(c.id)
+                          }}
+                        >
+                          <AlertTriangle className="w-3 h-3" />
+                          Delete permanently
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
         {isLoading ? (
           <div className="px-6 py-12 text-center text-muted-foreground">Loading submissions...</div>
@@ -746,12 +887,11 @@ export default function Journal() {
                   disabled={deleteMutation.isPending || updateMutation.isPending}
                   onClick={() => {
                     if (!selectedContribution) return
-                    if (!window.confirm(`Delete "${selectedContribution.title}"? This cannot be undone.`)) return
                     deleteMutation.mutate(selectedContribution.id)
                   }}
                 >
                   <Trash2 className="w-4 h-4 mr-1.5" />
-                  {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                  {deleteMutation.isPending ? "Moving..." : "Move to Trash"}
                 </Button>
               </div>
               <div className="flex gap-2">
