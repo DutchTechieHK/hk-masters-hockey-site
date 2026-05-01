@@ -159,6 +159,18 @@ export default function Fundraising() {
     setConfirmDialog(prev => ({ ...prev, isOpen: false }))
   }
 
+  const todayStr = () => new Date().toISOString().split('T')[0]
+
+  const [markAsPaidDialog, setMarkAsPaidDialog] = useState<{
+    isOpen: boolean
+    entry: FundraisingEntry | null
+    paymentDate: string
+  }>({ isOpen: false, entry: null, paymentDate: "" })
+
+  const closeMarkAsPaidDialog = () => {
+    setMarkAsPaidDialog(prev => ({ ...prev, isOpen: false }))
+  }
+
   const handleResendReceipt = async (entry: FundraisingEntry) => {
     setResendingId(entry.id)
     try {
@@ -195,8 +207,11 @@ export default function Fundraising() {
     )
   }
 
-  const doMarkAsPaid = async (entry: FundraisingEntry) => {
+  const doMarkAsPaid = async (entry: FundraisingEntry, paymentDate: string) => {
     try {
+      const paidAt = paymentDate
+        ? new Date(paymentDate + "T12:00:00").toISOString()
+        : new Date().toISOString()
       await updateMutation.mutateAsync({
         id: entry.id,
         data: {
@@ -204,10 +219,10 @@ export default function Fundraising() {
           amountPledged: entry.amountPledged,
           amountReceived: entry.amountReceived,
           date: entry.date,
-          teamId: entry.teamId,
+          teamId: entry.teamId ?? undefined,
           status: "received",
           notes: entry.notes || undefined,
-          paidAt: new Date().toISOString(),
+          paidAt,
         },
       })
       queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
@@ -218,18 +233,14 @@ export default function Fundraising() {
   }
 
   const handleMarkAsPaid = (entry: FundraisingEntry) => {
-    if (!entry.donorEmail) {
-      showConfirm(
-        "No Email on File",
-        "This donor has no email on file. A receipt cannot be sent. Mark as received anyway?",
-        () => {
-          closeConfirm()
-          doMarkAsPaid(entry)
-        }
-      )
-    } else {
-      doMarkAsPaid(entry)
-    }
+    setMarkAsPaidDialog({ isOpen: true, entry, paymentDate: todayStr() })
+  }
+
+  const confirmMarkAsPaid = async () => {
+    const { entry, paymentDate } = markAsPaidDialog
+    if (!entry) return
+    closeMarkAsPaidDialog()
+    await doMarkAsPaid(entry, paymentDate)
   }
 
   const doSaveRecord = async (data: FundFormValues) => {
@@ -460,6 +471,38 @@ export default function Fundraising() {
               onClick={confirmDialog.onConfirm}
             >
               Confirm
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={markAsPaidDialog.isOpen} onClose={closeMarkAsPaidDialog} title="Mark as Paid">
+        <div className="space-y-5">
+          {markAsPaidDialog.entry && !markAsPaidDialog.entry.donorEmail && (
+            <div className="flex gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-800">This donor has no email on file — a receipt cannot be sent.</p>
+            </div>
+          )}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Payment Date</label>
+            <Input
+              type="date"
+              value={markAsPaidDialog.paymentDate}
+              max={todayStr()}
+              onChange={e => setMarkAsPaidDialog(prev => ({ ...prev, paymentDate: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">Defaults to today. Change if the payment was received on an earlier date.</p>
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <Button type="button" variant="outline" onClick={closeMarkAsPaidDialog}>Cancel</Button>
+            <Button
+              type="button"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={confirmMarkAsPaid}
+              disabled={!markAsPaidDialog.paymentDate}
+            >
+              Confirm Payment
             </Button>
           </div>
         </div>
