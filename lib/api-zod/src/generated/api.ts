@@ -198,6 +198,24 @@ export const CreatePlayerBody = zod.object({
 });
 
 /**
+ * @summary Send travel reminder emails to players missing flight info
+ */
+export const SendTravelRemindersBody = zod.object({
+  playerIds: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Specific player IDs to email. If omitted, emails all players missing flight info.",
+    ),
+});
+
+export const SendTravelRemindersResponse = zod.object({
+  sent: zod.number(),
+  failed: zod.number(),
+  total: zod.number(),
+});
+
+/**
  * @summary Update a player
  */
 export const UpdatePlayerParams = zod.object({
@@ -387,7 +405,7 @@ export const DeleteKitParams = zod.object({
 export const ListFundraisingResponseItem = zod.object({
   id: zod.number(),
   donorName: zod.string(),
-  donorEmail: zod.string().optional(),
+  donorEmail: zod.string().email().optional(),
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),
@@ -395,7 +413,6 @@ export const ListFundraisingResponseItem = zod.object({
   teamName: zod.string().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
-  paidAt: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
 export const ListFundraisingResponse = zod.array(ListFundraisingResponseItem);
@@ -430,13 +447,12 @@ export const UpdateFundraisingBody = zod.object({
   teamId: zod.number().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
-  paidAt: zod.string().datetime({ offset: true }).nullable().optional(),
 });
 
 export const UpdateFundraisingResponse = zod.object({
   id: zod.number(),
   donorName: zod.string(),
-  donorEmail: zod.string().optional(),
+  donorEmail: zod.string().email().optional(),
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),
@@ -444,7 +460,6 @@ export const UpdateFundraisingResponse = zod.object({
   teamName: zod.string().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
-  paidAt: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
 

@@ -32,8 +32,10 @@ import type {
   ListPlayersParams,
   LogisticsTask,
   Player,
+  SendTravelRemindersBody,
   Sponsor,
   Team,
+  TravelReminderResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -695,6 +697,92 @@ export const useCreatePlayer = <
   TContext
 > => {
   return useMutation(getCreatePlayerMutationOptions(options));
+};
+
+/**
+ * @summary Send travel reminder emails to players missing flight info
+ */
+export const getSendTravelRemindersUrl = () => {
+  return `/api/players/send-travel-reminders`;
+};
+
+export const sendTravelReminders = async (
+  sendTravelRemindersBody?: SendTravelRemindersBody,
+  options?: RequestInit,
+): Promise<TravelReminderResult> => {
+  return customFetch<TravelReminderResult>(getSendTravelRemindersUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendTravelRemindersBody),
+  });
+};
+
+export const getSendTravelRemindersMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendTravelReminders>>,
+    TError,
+    { data: BodyType<SendTravelRemindersBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendTravelReminders>>,
+  TError,
+  { data: BodyType<SendTravelRemindersBody> },
+  TContext
+> => {
+  const mutationKey = ["sendTravelReminders"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendTravelReminders>>,
+    { data: BodyType<SendTravelRemindersBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendTravelReminders(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendTravelRemindersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendTravelReminders>>
+>;
+export type SendTravelRemindersMutationBody = BodyType<SendTravelRemindersBody>;
+export type SendTravelRemindersMutationError = ErrorType<void>;
+
+/**
+ * @summary Send travel reminder emails to players missing flight info
+ */
+export const useSendTravelReminders = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendTravelReminders>>,
+    TError,
+    { data: BodyType<SendTravelRemindersBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendTravelReminders>>,
+  TError,
+  { data: BodyType<SendTravelRemindersBody> },
+  TContext
+> => {
+  return useMutation(getSendTravelRemindersMutationOptions(options));
 };
 
 /**

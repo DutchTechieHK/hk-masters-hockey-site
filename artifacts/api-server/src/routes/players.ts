@@ -1,14 +1,17 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { playersTable, teamsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, isNull, or, and, inArray } from "drizzle-orm";
 import {
   CreatePlayerBody,
   UpdatePlayerBody,
   UpdatePlayerParams,
   DeletePlayerParams,
   ListPlayersQueryParams,
+  SendTravelRemindersBody,
 } from "@workspace/api-zod";
+import { sendTravelReminderEmail } from "../utils/email";
+import { requireSession } from "../middleware/adminSession";
 
 const router = Router();
 
@@ -73,6 +76,41 @@ router.post("/", async (req, res) => {
   const [player] = await db.insert(playersTable).values(body as any).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   res.status(201).json(mapPlayer(player, team?.name));
+});
+
+router.post("/send-travel-reminders", requireSession, async (req, res) => {
+  const { playerIds } = SendTravelRemindersBody.parse(req.body ?? {});
+
+  const missingCondition = or(
+    isNull(playersTable.flightArrivalDateTime),
+    eq(playersTable.flightArrivalDateTime, "")
+  )!;
+
+  const whereClause = playerIds && playerIds.length > 0
+    ? and(inArray(playersTable.id, playerIds), missingCondition)
+    : missingCondition;
+
+  const players = await db
+    .select({ player: playersTable, teamName: teamsTable.name })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(whereClause);
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const { player, teamName } of players) {
+    const success = await sendTravelReminderEmail({
+      playerName: player.name,
+      playerEmail: player.email,
+      teamName: teamName ?? "your team",
+    });
+    if (success) sent++;
+    else failed++;
+  }
+
+  console.log(`[travel-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
+  res.json({ sent, failed, total: players.length });
 });
 
 router.put("/:id", async (req, res) => {

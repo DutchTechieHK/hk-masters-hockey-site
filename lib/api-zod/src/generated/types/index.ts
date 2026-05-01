@@ -34,6 +34,8 @@ export * from "./logisticsTask";
 export * from "./logisticsTaskCategory";
 export * from "./logisticsTaskStatus";
 export * from "./player";
+export * from "./sendTravelRemindersBody";
 export * from "./sponsor";
 export * from "./sponsorTier";
 export * from "./team";
+export * from "./travelReminderResult";

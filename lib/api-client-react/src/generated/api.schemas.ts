@@ -9,6 +9,17 @@ export interface HealthStatus {
   status: string;
 }
 
+export interface SendTravelRemindersBody {
+  /** Specific player IDs to email. If omitted, emails all players missing flight info. */
+  playerIds?: number[];
+}
+
+export interface TravelReminderResult {
+  sent: number;
+  failed: number;
+  total: number;
+}
+
 export type DashboardStatsTeamStatsItem = {
   teamId: number;
   teamName: string;
@@ -217,7 +228,6 @@ export interface FundraisingEntry {
   teamName?: string;
   status: FundraisingEntryStatus;
   notes?: string;
-  paidAt?: string;
   createdAt?: string;
 }
 
@@ -232,13 +242,13 @@ export const CreateFundraisingEntryStatus = {
 
 export interface CreateFundraisingEntry {
   donorName: string;
+  donorEmail?: string;
   amountPledged: number;
   amountReceived: number;
   date?: string;
   teamId?: number;
   status: CreateFundraisingEntryStatus;
   notes?: string;
-  paidAt?: string;
 }
 
 export type LogisticsTaskCategory =

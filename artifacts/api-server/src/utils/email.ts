@@ -510,6 +510,70 @@ The HK Masters Hockey Team`;
   console.log(`[email] Author deletion notice sent for contribution #${opts.contributionId}`);
 }
 
+export async function sendTravelReminderEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  teamName: string;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeTeam = escapeHtml(opts.teamName);
+
+  const html = emailShell(
+    "#006B3C",
+    "Travel details needed",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      We're writing on behalf of <strong>${safeTeam}</strong> as part of the <strong>HK 2026 Masters World Cup</strong> preparations.
+    </p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Our records show that your <strong>flight details have not yet been submitted</strong>. With the tournament approaching, we need this information to coordinate transport, transfers, and accommodation arrangements.
+    </p>
+    <p style="margin:0 0 8px 0;font-size:15px;color:#374151;line-height:1.7;">Please get in touch with your team manager as soon as possible and provide:</p>
+    <ul style="margin:0 0 24px 0;padding-left:20px;font-size:15px;color:#374151;line-height:1.8;">
+      <li>Flight arrival date &amp; time</li>
+      <li>Flight departure date &amp; time</li>
+      <li>Arrival airport / city</li>
+      <li>Room sharing preference (shared or single)</li>
+    </ul>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="mailto:${ADMIN_EMAIL}?subject=Travel%20details%20for%20HK%202026%20Masters%20World%20Cup" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Submit my travel details</a>
+    </p>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      You can also visit our website for more information: <a href="${PUBLIC_URL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${PUBLIC_URL}</a>
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      We look forward to seeing you in the Netherlands!
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+We're writing on behalf of ${opts.teamName} as part of the HK 2026 Masters World Cup preparations.
+
+Our records show that your flight details have not yet been submitted. With the tournament approaching, we need this information to coordinate transport, transfers, and accommodation arrangements.
+
+Please get in touch with your team manager as soon as possible and provide:
+- Flight arrival date & time
+- Flight departure date & time
+- Arrival airport / city
+- Room sharing preference (shared or single)
+
+Reply to this email or contact us at ${ADMIN_EMAIL} to submit your details.
+
+Tournament website: ${PUBLIC_URL}
+
+We look forward to seeing you in the Netherlands!
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: `[Action Required] Please submit your travel details – HK 2026 Masters World Cup`,
+    html,
+    text,
+  });
+}
+
 export async function sendNewPledgeEmail(opts: {
   donorName: string;
   donorEmail?: string;

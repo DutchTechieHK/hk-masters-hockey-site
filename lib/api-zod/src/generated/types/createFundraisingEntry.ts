@@ -9,6 +9,7 @@ import type { CreateFundraisingEntryStatus } from "./createFundraisingEntryStatu
 
 export interface CreateFundraisingEntry {
   donorName: string;
+  donorEmail?: string;
   amountPledged: number;
   amountReceived: number;
   date?: string;

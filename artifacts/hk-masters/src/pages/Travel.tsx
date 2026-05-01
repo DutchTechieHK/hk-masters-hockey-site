@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useListPlayers, useUpdatePlayer, useListTeams, getListPlayersQueryKey } from "@workspace/api-client-react"
+import { useListPlayers, useUpdatePlayer, useListTeams, getListPlayersQueryKey, useSendTravelReminders } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin } from "lucide-react"
+import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin, Mail } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -164,6 +164,7 @@ export default function Travel() {
   const { data: players = [], isLoading } = useListPlayers()
 
   const updateMutation = useUpdatePlayer()
+  const sendRemindersMutation = useSendTravelReminders()
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerSchema),
@@ -213,6 +214,25 @@ export default function Travel() {
       setIsModalOpen(false)
     } catch {
       toast({ title: "An error occurred", variant: "destructive" })
+    }
+  }
+
+  const handleSendReminders = async () => {
+    const missingPlayers = visiblePlayers.filter(p => !p.flightArrivalDateTime)
+    if (missingPlayers.length === 0) return
+    try {
+      const result = await sendRemindersMutation.mutateAsync({ data: { playerIds: missingPlayers.map(p => p.id) } })
+      if (result.failed === 0) {
+        toast({ title: `${result.sent} reminder${result.sent !== 1 ? "s" : ""} sent`, description: `Successfully emailed ${result.sent} player${result.sent !== 1 ? "s" : ""} missing flight details.` })
+      } else {
+        toast({
+          title: `${result.sent} sent, ${result.failed} failed`,
+          description: `${result.sent} reminder${result.sent !== 1 ? "s" : ""} delivered. ${result.failed} could not be sent.`,
+          variant: "destructive",
+        })
+      }
+    } catch {
+      toast({ title: "Failed to send reminders", variant: "destructive" })
     }
   }
 
@@ -266,9 +286,19 @@ export default function Travel() {
         </Select>
 
         {!isLoading && missingCount > 0 && (
-          <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm font-medium">
+          <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            {missingCount} player{missingCount !== 1 ? "s" : ""} missing flight info
+            <span>{missingCount} player{missingCount !== 1 ? "s" : ""} missing flight info</span>
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-1 h-7 px-2.5 text-xs border-amber-300 text-amber-800 hover:bg-amber-100 hover:border-amber-400 bg-white"
+              onClick={handleSendReminders}
+              disabled={sendRemindersMutation.isPending}
+            >
+              <Mail className="w-3.5 h-3.5 mr-1.5" />
+              {sendRemindersMutation.isPending ? "Sending…" : "Send Reminders"}
+            </Button>
           </div>
         )}
       </div>
