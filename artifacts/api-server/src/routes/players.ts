@@ -10,6 +10,7 @@ import {
   DeletePlayerParams,
   ListPlayersQueryParams,
   SendTravelRemindersBody,
+  UpdateSelfPlayerBody,
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
@@ -159,7 +160,12 @@ router.patch("/self/:token", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const body = (req.body ?? {}) as Record<string, unknown>;
+  const parseResult = UpdateSelfPlayerBody.safeParse(req.body ?? {});
+  if (!parseResult.success) {
+    res.status(400).json({ error: "Invalid request body", details: parseResult.error.flatten() });
+    return;
+  }
+  const body = parseResult.data as Record<string, unknown>;
   const updates: Record<string, unknown> = {};
   for (const field of SELF_EDITABLE_FIELDS) {
     if (field in body) {
