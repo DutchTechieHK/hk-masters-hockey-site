@@ -13,7 +13,8 @@ export interface CreateFundraisingEntry {
   amountPledged: number;
   amountReceived: number;
   date?: string;
-  teamId?: number;
+  teamId?: number | null;
   status: CreateFundraisingEntryStatus;
+  paidAt?: string | null;
   notes?: string;
 }

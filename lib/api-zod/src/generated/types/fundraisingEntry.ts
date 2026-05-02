@@ -14,9 +14,10 @@ export interface FundraisingEntry {
   amountPledged: number;
   amountReceived: number;
   date?: string;
-  teamId?: number;
+  teamId?: number | null;
   teamName?: string;
   status: FundraisingEntryStatus;
   notes?: string;
+  paidAt?: string | null;
   createdAt?: string;
 }

@@ -981,6 +981,7 @@ components:
           type: string
         teamId:
           type: integer
+          nullable: true
         teamName:
           type: string
         status:
@@ -988,6 +989,9 @@ components:
           enum: [pending, confirmed, received]
         notes:
           type: string
+        paidAt:
+          type: string
+          nullable: true
         createdAt:
           type: string
       required:
@@ -1013,9 +1017,13 @@ components:
           type: string
         teamId:
           type: integer
+          nullable: true
         status:
           type: string
           enum: [pending, confirmed, received]
+        paidAt:
+          type: string
+          nullable: true
         notes:
           type: string
       required:

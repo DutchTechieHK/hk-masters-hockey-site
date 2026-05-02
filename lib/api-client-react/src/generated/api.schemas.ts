@@ -225,10 +225,11 @@ export interface FundraisingEntry {
   amountPledged: number;
   amountReceived: number;
   date?: string;
-  teamId?: number;
+  teamId?: number | null;
   teamName?: string;
   status: FundraisingEntryStatus;
   notes?: string;
+  paidAt?: string | null;
   createdAt?: string;
 }
 
@@ -247,8 +248,9 @@ export interface CreateFundraisingEntry {
   amountPledged: number;
   amountReceived: number;
   date?: string;
-  teamId?: number;
+  teamId?: number | null;
   status: CreateFundraisingEntryStatus;
+  paidAt?: string | null;
   notes?: string;
 }
 
