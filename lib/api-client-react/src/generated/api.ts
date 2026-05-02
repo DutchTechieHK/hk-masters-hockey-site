@@ -25,6 +25,7 @@ import type {
   CreateSponsor,
   CreateTeam,
   DashboardStats,
+  FeeReminderResult,
   FundraisingEntry,
   GetPlayerAccessToken200,
   HealthStatus,
@@ -37,6 +38,7 @@ import type {
   Match,
   Player,
   SelfPlayer,
+  SendFeeRemindersBody,
   SendTravelRemindersBody,
   Sponsor,
   Team,
@@ -789,6 +791,92 @@ export const useSendTravelReminders = <
   TContext
 > => {
   return useMutation(getSendTravelRemindersMutationOptions(options));
+};
+
+/**
+ * @summary Send fee reminder emails to players who have not paid their tournament fee
+ */
+export const getSendFeeRemindersUrl = () => {
+  return `/api/players/send-fee-reminders`;
+};
+
+export const sendFeeReminders = async (
+  sendFeeRemindersBody?: SendFeeRemindersBody,
+  options?: RequestInit,
+): Promise<FeeReminderResult> => {
+  return customFetch<FeeReminderResult>(getSendFeeRemindersUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendFeeRemindersBody),
+  });
+};
+
+export const getSendFeeRemindersMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendFeeReminders>>,
+    TError,
+    { data: BodyType<SendFeeRemindersBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendFeeReminders>>,
+  TError,
+  { data: BodyType<SendFeeRemindersBody> },
+  TContext
+> => {
+  const mutationKey = ["sendFeeReminders"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendFeeReminders>>,
+    { data: BodyType<SendFeeRemindersBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendFeeReminders(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendFeeRemindersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendFeeReminders>>
+>;
+export type SendFeeRemindersMutationBody = BodyType<SendFeeRemindersBody>;
+export type SendFeeRemindersMutationError = ErrorType<void>;
+
+/**
+ * @summary Send fee reminder emails to players who have not paid their tournament fee
+ */
+export const useSendFeeReminders = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendFeeReminders>>,
+    TError,
+    { data: BodyType<SendFeeRemindersBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendFeeReminders>>,
+  TError,
+  { data: BodyType<SendFeeRemindersBody> },
+  TContext
+> => {
+  return useMutation(getSendFeeRemindersMutationOptions(options));
 };
 
 /**

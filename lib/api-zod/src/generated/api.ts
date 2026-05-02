@@ -160,6 +160,7 @@ export const ListPlayersResponseItem = zod.object({
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
   travelReminderSentAt: zod.string().nullish(),
+  feeReminderSentAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 export const ListPlayersResponse = zod.array(ListPlayersResponseItem);
@@ -211,6 +212,24 @@ export const SendTravelRemindersBody = zod.object({
 });
 
 export const SendTravelRemindersResponse = zod.object({
+  sent: zod.number(),
+  failed: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Send fee reminder emails to players who have not paid their tournament fee
+ */
+export const SendFeeRemindersBody = zod.object({
+  playerIds: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Specific player IDs to email. If omitted, emails all unpaid players.",
+    ),
+});
+
+export const SendFeeRemindersResponse = zod.object({
   sent: zod.number(),
   failed: zod.number(),
   total: zod.number(),
@@ -380,6 +399,7 @@ export const UpdatePlayerResponse = zod.object({
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
   travelReminderSentAt: zod.string().nullish(),
+  feeReminderSentAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 

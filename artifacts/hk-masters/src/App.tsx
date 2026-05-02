@@ -11,6 +11,7 @@ import Fundraising from "@/pages/Fundraising";
 import Logistics from "@/pages/Logistics";
 import Journal from "@/pages/Journal";
 import Travel from "@/pages/Travel";
+import Fees from "@/pages/Fees";
 import Sponsors from "@/pages/Sponsors";
 import Schedule from "@/pages/Schedule";
 import NotFound from "@/pages/not-found";
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/fundraising" component={Fundraising} />
       <Route path="/logistics" component={Logistics} />
       <Route path="/travel" component={Travel} />
+      <Route path="/fees" component={Fees} />
       <Route path="/journal" component={Journal} />
       <Route path="/sponsors" component={Sponsors} />
       <Route path="/schedule" component={Schedule} />

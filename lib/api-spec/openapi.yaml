@@ -182,6 +182,27 @@ paths:
         "401":
           description: Not authenticated
 
+  /players/send-fee-reminders:
+    post:
+      operationId: sendFeeReminders
+      tags: [players]
+      summary: Send fee reminder emails to players who have not paid their tournament fee
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendFeeRemindersBody"
+      responses:
+        "200":
+          description: Result of sending fee reminders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeeReminderResult"
+        "401":
+          description: Not authenticated
+
   /players/self/{token}:
     get:
       operationId: getSelfPlayer
@@ -695,6 +716,29 @@ components:
         - failed
         - total
 
+    SendFeeRemindersBody:
+      type: object
+      properties:
+        playerIds:
+          type: array
+          items:
+            type: integer
+          description: Specific player IDs to email. If omitted, emails all unpaid players.
+
+    FeeReminderResult:
+      type: object
+      properties:
+        sent:
+          type: integer
+        failed:
+          type: integer
+        total:
+          type: integer
+      required:
+        - sent
+        - failed
+        - total
+
     DashboardStats:
       type: object
       properties:
@@ -883,6 +927,9 @@ components:
         notes:
           type: string
         travelReminderSentAt:
+          type: string
+          nullable: true
+        feeReminderSentAt:
           type: string
           nullable: true
         createdAt:

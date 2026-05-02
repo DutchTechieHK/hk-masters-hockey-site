@@ -10,9 +10,10 @@ import {
   DeletePlayerParams,
   ListPlayersQueryParams,
   SendTravelRemindersBody,
+  SendFeeRemindersBody,
   UpdateSelfPlayerBody,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -51,6 +52,7 @@ function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string |
     medicalNotes: player.medicalNotes,
     notes: player.notes,
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
+    feeReminderSentAt: player.feeReminderSentAt?.toISOString() ?? null,
     createdAt: player.createdAt?.toISOString(),
   };
 }
@@ -231,6 +233,42 @@ router.post("/send-travel-reminders", requireSession, async (req, res) => {
   }
 
   console.log(`[travel-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
+  res.json({ sent, failed, total: players.length });
+});
+
+router.post("/send-fee-reminders", requireSession, async (req, res) => {
+  const { playerIds } = SendFeeRemindersBody.parse(req.body ?? {});
+
+  const unpaidCondition = eq(playersTable.feePaid, false);
+
+  const whereClause = playerIds && playerIds.length > 0
+    ? and(inArray(playersTable.id, playerIds), unpaidCondition)
+    : unpaidCondition;
+
+  const players = await db
+    .select({ player: playersTable, teamName: teamsTable.name })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(whereClause);
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const { player, teamName } of players) {
+    const success = await sendFeeReminderEmail({
+      playerName: player.name,
+      playerEmail: player.email,
+      teamName: teamName ?? "your team",
+      amountDue: player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null,
+      amountPaid: player.paymentAmountPaid ? parseFloat(player.paymentAmountPaid) : null,
+    });
+    if (success) {
+      sent++;
+      await db.update(playersTable).set({ feeReminderSentAt: new Date() }).where(eq(playersTable.id, player.id));
+    } else failed++;
+  }
+
+  console.log(`[fee-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
   res.json({ sent, failed, total: players.length });
 });
 

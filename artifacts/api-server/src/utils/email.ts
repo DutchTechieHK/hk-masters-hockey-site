@@ -584,6 +584,88 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendFeeReminderEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  teamName: string;
+  amountDue?: number | null;
+  amountPaid?: number | null;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeTeam = escapeHtml(opts.teamName);
+
+  const formatCurrency = (n: number) =>
+    `HK$${n.toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+
+  const due = opts.amountDue ?? 0;
+  const paid = opts.amountPaid ?? 0;
+  const outstanding = Math.max(due - paid, 0);
+
+  const amountSection = due > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+        <tr style="background-color:#f9fafb;">
+          <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:140px;">Amount due</td>
+          <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${formatCurrency(due)}</td>
+        </tr>
+        ${paid > 0 ? `<tr>
+          <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Already paid</td>
+          <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${formatCurrency(paid)}</td>
+        </tr>` : ""}
+        <tr style="background-color:#fff7ed;">
+          <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#9a3412;border-top:1px solid #e5e7eb;">Outstanding</td>
+          <td style="padding:10px 16px;font-size:15px;font-weight:700;color:#9a3412;border-top:1px solid #e5e7eb;">${formatCurrency(outstanding)}</td>
+        </tr>
+      </table>`
+    : "";
+
+  const amountText = due > 0
+    ? `Amount due: ${formatCurrency(due)}\n${paid > 0 ? `Already paid: ${formatCurrency(paid)}\n` : ""}Outstanding: ${formatCurrency(outstanding)}\n\n`
+    : "";
+
+  const html = emailShell(
+    "#006B3C",
+    "Tournament fee outstanding",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      A friendly reminder from <strong>${safeTeam}</strong>: our records show that your tournament contribution for the <strong>HK 2026 Masters World Cup</strong> is still outstanding.
+    </p>
+    ${amountSection}
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Please arrange your payment at your earliest convenience so we can finalise team logistics, kit and accommodation. If you've already paid recently, please ignore this message — it may not have been recorded yet.
+    </p>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="mailto:${ADMIN_EMAIL}?subject=Tournament%20fee%20payment%20-%20HK%202026%20Masters%20World%20Cup" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Contact team manager</a>
+    </p>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Tournament info: <a href="${PUBLIC_URL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${PUBLIC_URL}</a>
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Thanks for getting this sorted — we can't wait to see you in the Netherlands!
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+A friendly reminder from ${opts.teamName}: our records show that your tournament contribution for the HK 2026 Masters World Cup is still outstanding.
+
+${amountText}Please arrange your payment at your earliest convenience so we can finalise team logistics, kit and accommodation. If you've already paid recently, please ignore this message — it may not have been recorded yet.
+
+Reply to this email or contact us at ${ADMIN_EMAIL} to arrange payment.
+
+Tournament info: ${PUBLIC_URL}
+
+Thanks for getting this sorted — we can't wait to see you in the Netherlands!
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: `[Action Required] Tournament fee outstanding – HK 2026 Masters World Cup`,
+    html,
+    text,
+  });
+}
+
 export async function sendNewPledgeEmail(opts: {
   donorName: string;
   donorEmail?: string;

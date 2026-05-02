@@ -20,6 +20,17 @@ export interface TravelReminderResult {
   total: number;
 }
 
+export interface SendFeeRemindersBody {
+  /** Specific player IDs to email. If omitted, emails all unpaid players. */
+  playerIds?: number[];
+}
+
+export interface FeeReminderResult {
+  sent: number;
+  failed: number;
+  total: number;
+}
+
 export type DashboardStatsTeamStatsItem = {
   teamId: number;
   teamName: string;
@@ -105,6 +116,7 @@ export interface Player {
   medicalNotes?: string;
   notes?: string;
   travelReminderSentAt?: string | null;
+  feeReminderSentAt?: string | null;
   createdAt?: string;
 }
 

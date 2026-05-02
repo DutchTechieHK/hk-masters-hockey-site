@@ -38,5 +38,6 @@ export interface Player {
   medicalNotes?: string;
   notes?: string;
   travelReminderSentAt?: string | null;
+  feeReminderSentAt?: string | null;
   createdAt?: string;
 }
