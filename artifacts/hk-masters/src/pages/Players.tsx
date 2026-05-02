@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -16,6 +16,39 @@ import { useToast } from "@/hooks/use-toast"
 import { getInitials } from "@/lib/utils"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
+
+const SESSION_KEY = "hkm_admin_session"
+function getStoredSession(): string | null {
+  try { return localStorage.getItem(SESSION_KEY) } catch { return null }
+}
+function storeSession(token: string) {
+  try { localStorage.setItem(SESSION_KEY, token) } catch { /* noop */ }
+}
+function clearStoredSession() {
+  try { localStorage.removeItem(SESSION_KEY) } catch { /* noop */ }
+}
+async function adminLogin(password: string): Promise<string> {
+  const res = await fetch("/api/admin/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error((data as { error?: string }).error ?? "Login failed")
+  }
+  const data = await res.json() as { token: string }
+  return data.token
+}
+async function fetchAccessToken(playerId: number, sessionToken: string): Promise<{ status: number; accessToken: string | null }> {
+  const res = await fetch(`/api/players/${playerId}/access-token`, {
+    headers: { "x-session-token": sessionToken },
+  })
+  if (res.status === 401) return { status: 401, accessToken: null }
+  if (!res.ok) return { status: res.status, accessToken: null }
+  const data = await res.json() as { accessToken: string | null }
+  return { status: 200, accessToken: data.accessToken }
+}
 
 function passportStatus(expiry?: string | null) {
   if (!expiry) return "missing"
@@ -148,17 +181,69 @@ export default function Players() {
 
   const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) || "https://hkmastershockey.com"
 
-  const handleCopyLink = async (player: Player) => {
-    if (!player.accessToken) {
-      toast({ title: "No link available for this player yet", variant: "destructive" })
-      return
-    }
-    const url = `${PUBLIC_SITE_URL.replace(/\/$/, "")}/my-details/${player.accessToken}`
+  const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const [loginPassword, setLoginPassword] = useState("")
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [pendingPlayer, setPendingPlayer] = useState<Player | null>(null)
+
+  const completeCopy = async (player: Player, accessToken: string) => {
+    const url = `${PUBLIC_SITE_URL.replace(/\/$/, "")}/my-details/${accessToken}`
     try {
       await navigator.clipboard.writeText(url)
       toast({ title: "Self-service link copied", description: `Share with ${player.name}` })
     } catch {
       window.prompt("Copy this link to share with the player:", url)
+    }
+  }
+
+  const handleCopyLink = async (player: Player) => {
+    const session = getStoredSession()
+    if (!session) {
+      setPendingPlayer(player)
+      setLoginPassword("")
+      setLoginError(null)
+      setLoginModalOpen(true)
+      return
+    }
+    const result = await fetchAccessToken(player.id, session)
+    if (result.status === 401) {
+      clearStoredSession()
+      setPendingPlayer(player)
+      setLoginPassword("")
+      setLoginError(null)
+      setLoginModalOpen(true)
+      return
+    }
+    if (result.status !== 200 || !result.accessToken) {
+      toast({ title: "No link available for this player yet", variant: "destructive" })
+      return
+    }
+    await completeCopy(player, result.accessToken)
+  }
+
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginLoading(true)
+    setLoginError(null)
+    try {
+      const token = await adminLogin(loginPassword)
+      storeSession(token)
+      setLoginModalOpen(false)
+      setLoginPassword("")
+      if (pendingPlayer) {
+        const result = await fetchAccessToken(pendingPlayer.id, token)
+        if (result.status === 200 && result.accessToken) {
+          await completeCopy(pendingPlayer, result.accessToken)
+        } else {
+          toast({ title: "No link available for this player yet", variant: "destructive" })
+        }
+        setPendingPlayer(null)
+      }
+    } catch (err) {
+      setLoginError((err as Error).message || "Login failed")
+    } finally {
+      setLoginLoading(false)
     }
   }
 
@@ -325,9 +410,8 @@ export default function Players() {
                         <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => handleCopyLink(player)}
-                            disabled={!player.accessToken}
-                            title={player.accessToken ? "Copy self-service link" : "No self-service link yet"}
-                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            title="Copy self-service link (admin)"
+                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
                           >
                             <LinkIcon className="w-4 h-4" />
                           </button>
@@ -509,6 +593,41 @@ export default function Players() {
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : editingPlayer ? "Update Player" : "Add Player"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={loginModalOpen}
+        onClose={() => { setLoginModalOpen(false); setPendingPlayer(null) }}
+        title="Admin login required"
+      >
+        <form onSubmit={handleLoginSubmit} className="space-y-4">
+          <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto">
+            <Lock className="w-6 h-6 text-primary" />
+          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            Self-service links are admin-only. Enter the admin password to copy this link.
+          </p>
+          <Input
+            type="password"
+            placeholder="Admin password"
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
+            autoFocus
+          />
+          {loginError && <p className="text-xs text-destructive">{loginError}</p>}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setLoginModalOpen(false); setPendingPlayer(null) }}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loginLoading || !loginPassword}>
+              {loginLoading ? "Signing in…" : "Sign in & copy"}
             </Button>
           </div>
         </form>
