@@ -26,6 +26,7 @@ import type {
   CreateTeam,
   DashboardStats,
   FundraisingEntry,
+  GetPlayerAccessToken200,
   HealthStatus,
   KitOrder,
   ListKitsParams,
@@ -963,6 +964,94 @@ export const useUpdateSelfPlayer = <
 > => {
   return useMutation(getUpdateSelfPlayerMutationOptions(options));
 };
+
+/**
+ * @summary Get a player's self-service access token (admin only)
+ */
+export const getGetPlayerAccessTokenUrl = (id: number) => {
+  return `/api/players/${id}/access-token`;
+};
+
+export const getPlayerAccessToken = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GetPlayerAccessToken200> => {
+  return customFetch<GetPlayerAccessToken200>(getGetPlayerAccessTokenUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPlayerAccessTokenQueryKey = (id: number) => {
+  return [`/api/players/${id}/access-token`] as const;
+};
+
+export const getGetPlayerAccessTokenQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlayerAccessToken>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlayerAccessToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPlayerAccessTokenQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPlayerAccessToken>>
+  > = ({ signal }) => getPlayerAccessToken(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlayerAccessToken>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPlayerAccessTokenQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlayerAccessToken>>
+>;
+export type GetPlayerAccessTokenQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a player's self-service access token (admin only)
+ */
+
+export function useGetPlayerAccessToken<
+  TData = Awaited<ReturnType<typeof getPlayerAccessToken>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlayerAccessToken>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlayerAccessTokenQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Update a player

@@ -77,7 +77,6 @@ export interface Player {
   id: number;
   teamId: number;
   teamName?: string;
-  accessToken?: string | null;
   name: string;
   shirtNumber?: number;
   email: string;
@@ -446,6 +445,10 @@ export interface CreateMatch {
 
 export type ListPlayersParams = {
   teamId?: number;
+};
+
+export type GetPlayerAccessToken200 = {
+  accessToken: string | null;
 };
 
 export type ListKitsParams = {

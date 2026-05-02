@@ -228,6 +228,34 @@ paths:
         "404":
           description: Token not found
 
+  /players/{id}/access-token:
+    get:
+      operationId: getPlayerAccessToken
+      tags: [players]
+      summary: Get a player's self-service access token (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Access token for the player
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    nullable: true
+                required: [accessToken]
+        "401":
+          description: Unauthorized
+        "404":
+          description: Player not found
+
   /players/{id}:
     put:
       operationId: updatePlayer
@@ -800,9 +828,6 @@ components:
           type: integer
         teamName:
           type: string
-        accessToken:
-          type: string
-          nullable: true
         name:
           type: string
         shirtNumber:

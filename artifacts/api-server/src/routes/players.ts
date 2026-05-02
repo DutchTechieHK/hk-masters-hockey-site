@@ -13,6 +13,7 @@ import {
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
+import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -21,7 +22,6 @@ function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string |
     id: player.id,
     teamId: player.teamId,
     teamName: teamName ?? undefined,
-    accessToken: player.accessToken ?? null,
     name: player.name,
     shirtNumber: player.shirtNumber ?? undefined,
     email: player.email,
@@ -172,6 +172,23 @@ router.patch("/self/:token", async (req, res) => {
     : [existing];
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
   res.json(mapSelfPlayer(updated, team?.name));
+});
+
+router.get("/:id/access-token", requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [player] = await db
+    .select({ accessToken: playersTable.accessToken })
+    .from(playersTable)
+    .where(eq(playersTable.id, id));
+  if (!player) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json({ accessToken: player.accessToken ?? null });
 });
 
 router.post("/send-travel-reminders", requireSession, async (req, res) => {

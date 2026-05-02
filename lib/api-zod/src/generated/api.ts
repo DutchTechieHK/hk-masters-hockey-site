@@ -132,7 +132,6 @@ export const ListPlayersResponseItem = zod.object({
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
-  accessToken: zod.string().nullish(),
   name: zod.string(),
   shirtNumber: zod.number().optional(),
   email: zod.string(),
@@ -301,6 +300,17 @@ export const UpdateSelfPlayerResponse = zod.object({
 });
 
 /**
+ * @summary Get a player's self-service access token (admin only)
+ */
+export const GetPlayerAccessTokenParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPlayerAccessTokenResponse = zod.object({
+  accessToken: zod.string().nullable(),
+});
+
+/**
  * @summary Update a player
  */
 export const UpdatePlayerParams = zod.object({
@@ -342,7 +352,6 @@ export const UpdatePlayerResponse = zod.object({
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
-  accessToken: zod.string().nullish(),
   name: zod.string(),
   shirtNumber: zod.number().optional(),
   email: zod.string(),

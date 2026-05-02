@@ -25,6 +25,7 @@ export * from "./dashboardStatsTeamStatsItem";
 export * from "./dashboardStatsUpcomingDeadlinesItem";
 export * from "./fundraisingEntry";
 export * from "./fundraisingEntryStatus";
+export * from "./getPlayerAccessToken200";
 export * from "./healthStatus";
 export * from "./kitOrder";
 export * from "./kitOrderItemType";

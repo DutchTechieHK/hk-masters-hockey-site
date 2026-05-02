@@ -10,7 +10,6 @@ export interface Player {
   id: number;
   teamId: number;
   teamName?: string;
-  accessToken?: string | null;
   name: string;
   shirtNumber?: number;
   email: string;
