@@ -5,3 +5,4 @@ export * from "./fundraising";
 export * from "./logistics";
 export * from "./contributions";
 export * from "./sponsors";
+export * from "./matches";

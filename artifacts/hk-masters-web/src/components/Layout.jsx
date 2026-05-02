@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/teams", label: "Teams" },
   { href: "/events", label: "Events" },
   { href: "/rotterdam-2026", label: "Rotterdam 2026" },
+  { href: "/schedule", label: "Schedule" },
   { href: "/journal", label: "Journal" },
   { href: "/media", label: "Media" },
   { href: "/sponsors", label: "Sponsors" },

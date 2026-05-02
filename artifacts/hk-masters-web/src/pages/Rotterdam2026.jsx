@@ -7,6 +7,7 @@ import RichText from "../components/RichText";
 import FundraisingThermometer from "../components/FundraisingThermometer";
 import PledgeForm from "../components/PledgeForm";
 import SponsorStrip from "../components/SponsorStrip";
+import NextMatchWidget from "../components/NextMatchWidget";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "/";
@@ -38,6 +39,9 @@ export default function Rotterdam2026() {
           </p>
         </div>
       </div>
+
+      {/* Next Match Widget */}
+      <NextMatchWidget />
 
       {/* Tournament Overview */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

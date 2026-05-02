@@ -84,11 +84,12 @@ lib/
 2. About
 3. Teams
 4. Events
-5. Rotterdam 2026 — squad details, schedule
-6. Journal — community articles/photos feed + contribution form + individual article pages (`/journal/:id`)
-7. Media — photo albums (CMS) + "Community Contributions" album auto-populated from approved photo submissions
-8. Sponsors
-9. Contact
+5. Rotterdam 2026 — squad details, "Next match" widget per team
+6. Schedule — fixtures grouped by date, upcoming + results sections (data from `/api/matches`)
+7. Journal — community articles/photos feed + contribution form + individual article pages (`/journal/:id`)
+8. Media — photo albums (CMS) + "Community Contributions" album auto-populated from approved photo submissions
+9. Sponsors
+10. Contact
 
 ## Journal Feature
 
@@ -115,11 +116,13 @@ Community members can submit articles and photos via the public Journal page. Su
 5. Fundraising — sponsor/donor records
 6. Logistics — Kanban board
 7. Journal — admin moderation (login required, session-based)
+8. Schedule — match fixtures CRUD (login required); per-team grouping; conditional score inputs based on status
 
 ## Database Tables
 
 - `teams`, `players`, `kits`, `fundraising`, `logistics`
 - `contributions` — id, title, author_name, author_email, content_type (article|photo|both), article_body, photo_urls (text[]), status (pending|approved|declined), admin_note, created_at, reviewed_at
+- `matches` — id, team_id (FK), opponent, kickoff_at, venue, our_score (nullable), their_score (nullable), status (scheduled|in_progress|final|cancelled), notes, created_at
 
 ## Rotterdam 2026
 

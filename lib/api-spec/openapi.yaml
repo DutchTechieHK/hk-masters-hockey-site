@@ -23,6 +23,8 @@ tags:
     description: Dashboard operations
   - name: sponsors
     description: Sponsor operations
+  - name: matches
+    description: Match schedule operations
 
 paths:
   /healthz:
@@ -430,6 +432,82 @@ paths:
       operationId: deleteLogisticsTask
       tags: [logistics]
       summary: Delete a logistics task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /matches:
+    get:
+      operationId: listMatches
+      tags: [matches]
+      summary: List all matches
+      parameters:
+        - name: teamId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Match"
+    post:
+      operationId: createMatch
+      tags: [matches]
+      summary: Create a match
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatch"
+      responses:
+        "201":
+          description: Created match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+
+  /matches/{id}:
+    put:
+      operationId: updateMatch
+      tags: [matches]
+      summary: Update a match
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatch"
+      responses:
+        "200":
+          description: Updated match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Match"
+    delete:
+      operationId: deleteMatch
+      tags: [matches]
+      summary: Delete a match
       parameters:
         - name: id
           in: path
@@ -1043,3 +1121,68 @@ components:
         - name
         - tier
         - active
+
+    Match:
+      type: object
+      properties:
+        id:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        teamCategory:
+          type: string
+        opponent:
+          type: string
+        kickoffAt:
+          type: string
+        venue:
+          type: string
+        ourScore:
+          type: integer
+          nullable: true
+        theirScore:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, in_progress, final, cancelled]
+        notes:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - teamId
+        - opponent
+        - kickoffAt
+        - status
+
+    CreateMatch:
+      type: object
+      properties:
+        teamId:
+          type: integer
+        opponent:
+          type: string
+        kickoffAt:
+          type: string
+        venue:
+          type: string
+        ourScore:
+          type: integer
+          nullable: true
+        theirScore:
+          type: integer
+          nullable: true
+        status:
+          type: string
+          enum: [scheduled, in_progress, final, cancelled]
+        notes:
+          type: string
+      required:
+        - teamId
+        - opponent
+        - kickoffAt
+        - status

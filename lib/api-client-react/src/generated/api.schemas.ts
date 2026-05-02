@@ -225,11 +225,10 @@ export interface FundraisingEntry {
   amountPledged: number;
   amountReceived: number;
   date?: string;
-  teamId?: number | null;
+  teamId?: number;
   teamName?: string;
   status: FundraisingEntryStatus;
   notes?: string;
-  paidAt?: string | null;
   createdAt?: string;
 }
 
@@ -248,10 +247,9 @@ export interface CreateFundraisingEntry {
   amountPledged: number;
   amountReceived: number;
   date?: string;
-  teamId?: number | null;
+  teamId?: number;
   status: CreateFundraisingEntryStatus;
   notes?: string;
-  paidAt?: string | null;
 }
 
 export type LogisticsTaskCategory =
@@ -354,6 +352,51 @@ export interface CreateSponsor {
   active: boolean;
 }
 
+export type MatchStatus = (typeof MatchStatus)[keyof typeof MatchStatus];
+
+export const MatchStatus = {
+  scheduled: "scheduled",
+  in_progress: "in_progress",
+  final: "final",
+  cancelled: "cancelled",
+} as const;
+
+export interface Match {
+  id: number;
+  teamId: number;
+  teamName?: string;
+  teamCategory?: string;
+  opponent: string;
+  kickoffAt: string;
+  venue?: string;
+  ourScore?: number | null;
+  theirScore?: number | null;
+  status: MatchStatus;
+  notes?: string;
+  createdAt?: string;
+}
+
+export type CreateMatchStatus =
+  (typeof CreateMatchStatus)[keyof typeof CreateMatchStatus];
+
+export const CreateMatchStatus = {
+  scheduled: "scheduled",
+  in_progress: "in_progress",
+  final: "final",
+  cancelled: "cancelled",
+} as const;
+
+export interface CreateMatch {
+  teamId: number;
+  opponent: string;
+  kickoffAt: string;
+  venue?: string;
+  ourScore?: number | null;
+  theirScore?: number | null;
+  status: CreateMatchStatus;
+  notes?: string;
+}
+
 export type ListPlayersParams = {
   teamId?: number;
 };
@@ -363,5 +406,9 @@ export type ListKitsParams = {
 };
 
 export type ListLogisticsParams = {
+  teamId?: number;
+};
+
+export type ListMatchesParams = {
   teamId?: number;
 };

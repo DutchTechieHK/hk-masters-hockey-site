@@ -10,6 +10,7 @@ import dashboardRouter from "./dashboard";
 import contributionsRouter from "./contributions";
 import adminAuthRouter from "./adminAuth";
 import sponsorsRouter from "./sponsors";
+import matchesRouter from "./matches";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/dashboard", dashboardRouter);
 router.use("/contributions", contributionsRouter);
 router.use("/admin/auth", adminAuthRouter);
 router.use("/sponsors", sponsorsRouter);
+router.use("/matches", matchesRouter);
 
 export default router;

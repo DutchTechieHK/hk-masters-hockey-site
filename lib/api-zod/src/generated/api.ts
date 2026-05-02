@@ -159,6 +159,7 @@ export const ListPlayersResponseItem = zod.object({
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  travelReminderSentAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 export const ListPlayersResponse = zod.array(ListPlayersResponseItem);
@@ -284,6 +285,7 @@ export const UpdatePlayerResponse = zod.object({
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  travelReminderSentAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 
@@ -444,10 +446,9 @@ export const UpdateFundraisingBody = zod.object({
   amountPledged: zod.number(),
   amountReceived: zod.number(),
   date: zod.string().optional(),
-  teamId: zod.number().nullable().optional(),
+  teamId: zod.number().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
-  paidAt: zod.string().nullable().optional(),
 });
 
 export const UpdateFundraisingResponse = zod.object({
@@ -567,6 +568,83 @@ export const UpdateLogisticsTaskResponse = zod.object({
  * @summary Delete a logistics task
  */
 export const DeleteLogisticsTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List all matches
+ */
+export const ListMatchesQueryParams = zod.object({
+  teamId: zod.coerce.number().optional(),
+});
+
+export const ListMatchesResponseItem = zod.object({
+  id: zod.number(),
+  teamId: zod.number(),
+  teamName: zod.string().optional(),
+  teamCategory: zod.string().optional(),
+  opponent: zod.string(),
+  kickoffAt: zod.string(),
+  venue: zod.string().optional(),
+  ourScore: zod.number().nullish(),
+  theirScore: zod.number().nullish(),
+  status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+  notes: zod.string().optional(),
+  createdAt: zod.string().optional(),
+});
+export const ListMatchesResponse = zod.array(ListMatchesResponseItem);
+
+/**
+ * @summary Create a match
+ */
+export const CreateMatchBody = zod.object({
+  teamId: zod.number(),
+  opponent: zod.string(),
+  kickoffAt: zod.string(),
+  venue: zod.string().optional(),
+  ourScore: zod.number().nullish(),
+  theirScore: zod.number().nullish(),
+  status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Update a match
+ */
+export const UpdateMatchParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMatchBody = zod.object({
+  teamId: zod.number(),
+  opponent: zod.string(),
+  kickoffAt: zod.string(),
+  venue: zod.string().optional(),
+  ourScore: zod.number().nullish(),
+  theirScore: zod.number().nullish(),
+  status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+  notes: zod.string().optional(),
+});
+
+export const UpdateMatchResponse = zod.object({
+  id: zod.number(),
+  teamId: zod.number(),
+  teamName: zod.string().optional(),
+  teamCategory: zod.string().optional(),
+  opponent: zod.string(),
+  kickoffAt: zod.string(),
+  venue: zod.string().optional(),
+  ourScore: zod.number().nullish(),
+  theirScore: zod.number().nullish(),
+  status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+  notes: zod.string().optional(),
+  createdAt: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a match
+ */
+export const DeleteMatchParams = zod.object({
   id: zod.coerce.number(),
 });
 

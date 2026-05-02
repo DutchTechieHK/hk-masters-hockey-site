@@ -12,6 +12,7 @@ import Logistics from "@/pages/Logistics";
 import Journal from "@/pages/Journal";
 import Travel from "@/pages/Travel";
 import Sponsors from "@/pages/Sponsors";
+import Schedule from "@/pages/Schedule";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -35,6 +36,7 @@ function Router() {
       <Route path="/travel" component={Travel} />
       <Route path="/journal" component={Journal} />
       <Route path="/sponsors" component={Sponsors} />
+      <Route path="/schedule" component={Schedule} />
       <Route component={NotFound} />
     </Switch>
   );
