@@ -2187,7 +2187,7 @@ export const updateMatch = async (
 ): Promise<Match> => {
   return customFetch<Match>(getUpdateMatchUrl(id), {
     ...options,
-    method: "PUT",
+    method: "PATCH",
     headers: { "Content-Type": "application/json", ...options?.headers },
     body: JSON.stringify(createMatch),
   });

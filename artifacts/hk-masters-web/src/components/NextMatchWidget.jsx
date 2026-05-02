@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { API_BASE } from "../utils/api";
 
+const FALLBACK_TEAMS = [
+  { id: -1, name: "Men 40+", category: "Men 40+" },
+  { id: -2, name: "Men 50+", category: "Men 50+" },
+];
+
 function formatDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
@@ -26,41 +31,43 @@ function getCountdown(iso) {
 
 export default function NextMatchWidget() {
   const [matches, setMatches] = useState([]);
+  const [teams, setTeams] = useState(FALLBACK_TEAMS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/matches`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => {
-        setMatches(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    let cancelled = false;
+    Promise.all([
+      fetch(`${API_BASE}/api/matches`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`${API_BASE}/api/teams`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]).then(([matchData, teamData]) => {
+      if (cancelled) return;
+      setMatches(Array.isArray(matchData) ? matchData : []);
+      const validTeams = Array.isArray(teamData) && teamData.length > 0 ? teamData : FALLBACK_TEAMS;
+      setTeams(validTeams);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading) return null;
 
   const now = Date.now();
-  // Group upcoming match per team category
-  const upcomingByCategory = new Map();
-  for (const m of matches) {
-    if (m.status === "cancelled") continue;
-    if (new Date(m.kickoffAt).getTime() < now - 3 * 60 * 60 * 1000) continue;
-    const cat = m.teamCategory || "HK";
-    const existing = upcomingByCategory.get(cat);
-    if (!existing || new Date(m.kickoffAt).getTime() < new Date(existing.kickoffAt).getTime()) {
-      upcomingByCategory.set(cat, m);
+
+  function nextMatchForTeam(team) {
+    let best = null;
+    for (const m of matches) {
+      if (m.status === "cancelled") continue;
+      if (m.teamId !== team.id) continue;
+      const t = new Date(m.kickoffAt).getTime();
+      if (t < now - 3 * 60 * 60 * 1000) continue;
+      if (!best || new Date(m.kickoffAt).getTime() < new Date(best.kickoffAt).getTime()) {
+        best = m;
+      }
     }
+    return best;
   }
-
-  const cards = Array.from(upcomingByCategory.values()).sort(
-    (a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()
-  );
-
-  // Always show a card per known team category if we have any matches at all
-  const knownCategories = Array.from(new Set(matches.map((m) => m.teamCategory).filter(Boolean)));
-  // If no matches at all, show two TBC placeholders
-  const placeholderCategories = knownCategories.length > 0 ? knownCategories : ["MO40", "MO50"];
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10">
@@ -74,13 +81,15 @@ export default function NextMatchWidget() {
             Full schedule &rarr;
           </Link>
         </div>
-        <div className={`grid grid-cols-1 ${placeholderCategories.length > 1 ? "md:grid-cols-2" : ""} gap-4`}>
-          {placeholderCategories.map((cat) => {
-            const m = cards.find((c) => c.teamCategory === cat);
+        <div className={`grid grid-cols-1 ${teams.length > 1 ? "md:grid-cols-2" : ""} gap-4`}>
+          {teams.map((team) => {
+            const m = nextMatchForTeam(team);
             return (
-              <div key={cat} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div key={team.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">{cat}</span>
+                  <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">
+                    {team.category || team.name}
+                  </span>
                   {m && getCountdown(m.kickoffAt) && (
                     <span className="bg-green-100 text-[#006B3C] text-xs font-semibold px-2 py-0.5 rounded">
                       {getCountdown(m.kickoffAt)}

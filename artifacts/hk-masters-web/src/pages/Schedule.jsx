@@ -125,19 +125,25 @@ export default function Schedule() {
   const upcoming = sorted.filter((m) => new Date(m.kickoffAt).getTime() >= now - 3 * 60 * 60 * 1000 && m.status !== "cancelled");
   const past = sorted.filter((m) => !upcoming.includes(m)).reverse();
 
-  function groupByDate(list) {
+  function groupByDateAndTeam(list) {
     const groups = new Map();
     for (const m of list) {
       const d = new Date(m.kickoffAt);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      if (!groups.has(key)) groups.set(key, { date: m.kickoffAt, items: [] });
-      groups.get(key).items.push(m);
+      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if (!groups.has(dateKey)) groups.set(dateKey, { date: m.kickoffAt, teams: new Map() });
+      const dateGroup = groups.get(dateKey);
+      const teamKey = m.teamCategory || m.teamName || "HK Masters";
+      if (!dateGroup.teams.has(teamKey)) dateGroup.teams.set(teamKey, []);
+      dateGroup.teams.get(teamKey).push(m);
     }
-    return Array.from(groups.values());
+    return Array.from(groups.values()).map((g) => ({
+      date: g.date,
+      teams: Array.from(g.teams.entries()).map(([name, items]) => ({ name, items })),
+    }));
   }
 
-  const upcomingGroups = groupByDate(upcoming);
-  const pastGroups = groupByDate(past);
+  const upcomingGroups = groupByDateAndTeam(upcoming);
+  const pastGroups = groupByDateAndTeam(past);
 
   return (
     <div>
@@ -179,15 +185,26 @@ export default function Schedule() {
                     {upcoming.length}
                   </span>
                 </div>
-                <div className="space-y-8">
+                <div className="space-y-10">
                   {upcomingGroups.map((g) => (
                     <div key={g.date}>
-                      <h3 className="text-sm font-bold text-[#006B3C] uppercase tracking-wide mb-3">
+                      <h3 className="text-sm font-bold text-[#006B3C] uppercase tracking-wide mb-4">
                         {formatDateHeading(g.date)}
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {g.items.map((m) => (
-                          <MatchCard key={m.id} match={m} />
+                      <div className="space-y-6">
+                        {g.teams.map((teamGroup) => (
+                          <div key={teamGroup.name}>
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <span className="bg-[#DE2910] text-white px-2 py-0.5 rounded text-[10px]">
+                                {teamGroup.name}
+                              </span>
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {teamGroup.items.map((m) => (
+                                <MatchCard key={m.id} match={m} />
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -199,15 +216,26 @@ export default function Schedule() {
             {pastGroups.length > 0 && (
               <section>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Results</h2>
-                <div className="space-y-8">
+                <div className="space-y-10">
                   {pastGroups.map((g) => (
                     <div key={g.date}>
-                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-3">
+                      <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-4">
                         {formatDateHeading(g.date)}
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {g.items.map((m) => (
-                          <MatchCard key={m.id} match={m} />
+                      <div className="space-y-6">
+                        {g.teams.map((teamGroup) => (
+                          <div key={teamGroup.name}>
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-[10px]">
+                                {teamGroup.name}
+                              </span>
+                            </p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {teamGroup.items.map((m) => (
+                                <MatchCard key={m.id} match={m} />
+                              ))}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>

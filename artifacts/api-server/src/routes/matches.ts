@@ -61,13 +61,18 @@ router.post("/", requireAdminAccess, async (req, res) => {
   res.status(201).json(serialize(match, team?.name, team?.category));
 });
 
-router.put("/:id", requireAdminAccess, async (req, res) => {
+async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {
   const { id } = UpdateMatchParams.parse(req.params);
   const body = UpdateMatchBody.parse(req.body);
+  const kickoffDate = new Date(body.kickoffAt);
+  if (Number.isNaN(kickoffDate.getTime())) {
+    res.status(400).json({ error: "Invalid kickoffAt date" });
+    return;
+  }
   const [match] = await db.update(matchesTable).set({
     teamId: body.teamId,
     opponent: body.opponent,
-    kickoffAt: new Date(body.kickoffAt),
+    kickoffAt: kickoffDate,
     venue: body.venue || null,
     ourScore: body.ourScore ?? null,
     theirScore: body.theirScore ?? null,
@@ -80,7 +85,10 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   }
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
   res.json(serialize(match, team?.name, team?.category));
-});
+}
+
+router.patch("/:id", requireAdminAccess, handleUpdateMatch);
+router.put("/:id", requireAdminAccess, handleUpdateMatch);
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteMatchParams.parse(req.params);

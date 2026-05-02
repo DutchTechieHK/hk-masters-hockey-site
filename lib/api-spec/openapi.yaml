@@ -481,7 +481,7 @@ paths:
                 $ref: "#/components/schemas/Match"
 
   /matches/{id}:
-    put:
+    patch:
       operationId: updateMatch
       tags: [matches]
       summary: Update a match
