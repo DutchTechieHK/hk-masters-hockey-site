@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -144,6 +144,22 @@ export default function Players() {
       notes: player.notes || "",
     })
     setIsModalOpen(true)
+  }
+
+  const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) || "https://hkmastershockey.com"
+
+  const handleCopyLink = async (player: Player) => {
+    if (!player.accessToken) {
+      toast({ title: "No link available for this player yet", variant: "destructive" })
+      return
+    }
+    const url = `${PUBLIC_SITE_URL.replace(/\/$/, "")}/my-details/${player.accessToken}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast({ title: "Self-service link copied", description: `Share with ${player.name}` })
+    } catch {
+      window.prompt("Copy this link to share with the player:", url)
+    }
   }
 
   const handleDelete = async (id: number) => {
@@ -307,6 +323,14 @@ export default function Players() {
                       {/* Actions */}
                       <td className="px-4 py-4 text-right">
                         <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleCopyLink(player)}
+                            disabled={!player.accessToken}
+                            title={player.accessToken ? "Copy self-service link" : "No self-service link yet"}
+                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            <LinkIcon className="w-4 h-4" />
+                          </button>
                           <button onClick={() => openEditModal(player)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
                             <Edit2 className="w-4 h-4" />
                           </button>

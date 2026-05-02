@@ -182,6 +182,52 @@ paths:
         "401":
           description: Not authenticated
 
+  /players/self/{token}:
+    get:
+      operationId: getSelfPlayer
+      tags: [players]
+      summary: Get a player's editable details by access token (no auth)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Self-service player view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfPlayer"
+        "404":
+          description: Token not found
+    patch:
+      operationId: updateSelfPlayer
+      tags: [players]
+      summary: Update a player's editable details via access token (no auth)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSelfPlayer"
+      responses:
+        "200":
+          description: Updated self-service player view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelfPlayer"
+        "404":
+          description: Token not found
+
   /players/{id}:
     put:
       operationId: updatePlayer
@@ -754,6 +800,9 @@ components:
           type: integer
         teamName:
           type: string
+        accessToken:
+          type: string
+          nullable: true
         name:
           type: string
         shirtNumber:
@@ -884,6 +933,94 @@ components:
         - name
         - email
         - feePaid
+
+    SelfPlayer:
+      type: object
+      properties:
+        id:
+          type: integer
+        teamId:
+          type: integer
+        teamName:
+          type: string
+        name:
+          type: string
+        shirtNumber:
+          type: integer
+        email:
+          type: string
+        phone:
+          type: string
+        dateOfBirth:
+          type: string
+        nationality:
+          type: string
+        passportNumber:
+          type: string
+        passportExpiry:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        flightArrivalDateTime:
+          type: string
+        flightDepartureDateTime:
+          type: string
+        arrivalCity:
+          type: string
+        roomSharingPreference:
+          type: string
+        shirtSize:
+          type: string
+        shortsSize:
+          type: string
+        jacketSize:
+          type: string
+        dietaryRequirements:
+          type: string
+        medicalNotes:
+          type: string
+      required:
+        - id
+        - teamId
+        - name
+
+    UpdateSelfPlayer:
+      type: object
+      properties:
+        phone:
+          type: string
+        dateOfBirth:
+          type: string
+        nationality:
+          type: string
+        passportNumber:
+          type: string
+        passportExpiry:
+          type: string
+        emergencyContactName:
+          type: string
+        emergencyContactPhone:
+          type: string
+        flightArrivalDateTime:
+          type: string
+        flightDepartureDateTime:
+          type: string
+        arrivalCity:
+          type: string
+        roomSharingPreference:
+          type: string
+        shirtSize:
+          type: string
+        shortsSize:
+          type: string
+        jacketSize:
+          type: string
+        dietaryRequirements:
+          type: string
+        medicalNotes:
+          type: string
 
     KitOrder:
       type: object

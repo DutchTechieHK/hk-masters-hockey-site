@@ -132,6 +132,7 @@ export const ListPlayersResponseItem = zod.object({
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
+  accessToken: zod.string().nullish(),
   name: zod.string(),
   shirtNumber: zod.number().optional(),
   email: zod.string(),
@@ -217,6 +218,89 @@ export const SendTravelRemindersResponse = zod.object({
 });
 
 /**
+ * @summary Get a player's editable details by access token (no auth)
+ */
+export const GetSelfPlayerParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const GetSelfPlayerResponse = zod.object({
+  id: zod.number(),
+  teamId: zod.number(),
+  teamName: zod.string().optional(),
+  name: zod.string(),
+  shirtNumber: zod.number().optional(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  dateOfBirth: zod.string().optional(),
+  nationality: zod.string().optional(),
+  passportNumber: zod.string().optional(),
+  passportExpiry: zod.string().optional(),
+  emergencyContactName: zod.string().optional(),
+  emergencyContactPhone: zod.string().optional(),
+  flightArrivalDateTime: zod.string().optional(),
+  flightDepartureDateTime: zod.string().optional(),
+  arrivalCity: zod.string().optional(),
+  roomSharingPreference: zod.string().optional(),
+  shirtSize: zod.string().optional(),
+  shortsSize: zod.string().optional(),
+  jacketSize: zod.string().optional(),
+  dietaryRequirements: zod.string().optional(),
+  medicalNotes: zod.string().optional(),
+});
+
+/**
+ * @summary Update a player's editable details via access token (no auth)
+ */
+export const UpdateSelfPlayerParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const UpdateSelfPlayerBody = zod.object({
+  phone: zod.string().optional(),
+  dateOfBirth: zod.string().optional(),
+  nationality: zod.string().optional(),
+  passportNumber: zod.string().optional(),
+  passportExpiry: zod.string().optional(),
+  emergencyContactName: zod.string().optional(),
+  emergencyContactPhone: zod.string().optional(),
+  flightArrivalDateTime: zod.string().optional(),
+  flightDepartureDateTime: zod.string().optional(),
+  arrivalCity: zod.string().optional(),
+  roomSharingPreference: zod.string().optional(),
+  shirtSize: zod.string().optional(),
+  shortsSize: zod.string().optional(),
+  jacketSize: zod.string().optional(),
+  dietaryRequirements: zod.string().optional(),
+  medicalNotes: zod.string().optional(),
+});
+
+export const UpdateSelfPlayerResponse = zod.object({
+  id: zod.number(),
+  teamId: zod.number(),
+  teamName: zod.string().optional(),
+  name: zod.string(),
+  shirtNumber: zod.number().optional(),
+  email: zod.string().optional(),
+  phone: zod.string().optional(),
+  dateOfBirth: zod.string().optional(),
+  nationality: zod.string().optional(),
+  passportNumber: zod.string().optional(),
+  passportExpiry: zod.string().optional(),
+  emergencyContactName: zod.string().optional(),
+  emergencyContactPhone: zod.string().optional(),
+  flightArrivalDateTime: zod.string().optional(),
+  flightDepartureDateTime: zod.string().optional(),
+  arrivalCity: zod.string().optional(),
+  roomSharingPreference: zod.string().optional(),
+  shirtSize: zod.string().optional(),
+  shortsSize: zod.string().optional(),
+  jacketSize: zod.string().optional(),
+  dietaryRequirements: zod.string().optional(),
+  medicalNotes: zod.string().optional(),
+});
+
+/**
  * @summary Update a player
  */
 export const UpdatePlayerParams = zod.object({
@@ -258,6 +342,7 @@ export const UpdatePlayerResponse = zod.object({
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
+  accessToken: zod.string().nullish(),
   name: zod.string(),
   shirtNumber: zod.number().optional(),
   email: zod.string(),

@@ -90,6 +90,7 @@ lib/
 8. Media — photo albums (CMS) + "Community Contributions" album auto-populated from approved photo submissions
 9. Sponsors
 10. Contact
+11. My Details (`/my-details/:token`) — player self-service portal: tokenised link from admin opens a pre-filled form to edit travel, passport, emergency contact, kit sizes, dietary and medical info. Admin-locked fields (name, team, shirt#, email, fee) display read-only.
 
 ## Journal Feature
 
@@ -107,11 +108,16 @@ Community members can submit articles and photos via the public Journal page. Su
 - `DELETE /api/admin/auth` — logout
 - `GET /api/admin/auth` — check session validity
 
+**Player self-service endpoints** (no auth, token in URL):
+- `GET /api/players/self/:token` — returns the SelfPlayer view (no fee data) plus locked context (name/team/shirt/email)
+- `PATCH /api/players/self/:token` — updates only the whitelisted editable fields; ignores name/teamId/shirtNumber/email/feePaid attempts
+- `players.access_token` (text, unique, nullable) backfilled with `gen_random_uuid()`; new players get one at creation time
+
 ## Management App Pages
 
 1. Dashboard — stats, deadlines
 2. Teams — MO40 & MO50 with roster
-3. Players — full player profiles with kit sizes, passport, fees, flights
+3. Players — full player profiles with kit sizes, passport, fees, flights; "Copy self-service link" button per row generates `${VITE_PUBLIC_SITE_URL}/my-details/<token>`
 4. Kits — per-player kit orders with status tracking
 5. Fundraising — sponsor/donor records
 6. Logistics — Kanban board

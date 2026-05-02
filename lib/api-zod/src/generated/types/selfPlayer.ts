@@ -6,16 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Player {
+export interface SelfPlayer {
   id: number;
   teamId: number;
   teamName?: string;
-  accessToken?: string | null;
   name: string;
   shirtNumber?: number;
-  email: string;
+  email?: string;
   phone?: string;
-  position?: string;
   dateOfBirth?: string;
   nationality?: string;
   passportNumber?: string;
@@ -26,18 +24,9 @@ export interface Player {
   flightDepartureDateTime?: string;
   arrivalCity?: string;
   roomSharingPreference?: string;
-  roomSharingWith?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
-  travelDates?: string;
-  feePaid: boolean;
-  paymentAmountDue?: number;
-  paymentAmountPaid?: number;
-  paymentDate?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
-  notes?: string;
-  travelReminderSentAt?: string | null;
-  createdAt?: string;
 }

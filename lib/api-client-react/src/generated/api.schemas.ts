@@ -77,6 +77,7 @@ export interface Player {
   id: number;
   teamId: number;
   teamName?: string;
+  accessToken?: string | null;
   name: string;
   shirtNumber?: number;
   email: string;
@@ -137,6 +138,50 @@ export interface CreatePlayer {
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
+}
+
+export interface SelfPlayer {
+  id: number;
+  teamId: number;
+  teamName?: string;
+  name: string;
+  shirtNumber?: number;
+  email?: string;
+  phone?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  flightArrivalDateTime?: string;
+  flightDepartureDateTime?: string;
+  arrivalCity?: string;
+  roomSharingPreference?: string;
+  shirtSize?: string;
+  shortsSize?: string;
+  jacketSize?: string;
+  dietaryRequirements?: string;
+  medicalNotes?: string;
+}
+
+export interface UpdateSelfPlayer {
+  phone?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  passportNumber?: string;
+  passportExpiry?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  flightArrivalDateTime?: string;
+  flightDepartureDateTime?: string;
+  arrivalCity?: string;
+  roomSharingPreference?: string;
+  shirtSize?: string;
+  shortsSize?: string;
+  jacketSize?: string;
+  dietaryRequirements?: string;
+  medicalNotes?: string;
 }
 
 export type KitOrderItemType =

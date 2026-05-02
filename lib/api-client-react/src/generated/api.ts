@@ -35,10 +35,12 @@ import type {
   LogisticsTask,
   Match,
   Player,
+  SelfPlayer,
   SendTravelRemindersBody,
   Sponsor,
   Team,
   TravelReminderResult,
+  UpdateSelfPlayer,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -786,6 +788,180 @@ export const useSendTravelReminders = <
   TContext
 > => {
   return useMutation(getSendTravelRemindersMutationOptions(options));
+};
+
+/**
+ * @summary Get a player's editable details by access token (no auth)
+ */
+export const getGetSelfPlayerUrl = (token: string) => {
+  return `/api/players/self/${token}`;
+};
+
+export const getSelfPlayer = async (
+  token: string,
+  options?: RequestInit,
+): Promise<SelfPlayer> => {
+  return customFetch<SelfPlayer>(getGetSelfPlayerUrl(token), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSelfPlayerQueryKey = (token: string) => {
+  return [`/api/players/self/${token}`] as const;
+};
+
+export const getGetSelfPlayerQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSelfPlayer>>,
+  TError = ErrorType<void>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSelfPlayer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSelfPlayerQueryKey(token);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSelfPlayer>>> = ({
+    signal,
+  }) => getSelfPlayer(token, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!token,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSelfPlayer>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSelfPlayerQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSelfPlayer>>
+>;
+export type GetSelfPlayerQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a player's editable details by access token (no auth)
+ */
+
+export function useGetSelfPlayer<
+  TData = Awaited<ReturnType<typeof getSelfPlayer>>,
+  TError = ErrorType<void>,
+>(
+  token: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSelfPlayer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSelfPlayerQueryOptions(token, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a player's editable details via access token (no auth)
+ */
+export const getUpdateSelfPlayerUrl = (token: string) => {
+  return `/api/players/self/${token}`;
+};
+
+export const updateSelfPlayer = async (
+  token: string,
+  updateSelfPlayer: UpdateSelfPlayer,
+  options?: RequestInit,
+): Promise<SelfPlayer> => {
+  return customFetch<SelfPlayer>(getUpdateSelfPlayerUrl(token), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSelfPlayer),
+  });
+};
+
+export const getUpdateSelfPlayerMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSelfPlayer>>,
+    TError,
+    { token: string; data: BodyType<UpdateSelfPlayer> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSelfPlayer>>,
+  TError,
+  { token: string; data: BodyType<UpdateSelfPlayer> },
+  TContext
+> => {
+  const mutationKey = ["updateSelfPlayer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSelfPlayer>>,
+    { token: string; data: BodyType<UpdateSelfPlayer> }
+  > = (props) => {
+    const { token, data } = props ?? {};
+
+    return updateSelfPlayer(token, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSelfPlayerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSelfPlayer>>
+>;
+export type UpdateSelfPlayerMutationBody = BodyType<UpdateSelfPlayer>;
+export type UpdateSelfPlayerMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a player's editable details via access token (no auth)
+ */
+export const useUpdateSelfPlayer = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSelfPlayer>>,
+    TError,
+    { token: string; data: BodyType<UpdateSelfPlayer> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSelfPlayer>>,
+  TError,
+  { token: string; data: BodyType<UpdateSelfPlayer> },
+  TContext
+> => {
+  return useMutation(getUpdateSelfPlayerMutationOptions(options));
 };
 
 /**

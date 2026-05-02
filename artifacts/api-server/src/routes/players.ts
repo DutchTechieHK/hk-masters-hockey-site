@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "crypto";
 import { db } from "@workspace/db";
 import { playersTable, teamsTable } from "@workspace/db/schema";
 import { eq, isNull, or, and, inArray } from "drizzle-orm";
@@ -20,6 +21,7 @@ function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string |
     id: player.id,
     teamId: player.teamId,
     teamName: teamName ?? undefined,
+    accessToken: player.accessToken ?? null,
     name: player.name,
     shirtNumber: player.shirtNumber ?? undefined,
     email: player.email,
@@ -74,9 +76,102 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   const body = CreatePlayerBody.parse(req.body);
-  const [player] = await db.insert(playersTable).values(body as any).returning();
+  const [player] = await db
+    .insert(playersTable)
+    .values({ ...(body as any), accessToken: crypto.randomUUID() })
+    .returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   res.status(201).json(mapPlayer(player, team?.name));
+});
+
+const SELF_EDITABLE_FIELDS = [
+  "phone",
+  "dateOfBirth",
+  "nationality",
+  "passportNumber",
+  "passportExpiry",
+  "emergencyContactName",
+  "emergencyContactPhone",
+  "flightArrivalDateTime",
+  "flightDepartureDateTime",
+  "arrivalCity",
+  "roomSharingPreference",
+  "shirtSize",
+  "shortsSize",
+  "jacketSize",
+  "dietaryRequirements",
+  "medicalNotes",
+] as const;
+
+function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
+  return {
+    id: player.id,
+    teamId: player.teamId,
+    teamName: teamName ?? undefined,
+    name: player.name,
+    shirtNumber: player.shirtNumber ?? undefined,
+    email: player.email,
+    phone: player.phone ?? undefined,
+    dateOfBirth: player.dateOfBirth ?? undefined,
+    nationality: player.nationality ?? undefined,
+    passportNumber: player.passportNumber ?? undefined,
+    passportExpiry: player.passportExpiry ?? undefined,
+    emergencyContactName: player.emergencyContactName ?? undefined,
+    emergencyContactPhone: player.emergencyContactPhone ?? undefined,
+    flightArrivalDateTime: player.flightArrivalDateTime ?? undefined,
+    flightDepartureDateTime: player.flightDepartureDateTime ?? undefined,
+    arrivalCity: player.arrivalCity ?? undefined,
+    roomSharingPreference: player.roomSharingPreference ?? undefined,
+    shirtSize: player.shirtSize ?? undefined,
+    shortsSize: player.shortsSize ?? undefined,
+    jacketSize: player.jacketSize ?? undefined,
+    dietaryRequirements: player.dietaryRequirements ?? undefined,
+    medicalNotes: player.medicalNotes ?? undefined,
+  };
+}
+
+router.get("/self/:token", async (req, res) => {
+  const token = req.params.token;
+  if (!token || token.length < 8) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const [row] = await db
+    .select({ player: playersTable, teamName: teamsTable.name })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(eq(playersTable.accessToken, token));
+  if (!row) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json(mapSelfPlayer(row.player, row.teamName));
+});
+
+router.patch("/self/:token", async (req, res) => {
+  const token = req.params.token;
+  if (!token || token.length < 8) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const [existing] = await db.select().from(playersTable).where(eq(playersTable.accessToken, token));
+  if (!existing) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const updates: Record<string, unknown> = {};
+  for (const field of SELF_EDITABLE_FIELDS) {
+    if (field in body) {
+      const value = body[field];
+      updates[field] = value === "" ? null : value;
+    }
+  }
+  const [updated] = Object.keys(updates).length > 0
+    ? await db.update(playersTable).set(updates).where(eq(playersTable.id, existing.id)).returning()
+    : [existing];
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
+  res.json(mapSelfPlayer(updated, team?.name));
 });
 
 router.post("/send-travel-reminders", requireSession, async (req, res) => {

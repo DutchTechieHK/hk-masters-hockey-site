@@ -6,6 +6,7 @@ import { teamsTable } from "./teams";
 export const playersTable = pgTable("players", {
   id: serial("id").primaryKey(),
   teamId: integer("team_id").references(() => teamsTable.id).notNull(),
+  accessToken: text("access_token").unique(),
   name: text("name").notNull(),
   shirtNumber: integer("shirt_number"),
   email: text("email").notNull(),
