@@ -42,8 +42,9 @@ export default function NextMatchWidget() {
     ]).then(([matchData, teamData]) => {
       if (cancelled) return;
       setMatches(Array.isArray(matchData) ? matchData : []);
-      const validTeams = Array.isArray(teamData) && teamData.length > 0 ? teamData : FALLBACK_TEAMS;
-      setTeams(validTeams);
+      const tournamentTeams = (Array.isArray(teamData) ? teamData : [])
+        .filter((t) => /(40\+|50\+|MO40|MO50)/i.test(t.category || t.name || ""));
+      setTeams(tournamentTeams.length > 0 ? tournamentTeams : FALLBACK_TEAMS);
       setLoading(false);
     });
     return () => {

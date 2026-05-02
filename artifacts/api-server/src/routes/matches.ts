@@ -47,10 +47,15 @@ router.get("/", async (req, res) => {
 
 router.post("/", requireAdminAccess, async (req, res) => {
   const body = CreateMatchBody.parse(req.body);
+  const kickoffDate = new Date(body.kickoffAt);
+  if (Number.isNaN(kickoffDate.getTime())) {
+    res.status(400).json({ error: "Invalid kickoffAt date" });
+    return;
+  }
   const [match] = await db.insert(matchesTable).values({
     teamId: body.teamId,
     opponent: body.opponent,
-    kickoffAt: new Date(body.kickoffAt),
+    kickoffAt: kickoffDate,
     venue: body.venue || null,
     ourScore: body.ourScore ?? null,
     theirScore: body.theirScore ?? null,
