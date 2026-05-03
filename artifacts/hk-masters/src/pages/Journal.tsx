@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import {
   CheckCircle, XCircle, Clock, FileText, Image, FileImage,
-  ChevronDown, ChevronUp, LogOut, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink, RotateCcw, AlertTriangle,
+  ChevronDown, ChevronUp, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink, RotateCcw, AlertTriangle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
@@ -235,18 +235,6 @@ export default function Journal() {
     storeToken(token)
     setSessionToken(token)
   }, [])
-
-  const handleLogout = useCallback(async () => {
-    if (sessionToken) {
-      await fetch("/api/admin/auth", {
-        method: "DELETE",
-        headers: { "x-session-token": sessionToken },
-      }).catch(() => { /* noop */ })
-    }
-    clearToken()
-    setSessionToken(null)
-    queryClient.removeQueries({ queryKey: ["contributions"] })
-  }, [sessionToken, queryClient])
 
   const [backfillLoading, setBackfillLoading] = useState(false)
 
@@ -532,9 +520,6 @@ export default function Journal() {
                 {trashContributions.length}
               </span>
             )}
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
-            <LogOut className="w-4 h-4" /> Sign Out
           </Button>
         </div>
       }
