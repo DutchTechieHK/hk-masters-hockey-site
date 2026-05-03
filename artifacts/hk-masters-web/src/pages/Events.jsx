@@ -6,15 +6,15 @@ import { API_BASE } from "../utils/api";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
 
+function rotterdamDateKey(iso) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
+}
+
 function formatDayHeading(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "long", day: "numeric", month: "long",
     timeZone: ROTTERDAM_TZ,
   });
-}
-
-function rotterdamDateKey(iso) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
 }
 
 function formatTime(iso) {
@@ -38,17 +38,16 @@ function formatTimeRange(startIso, endIso) {
 
 const KIND_BADGE = {
   meeting: "bg-blue-100 text-blue-800",
-  social: "bg-amber-100 text-amber-800",
-  training: "bg-emerald-100 text-emerald-800",
+  social:  "bg-amber-100 text-amber-800",
+  training:"bg-emerald-100 text-emerald-800",
 };
-
 const KIND_LABEL = {
-  meeting: "Tournament",
-  social: "Social",
+  meeting:  "Programme",
+  social:   "Social",
   training: "Training",
 };
 
-function ProgrammeEventCard({ event }) {
+function EventCard({ event }) {
   const badgeColour = KIND_BADGE[event.kind] || "bg-gray-100 text-gray-700";
   const label = KIND_LABEL[event.kind] || "Event";
   return (
@@ -78,56 +77,35 @@ function ProgrammeEventCard({ event }) {
   );
 }
 
-function StaticEventCard({ event, type }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 hover:shadow-md transition-shadow duration-150">
-      <div className="flex flex-wrap gap-2 items-center mb-3">
-        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-          type === "upcoming" ? "bg-green-100 text-[#006B3C]" : "bg-gray-100 text-gray-500"
-        }`}>
-          {event.date}
-        </span>
-        {event.result && (
-          <span className="text-xs bg-[#DE2910]/10 text-[#DE2910] font-semibold px-2.5 py-0.5 rounded-full">
-            Results: {event.result}
-          </span>
-        )}
-      </div>
-      <h3 className="font-bold text-gray-900 text-lg mb-1">{event.name}</h3>
-      <p className="text-sm text-gray-500 flex items-center gap-1 mb-3">
-        <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        {event.location}
-      </p>
-      <RichText content={event.description} className="text-sm text-gray-600 leading-relaxed" />
-    </div>
-  );
+function groupByDay(list) {
+  const groups = new Map();
+  for (const e of list) {
+    const key = rotterdamDateKey(e.startsAt);
+    if (!groups.has(key)) groups.set(key, { date: e.startsAt, items: [] });
+    groups.get(key).items.push(e);
+  }
+  return Array.from(groups.values());
 }
 
 export default function Events() {
-  const [programmeEvents, setProgrammeEvents] = useState([]);
-  const [loadingProgramme, setLoadingProgramme] = useState(true);
+  const [allEvents, setAllEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/events/public`)
       .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setProgrammeEvents(Array.isArray(data) ? data : []))
-      .catch(() => setProgrammeEvents([]))
-      .finally(() => setLoadingProgramme(false));
+      .then((data) => setAllEvents(Array.isArray(data) ? data : []))
+      .catch(() => setAllEvents([]))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Group programme events by Rotterdam-local date
-  const programmeGroups = (() => {
-    const groups = new Map();
-    for (const e of programmeEvents) {
-      const key = rotterdamDateKey(e.startsAt);
-      if (!groups.has(key)) groups.set(key, { date: e.startsAt, items: [] });
-      groups.get(key).items.push(e);
-    }
-    return Array.from(groups.values());
-  })();
+  const now = new Date();
+  const sorted = [...allEvents].sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+  const upcoming = sorted.filter((e) => new Date(e.endsAt || e.startsAt) >= now);
+  const past = sorted.filter((e) => new Date(e.endsAt || e.startsAt) < now).reverse();
+
+  const upcomingGroups = groupByDay(upcoming);
+  const pastGroups = groupByDay(past);
 
   return (
     <div>
@@ -139,45 +117,44 @@ export default function Events() {
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Events</h1>
           <p className="text-green-200 text-lg max-w-2xl">
-            The full Rotterdam 2026 tournament programme, plus club events, social nights, and past results.
+            The full tournament programme, club events, and social nights — all in one place.
           </p>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
 
-        {/* Rotterdam 2026 Tournament Programme (live from admin) */}
+        {/* Upcoming Events (live from admin) */}
         <section>
           <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-2xl font-bold text-gray-900">Rotterdam 2026 Programme</h2>
-            {!loadingProgramme && programmeEvents.length > 0 && (
+            <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
+            {!loading && upcoming.length > 0 && (
               <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {programmeEvents.length}
+                {upcoming.length}
               </span>
             )}
           </div>
           <p className="text-sm text-gray-500 mb-6">
-            Team checks, ceremonies, match days, social events and the wrap party.{" "}
-            <span className="text-gray-400">All times shown in Rotterdam local time (CEST).</span>
+            All times shown in Rotterdam local time (CEST).
           </p>
 
-          {loadingProgramme ? (
-            <div className="text-center py-10 text-gray-400">Loading programme…</div>
-          ) : programmeGroups.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-10 text-gray-400">Loading events…</div>
+          ) : upcomingGroups.length === 0 ? (
             <div className="bg-gray-50 rounded-2xl p-10 text-center">
-              <p className="text-gray-500 font-medium">Programme coming soon</p>
-              <p className="text-sm text-gray-400 mt-1">The full tournament programme will be published here shortly.</p>
+              <p className="text-gray-500 font-medium">No upcoming events yet</p>
+              <p className="text-sm text-gray-400 mt-1">Check back soon — events will appear here as they are published.</p>
             </div>
           ) : (
             <div className="space-y-10">
-              {programmeGroups.map((g) => (
+              {upcomingGroups.map((g) => (
                 <div key={g.date}>
                   <h3 className="text-sm font-bold text-[#006B3C] uppercase tracking-wide mb-4">
                     {formatDayHeading(g.date)}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {g.items.map((e) => (
-                      <ProgrammeEventCard key={e.id} event={e} />
+                      <EventCard key={e.id} event={e} />
                     ))}
                   </div>
                 </div>
@@ -186,39 +163,32 @@ export default function Events() {
           )}
         </section>
 
-        {/* Upcoming Club Events (static) */}
-        {content.upcoming_events.length > 0 && (
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Upcoming Club Events</h2>
-              <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {content.upcoming_events.length}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {content.upcoming_events.map((event) => (
-                <StaticEventCard key={event.name} event={event} type="upcoming" />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Past Events (static) */}
-        {content.past_events.length > 0 && (
+        {/* Past Events (live from admin) */}
+        {!loading && pastGroups.length > 0 && (
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Past Events</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {content.past_events.map((event) => (
-                <StaticEventCard key={event.name} event={event} type="past" />
+            <div className="space-y-10">
+              {pastGroups.map((g) => (
+                <div key={g.date}>
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-4">
+                    {formatDayHeading(g.date)}
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {g.items.map((e) => (
+                      <EventCard key={e.id} event={e} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* Tournament Archive (static) */}
+        {/* Tournament Archive (static — historical records) */}
         {content.tournament_archive.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Tournament Archive</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Tournament Archive</h2>
+            <p className="text-sm text-gray-500 mb-6">Historical records from past tournaments.</p>
             <div className="space-y-4">
               {content.tournament_archive.map((tournament) => (
                 <div
@@ -241,19 +211,34 @@ export default function Events() {
                     </div>
                     <h3 className="text-xl font-extrabold text-gray-900 mb-2">{tournament.name}</h3>
                     <RichText content={tournament.description} className="text-gray-600 text-sm leading-relaxed mb-4" />
-                    {tournament.notion_url && (
-                      <a
-                        href={tournament.notion_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bg-[#006B3C] text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors duration-150 text-sm"
-                      >
-                        View Full Tournament Site
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    )}
+                    <div className="flex flex-wrap gap-3">
+                      {tournament.notion_url && (
+                        <a
+                          href={tournament.notion_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 bg-[#006B3C] text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors duration-150 text-sm"
+                        >
+                          View Tournament Site
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
+                      {tournament.result_url && (
+                        <a
+                          href={tournament.result_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 border border-[#006B3C] text-[#006B3C] font-semibold px-5 py-2.5 rounded-lg hover:bg-[#006B3C]/5 transition-colors duration-150 text-sm"
+                        >
+                          View Results
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
