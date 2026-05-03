@@ -5,7 +5,6 @@ import content from "../content/home.json";
 import RichText from "../components/RichText";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
-import eventsContent from "../content/events.json";
 import teamsContent from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
@@ -128,6 +127,77 @@ function useLatestJournalArticle() {
   }, []);
 
   return { article, loading };
+}
+
+const ROTTERDAM_TZ = "Europe/Amsterdam";
+
+function UpcomingEventsStrip() {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/events/public`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        const now = new Date();
+        const upcoming = (Array.isArray(data) ? data : [])
+          .filter((e) => new Date(e.endsAt || e.startsAt) >= now)
+          .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))
+          .slice(0, 3);
+        setEvents(upcoming);
+      })
+      .catch(() => setEvents([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <section className="bg-gray-50 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
+          <Link href="/events" className="text-[#006B3C] font-medium hover:text-green-800 transition-colors duration-150 text-sm">
+            View all events &rarr;
+          </Link>
+        </div>
+        {loading ? (
+          <p className="text-gray-400 text-sm">Loading events…</p>
+        ) : events.length === 0 ? (
+          <p className="text-gray-400 text-sm">No upcoming events yet — check back soon.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {events.map((event) => (
+              <div key={event.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-150">
+                <span className="inline-block bg-green-100 text-[#006B3C] text-xs font-semibold px-2 py-1 rounded-full mb-3">
+                  {new Date(event.startsAt).toLocaleDateString("en-GB", {
+                    weekday: "short", day: "numeric", month: "short",
+                    timeZone: ROTTERDAM_TZ,
+                  })}
+                  {" · "}
+                  {new Date(event.startsAt).toLocaleTimeString("en-GB", {
+                    hour: "2-digit", minute: "2-digit", hour12: false,
+                    timeZone: ROTTERDAM_TZ,
+                  })}
+                </span>
+                <h3 className="font-bold text-gray-900 mb-1">{event.title}</h3>
+                {event.location && (
+                  <p className="text-sm text-gray-500 mb-2 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {event.location}
+                  </p>
+                )}
+                {event.description && (
+                  <p className="text-sm text-gray-600 leading-relaxed">{event.description}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function LatestJournalCard() {
@@ -424,38 +494,7 @@ export default function Home() {
       <LatestJournalCard />
 
       {/* Upcoming Events Strip */}
-      <section className="bg-gray-50 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
-            <Link href="/events" className="text-[#006B3C] font-medium hover:text-green-800 transition-colors duration-150 text-sm">
-              View all events &rarr;
-            </Link>
-          </div>
-          {eventsContent.upcoming_events.length === 0 ? (
-            <p className="text-gray-400 text-sm">No upcoming events yet — add them via CMS → Events Page.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {eventsContent.upcoming_events.slice(0, 3).map((event) => (
-                <div key={event.name} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-150">
-                  <span className="inline-block bg-green-100 text-[#006B3C] text-xs font-semibold px-2 py-1 rounded-full mb-3">
-                    {event.date}
-                  </span>
-                  <h3 className="font-bold text-gray-900 mb-1">{event.name}</h3>
-                  <p className="text-sm text-gray-500 mb-2 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {event.location}
-                  </p>
-                  <p className="text-sm text-gray-600 leading-relaxed">{event.description}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
+      <UpcomingEventsStrip />
 
       {/* Sponsor Logos Strip */}
       <SponsorStrip />
