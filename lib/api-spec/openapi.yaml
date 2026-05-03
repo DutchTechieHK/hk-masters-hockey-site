@@ -823,6 +823,8 @@ components:
           type: integer
         failed:
           type: integer
+        skippedNoEmail:
+          type: integer
         total:
           type: integer
       required:

@@ -139,8 +139,10 @@ export default function Players() {
       if (result.sent > 0) {
         toast({ title: `Invite sent to ${player.name}` })
         queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+      } else if (result.skippedNoEmail && result.skippedNoEmail > 0) {
+        toast({ title: "Skipped — no email on file", description: `Add an email address to ${player.name}'s record first.`, variant: "destructive" })
       } else {
-        toast({ title: "Failed to send invite", description: `${result.failed} failed of ${result.total}`, variant: "destructive" })
+        toast({ title: "Failed to send invite", description: "Email service rejected the message — check server logs.", variant: "destructive" })
       }
     } catch {
       toast({ title: "Failed to send invite", variant: "destructive" })

@@ -365,18 +365,23 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
 
   let sent = 0;
   let failed = 0;
-  let skipped = 0;
+  let skippedNoEmail = 0;
 
   for (const { player, teamName } of players) {
-    if (!player.email || !player.accessToken) {
-      skipped++;
+    if (!player.email) {
+      skippedNoEmail++;
       continue;
+    }
+    let accessToken = player.accessToken;
+    if (!accessToken) {
+      accessToken = crypto.randomUUID();
+      await db.update(playersTable).set({ accessToken }).where(eq(playersTable.id, player.id));
     }
     const success = await sendOnboardingInviteEmail({
       playerName: player.name,
       playerEmail: player.email,
       teamName: teamName ?? "your team",
-      accessToken: player.accessToken,
+      accessToken,
     });
     if (success) {
       sent++;
@@ -384,8 +389,8 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
     } else failed++;
   }
 
-  console.log(`[onboarding-invites] Sent ${sent}, failed ${failed}, skipped ${skipped} out of ${players.length} targeted players`);
-  res.json({ sent, failed, total: players.length });
+  console.log(`[onboarding-invites] Sent ${sent}, failed ${failed}, skipped-no-email ${skippedNoEmail} out of ${players.length} targeted players`);
+  res.json({ sent, failed, skippedNoEmail, total: players.length });
 });
 
 router.post("/send-fee-reminders", requireSession, async (req, res) => {

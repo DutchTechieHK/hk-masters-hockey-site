@@ -233,6 +233,7 @@ export const SendOnboardingInvitesBody = zod.object({
 export const SendOnboardingInvitesResponse = zod.object({
   sent: zod.number(),
   failed: zod.number(),
+  skippedNoEmail: zod.number().optional(),
   total: zod.number(),
 });
 

@@ -28,6 +28,7 @@ export interface SendOnboardingInvitesBody {
 export interface OnboardingInviteResult {
   sent: number;
   failed: number;
+  skippedNoEmail?: number;
   total: number;
 }
 
