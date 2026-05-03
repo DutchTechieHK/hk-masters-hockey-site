@@ -233,9 +233,7 @@ export default function Events() {
             <div className="flex-1 flex items-center mx-4">
               <div className="flex-1 border-t-2 border-dashed border-white/20" />
               <div className="mx-3 bg-white/10 border border-white/20 rounded-xl px-5 py-2.5 flex items-center gap-3 shrink-0">
-                <svg className="w-4 h-4 text-green-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
+                <span className="text-xl leading-none">✈️</span>
                 <div className="flex flex-col items-center">
                   <span className="text-2xl font-black text-white tabular-nums leading-none">{daysUntil}</span>
                   <span className="text-[9px] text-green-300 uppercase tracking-widest leading-none mt-0.5">days to go</span>
