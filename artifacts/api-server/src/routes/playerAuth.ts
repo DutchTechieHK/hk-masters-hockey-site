@@ -147,6 +147,67 @@ router.get("/my-fees", requirePlayerSession, async (req, res) => {
   });
 });
 
+router.get("/my-travel", requirePlayerSession, async (req, res) => {
+  const player = req.player!;
+  const arrivalRaw = player.flightArrivalDateTime ?? null;
+  // flight_arrival_date_time is stored as text (the player-facing form is a
+  // <input type="datetime-local"> which always emits "YYYY-MM-DDTHH:MM").
+  // We only match same-day arrivals when both sides have a parseable
+  // ISO-style "YYYY-MM-DD" prefix; non-ISO values are skipped rather than
+  // mis-matched.
+  const ISO_DATE_RE = /^(\d{4}-\d{2}-\d{2})/;
+  const arrivalMatch = arrivalRaw ? arrivalRaw.match(ISO_DATE_RE) : null;
+  const arrivalDay = arrivalMatch ? arrivalMatch[1] : null;
+
+  // Find players (any squad) arriving on the same calendar day, excluding self.
+  let sameDayArrivals: Array<{ id: number; name: string; arrival: string; arrivalCity: string | null }> = [];
+  if (arrivalDay) {
+    const rows = await db
+      .select({
+        id: playersTable.id,
+        name: playersTable.name,
+        arrival: playersTable.flightArrivalDateTime,
+        arrivalCity: playersTable.arrivalCity,
+      })
+      .from(playersTable)
+      .where(sql`
+        ${playersTable.id} <> ${player.id}
+        AND ${playersTable.flightArrivalDateTime} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+        AND substring(${playersTable.flightArrivalDateTime} from 1 for 10) = ${arrivalDay}
+      `);
+    sameDayArrivals = rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      arrival: r.arrival ?? "",
+      arrivalCity: r.arrivalCity ?? null,
+    }));
+  }
+
+  // Try to resolve the named roommate to a player record (best-effort by name match).
+  let roommate: { id: number; name: string } | null = null;
+  const roomWith = (player.roomSharingWith ?? "").trim();
+  if (roomWith) {
+    const [match] = await db
+      .select({ id: playersTable.id, name: playersTable.name })
+      .from(playersTable)
+      .where(sql`lower(${playersTable.name}) = ${roomWith.toLowerCase()}`)
+      .limit(1);
+    if (match) roommate = match;
+  }
+
+  res.json({
+    flightArrivalDateTime: player.flightArrivalDateTime ?? null,
+    flightDepartureDateTime: player.flightDepartureDateTime ?? null,
+    arrivalCity: player.arrivalCity ?? null,
+    travelDates: player.travelDates ?? null,
+    roomSharingPreference: player.roomSharingPreference ?? null,
+    roomSharingWith: player.roomSharingWith ?? null,
+    roommate,
+    sameDayArrivals,
+    accessToken: player.accessToken ?? null,
+  });
+});
+
 router.post("/logout", requirePlayerSession, async (req, res) => {
   const token =
     (req.headers["x-player-session"] as string | undefined) ||
