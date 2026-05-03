@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable } from "@workspace/db/schema";
+import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
 
 const router = Router();
 
@@ -54,12 +54,23 @@ router.get("/", async (_req, res) => {
       category: t.task.category,
     }));
 
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const upcomingMatches = await db
+    .select()
+    .from(matchesTable)
+    .where(and(gte(matchesTable.kickoffAt, cutoff), ne(matchesTable.status, "cancelled")))
+    .orderBy(asc(matchesTable.kickoffAt));
+  const upcomingMatchCount = upcomingMatches.length;
+  const nextMatchKickoffAt = upcomingMatches[0]?.kickoffAt?.toISOString() ?? null;
+
   res.json({
     totalPlayers,
     playersPaidCount,
     feesAmountDue,
     feesAmountPaid,
     feesAmountOutstanding,
+    upcomingMatchCount,
+    nextMatchKickoffAt,
     teamStats,
     totalFundsRaised,
     fundraisingTarget,

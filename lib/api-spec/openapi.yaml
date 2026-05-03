@@ -752,6 +752,11 @@ components:
           type: number
         feesAmountOutstanding:
           type: number
+        upcomingMatchCount:
+          type: integer
+        nextMatchKickoffAt:
+          type: string
+          nullable: true
         teamStats:
           type: array
           items:
@@ -801,6 +806,7 @@ components:
         - feesAmountDue
         - feesAmountPaid
         - feesAmountOutstanding
+        - upcomingMatchCount
         - teamStats
         - totalFundsRaised
         - fundraisingTarget

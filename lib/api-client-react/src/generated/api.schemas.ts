@@ -52,6 +52,8 @@ export interface DashboardStats {
   feesAmountDue: number;
   feesAmountPaid: number;
   feesAmountOutstanding: number;
+  upcomingMatchCount: number;
+  nextMatchKickoffAt?: string | null;
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;

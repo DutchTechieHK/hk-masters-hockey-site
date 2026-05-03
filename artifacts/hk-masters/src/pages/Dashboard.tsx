@@ -1,6 +1,6 @@
 import { useGetDashboard } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
 const hkdPrecise = new Intl.NumberFormat("en-HK", {
@@ -61,12 +61,15 @@ export default function Dashboard() {
           trend={`Target: ${formatCurrency(stats.fundraisingTarget)}`}
         />
         <StatCard 
-          title="Upcoming Deadlines" 
-          value={stats.upcomingDeadlines.length.toString()} 
-          icon={<CalendarDays className="w-6 h-6 text-amber-500" />}
-          trend="Tasks needing attention"
-          onClick={() => navigate("/logistics")}
+          title="Upcoming Fixtures" 
+          value={stats.upcomingMatchCount.toString()} 
+          icon={<Trophy className="w-6 h-6 text-indigo-500" />}
+          trend={stats.nextMatchKickoffAt
+            ? `Next: ${format(parseISO(stats.nextMatchKickoffAt), "EEE d MMM, HH:mm")}`
+            : "No matches scheduled"}
+          onClick={() => navigate("/schedule")}
           clickable
+          clickableLabel="View Schedule"
         />
         <StatCard 
           title="Fees Outstanding" 

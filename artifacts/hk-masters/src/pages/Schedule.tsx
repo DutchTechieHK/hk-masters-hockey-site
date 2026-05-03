@@ -15,7 +15,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock } from "lucide-react"
+import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -166,6 +166,29 @@ export default function Schedule() {
       notes: m.notes || "",
     })
     setIsModalOpen(true)
+  }
+
+  const quickStatus = async (m: Match, status: Match["status"]) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: m.id,
+        data: {
+          teamId: m.teamId,
+          opponent: m.opponent,
+          kickoffAt: m.kickoffAt,
+          venue: m.venue ?? undefined,
+          status,
+          ourScore: m.ourScore,
+          theirScore: m.theirScore,
+          notes: m.notes ?? undefined,
+        },
+      })
+      queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
+      const label = status === "in_progress" ? "Match marked live" : status === "cancelled" ? "Match cancelled" : "Match updated"
+      toast({ title: label })
+    } catch {
+      toast({ title: "Failed to update match", variant: "destructive" })
+    }
   }
 
   const handleDelete = async (id: number) => {
@@ -320,11 +343,42 @@ export default function Schedule() {
                                 : <span className="text-muted-foreground">—</span>}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openEditModal(m)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
+                              <div className="flex justify-end items-center gap-1 flex-wrap">
+                                {m.status === "scheduled" && (
+                                  <button
+                                    onClick={() => quickStatus(m, "in_progress")}
+                                    title="Mark as live (in progress)"
+                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded border border-emerald-200 transition-colors"
+                                  >
+                                    <Radio className="w-3 h-3" /> Live
+                                  </button>
+                                )}
+                                {(m.status === "scheduled" || m.status === "in_progress") && (
+                                  <>
+                                    <button
+                                      onClick={() => openEditModal({ ...m, status: "final" })}
+                                      title="Enter final score"
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
+                                    >
+                                      <Flag className="w-3 h-3" /> Final
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (confirm(`Cancel ${m.opponent} on ${format(new Date(m.kickoffAt), "EEE d MMM")}?`)) {
+                                          quickStatus(m, "cancelled")
+                                        }
+                                      }}
+                                      title="Cancel match"
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded border border-rose-200 transition-colors"
+                                    >
+                                      <Ban className="w-3 h-3" /> Cancel
+                                    </button>
+                                  </>
+                                )}
+                                <button onClick={() => openEditModal(m)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
                                   <Edit2 className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => handleDelete(m.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
+                                <button onClick={() => handleDelete(m.id)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>

@@ -23,6 +23,8 @@ export const GetDashboardResponse = zod.object({
   feesAmountDue: zod.number(),
   feesAmountPaid: zod.number(),
   feesAmountOutstanding: zod.number(),
+  upcomingMatchCount: zod.number(),
+  nextMatchKickoffAt: zod.string().nullish(),
   teamStats: zod.array(
     zod.object({
       teamId: zod.number(),
