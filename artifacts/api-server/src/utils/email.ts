@@ -1,5 +1,5 @@
 const ADMIN_EMAIL = "play@hkmastershockey.com";
-const VERIFIED_FROM = "HK Masters Hockey <noreply@hkmastershockey.com>";
+const VERIFIED_FROM = "HK Masters Hockey <play@hkmastershockey.com>";
 const FALLBACK_FROM = "HK Masters Hockey <onboarding@resend.dev>";
 
 const EMAIL_OVERRIDE = process.env.EMAIL_OVERRIDE?.trim() || null;
