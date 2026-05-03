@@ -102,6 +102,11 @@ function normaliseDateTime(raw: string): string {
   return raw.trim().replace(" ", "T").replace(/T(\d{2}:\d{2})$/, "T$1")
 }
 
+function localInputToIso(local: string): string {
+  const normalised = local.trim().replace(" ", "T").replace(/T(\d{2}:\d{2})$/, "T$1")
+  return new Date(normalised).toISOString()
+}
+
 function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
   const teamLower = new Map(teams.map(t => [t.name.toLowerCase(), t.id]))
   return raw.map((cols, idx) => {
@@ -115,13 +120,17 @@ function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
     const titleTrim = title.trim()
     if (!titleTrim) errors.push("title is required")
 
-    const startNorm = normaliseDateTime(starts_at)
+    const isPublic = is_public.trim().toLowerCase() === "true"
+
+    // Match form behaviour: public events → Rotterdam (CEST) conversion; internal events → local datetime
+    const toIso = (raw: string) => isPublic ? zoneInputToIso(normaliseDateTime(raw), ROTTERDAM_TZ) : localInputToIso(raw)
+
     let startsAtIso: string | null = null
     if (!starts_at.trim()) {
       errors.push("starts_at is required")
     } else {
       try {
-        startsAtIso = zoneInputToIso(startNorm, ROTTERDAM_TZ)
+        startsAtIso = toIso(starts_at)
         if (isNaN(new Date(startsAtIso).getTime())) throw new Error()
       } catch {
         errors.push(`starts_at invalid (use YYYY-MM-DD HH:mm)`)
@@ -130,17 +139,14 @@ function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
 
     let endsAtIso: string | null = null
     if (ends_at.trim()) {
-      const endNorm = normaliseDateTime(ends_at)
       try {
-        endsAtIso = zoneInputToIso(endNorm, ROTTERDAM_TZ)
+        endsAtIso = toIso(ends_at)
         if (isNaN(new Date(endsAtIso).getTime())) throw new Error()
         if (startsAtIso && endsAtIso <= startsAtIso) errors.push("ends_at must be after starts_at")
       } catch {
         errors.push(`ends_at invalid (use YYYY-MM-DD HH:mm)`)
       }
     }
-
-    const isPublic = is_public.trim().toLowerCase() === "true"
 
     let teamId: number | null = null
     const teamTrim = team.trim()
