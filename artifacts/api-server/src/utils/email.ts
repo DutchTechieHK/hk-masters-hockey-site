@@ -1005,3 +1005,48 @@ export async function sendContributionDecisionEmail(opts: {
 
   await sendEmail({ to: opts.authorEmail, subject, html, text });
 }
+
+export async function sendPlayerLoginCodeEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  code: string;
+  expiresInMinutes: number;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeCode = escapeHtml(opts.code);
+
+  const html = emailShell(
+    "#006B3C",
+    "Your sign-in code",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Use this code to sign in to the HK Masters Hockey app:
+    </p>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <span style="display:inline-block;background-color:#f3f4f6;color:#111827;font-size:32px;font-weight:700;letter-spacing:8px;padding:18px 28px;border-radius:8px;font-family:'Courier New',monospace;">${safeCode}</span>
+    </p>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      This code expires in ${opts.expiresInMinutes} minutes. If you didn't ask to sign in, you can ignore this email.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+Your sign-in code for the HK Masters Hockey app is: ${opts.code}
+
+This code expires in ${opts.expiresInMinutes} minutes. If you didn't ask to sign in, you can ignore this email.
+
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return await sendEmail({
+    to: opts.playerEmail,
+    subject: `Your HK Masters Hockey sign-in code`,
+    html,
+    text,
+  });
+}

@@ -24,7 +24,7 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
-function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
+export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
   return {
     id: player.id,
     teamId: player.teamId,

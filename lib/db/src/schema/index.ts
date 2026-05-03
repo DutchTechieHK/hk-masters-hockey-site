@@ -7,3 +7,4 @@ export * from "./logistics";
 export * from "./contributions";
 export * from "./sponsors";
 export * from "./matches";
+export * from "./player-auth";
