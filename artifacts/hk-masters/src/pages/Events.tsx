@@ -7,12 +7,10 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
-
-type RsvpCounts = { yes: number; no: number; maybe: number }
 
 type EventRow = {
   id: number
@@ -24,15 +22,24 @@ type EventRow = {
   description: string | null
   teamId: number | null
   teamName: string | null
-  rsvpCounts?: RsvpCounts
+  rsvpCounts?: { yes: number; no: number; maybe: number }
 }
 
-type RsvpDetail = {
+type RsvpResponse = {
   playerId: number
   playerName: string
+  shirtNumber: number | null
+  teamId: number | null
   teamName: string | null
   status: "yes" | "no" | "maybe"
   respondedAt: string
+}
+
+type RsvpRoster = {
+  event: EventRow
+  counts: { yes: number; no: number; maybe: number; noResponse: number; invited: number }
+  responses: RsvpResponse[]
+  noResponse: Array<{ playerId: number; playerName: string; shirtNumber: number | null; teamId: number | null; teamName: string | null }>
 }
 
 type FormState = {
@@ -83,8 +90,24 @@ export default function Events() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [rosterEventId, setRosterEventId] = useState<number | null>(null)
-  const [roster, setRoster] = useState<RsvpDetail[]>([])
+  const [roster, setRoster] = useState<RsvpRoster | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
+
+  const openRoster = async (id: number) => {
+    setRosterEventId(id)
+    setRoster(null)
+    setRosterLoading(true)
+    try {
+      const res = await fetch(`/api/events/${id}/rsvps`, { headers: authHeaders() })
+      if (!res.ok) throw new Error("Failed to load RSVPs")
+      setRoster(await res.json())
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+      setRosterEventId(null)
+    } finally {
+      setRosterLoading(false)
+    }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -122,23 +145,6 @@ export default function Events() {
     })
     setFormError(null)
     setIsModalOpen(true)
-  }
-
-  const openRoster = async (eventId: number) => {
-    setRosterEventId(eventId)
-    setRoster([])
-    setRosterLoading(true)
-    try {
-      const res = await fetch(`/api/events/${eventId}/rsvps`, { headers: authHeaders() })
-      if (!res.ok) throw new Error("Failed to load attendance")
-      const data = await res.json() as { rsvps: RsvpDetail[] }
-      setRoster(data.rsvps)
-    } catch (err) {
-      toast({ title: (err as Error).message, variant: "destructive" })
-      setRosterEventId(null)
-    } finally {
-      setRosterLoading(false)
-    }
   }
 
   const handleDelete = async (id: number, title: string) => {
@@ -259,25 +265,21 @@ export default function Events() {
                             <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
                             <td className="px-6 py-4 text-muted-foreground">{ev.teamName || "All squads"}</td>
                             <td className="px-6 py-4">
-                              {(() => {
-                                const c = ev.rsvpCounts ?? { yes: 0, no: 0, maybe: 0 }
-                                const total = c.yes + c.no + c.maybe
-                                if (total === 0) return <span className="text-xs text-muted-foreground">No replies yet</span>
-                                return (
-                                  <button
-                                    onClick={() => openRoster(ev.id)}
-                                    className="text-xs hover:underline text-foreground"
-                                    title="See who's going"
-                                  >
-                                    <span className="text-emerald-700 font-semibold">{c.yes} going</span>
-                                    {c.maybe > 0 && <span className="text-amber-700"> · {c.maybe} maybe</span>}
-                                    {c.no > 0 && <span className="text-rose-700"> · {c.no} can't</span>}
-                                  </button>
-                                )
-                              })()}
+                              <button
+                                onClick={() => openRoster(ev.id)}
+                                className="inline-flex items-center gap-2 text-xs font-medium text-foreground hover:underline"
+                                title="View roster"
+                              >
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">✅ {ev.rsvpCounts?.yes ?? 0}</span>
+                                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">🤔 {ev.rsvpCounts?.maybe ?? 0}</span>
+                                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">❌ {ev.rsvpCounts?.no ?? 0}</span>
+                              </button>
                             </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex justify-end items-center gap-1">
+                                <button onClick={() => openRoster(ev.id)} title="View RSVPs" className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all">
+                                  <ClipboardList className="w-4 h-4" />
+                                </button>
                                 <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
                                   <Edit2 className="w-4 h-4" />
                                 </button>
@@ -297,36 +299,6 @@ export default function Events() {
           ))}
         </div>
       )}
-
-      <Modal isOpen={rosterEventId !== null} onClose={() => setRosterEventId(null)} title="Attendance">
-        {rosterLoading ? (
-          <p className="text-muted-foreground py-6 text-center">Loading…</p>
-        ) : roster.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center">No responses yet.</p>
-        ) : (
-          <div className="space-y-4">
-            {(["yes", "maybe", "no"] as const).map((status) => {
-              const group = roster.filter((r) => r.status === status)
-              if (group.length === 0) return null
-              const label = status === "yes" ? "Going" : status === "maybe" ? "Maybe" : "Can't make it"
-              const colour = status === "yes" ? "text-emerald-700" : status === "maybe" ? "text-amber-700" : "text-rose-700"
-              return (
-                <div key={status}>
-                  <h4 className={`text-sm font-bold mb-2 ${colour}`}>{label} ({group.length})</h4>
-                  <ul className="space-y-1 text-sm">
-                    {group.map((r) => (
-                      <li key={r.playerId} className="flex justify-between">
-                        <span>{r.playerName}</span>
-                        <span className="text-muted-foreground">{r.teamName ?? "—"}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Event" : "Add Event"}>
         <form onSubmit={onSubmit} className="space-y-5">
@@ -391,6 +363,79 @@ export default function Events() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={rosterEventId !== null}
+        onClose={() => { setRosterEventId(null); setRoster(null) }}
+        title={roster ? `RSVPs · ${roster.event.title}` : "RSVPs"}
+      >
+        {rosterLoading || !roster ? (
+          <div className="py-8 text-center text-muted-foreground">Loading…</div>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-4 gap-2 text-center text-xs">
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+                <div className="text-2xl font-bold text-emerald-800">{roster.counts.yes}</div>
+                <div className="text-emerald-700">Going</div>
+              </div>
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+                <div className="text-2xl font-bold text-amber-800">{roster.counts.maybe}</div>
+                <div className="text-amber-700">Maybe</div>
+              </div>
+              <div className="rounded-lg bg-rose-50 border border-rose-200 p-3">
+                <div className="text-2xl font-bold text-rose-800">{roster.counts.no}</div>
+                <div className="text-rose-700">Not going</div>
+              </div>
+              <div className="rounded-lg bg-muted/40 border border-border p-3">
+                <div className="text-2xl font-bold text-foreground">{roster.counts.noResponse}</div>
+                <div className="text-muted-foreground">No reply</div>
+              </div>
+            </div>
+
+            {(["yes", "maybe", "no"] as const).map((status) => {
+              const list = roster.responses.filter((r) => r.status === status)
+              if (list.length === 0) return null
+              const labels = { yes: "✅ Going", maybe: "🤔 Maybe", no: "❌ Not going" } as const
+              return (
+                <div key={status}>
+                  <h4 className="text-sm font-semibold mb-2">{labels[status]} ({list.length})</h4>
+                  <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+                    {list.map((r) => (
+                      <li key={r.playerId} className="px-3 py-2 text-sm flex justify-between items-center bg-white">
+                        <span>
+                          {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
+                          <span className="font-medium">{r.playerName}</span>
+                          {r.teamName && <span className="text-muted-foreground"> · {r.teamName}</span>}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+
+            {roster.noResponse.length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold mb-2">No reply yet ({roster.noResponse.length})</h4>
+                <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+                  {roster.noResponse.map((p) => (
+                    <li key={p.playerId} className="px-3 py-2 text-sm bg-white">
+                      {p.shirtNumber != null && <span className="text-muted-foreground mr-2">#{p.shirtNumber}</span>}
+                      <span className="font-medium">{p.playerName}</span>
+                      {p.teamName && <span className="text-muted-foreground"> · {p.teamName}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {roster.responses.length === 0 && roster.noResponse.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No one has been invited yet.</p>
+            )}
+          </div>
+        )}
       </Modal>
     </PageLayout>
   )

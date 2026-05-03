@@ -5,7 +5,7 @@ import { db, playersTable, playerLoginCodesTable } from "@workspace/db";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
 import { mapPlayer } from "./players";
-import { listEventsForPlayer } from "./events";
+import { listEventsForPlayer, playerRsvpHandler } from "./events";
 
 const router: IRouter = Router();
 
@@ -116,6 +116,9 @@ router.get("/my-schedule", requirePlayerSession, async (req, res) => {
   const events = await listEventsForPlayer(req.player!.teamId ?? null, req.player!.id);
   res.json({ events });
 });
+
+router.post("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
+router.patch("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
 
 router.post("/logout", requirePlayerSession, async (req, res) => {
   const token =

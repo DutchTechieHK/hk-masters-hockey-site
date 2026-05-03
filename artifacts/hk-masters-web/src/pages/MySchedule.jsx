@@ -1,13 +1,7 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
-
-const RSVP_OPTIONS = [
-  { value: "yes", label: "Going", emoji: "✅" },
-  { value: "maybe", label: "Maybe", emoji: "🤔" },
-  { value: "no", label: "Can't make it", emoji: "❌" },
-];
 
 const TOURNAMENT_START_ISO = "2026-06-22T09:00:00+02:00";
 
@@ -129,43 +123,51 @@ export default function MySchedule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showPast, setShowPast] = useState(false);
-  const [rsvpSaving, setRsvpSaving] = useState({}); // eventId → bool
+  const [rsvpSaving, setRsvpSaving] = useState({});
+  const [rsvpError, setRsvpError] = useState("");
 
   const countdown = useCountdown(TOURNAMENT_START_ISO);
 
-  const submitRsvp = useCallback(async (eventId, status) => {
+  const submitRsvp = async (eventId, status) => {
     const token = getPlayerToken();
     if (!token) { setLocation("/login"); return; }
     setRsvpSaving((s) => ({ ...s, [eventId]: true }));
-    // Optimistic update
-    setEvents((prev) => prev.map((e) => {
-      if (e.id !== eventId) return e;
-      const counts = { ...(e.rsvpCounts || { yes: 0, no: 0, maybe: 0 }) };
-      if (e.myRsvp && counts[e.myRsvp] > 0) counts[e.myRsvp] -= 1;
+    setRsvpError("");
+    // Optimistic update — adjust counts and selection in place.
+    setEvents((prev) => prev.map((ev) => {
+      if (ev.id !== eventId) return ev;
+      const counts = { yes: 0, no: 0, maybe: 0, ...(ev.rsvpCounts || {}) };
+      if (ev.myRsvp && counts[ev.myRsvp] > 0) counts[ev.myRsvp]--;
       counts[status] = (counts[status] || 0) + 1;
-      return { ...e, myRsvp: status, rsvpCounts: counts };
+      return { ...ev, myRsvp: status, rsvpCounts: counts };
     }));
     try {
-      const res = await fetch(`${API_BASE}/api/events/${eventId}/rsvp`, {
+      const res = await fetch(`${API_BASE}/api/player-auth/events/${eventId}/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status }),
       });
-      if (!res.ok) throw new Error("Could not save your response");
+      if (res.status === 401) { setLocation("/login"); return; }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Could not save your RSVP");
+      }
     } catch (err) {
-      // Revert on failure by re-fetching
+      setRsvpError(err.message || "Could not save your RSVP");
+      // Reload to get authoritative state if optimistic update was wrong.
       try {
         const r = await fetch(`${API_BASE}/api/player-auth/my-schedule`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await r.json();
-        setEvents(data.events || []);
+        if (r.ok) {
+          const data = await r.json();
+          setEvents(data.events || []);
+        }
       } catch { /* ignore */ }
-      alert(err.message || "Could not save your response");
     } finally {
       setRsvpSaving((s) => { const n = { ...s }; delete n[eventId]; return n; });
     }
-  }, [setLocation]);
+  };
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -273,6 +275,12 @@ export default function MySchedule() {
           {player?.teamName ? `Events for ${player.teamName} and the whole squad.` : "Events for the whole squad."}
         </p>
 
+        {rsvpError && (
+          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-800">
+            {rsvpError}
+          </div>
+        )}
+
         {/* Upcoming */}
         {upcoming.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
@@ -305,40 +313,6 @@ export default function MySchedule() {
                             </p>
                             {ev.location && <p className="text-sm text-gray-600 mt-0.5">📍 {ev.location}</p>}
                             {ev.description && <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{ev.description}</p>}
-
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                              <div className="flex flex-wrap items-center gap-2">
-                                {RSVP_OPTIONS.map((opt) => {
-                                  const active = ev.myRsvp === opt.value;
-                                  return (
-                                    <button
-                                      key={opt.value}
-                                      onClick={() => submitRsvp(ev.id, opt.value)}
-                                      disabled={!!rsvpSaving[ev.id]}
-                                      className={`text-xs px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${
-                                        active
-                                          ? "bg-green-700 text-white border-green-700"
-                                          : "bg-white text-gray-700 border-gray-300 hover:border-green-700 hover:text-green-700"
-                                      }`}
-                                    >
-                                      {opt.emoji} {opt.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                              {(() => {
-                                const c = ev.rsvpCounts || { yes: 0, no: 0, maybe: 0 };
-                                const total = c.yes + c.no + c.maybe;
-                                if (total === 0) {
-                                  return <p className="text-xs text-gray-500 mt-2">Be the first to respond.</p>;
-                                }
-                                return (
-                                  <p className="text-xs text-gray-500 mt-2">
-                                    {c.yes} going{c.maybe > 0 && ` · ${c.maybe} maybe`}{c.no > 0 && ` · ${c.no} can't`}
-                                  </p>
-                                );
-                              })()}
-                            </div>
                           </div>
                           <button
                             onClick={() => downloadIcs([ev], `hk-${ev.kind}-${ev.id}.ics`, ev.title)}
@@ -347,6 +321,34 @@ export default function MySchedule() {
                           >
                             + Calendar
                           </button>
+                        </div>
+                        {/* RSVP */}
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="flex gap-2 flex-wrap">
+                              {[
+                                { key: "yes", label: "Going", emoji: "✅", on: "bg-emerald-600 text-white border-emerald-600", off: "bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50" },
+                                { key: "maybe", label: "Maybe", emoji: "🤔", on: "bg-amber-500 text-white border-amber-500", off: "bg-white text-amber-700 border-amber-300 hover:bg-amber-50" },
+                                { key: "no", label: "Not going", emoji: "❌", on: "bg-rose-600 text-white border-rose-600", off: "bg-white text-rose-700 border-rose-300 hover:bg-rose-50" },
+                              ].map((opt) => {
+                                const selected = ev.myRsvp === opt.key;
+                                return (
+                                  <button
+                                    key={opt.key}
+                                    type="button"
+                                    disabled={!!rsvpSaving[ev.id]}
+                                    onClick={() => submitRsvp(ev.id, opt.key)}
+                                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
+                                  >
+                                    {opt.emoji} {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="text-xs text-gray-500 whitespace-nowrap">
+                              {ev.rsvpCounts?.yes ?? 0} going · {ev.rsvpCounts?.maybe ?? 0} maybe · {ev.rsvpCounts?.no ?? 0} no
+                            </div>
+                          </div>
                         </div>
                       </li>
                     );

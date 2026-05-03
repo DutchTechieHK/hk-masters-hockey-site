@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable } from "@workspace/db";
+import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus } from "@workspace/db";
 import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { requirePlayerSession } from "../middleware/playerSession";
@@ -7,9 +7,8 @@ import { requirePlayerSession } from "../middleware/playerSession";
 const router: IRouter = Router();
 
 // GET /api/events accepts either an admin session OR a player session.
-// - Admin callers see every event with aggregated RSVP counts.
-// - Player callers see only events visible to them (team-scoped or all-squad)
-//   plus their own RSVP status per event.
+// - Admin callers see every event (used by the admin Events page).
+// - Player callers see only events visible to them (team-scoped or all-squad).
 function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
   if (hasAdminAccess(req)) {
     (req as Request & { isAdmin?: boolean }).isAdmin = true;
@@ -21,9 +20,6 @@ function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
 const ALLOWED_KINDS = ["training", "meeting", "social"] as const;
 type EventKind = typeof ALLOWED_KINDS[number];
 
-const ALLOWED_RSVP_STATUSES = ["yes", "no", "maybe"] as const;
-type RsvpStatus = typeof ALLOWED_RSVP_STATUSES[number];
-
 type RsvpCounts = { yes: number; no: number; maybe: number };
 
 function emptyCounts(): RsvpCounts {
@@ -33,7 +29,7 @@ function emptyCounts(): RsvpCounts {
 function serialize(
   row: typeof eventsTable.$inferSelect,
   teamName?: string | null,
-  extra: { myRsvp?: RsvpStatus | null; rsvpCounts?: RsvpCounts } = {},
+  extras?: { rsvpCounts?: RsvpCounts; myRsvp?: RsvpStatus | null },
 ) {
   return {
     id: row.id,
@@ -46,8 +42,8 @@ function serialize(
     teamId: row.teamId,
     teamName: teamName ?? null,
     createdAt: row.createdAt.toISOString(),
-    myRsvp: extra.myRsvp ?? null,
-    rsvpCounts: extra.rsvpCounts ?? emptyCounts(),
+    rsvpCounts: extras?.rsvpCounts ?? emptyCounts(),
+    myRsvp: extras?.myRsvp ?? null,
   };
 }
 
@@ -96,7 +92,7 @@ function parseBody(body: unknown): {
   };
 }
 
-// Build a map of eventId → RsvpCounts in a single query.
+// Aggregate RSVP counts grouped by event id for the supplied set of events.
 async function loadRsvpCounts(eventIds: number[]): Promise<Map<number, RsvpCounts>> {
   const map = new Map<number, RsvpCounts>();
   if (eventIds.length === 0) return map;
@@ -110,11 +106,12 @@ async function loadRsvpCounts(eventIds: number[]): Promise<Map<number, RsvpCount
     .where(inArray(eventRsvpsTable.eventId, eventIds))
     .groupBy(eventRsvpsTable.eventId, eventRsvpsTable.status);
   for (const r of rows) {
-    let entry = map.get(r.eventId);
-    if (!entry) { entry = emptyCounts(); map.set(r.eventId, entry); }
-    if (r.status === "yes" || r.status === "no" || r.status === "maybe") {
-      entry[r.status] = Number(r.count);
+    const bucket = map.get(r.eventId) ?? emptyCounts();
+    const s = r.status as RsvpStatus;
+    if (s === "yes" || s === "no" || s === "maybe") {
+      bucket[s] = Number(r.count);
     }
+    map.set(r.eventId, bucket);
   }
   return map;
 }
@@ -134,7 +131,7 @@ async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<nu
   return map;
 }
 
-router.get("/", requireAdminOrPlayer, async (req, res) => {
+router.get("/", requireAdminOrPlayer, (async (req, res) => {
   const isAdmin = (req as Request & { isAdmin?: boolean }).isAdmin === true;
   if (isAdmin) {
     const rows = await db
@@ -143,13 +140,13 @@ router.get("/", requireAdminOrPlayer, async (req, res) => {
       .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
       .orderBy(asc(eventsTable.startsAt));
     const counts = await loadRsvpCounts(rows.map((r) => r.event.id));
-    return res.json(rows.map(({ event, teamName }) =>
-      serialize(event, teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() })
-    ));
+    res.json(rows.map(({ event, teamName }) =>
+      serialize(event, teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() })));
+    return;
   }
-  const filtered = await listEventsForPlayer(req.player!.teamId ?? null, req.player!.id);
+  const filtered = await listEventsForPlayer(req.player?.teamId ?? null, req.player?.id ?? null);
   res.json(filtered);
-});
+}) as (req: Request, res: Response) => Promise<void>);
 
 router.post("/", requireAdminAccess, async (req, res) => {
   const parsed = parseBody(req.body);
@@ -181,61 +178,106 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   res.status(204).send();
 });
 
-// Admin: full roster for one event (yes/no/maybe with player names + teams).
-router.get("/:id/rsvps", requireAdminAccess, async (req, res) => {
+// Admin-only: roster of who RSVP'd what for a single event.
+router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
+  if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+
   const rows = await db
     .select({
-      status: eventRsvpsTable.status,
-      respondedAt: eventRsvpsTable.respondedAt,
       playerId: playersTable.id,
       playerName: playersTable.name,
+      shirtNumber: playersTable.shirtNumber,
+      teamId: playersTable.teamId,
       teamName: teamsTable.name,
+      status: eventRsvpsTable.status,
+      respondedAt: eventRsvpsTable.respondedAt,
     })
     .from(eventRsvpsTable)
-    .innerJoin(playersTable, eq(eventRsvpsTable.playerId, playersTable.id))
-    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .innerJoin(playersTable, eq(playersTable.id, eventRsvpsTable.playerId))
+    .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
     .where(eq(eventRsvpsTable.eventId, id))
     .orderBy(asc(playersTable.name));
-  res.json({
-    rsvps: rows.map((r) => ({
-      playerId: r.playerId,
-      playerName: r.playerName,
-      teamName: r.teamName,
-      status: r.status,
-      respondedAt: r.respondedAt.toISOString(),
-    })),
-  });
-});
 
-// Player: upsert own RSVP for an event the player is allowed to see.
-router.post("/:id/rsvp", requirePlayerSession, async (req, res) => {
+  // Players invited to this event = team-scoped players (or all if event is all-squads).
+  const invitedQuery = event.teamId == null
+    ? db.select({ id: playersTable.id, name: playersTable.name, teamId: playersTable.teamId, teamName: teamsTable.name, shirtNumber: playersTable.shirtNumber })
+        .from(playersTable)
+        .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
+        .orderBy(asc(playersTable.name))
+    : db.select({ id: playersTable.id, name: playersTable.name, teamId: playersTable.teamId, teamName: teamsTable.name, shirtNumber: playersTable.shirtNumber })
+        .from(playersTable)
+        .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
+        .where(eq(playersTable.teamId, event.teamId))
+        .orderBy(asc(playersTable.name));
+  const invited = await invitedQuery;
+
+  const responses = rows.map((r) => ({
+    playerId: r.playerId,
+    playerName: r.playerName,
+    shirtNumber: r.shirtNumber,
+    teamId: r.teamId,
+    teamName: r.teamName ?? null,
+    status: r.status,
+    respondedAt: r.respondedAt.toISOString(),
+  }));
+
+  const respondedIds = new Set(responses.map((r) => r.playerId));
+  const noResponse = invited
+    .filter((p) => !respondedIds.has(p.id))
+    .map((p) => ({
+      playerId: p.id,
+      playerName: p.name,
+      shirtNumber: p.shirtNumber,
+      teamId: p.teamId,
+      teamName: p.teamName ?? null,
+    }));
+
+  const counts = emptyCounts();
+  for (const r of responses) {
+    if (r.status === "yes" || r.status === "no" || r.status === "maybe") counts[r.status]++;
+  }
+
+  res.json({
+    event: serialize(event, null, { rsvpCounts: counts }),
+    counts: { ...counts, noResponse: noResponse.length, invited: invited.length },
+    responses,
+    noResponse,
+  });
+}) as (req: Request, res: Response) => Promise<void>);
+
+// Player upserts their own RSVP for an event.
+async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid event id" });
-  const status = String(req.body?.status ?? "");
-  if (!ALLOWED_RSVP_STATUSES.includes(status as RsvpStatus)) {
-    return res.status(400).json({ error: "status must be yes, no or maybe" });
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid id" }); return; }
+  const status = String((req.body as { status?: unknown })?.status ?? "");
+  if (!RSVP_STATUSES.includes(status as RsvpStatus)) {
+    res.status(400).json({ error: "status must be yes, no or maybe" }); return;
   }
-  // Check player can see this event (team-scoped or all-squads).
+  const player = req.player!;
+
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
-  if (!event) return res.status(404).json({ error: "Event not found" });
-  const playerTeamId = req.player!.teamId;
-  if (event.teamId !== null && event.teamId !== playerTeamId) {
-    return res.status(403).json({ error: "Not your event" });
+  if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+  if (event.teamId != null && event.teamId !== player.teamId) {
+    res.status(403).json({ error: "Event not available to your team" }); return;
   }
-  const respondedAt = new Date();
-  await db
-    .insert(eventRsvpsTable)
-    .values({ eventId: id, playerId: req.player!.id, status, respondedAt })
+
+  const now = new Date();
+  await db.insert(eventRsvpsTable)
+    .values({ eventId: id, playerId: player.id, status, respondedAt: now })
     .onConflictDoUpdate({
       target: [eventRsvpsTable.eventId, eventRsvpsTable.playerId],
-      set: { status, respondedAt },
+      set: { status, respondedAt: now },
     });
-  res.json({ ok: true, eventId: id, status });
-});
 
-export async function listEventsForPlayer(playerTeamId: number | null, playerId: number) {
+  res.json({ eventId: id, status, respondedAt: now.toISOString() });
+}
+
+export const playerRsvpHandler = upsertOwnRsvp;
+
+export async function listEventsForPlayer(playerTeamId: number | null, playerId: number | null) {
   const rows = await db
     .select({ event: eventsTable, teamName: teamsTable.name })
     .from(eventsTable)
@@ -246,16 +288,16 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
         : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, playerTeamId)),
     )
     .orderBy(asc(eventsTable.startsAt));
-  const eventIds = rows.map((r) => r.event.id);
-  const [counts, mine] = await Promise.all([
-    loadRsvpCounts(eventIds),
-    loadMyRsvps(playerId, eventIds),
-  ]);
+
+  const ids = rows.map((r) => r.event.id);
+  const counts = await loadRsvpCounts(ids);
+  const mine = playerId != null ? await loadMyRsvps(playerId, ids) : new Map<number, RsvpStatus>();
+
   return rows.map(({ event, teamName }) =>
     serialize(event, teamName, {
-      myRsvp: mine.get(event.id) ?? null,
       rsvpCounts: counts.get(event.id) ?? emptyCounts(),
-    })
+      myRsvp: mine.get(event.id) ?? null,
+    }),
   );
 }
 
