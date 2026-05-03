@@ -316,6 +316,7 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
   const [importing, setImporting] = useState(false)
   const [xlsxMeta, setXlsxMeta] = useState<{ skipped: number; sheetName: string } | null>(null)
   const [forceHkTz, setForceHkTz] = useState(false)
+  const [publicOverride, setPublicOverride] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -401,7 +402,7 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
           location: row.location.trim() || null,
           description: row.description.trim() || null,
           teamId: row.teamId,
-          isPublic: row.isPublic,
+          isPublic: publicOverride || row.isPublic,
         }
         const res = await fetch("/api/events", {
           method: "POST",
@@ -537,8 +538,18 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
             </p>
           )}
 
+          <label className="flex items-center gap-2.5 cursor-pointer select-none text-sm">
+            <input
+              type="checkbox"
+              checked={publicOverride}
+              onChange={e => setPublicOverride(e.target.checked)}
+              className="w-4 h-4 rounded accent-[#006B3C]"
+            />
+            <span className="font-medium">Show all imported events on the public site</span>
+          </label>
+
           <div className="flex justify-between gap-3 pt-2 border-t">
-            <Button type="button" variant="outline" onClick={() => { setStep("input"); setXlsxMeta(null) }}>← Back</Button>
+            <Button type="button" variant="outline" onClick={() => { setStep("input"); setXlsxMeta(null); setPublicOverride(false) }}>← Back</Button>
             <Button type="button" onClick={handleImport} disabled={validRows.length === 0 || importing}>
               {importing ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Importing…</> : `Import ${validRows.length} event${validRows.length !== 1 ? "s" : ""}`}
             </Button>
