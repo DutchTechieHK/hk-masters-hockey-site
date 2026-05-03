@@ -71,10 +71,60 @@ const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: 
   social: { label: "Social", icon: Coffee, colour: "bg-amber-100 text-amber-800" },
 }
 
+const ROTTERDAM_TZ = "Europe/Amsterdam"
+
 function toLocalInputValue(iso: string): string {
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, "0")
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Format a UTC instant as a "YYYY-MM-DDTHH:mm" string in a given IANA time zone.
+function toZoneInputValue(iso: string, tz: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    })
+      .formatToParts(new Date(iso))
+      .filter((p) => p.type !== "literal")
+      .map((p) => [p.type, p.value]),
+  ) as Record<string, string>
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+}
+
+// Compute the offset (wall_in_zone - utc_instant, in ms) for a UTC instant in a given zone.
+function zoneOffsetMs(instant: number, tz: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    })
+      .formatToParts(new Date(instant))
+      .filter((p) => p.type !== "literal")
+      .map((p) => [p.type, p.value]),
+  ) as Record<string, string>
+  const wallAsUtc = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second),
+  )
+  return wallAsUtc - instant
+}
+
+// Treat a "YYYY-MM-DDTHH:mm" string as wall-clock time in the given IANA zone
+// and return the corresponding UTC instant as an ISO string. Uses a two-pass
+// resolver so DST transitions (spring-forward / fall-back) are handled correctly.
+function zoneInputToIso(localDateTime: string, tz: string): string {
+  const target = new Date(`${localDateTime}:00Z`).getTime()
+  // First guess using offset at the pretend-UTC instant
+  let offset = zoneOffsetMs(target, tz)
+  let instant = target - offset
+  // Refine using offset at the guessed instant — corrects for DST jumps
+  offset = zoneOffsetMs(instant, tz)
+  instant = target - offset
+  return new Date(instant).toISOString()
 }
 
 function authHeaders(): HeadersInit {
@@ -137,15 +187,16 @@ export default function Events() {
 
   const openEditModal = (e: EventRow) => {
     setEditing(e)
+    const usePublicTz = e.isPublic ?? false
     setForm({
       kind: e.kind,
       title: e.title,
-      startsAt: toLocalInputValue(e.startsAt),
-      endsAt: e.endsAt ? toLocalInputValue(e.endsAt) : "",
+      startsAt: usePublicTz ? toZoneInputValue(e.startsAt, ROTTERDAM_TZ) : toLocalInputValue(e.startsAt),
+      endsAt: e.endsAt ? (usePublicTz ? toZoneInputValue(e.endsAt, ROTTERDAM_TZ) : toLocalInputValue(e.endsAt)) : "",
       location: e.location ?? "",
       description: e.description ?? "",
       teamId: e.teamId ? String(e.teamId) : "",
-      isPublic: e.isPublic ?? false,
+      isPublic: usePublicTz,
     })
     setFormError(null)
     setIsModalOpen(true)
@@ -176,8 +227,12 @@ export default function Events() {
       const payload = {
         kind: form.kind,
         title: form.title.trim(),
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
+        startsAt: form.isPublic
+          ? zoneInputToIso(form.startsAt, ROTTERDAM_TZ)
+          : new Date(form.startsAt).toISOString(),
+        endsAt: form.endsAt
+          ? (form.isPublic ? zoneInputToIso(form.endsAt, ROTTERDAM_TZ) : new Date(form.endsAt).toISOString())
+          : null,
         location: form.location.trim() || null,
         description: form.description.trim() || null,
         teamId: form.teamId ? Number(form.teamId) : null,
@@ -204,9 +259,11 @@ export default function Events() {
     }
   }
 
-  // group by month
+  // group by month — use Rotterdam tz for public events so the month header matches their displayed date
   const grouped = events.reduce<Record<string, EventRow[]>>((acc, ev) => {
-    const key = format(new Date(ev.startsAt), "MMMM yyyy")
+    const key = ev.isPublic
+      ? new Date(ev.startsAt).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: ROTTERDAM_TZ })
+      : format(new Date(ev.startsAt), "MMMM yyyy")
     if (!acc[key]) acc[key] = []
     acc[key].push(ev)
     return acc
@@ -255,10 +312,22 @@ export default function Events() {
                         return (
                           <tr key={ev.id} className="hover:bg-muted/10">
                             <td className="px-6 py-4">
-                              <div className="font-semibold text-foreground">{format(new Date(ev.startsAt), "EEE d MMM")}</div>
+                              <div className="font-semibold text-foreground">
+                                {new Date(ev.startsAt).toLocaleDateString("en-GB", {
+                                  weekday: "short", day: "numeric", month: "short",
+                                  ...(ev.isPublic ? { timeZone: ROTTERDAM_TZ } : {}),
+                                })}
+                              </div>
                               <div className="text-xs text-muted-foreground">
-                                {format(new Date(ev.startsAt), "HH:mm")}
-                                {ev.endsAt && ` – ${format(new Date(ev.endsAt), "HH:mm")}`}
+                                {new Date(ev.startsAt).toLocaleTimeString("en-GB", {
+                                  hour: "2-digit", minute: "2-digit", hour12: false,
+                                  ...(ev.isPublic ? { timeZone: ROTTERDAM_TZ } : {}),
+                                })}
+                                {ev.endsAt && ` – ${new Date(ev.endsAt).toLocaleTimeString("en-GB", {
+                                  hour: "2-digit", minute: "2-digit", hour12: false,
+                                  ...(ev.isPublic ? { timeZone: ROTTERDAM_TZ } : {}),
+                                })}`}
+                                {ev.isPublic && <span className="ml-1 text-[10px] uppercase tracking-wide text-[#006B3C]">RTM</span>}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -333,7 +402,7 @@ export default function Events() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Starts (local time)
+                <Clock className="w-3.5 h-3.5" /> Starts {form.isPublic ? "(Rotterdam time)" : "(your local time)"}
               </label>
               <Input type="datetime-local" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
             </div>
@@ -344,6 +413,11 @@ export default function Events() {
               <Input type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
             </div>
           </div>
+          {form.isPublic && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              Public tournament event — times entered above are interpreted as Rotterdam local time (Europe/Amsterdam).
+            </p>
+          )}
 
           <div className="space-y-2">
             <label className="text-sm font-semibold flex items-center gap-1">
@@ -373,7 +447,26 @@ export default function Events() {
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded border-border text-[#006B3C] focus:ring-[#006B3C]"
               checked={form.isPublic}
-              onChange={(e) => setForm({ ...form, isPublic: e.target.checked })}
+              onChange={(e) => {
+                const nextPublic = e.target.checked
+                // Re-interpret the displayed times so the underlying instant is preserved
+                // when toggling between browser-local and Rotterdam-local input.
+                const convert = (val: string): string => {
+                  if (!val) return val
+                  const instantIso = nextPublic
+                    ? new Date(val).toISOString() // was local, becomes Rotterdam: show Rotterdam wall for same instant
+                    : zoneInputToIso(val, ROTTERDAM_TZ) // was Rotterdam, becomes local: show local wall for same instant
+                  return nextPublic
+                    ? toZoneInputValue(instantIso, ROTTERDAM_TZ)
+                    : toLocalInputValue(instantIso)
+                }
+                setForm({
+                  ...form,
+                  isPublic: nextPublic,
+                  startsAt: convert(form.startsAt),
+                  endsAt: convert(form.endsAt),
+                })
+              }}
             />
             <div className="text-sm">
               <div className="font-semibold">Show on public website</div>
