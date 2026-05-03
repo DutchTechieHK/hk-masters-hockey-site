@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter"
-import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut } from "lucide-react"
+import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut, CalendarClock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -18,7 +18,8 @@ const NAV_ITEMS = [
   { href: "/fundraising", label: "Fundraising", icon: DollarSign },
   { href: "/fees", label: "Fees", icon: Wallet },
   { href: "/sponsors", label: "Sponsors", icon: Star },
-  { href: "/schedule", label: "Schedule", icon: CalendarDays },
+  { href: "/schedule", label: "Matches", icon: CalendarDays },
+  { href: "/events", label: "Events", icon: CalendarClock },
   { href: "/logistics", label: "Logistics", icon: Plane },
   { href: "/travel", label: "Travel", icon: Luggage },
   { href: "/journal", label: "Journal", icon: BookOpen },

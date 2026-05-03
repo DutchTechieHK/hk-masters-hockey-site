@@ -5,7 +5,7 @@ import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 const CARDS = [
   { key: "fees", title: "My fees", desc: "Your tournament fee balance and payment history.", emoji: "💳", to: null },
   { key: "travel", title: "My travel", desc: "Flights, arrival, hotel and transfers.", emoji: "✈️", to: null },
-  { key: "schedule", title: "My schedule", desc: "Match fixtures and training times for your team.", emoji: "📅", to: null },
+  { key: "schedule", title: "My schedule", desc: "Training, meetings and team events with calendar download.", emoji: "📅", to: "schedule" },
   { key: "announcements", title: "Announcements", desc: "Latest news from the team and tournament.", emoji: "📣", to: null },
   { key: "profile", title: "My profile", desc: "Passport, kit sizes, dietary needs, emergency contact.", emoji: "👤", to: "profile" },
 ];
@@ -48,6 +48,11 @@ export default function Dashboard() {
   const handleCard = (card) => {
     if (card.key === "profile" && player?.accessToken) {
       setLocation(`/my-details/${encodeURIComponent(player.accessToken)}`);
+      return;
+    }
+    if (card.key === "schedule") {
+      setLocation("/my-schedule");
+      return;
     }
     // other cards: no-op for now (coming soon)
   };
@@ -92,7 +97,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CARDS.map((card) => {
-            const enabled = card.key === "profile";
+            const enabled = card.key === "profile" || card.key === "schedule";
             return (
               <button
                 key={card.key}
@@ -116,7 +121,7 @@ export default function Dashboard() {
         </div>
 
         <p className="mt-10 text-center text-xs text-gray-400">
-          More features (fees, travel, schedule, announcements) are on the way.
+          More features (fees, travel, announcements) are on the way.
         </p>
       </div>
     </div>

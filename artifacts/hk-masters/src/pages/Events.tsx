@@ -1,0 +1,317 @@
+import { useState, useEffect, useCallback } from "react"
+import { useListTeams } from "@workspace/api-client-react"
+import { PageLayout } from "@/components/layout/PageLayout"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Modal } from "@/components/ui/modal"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell } from "lucide-react"
+import { format } from "date-fns"
+import { useToast } from "@/hooks/use-toast"
+import { getStoredAdminToken } from "@/lib/admin-auth"
+
+type EventRow = {
+  id: number
+  kind: "training" | "meeting" | "social"
+  title: string
+  startsAt: string
+  endsAt: string | null
+  location: string | null
+  description: string | null
+  teamId: number | null
+  teamName: string | null
+}
+
+type FormState = {
+  kind: "training" | "meeting" | "social"
+  title: string
+  startsAt: string
+  endsAt: string
+  location: string
+  description: string
+  teamId: string
+}
+
+const EMPTY_FORM: FormState = {
+  kind: "training",
+  title: "",
+  startsAt: "",
+  endsAt: "",
+  location: "",
+  description: "",
+  teamId: "",
+}
+
+const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: string }> = {
+  training: { label: "Training", icon: Dumbbell, colour: "bg-emerald-100 text-emerald-800" },
+  meeting: { label: "Meeting", icon: Users, colour: "bg-blue-100 text-blue-800" },
+  social: { label: "Social", icon: Coffee, colour: "bg-amber-100 text-amber-800" },
+}
+
+function toLocalInputValue(iso: string): string {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function authHeaders(): HeadersInit {
+  const token = getStoredAdminToken()
+  return token ? { "x-session-token": token } : {}
+}
+
+export default function Events() {
+  const { toast } = useToast()
+  const { data: teams = [] } = useListTeams()
+  const [events, setEvents] = useState<EventRow[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editing, setEditing] = useState<EventRow | null>(null)
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+
+  const refresh = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch("/api/events", { headers: authHeaders() })
+      if (!res.ok) throw new Error("Failed to load events")
+      const data = await res.json() as EventRow[]
+      setEvents(data)
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  const openAddModal = () => {
+    setEditing(null)
+    setForm(EMPTY_FORM)
+    setFormError(null)
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (e: EventRow) => {
+    setEditing(e)
+    setForm({
+      kind: e.kind,
+      title: e.title,
+      startsAt: toLocalInputValue(e.startsAt),
+      endsAt: e.endsAt ? toLocalInputValue(e.endsAt) : "",
+      location: e.location ?? "",
+      description: e.description ?? "",
+      teamId: e.teamId ? String(e.teamId) : "",
+    })
+    setFormError(null)
+    setIsModalOpen(true)
+  }
+
+  const handleDelete = async (id: number, title: string) => {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return
+    try {
+      const res = await fetch(`/api/events/${id}`, { method: "DELETE", headers: authHeaders() })
+      if (!res.ok) throw new Error("Delete failed")
+      toast({ title: "Event deleted" })
+      refresh()
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    }
+  }
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setFormError(null)
+    if (!form.title.trim()) { setFormError("Title is required"); return }
+    if (!form.startsAt) { setFormError("Start time is required"); return }
+    if (form.endsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
+      setFormError("End must be after start"); return
+    }
+    setSaving(true)
+    try {
+      const payload = {
+        kind: form.kind,
+        title: form.title.trim(),
+        startsAt: new Date(form.startsAt).toISOString(),
+        endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
+        location: form.location.trim() || null,
+        description: form.description.trim() || null,
+        teamId: form.teamId ? Number(form.teamId) : null,
+      }
+      const url = editing ? `/api/events/${editing.id}` : "/api/events"
+      const method = editing ? "PATCH" : "POST"
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? "Save failed")
+      }
+      toast({ title: editing ? "Event updated" : "Event added" })
+      setIsModalOpen(false)
+      refresh()
+    } catch (err) {
+      setFormError((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // group by month
+  const grouped = events.reduce<Record<string, EventRow[]>>((acc, ev) => {
+    const key = format(new Date(ev.startsAt), "MMMM yyyy")
+    if (!acc[key]) acc[key] = []
+    acc[key].push(ev)
+    return acc
+  }, {})
+
+  return (
+    <PageLayout
+      title="Events"
+      description="Training sessions, team meetings, and social events. Visible to logged-in players."
+      action={
+        <Button onClick={openAddModal}>
+          <Plus className="w-5 h-5 mr-2" /> Add Event
+        </Button>
+      }
+    >
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading events…</div>
+      ) : events.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-border shadow-sm p-12 text-center">
+          <CalendarDays className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground">No events yet. Add the first training, meeting or social.</p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {Object.entries(grouped).map(([month, items]) => (
+            <section key={month}>
+              <h2 className="text-lg font-bold text-foreground mb-3">{month}</h2>
+              <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                      <tr>
+                        <th className="px-6 py-3 font-semibold">When</th>
+                        <th className="px-6 py-3 font-semibold">Kind</th>
+                        <th className="px-6 py-3 font-semibold">Title</th>
+                        <th className="px-6 py-3 font-semibold">Where</th>
+                        <th className="px-6 py-3 font-semibold">Visibility</th>
+                        <th className="px-6 py-3 font-semibold text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {items.map((ev) => {
+                        const meta = KIND_META[ev.kind] ?? KIND_META.meeting
+                        const Icon = meta.icon
+                        return (
+                          <tr key={ev.id} className="hover:bg-muted/10">
+                            <td className="px-6 py-4">
+                              <div className="font-semibold text-foreground">{format(new Date(ev.startsAt), "EEE d MMM")}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {format(new Date(ev.startsAt), "HH:mm")}
+                                {ev.endsAt && ` – ${format(new Date(ev.endsAt), "HH:mm")}`}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <Badge className={`${meta.colour} border-0 inline-flex items-center gap-1`}>
+                                <Icon className="w-3 h-3" /> {meta.label}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4 font-medium text-foreground">{ev.title}</td>
+                            <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
+                            <td className="px-6 py-4 text-muted-foreground">{ev.teamName || "All squads"}</td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex justify-end items-center gap-1">
+                                <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDelete(ev.id, ev.title)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Event" : "Add Event"}>
+        <form onSubmit={onSubmit} className="space-y-5">
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Kind</label>
+            <Select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as FormState["kind"] })}>
+              <option value="training">Training</option>
+              <option value="meeting">Meeting</option>
+              <option value="social">Social</option>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Title</label>
+            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Wednesday training" />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> Starts (local time)
+              </label>
+              <Input type="datetime-local" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> Ends (optional)
+              </label>
+              <Input type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5" /> Location
+            </label>
+            <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="e.g. Hong Kong Football Club" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Visibility</label>
+            <Select value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
+              <option value="">All squads</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </Select>
+            <p className="text-xs text-muted-foreground">Choose a single team or leave as "All squads" to show everyone.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Description (optional)</label>
+            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Anything else players should know" />
+          </div>
+
+          {formError && <p className="text-sm text-destructive">{formError}</p>}
+
+          <div className="pt-4 flex justify-end gap-3 border-t">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : editing ? "Update Event" : "Add Event"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    </PageLayout>
+  )
+}

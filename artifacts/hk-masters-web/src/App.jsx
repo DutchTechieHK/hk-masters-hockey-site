@@ -18,6 +18,7 @@ import MyDetails from "./pages/MyDetails";
 import Privacy from "./pages/Privacy";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import MySchedule from "./pages/MySchedule";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/my-details/:token" component={MyDetails} />
         <Route path="/login" component={Login} />
         <Route path="/dashboard" component={Dashboard} />
+        <Route path="/my-schedule" component={MySchedule} />
         <Route path="/privacy" component={Privacy} />
         <Route>
           <div className="min-h-screen flex items-center justify-center">

@@ -14,6 +14,7 @@ import Journal from "@/pages/Journal";
 import Travel from "@/pages/Travel";
 import Sponsors from "@/pages/Sponsors";
 import Schedule from "@/pages/Schedule";
+import Events from "@/pages/Events";
 import { Redirect } from "wouter";
 import Readiness from "@/pages/Readiness";
 import NotFound from "@/pages/not-found";
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/sponsors" component={Sponsors} />
       <Route path="/matches" component={Schedule} />
       <Route path="/schedule">{() => <Redirect to="/matches" />}</Route>
+      <Route path="/events" component={Events} />
       <Route path="/readiness" component={Readiness} />
       <Route component={NotFound} />
     </Switch>

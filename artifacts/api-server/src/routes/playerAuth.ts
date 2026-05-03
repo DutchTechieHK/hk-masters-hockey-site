@@ -5,6 +5,7 @@ import { db, playersTable, playerLoginCodesTable } from "@workspace/db";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
 import { mapPlayer } from "./players";
+import { listEventsForPlayer } from "./events";
 
 const router: IRouter = Router();
 
@@ -109,6 +110,11 @@ router.post("/verify-code", async (req, res) => {
 
 router.get("/me", requirePlayerSession, async (req, res) => {
   res.json({ ...mapPlayer(req.player!, null), accessToken: req.player!.accessToken });
+});
+
+router.get("/my-schedule", requirePlayerSession, async (req, res) => {
+  const events = await listEventsForPlayer(req.player!.teamId ?? null);
+  res.json({ events });
 });
 
 router.post("/logout", requirePlayerSession, async (req, res) => {
