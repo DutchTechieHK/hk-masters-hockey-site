@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
 
+const ROTTERDAM_TZ = "Europe/Amsterdam";
+
 function formatDateHeading(dateStr) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+    timeZone: ROTTERDAM_TZ,
+  });
 }
 
 function formatTime(iso) {
   const d = new Date(iso);
-  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return d.toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: false,
+    timeZone: ROTTERDAM_TZ,
+  });
 }
 
 function getCountdown(iso) {
@@ -155,16 +163,27 @@ function SubscribeButton() {
 
 function formatDayHeading(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long",
+    timeZone: ROTTERDAM_TZ,
+  });
+}
+
+// yyyy-mm-dd as observed in Rotterdam, used both for grouping keys and same-day comparison.
+function rotterdamDateKey(iso) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
 }
 
 function formatTimeRange(startIso, endIso) {
   const start = formatTime(startIso);
   if (!endIso) return start;
-  const startDay = new Date(startIso).toDateString();
-  const endDay = new Date(endIso).toDateString();
-  if (startDay === endDay) return `${start} – ${formatTime(endIso)}`;
-  const endLabel = new Date(endIso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  if (rotterdamDateKey(startIso) === rotterdamDateKey(endIso)) {
+    return `${start} – ${formatTime(endIso)}`;
+  }
+  const endLabel = new Date(endIso).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short",
+    timeZone: ROTTERDAM_TZ,
+  });
   return `${start} – ${endLabel} ${formatTime(endIso)}`;
 }
 
@@ -235,12 +254,11 @@ export default function Schedule() {
       .catch(() => setTournamentEvents([]));
   }, []);
 
-  // Group tournament events by date (local), preserving order.
+  // Group tournament events by Rotterdam-local date, preserving order.
   const tournamentGroups = (() => {
     const groups = new Map();
     for (const e of tournamentEvents) {
-      const d = new Date(e.startsAt);
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const key = rotterdamDateKey(e.startsAt);
       if (!groups.has(key)) groups.set(key, { date: e.startsAt, items: [] });
       groups.get(key).items.push(e);
     }
@@ -256,8 +274,7 @@ export default function Schedule() {
   function groupByDateAndTeam(list) {
     const groups = new Map();
     for (const m of list) {
-      const d = new Date(m.kickoffAt);
-      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const dateKey = rotterdamDateKey(m.kickoffAt);
       if (!groups.has(dateKey)) groups.set(dateKey, { date: m.kickoffAt, teams: new Map() });
       const dateGroup = groups.get(dateKey);
       const teamKey = m.teamCategory || m.teamName || "HK Masters";
@@ -298,7 +315,8 @@ export default function Schedule() {
               </span>
             </div>
             <p className="text-sm text-gray-500 mb-6">
-              Official tournament programme: team checks, ceremonies, match days, social events and the wrap party.
+              Official tournament programme: team checks, ceremonies, match days, social events and the wrap party.{" "}
+              <span className="text-gray-400">All times shown in Rotterdam local time (CEST).</span>
             </p>
             <div className="space-y-10">
               {tournamentGroups.map((g) => (
