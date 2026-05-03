@@ -3,19 +3,34 @@ import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 
-const TOURNAMENT_START_ISO = "2026-06-22T09:00:00+02:00";
+const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
 
 const KIND_META = {
   training: { label: "Training", emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
-  meeting: { label: "Meeting", emoji: "💬", chip: "bg-blue-100 text-blue-800" },
-  social: { label: "Social", emoji: "🍻", chip: "bg-amber-100 text-amber-800" },
+  meeting:  { label: "Meeting",  emoji: "💬", chip: "bg-blue-100 text-blue-800" },
+  social:   { label: "Social",   emoji: "🍻", chip: "bg-amber-100 text-amber-800" },
 };
+
+const ROTTERDAM_TZ = "Europe/Amsterdam";
+
+// Rotterdam tournament window — 21 Jul to 1 Aug 2026 inclusive
+const RTM_START = "2026-07-21";
+const RTM_END   = "2026-08-01";
+
+function rtmDateKey(iso) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
+}
+
+function isRotterdamEvent(ev) {
+  const key = rtmDateKey(ev.startsAt);
+  return key >= RTM_START && key <= RTM_END;
+}
 
 function pad(n) { return String(n).padStart(2, "0"); }
 
+// Browser-local display (for HK events)
 function formatDateTime(iso) {
-  const d = new Date(iso);
-  return d.toLocaleString("en-GB", {
+  return new Date(iso).toLocaleString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
@@ -28,9 +43,31 @@ function formatTimeRange(startsAt, endsAt) {
   return `${s} – ${e}`;
 }
 
+// Rotterdam-timezone display (for Rotterdam events)
+function formatDateTimeRtm(iso) {
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "short", day: "numeric", month: "short",
+    hour: "2-digit", minute: "2-digit", hour12: false,
+    timeZone: ROTTERDAM_TZ,
+  });
+}
+
+function formatTimeRangeRtm(startsAt, endsAt) {
+  const s = new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ROTTERDAM_TZ });
+  if (!endsAt) return s;
+  const e = new Date(endsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ROTTERDAM_TZ });
+  return `${s} – ${e}`;
+}
+
 function monthKey(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}
+
+function dayHeadingRtm(iso) {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long",
+    timeZone: ROTTERDAM_TZ,
+  });
 }
 
 function useCountdown(targetIso) {
@@ -113,6 +150,74 @@ function downloadIcs(events, filename, calendarName) {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Shared event card (used for both HK and Rotterdam events) ------------------
+function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
+  const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
+  const dateStr = isRtm ? formatDateTimeRtm(ev.startsAt) : formatDateTime(ev.startsAt);
+  const timeRange = isRtm
+    ? (ev.endsAt ? ` · ${formatTimeRangeRtm(ev.startsAt, ev.endsAt)}` : "")
+    : (ev.endsAt ? ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}` : "");
+
+  return (
+    <li className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.chip}`}>
+              {meta.emoji} {meta.label}
+            </span>
+            {!ev.teamId && (
+              <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-100">All squads</span>
+            )}
+            {isRtm && (
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[#006B3C] px-1.5 py-0.5 rounded bg-green-50">CEST</span>
+            )}
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">{ev.title}</h3>
+          <p className="text-sm text-gray-700 mt-1">{dateStr}{timeRange}</p>
+          {ev.location && <p className="text-sm text-gray-600 mt-0.5">📍 {ev.location}</p>}
+          {ev.description && <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{ev.description}</p>}
+        </div>
+        <button
+          onClick={() => downloadIcs([ev], `hk-${ev.kind}-${ev.id}.ics`, ev.title)}
+          title="Add this event to my calendar"
+          className="text-xs text-green-700 hover:text-green-900 hover:underline whitespace-nowrap shrink-0"
+        >
+          + Calendar
+        </button>
+      </div>
+      {/* RSVP */}
+      <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { key: "yes",   label: "Going",     emoji: "✅", on: "bg-emerald-600 text-white border-emerald-600", off: "bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50" },
+              { key: "maybe", label: "Maybe",     emoji: "🤔", on: "bg-amber-500 text-white border-amber-500",   off: "bg-white text-amber-700 border-amber-300 hover:bg-amber-50" },
+              { key: "no",    label: "Not going", emoji: "❌", on: "bg-rose-600 text-white border-rose-600",     off: "bg-white text-rose-700 border-rose-300 hover:bg-rose-50" },
+            ].map((opt) => {
+              const selected = ev.myRsvp === opt.key;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  disabled={!!rsvpSaving[ev.id]}
+                  onClick={() => submitRsvp(ev.id, opt.key)}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
+                >
+                  {opt.emoji} {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <div className="text-xs text-gray-500 whitespace-nowrap">
+            {ev.rsvpCounts?.yes ?? 0} going · {ev.rsvpCounts?.maybe ?? 0} maybe · {ev.rsvpCounts?.no ?? 0} no
+          </div>
+        </div>
+      </div>
+    </li>
+  );
 }
 
 // Component ------------------------------------------------------------------
@@ -201,9 +306,6 @@ export default function MySchedule() {
     const now = Date.now();
     const u = []; const p = [];
     for (const ev of events) {
-      // An event is still "upcoming/current" until its end time (or start
-      // time, if no end is set) is in the past. This stops a session that's
-      // already started from disappearing mid-training.
       const endMs = new Date(ev.endsAt || ev.startsAt).getTime();
       if (endMs >= now) u.push(ev); else p.push(ev);
     }
@@ -211,14 +313,32 @@ export default function MySchedule() {
     return { upcoming: u, past: p };
   }, [events]);
 
-  const groupedUpcoming = useMemo(() => {
+  // Split upcoming into HK club events and Rotterdam tournament programme
+  const { hkEvents, rtmEvents } = useMemo(() => ({
+    hkEvents:  upcoming.filter((ev) => !isRotterdamEvent(ev)),
+    rtmEvents: upcoming.filter((ev) =>  isRotterdamEvent(ev)),
+  }), [upcoming]);
+
+  // HK events grouped by month
+  const groupedHk = useMemo(() => {
     const groups = {};
-    for (const ev of upcoming) {
+    for (const ev of hkEvents) {
       const k = monthKey(ev.startsAt);
       (groups[k] ||= []).push(ev);
     }
     return groups;
-  }, [upcoming]);
+  }, [hkEvents]);
+
+  // Rotterdam events grouped by day (Rotterdam TZ)
+  const groupedRtm = useMemo(() => {
+    const groups = new Map();
+    for (const ev of rtmEvents) {
+      const key = rtmDateKey(ev.startsAt);
+      if (!groups.has(key)) groups.set(key, { date: ev.startsAt, items: [] });
+      groups.get(key).items.push(ev);
+    }
+    return Array.from(groups.values());
+  }, [rtmEvents]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><p className="text-gray-500">Loading your schedule…</p></div>;
@@ -281,81 +401,57 @@ export default function MySchedule() {
           </div>
         )}
 
-        {/* Upcoming */}
-        {upcoming.length === 0 ? (
+        {/* Empty state */}
+        {upcoming.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
             <p className="text-gray-500">No upcoming events scheduled yet. Check back soon.</p>
           </div>
-        ) : (
-          <div className="space-y-8">
-            {Object.entries(groupedUpcoming).map(([month, items]) => (
+        )}
+
+        {/* Hong Kong Events */}
+        {hkEvents.length > 0 && (
+          <div className="space-y-2 mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Hong Kong Events</h2>
+              <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded-full">{hkEvents.length}</span>
+            </div>
+            {Object.entries(groupedHk).map(([month, items]) => (
               <section key={month}>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500 mb-3">{month}</h2>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#DE2910] mb-3">{month}</h3>
                 <ul className="space-y-3">
-                  {items.map((ev) => {
-                    const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
-                    return (
-                      <li key={ev.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${meta.chip}`}>
-                                {meta.emoji} {meta.label}
-                              </span>
-                              {!ev.teamId && (
-                                <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-100">All squads</span>
-                              )}
-                            </div>
-                            <h3 className="text-lg font-semibold text-gray-900">{ev.title}</h3>
-                            <p className="text-sm text-gray-700 mt-1">
-                              {formatDateTime(ev.startsAt)}
-                              {ev.endsAt && ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`}
-                            </p>
-                            {ev.location && <p className="text-sm text-gray-600 mt-0.5">📍 {ev.location}</p>}
-                            {ev.description && <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{ev.description}</p>}
-                          </div>
-                          <button
-                            onClick={() => downloadIcs([ev], `hk-${ev.kind}-${ev.id}.ics`, ev.title)}
-                            title="Add this event to my calendar"
-                            className="text-xs text-green-700 hover:text-green-900 hover:underline whitespace-nowrap shrink-0"
-                          >
-                            + Calendar
-                          </button>
-                        </div>
-                        {/* RSVP */}
-                        <div className="mt-4 pt-4 border-t border-gray-100">
-                          <div className="flex items-center justify-between gap-3 flex-wrap">
-                            <div className="flex gap-2 flex-wrap">
-                              {[
-                                { key: "yes", label: "Going", emoji: "✅", on: "bg-emerald-600 text-white border-emerald-600", off: "bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50" },
-                                { key: "maybe", label: "Maybe", emoji: "🤔", on: "bg-amber-500 text-white border-amber-500", off: "bg-white text-amber-700 border-amber-300 hover:bg-amber-50" },
-                                { key: "no", label: "Not going", emoji: "❌", on: "bg-rose-600 text-white border-rose-600", off: "bg-white text-rose-700 border-rose-300 hover:bg-rose-50" },
-                              ].map((opt) => {
-                                const selected = ev.myRsvp === opt.key;
-                                return (
-                                  <button
-                                    key={opt.key}
-                                    type="button"
-                                    disabled={!!rsvpSaving[ev.id]}
-                                    onClick={() => submitRsvp(ev.id, opt.key)}
-                                    className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
-                                  >
-                                    {opt.emoji} {opt.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <div className="text-xs text-gray-500 whitespace-nowrap">
-                              {ev.rsvpCounts?.yes ?? 0} going · {ev.rsvpCounts?.maybe ?? 0} maybe · {ev.rsvpCounts?.no ?? 0} no
-                            </div>
-                          </div>
-                        </div>
-                      </li>
-                    );
-                  })}
+                  {items.map((ev) => <EventCard key={ev.id} ev={ev} isRtm={false} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
                 </ul>
               </section>
             ))}
+          </div>
+        )}
+
+        {/* Rotterdam 2026 Programme */}
+        {rtmEvents.length > 0 && (
+          <div>
+            {/* Banner */}
+            <div className="rounded-2xl bg-[#006B3C] text-white px-5 py-4 mb-6 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-green-300 mb-0.5">22 Jul – 1 Aug 2026 · Times in Rotterdam (CEST)</p>
+                <p className="text-lg font-extrabold leading-tight">Rotterdam 2026 Programme</p>
+                <p className="text-green-200 text-xs mt-0.5">HC Rotterdam, Netherlands</p>
+              </div>
+              <span className="shrink-0 bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+                {rtmEvents.length} event{rtmEvents.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="space-y-6">
+              {groupedRtm.map((g) => (
+                <section key={g.date}>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#006B3C] mb-3">
+                    {dayHeadingRtm(g.date)}
+                  </h3>
+                  <ul className="space-y-3">
+                    {g.items.map((ev) => <EventCard key={ev.id} ev={ev} isRtm={true} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
+                  </ul>
+                </section>
+              ))}
+            </div>
           </div>
         )}
 
