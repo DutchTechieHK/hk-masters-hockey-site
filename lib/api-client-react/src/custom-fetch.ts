@@ -271,7 +271,7 @@ async function parseSuccessBody(
   }
 }
 
-const ADMIN_SESSION_KEY = "hkm_admin_session";
+export const ADMIN_SESSION_KEY = "hkm_admin_session";
 
 function getAdminSessionHeader(): HeadersInit | undefined {
   try {
@@ -316,6 +316,16 @@ export async function customFetch<T = unknown>(
   const requestInfo = { method, url: resolveUrl(input) };
 
   const response = await fetch(input, { ...init, method, headers });
+
+  if (response.status === 401 && typeof window !== "undefined") {
+    try {
+      if (localStorage.getItem(ADMIN_SESSION_KEY)) {
+        localStorage.removeItem(ADMIN_SESSION_KEY);
+        window.dispatchEvent(new CustomEvent("hkm:session-expired"));
+      }
+    } catch {
+    }
+  }
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

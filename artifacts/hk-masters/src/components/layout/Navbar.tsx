@@ -1,8 +1,14 @@
 import { Link, useRoute } from "wouter"
-import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet } from "lucide-react"
+import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
+import {
+  apiAdminLogout,
+  clearAdminToken,
+  getStoredAdminToken,
+  notifySessionExpired,
+} from "@/lib/admin-auth"
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: Trophy },
@@ -17,6 +23,13 @@ const NAV_ITEMS = [
   { href: "/travel", label: "Travel", icon: Luggage },
   { href: "/journal", label: "Journal", icon: BookOpen },
 ]
+
+async function handleSignOut() {
+  const token = getStoredAdminToken()
+  if (token) await apiAdminLogout(token)
+  clearAdminToken()
+  notifySessionExpired()
+}
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -58,6 +71,14 @@ export function Navbar() {
                   </Link>
                 )
               })}
+              <button
+                onClick={handleSignOut}
+                title="Sign out"
+                className="flex items-center space-x-2 px-3 py-2 ml-2 rounded-lg text-sm font-medium text-primary-foreground/80 hover:bg-white/10 hover:text-white transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+                <span className="sr-only">Sign out</span>
+              </button>
             </div>
 
             {/* Mobile menu button */}
@@ -103,6 +124,13 @@ export function Navbar() {
                   </Link>
                 )
               })}
+              <button
+                onClick={() => { setIsMobileMenuOpen(false); handleSignOut() }}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium text-primary-foreground/80 hover:bg-white/10 hover:text-white transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span>Sign out</span>
+              </button>
             </div>
           </motion.div>
         )}

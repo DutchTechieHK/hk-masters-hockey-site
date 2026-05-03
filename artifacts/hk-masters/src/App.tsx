@@ -17,6 +17,7 @@ import Schedule from "@/pages/Schedule";
 import { Redirect } from "wouter";
 import Readiness from "@/pages/Readiness";
 import NotFound from "@/pages/not-found";
+import { AdminAuthGate } from "@/components/AdminAuthGate";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,7 +54,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <Router />
+          <AdminAuthGate>
+            <Router />
+          </AdminAuthGate>
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
