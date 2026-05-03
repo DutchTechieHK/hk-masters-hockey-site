@@ -265,6 +265,16 @@ export const GetSelfPlayerResponse = zod.object({
   jacketSize: zod.string().optional(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
+  feePaid: zod.boolean(),
+  paymentAmountDue: zod.number().nullish(),
+  paymentAmountPaid: zod.number().nullish(),
+  paymentBalance: zod
+    .number()
+    .nullish()
+    .describe(
+      "Outstanding balance (amount due minus amount paid). Null when amount due is not set.",
+    ),
+  paymentDate: zod.string().nullish(),
 });
 
 /**
@@ -316,6 +326,16 @@ export const UpdateSelfPlayerResponse = zod.object({
   jacketSize: zod.string().optional(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
+  feePaid: zod.boolean(),
+  paymentAmountDue: zod.number().nullish(),
+  paymentAmountPaid: zod.number().nullish(),
+  paymentBalance: zod
+    .number()
+    .nullish()
+    .describe(
+      "Outstanding balance (amount due minus amount paid). Null when amount due is not set.",
+    ),
+  paymentDate: zod.string().nullish(),
 });
 
 /**

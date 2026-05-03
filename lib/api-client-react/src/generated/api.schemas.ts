@@ -174,6 +174,12 @@ export interface SelfPlayer {
   jacketSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
+  feePaid: boolean;
+  paymentAmountDue?: number | null;
+  paymentAmountPaid?: number | null;
+  /** Outstanding balance (amount due minus amount paid). Null when amount due is not set. */
+  paymentBalance?: number | null;
+  paymentDate?: string | null;
 }
 
 export interface UpdateSelfPlayer {

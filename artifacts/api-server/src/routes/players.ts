@@ -107,6 +107,9 @@ const SELF_EDITABLE_FIELDS = [
 ] as const;
 
 function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
+  const amountDue = player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null;
+  const amountPaid = player.paymentAmountPaid ? parseFloat(player.paymentAmountPaid) : null;
+  const balance = amountDue == null ? null : Math.max(0, amountDue - (amountPaid ?? 0));
   return {
     id: player.id,
     teamId: player.teamId,
@@ -130,6 +133,11 @@ function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: stri
     jacketSize: player.jacketSize ?? undefined,
     dietaryRequirements: player.dietaryRequirements ?? undefined,
     medicalNotes: player.medicalNotes ?? undefined,
+    feePaid: player.feePaid,
+    paymentAmountDue: amountDue,
+    paymentAmountPaid: amountPaid,
+    paymentBalance: balance,
+    paymentDate: player.paymentDate ?? null,
   };
 }
 

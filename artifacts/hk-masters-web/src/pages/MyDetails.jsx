@@ -51,6 +51,122 @@ const SECTIONS = [
 
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields.map((f) => f.key));
 
+function formatHKD(amount) {
+  if (amount == null || isNaN(amount)) return "—";
+  return new Intl.NumberFormat("en-HK", {
+    style: "currency",
+    currency: "HKD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatPaymentDate(s) {
+  if (!s) return null;
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function FeesPanel({ player }) {
+  const due = player.paymentAmountDue;
+  const paid = player.paymentAmountPaid;
+  const balance = player.paymentBalance;
+  const isPaid = player.feePaid && (balance == null || balance === 0);
+  const partial = !isPaid && paid != null && paid > 0;
+  const notSet = due == null;
+
+  let statusBadge;
+  if (notSet) {
+    statusBadge = (
+      <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 text-xs font-semibold px-2.5 py-1 rounded-full">
+        Not yet set
+      </span>
+    );
+  } else if (isPaid) {
+    statusBadge = (
+      <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clipRule="evenodd"/></svg>
+        Paid in full
+      </span>
+    );
+  } else if (partial) {
+    statusBadge = (
+      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+        Partially paid
+      </span>
+    );
+  } else {
+    statusBadge = (
+      <span className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+        Outstanding
+      </span>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+      <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">Tournament fees</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            What you owe and what you've paid towards Rotterdam 2026.
+          </p>
+        </div>
+        {statusBadge}
+      </div>
+
+      {notSet ? (
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-sm text-gray-600">
+          Your team admin hasn't set a fee amount for you yet. Please check back later or contact your team manager.
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wide text-gray-500 font-semibold mb-1">Total fee</p>
+              <p className="text-xl font-bold text-gray-900 tabular-nums">{formatHKD(due)}</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-4">
+              <p className="text-xs uppercase tracking-wide text-emerald-700 font-semibold mb-1">Paid so far</p>
+              <p className="text-xl font-bold text-emerald-800 tabular-nums">{formatHKD(paid ?? 0)}</p>
+              {player.paymentDate && (
+                <p className="text-xs text-emerald-700/80 mt-1">on {formatPaymentDate(player.paymentDate)}</p>
+              )}
+            </div>
+            <div className={`rounded-xl p-4 ${balance && balance > 0 ? "bg-amber-50" : "bg-gray-50"}`}>
+              <p className={`text-xs uppercase tracking-wide font-semibold mb-1 ${balance && balance > 0 ? "text-amber-700" : "text-gray-500"}`}>
+                Outstanding
+              </p>
+              <p className={`text-xl font-bold tabular-nums ${balance && balance > 0 ? "text-amber-800" : "text-gray-900"}`}>
+                {formatHKD(balance ?? 0)}
+              </p>
+            </div>
+          </div>
+
+          {due > 0 && (
+            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-4">
+              <div
+                className="bg-emerald-500 h-full rounded-full transition-all duration-700"
+                style={{ width: `${Math.min(100, ((paid ?? 0) / due) * 100)}%` }}
+              />
+            </div>
+          )}
+
+          {!isPaid && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-900">
+              <p className="font-semibold mb-1">How to pay</p>
+              <p className="text-blue-800/90">
+                Please arrange payment with your team manager. Once they record your payment, the amount above will update automatically.
+              </p>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function buildInitialForm(data) {
   const form = {};
   for (const key of ALL_FIELDS) {
@@ -188,6 +304,9 @@ export default function MyDetails() {
             </div>
           </dl>
         </div>
+
+        {/* Tournament fees */}
+        <FeesPanel player={player} />
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">

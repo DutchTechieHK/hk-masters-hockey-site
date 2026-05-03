@@ -1053,10 +1053,26 @@ components:
           type: string
         medicalNotes:
           type: string
+        feePaid:
+          type: boolean
+        paymentAmountDue:
+          type: number
+          nullable: true
+        paymentAmountPaid:
+          type: number
+          nullable: true
+        paymentBalance:
+          type: number
+          nullable: true
+          description: Outstanding balance (amount due minus amount paid). Null when amount due is not set.
+        paymentDate:
+          type: string
+          nullable: true
       required:
         - id
         - teamId
         - name
+        - feePaid
 
     UpdateSelfPlayer:
       type: object
