@@ -62,21 +62,17 @@ const KIND = {
 
 const TABS = ["All", "Training", "Programme", "Social"]
 
-function Pad({ n }: { n: number }) {
-  return <>{String(n).padStart(2, "0")}</>
-}
-
 export function Combined() {
   const [tab, setTab] = useState("All")
-  const { d, h, m, s } = useCountdown(TOURNAMENT_START)
+  const { d } = useCountdown(TOURNAMENT_START)
 
   const filtered = tab === "All" ? EVENTS : EVENTS.filter(e => e.kind === tab.toLowerCase())
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
 
-      {/* ─── HERO: Rotterdam photo + countdown ─── */}
-      <div className="relative overflow-hidden" style={{ minHeight: 340 }}>
+      {/* ─── HERO: Rotterdam photo + title ─── */}
+      <div className="relative overflow-hidden" style={{ minHeight: 300 }}>
         <img
           src="https://images.unsplash.com/photo-1562887189-6c19a14e5b08?w=1400&q=80"
           alt="Rotterdam"
@@ -85,28 +81,14 @@ export function Combined() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[#003d22]/75 via-[#006B3C]/55 to-[#005a2e]/90" />
 
-        <div className="relative px-8 pt-12 pb-0 max-w-5xl mx-auto">
+        <div className="relative px-8 pt-12 pb-10 max-w-5xl mx-auto">
           <span className="inline-block bg-[#DE2910] text-white text-[11px] font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
             Rotterdam 2026
           </span>
           <h1 className="text-5xl font-extrabold text-white mb-2 leading-none">Events</h1>
-          <p className="text-green-200 text-lg mb-8 max-w-xl">
+          <p className="text-green-200 text-lg max-w-xl">
             The full tournament programme, club events, and social nights — all in one place.
           </p>
-
-          {/* Live countdown */}
-          <div className="inline-flex items-center gap-1 bg-black/25 backdrop-blur-sm border border-white/15 rounded-2xl px-6 py-3.5 mb-10">
-            <span className="text-green-300 text-sm font-medium mr-4">Rotterdam in</span>
-            {[{ v: d, l: "days" }, { v: h, l: "hrs" }, { v: m, l: "min" }, { v: s, l: "sec" }].map(({ v, l }, i) => (
-              <div key={l} className="flex items-center gap-1">
-                {i > 0 && <span className="text-white/25 text-xl font-light mx-1.5">:</span>}
-                <div className="flex flex-col items-center min-w-[2.2rem]">
-                  <span className="text-3xl font-black text-white tabular-nums leading-none"><Pad n={v} /></span>
-                  <span className="text-[10px] text-green-300 uppercase tracking-widest mt-0.5">{l}</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
