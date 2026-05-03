@@ -100,7 +100,7 @@ function kindMeta(kind, eventId = 0) {
 // ─── Journey strip countdown ──────────────────────────────────────────────────
 
 function useDaysUntil(target) {
-  const calc = () => Math.max(0, Math.ceil((target.getTime() - Date.now()) / 86400000));
+  const calc = () => Math.max(0, Math.floor((target.getTime() - Date.now()) / 86400000));
   const [days, setDays] = useState(calc);
   useEffect(() => {
     const id = setInterval(() => setDays(calc()), 60000);

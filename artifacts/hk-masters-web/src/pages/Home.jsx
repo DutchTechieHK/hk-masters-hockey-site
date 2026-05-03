@@ -10,7 +10,7 @@ import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import SponsorStrip from "../components/SponsorStrip";
 
-const ROTTERDAM_START = new Date("2026-07-22T09:00:00");
+const ROTTERDAM_START = new Date("2026-07-22T09:00:00+02:00"); // 9 am CEST
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 const isRotterdamMode = () => Date.now() < ROTTERDAM_MODE_END.getTime();
 
