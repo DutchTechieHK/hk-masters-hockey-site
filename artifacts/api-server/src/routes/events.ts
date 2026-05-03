@@ -59,6 +59,7 @@ function parseBody(body: unknown): {
   if (b.endsAt) {
     const d = new Date(String(b.endsAt));
     if (Number.isNaN(d.getTime())) return { error: "Invalid endsAt" };
+    if (d.getTime() <= startsAt.getTime()) return { error: "endsAt must be after startsAt" };
     endsAt = d;
   }
   const teamIdRaw = b.teamId;
