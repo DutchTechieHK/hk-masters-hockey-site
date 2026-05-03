@@ -87,6 +87,30 @@ function groupByDay(list) {
   return Array.from(groups.values());
 }
 
+// Rotterdam tournament window — 21 Jul to 1 Aug 2026 inclusive (Rotterdam time)
+const RTM_START = "2026-07-21";
+const RTM_END   = "2026-08-01";
+
+function isRotterdamEvent(e) {
+  const key = rotterdamDateKey(e.startsAt);
+  return key >= RTM_START && key <= RTM_END;
+}
+
+function DayGroup({ group, headingColour = "text-[#006B3C]" }) {
+  return (
+    <div>
+      <h3 className={`text-sm font-bold uppercase tracking-wide mb-4 ${headingColour}`}>
+        {formatDayHeading(group.date)}
+      </h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {group.items.map((e) => (
+          <EventCard key={e.id} event={e} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Events() {
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -102,9 +126,14 @@ export default function Events() {
   const now = new Date();
   const sorted = [...allEvents].sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
   const upcoming = sorted.filter((e) => new Date(e.endsAt || e.startsAt) >= now);
-  const past = sorted.filter((e) => new Date(e.endsAt || e.startsAt) < now).reverse();
+  const past     = sorted.filter((e) => new Date(e.endsAt || e.startsAt) < now).reverse();
 
-  const upcomingGroups = groupByDay(upcoming);
+  // Split upcoming into HK club events and Rotterdam tournament programme
+  const hkEvents  = upcoming.filter((e) => !isRotterdamEvent(e));
+  const rtmEvents = upcoming.filter((e) =>  isRotterdamEvent(e));
+
+  const hkGroups  = groupByDay(hkEvents);
+  const rtmGroups = groupByDay(rtmEvents);
   const pastGroups = groupByDay(past);
 
   return (
@@ -124,61 +153,74 @@ export default function Events() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
 
-        {/* Upcoming Events (live from admin) */}
-        <section>
-          <div className="flex items-center gap-3 mb-2">
-            <h2 className="text-2xl font-bold text-gray-900">Upcoming Events</h2>
-            {!loading && upcoming.length > 0 && (
-              <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {upcoming.length}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-500 mb-6">
-            All times shown in Rotterdam local time (CEST).
-          </p>
+        {loading && (
+          <div className="text-center py-10 text-gray-400">Loading events…</div>
+        )}
 
-          {loading ? (
-            <div className="text-center py-10 text-gray-400">Loading events…</div>
-          ) : upcomingGroups.length === 0 ? (
-            <div className="bg-gray-50 rounded-2xl p-10 text-center">
-              <p className="text-gray-500 font-medium">No upcoming events yet</p>
-              <p className="text-sm text-gray-400 mt-1">Check back soon — events will appear here as they are published.</p>
+        {/* Hong Kong Events */}
+        {!loading && hkGroups.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-2">
+              <h2 className="text-2xl font-bold text-gray-900">Hong Kong Events</h2>
+              <span className="bg-[#DE2910] text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                {hkEvents.length}
+              </span>
             </div>
-          ) : (
+            <p className="text-sm text-gray-500 mb-6">Training sessions, fundraisers, and social events in Hong Kong.</p>
             <div className="space-y-10">
-              {upcomingGroups.map((g) => (
-                <div key={g.date}>
-                  <h3 className="text-sm font-bold text-[#006B3C] uppercase tracking-wide mb-4">
-                    {formatDayHeading(g.date)}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {g.items.map((e) => (
-                      <EventCard key={e.id} event={e} />
-                    ))}
-                  </div>
-                </div>
+              {hkGroups.map((g) => (
+                <DayGroup key={g.date} group={g} headingColour="text-[#DE2910]" />
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        {/* Past Events (live from admin) */}
+        {/* Rotterdam 2026 Programme */}
+        {!loading && (rtmGroups.length > 0 || hkGroups.length === 0) && (
+          <section>
+            {/* Section banner */}
+            <div className="rounded-2xl bg-[#006B3C] text-white px-6 py-5 mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">
+                    22 Jul – 1 Aug 2026
+                  </span>
+                  <span className="text-green-300 text-xs">All times Rotterdam local (CEST)</span>
+                </div>
+                <h2 className="text-2xl font-extrabold leading-none">Rotterdam 2026 Programme</h2>
+                <p className="text-green-200 text-sm mt-1">
+                  World Masters Hockey Cup · HC Rotterdam, Netherlands
+                </p>
+              </div>
+              {rtmGroups.length > 0 && (
+                <span className="self-start sm:self-auto bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+                  {rtmEvents.length} event{rtmEvents.length !== 1 ? "s" : ""}
+                </span>
+              )}
+            </div>
+
+            {rtmGroups.length === 0 ? (
+              <div className="bg-gray-50 rounded-2xl p-10 text-center">
+                <p className="text-gray-500 font-medium">Programme coming soon</p>
+                <p className="text-sm text-gray-400 mt-1">Tournament events will appear here once published.</p>
+              </div>
+            ) : (
+              <div className="space-y-10">
+                {rtmGroups.map((g) => (
+                  <DayGroup key={g.date} group={g} headingColour="text-[#006B3C]" />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Past Events */}
         {!loading && pastGroups.length > 0 && (
           <section>
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Past Events</h2>
             <div className="space-y-10">
               {pastGroups.map((g) => (
-                <div key={g.date}>
-                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-4">
-                    {formatDayHeading(g.date)}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {g.items.map((e) => (
-                      <EventCard key={e.id} event={e} />
-                    ))}
-                  </div>
-                </div>
+                <DayGroup key={g.date} group={g} headingColour="text-gray-400" />
               ))}
             </div>
           </section>
