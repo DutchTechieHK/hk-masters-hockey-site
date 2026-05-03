@@ -3,12 +3,12 @@ import { API_BASE } from "../utils/api";
 
 function formatDateHeading(dateStr) {
   const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
 function formatTime(iso) {
   const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function getCountdown(iso) {
@@ -155,7 +155,7 @@ function SubscribeButton() {
 
 function formatDayHeading(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 }
 
 function formatTimeRange(startIso, endIso) {
@@ -164,7 +164,7 @@ function formatTimeRange(startIso, endIso) {
   const startDay = new Date(startIso).toDateString();
   const endDay = new Date(endIso).toDateString();
   if (startDay === endDay) return `${start} – ${formatTime(endIso)}`;
-  const endLabel = new Date(endIso).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const endLabel = new Date(endIso).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
   return `${start} – ${endLabel} ${formatTime(endIso)}`;
 }
 

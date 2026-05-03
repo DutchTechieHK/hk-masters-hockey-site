@@ -15,22 +15,22 @@ function pad(n) { return String(n).padStart(2, "0"); }
 
 function formatDateTime(iso) {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
-    hour: "2-digit", minute: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false,
   });
 }
 
 function formatTimeRange(startsAt, endsAt) {
-  const s = new Date(startsAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const s = new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
   if (!endsAt) return s;
-  const e = new Date(endsAt).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const e = new Date(endsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
   return `${s} – ${e}`;
 }
 
 function monthKey(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
 
 function useCountdown(targetIso) {

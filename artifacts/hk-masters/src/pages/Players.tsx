@@ -133,7 +133,7 @@ export default function Players() {
       toast({ title: "Player has no email on file", variant: "destructive" })
       return
     }
-    if (player.onboardingInviteSentAt && !confirm(`Onboarding invite was already sent to ${player.name} on ${new Date(player.onboardingInviteSentAt).toLocaleDateString()}. Re-send?`)) return
+    if (player.onboardingInviteSentAt && !confirm(`Onboarding invite was already sent to ${player.name} on ${new Date(player.onboardingInviteSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}. Re-send?`)) return
     try {
       const result = await sendInvitesMutation.mutateAsync({ data: { playerIds: [player.id] } })
       if (result.sent > 0) {
@@ -498,7 +498,7 @@ export default function Players() {
                             onClick={() => handleSendInvite(player)}
                             disabled={sendInvitesMutation.isPending}
                             title={player.onboardingInviteSentAt
-                              ? `Onboarding invite sent ${new Date(player.onboardingInviteSentAt).toLocaleDateString()} — click to re-send`
+                              ? `Onboarding invite sent ${new Date(player.onboardingInviteSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} — click to re-send`
                               : "Email onboarding link to this player"}
                             className={`p-2 rounded bg-background border shadow-sm transition-all disabled:opacity-50 ${
                               player.onboardingInviteSentAt

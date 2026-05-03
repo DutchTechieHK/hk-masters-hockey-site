@@ -359,7 +359,7 @@ export default function MyDetails() {
               {error && <p className="text-red-600">{error}</p>}
               {!error && savedAt && (
                 <p className="text-emerald-700 font-semibold">
-                  Saved at {savedAt.toLocaleTimeString()} — admins will see this immediately.
+                  Saved at {savedAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })} — admins will see this immediately.
                 </p>
               )}
               {!error && !savedAt && <p className="text-gray-500">Changes are saved when you press Save.</p>}

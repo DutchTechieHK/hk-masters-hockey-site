@@ -16,7 +16,7 @@ function formatRelative(iso) {
   if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d ago`;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function Announcements() {

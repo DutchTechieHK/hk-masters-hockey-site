@@ -12,7 +12,7 @@ function formatDate(s) {
   if (!s) return "—";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function MyFees() {

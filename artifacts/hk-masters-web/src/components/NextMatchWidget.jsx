@@ -9,12 +9,12 @@ const FALLBACK_TEAMS = [
 
 function formatDate(iso) {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 }
 
 function formatTime(iso) {
   const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 function getCountdown(iso) {
