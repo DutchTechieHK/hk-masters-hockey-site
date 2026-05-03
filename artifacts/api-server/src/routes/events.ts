@@ -41,6 +41,7 @@ function serialize(
     description: row.description,
     teamId: row.teamId,
     teamName: teamName ?? null,
+    isPublic: row.isPublic,
     createdAt: row.createdAt.toISOString(),
     rsvpCounts: extras?.rsvpCounts ?? emptyCounts(),
     myRsvp: extras?.myRsvp ?? null,
@@ -55,6 +56,7 @@ function parseBody(body: unknown): {
   location: string | null;
   description: string | null;
   teamId: number | null;
+  isPublic: boolean;
 } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -89,6 +91,7 @@ function parseBody(body: unknown): {
     location: typeof b.location === "string" && b.location.trim() ? b.location.trim() : null,
     description: typeof b.description === "string" && b.description.trim() ? b.description.trim() : null,
     teamId,
+    isPublic: b.isPublic === true,
   };
 }
 
@@ -130,6 +133,24 @@ async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<nu
   }
   return map;
 }
+
+// Public, unauthenticated: events explicitly marked as public, for the public website.
+router.get("/public", (async (_req, res) => {
+  const rows = await db
+    .select()
+    .from(eventsTable)
+    .where(eq(eventsTable.isPublic, true))
+    .orderBy(asc(eventsTable.startsAt));
+  res.json(rows.map((r) => ({
+    id: r.id,
+    kind: r.kind,
+    title: r.title,
+    startsAt: r.startsAt.toISOString(),
+    endsAt: r.endsAt ? r.endsAt.toISOString() : null,
+    location: r.location,
+    description: r.description,
+  })));
+}) as (req: Request, res: Response) => Promise<void>);
 
 router.get("/", requireAdminOrPlayer, (async (req, res) => {
   const isAdmin = (req as Request & { isAdmin?: boolean }).isAdmin === true;

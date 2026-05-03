@@ -22,6 +22,7 @@ type EventRow = {
   description: string | null
   teamId: number | null
   teamName: string | null
+  isPublic: boolean
   rsvpCounts?: { yes: number; no: number; maybe: number }
 }
 
@@ -50,6 +51,7 @@ type FormState = {
   location: string
   description: string
   teamId: string
+  isPublic: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -60,6 +62,7 @@ const EMPTY_FORM: FormState = {
   location: "",
   description: "",
   teamId: "",
+  isPublic: false,
 }
 
 const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: string }> = {
@@ -142,6 +145,7 @@ export default function Events() {
       location: e.location ?? "",
       description: e.description ?? "",
       teamId: e.teamId ? String(e.teamId) : "",
+      isPublic: e.isPublic ?? false,
     })
     setFormError(null)
     setIsModalOpen(true)
@@ -177,6 +181,7 @@ export default function Events() {
         location: form.location.trim() || null,
         description: form.description.trim() || null,
         teamId: form.teamId ? Number(form.teamId) : null,
+        isPublic: form.isPublic,
       }
       const url = editing ? `/api/events/${editing.id}` : "/api/events"
       const method = editing ? "PATCH" : "POST"
@@ -263,7 +268,16 @@ export default function Events() {
                             </td>
                             <td className="px-6 py-4 font-medium text-foreground">{ev.title}</td>
                             <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
-                            <td className="px-6 py-4 text-muted-foreground">{ev.teamName || "All squads"}</td>
+                            <td className="px-6 py-4 text-muted-foreground">
+                              <div className="flex flex-col gap-1">
+                                <span>{ev.teamName || "All squads"}</span>
+                                {ev.isPublic && (
+                                  <span className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-[#006B3C] text-[10px] font-bold uppercase tracking-wide">
+                                    Public
+                                  </span>
+                                )}
+                              </div>
+                            </td>
                             <td className="px-6 py-4">
                               <button
                                 onClick={() => openRoster(ev.id)}
@@ -353,6 +367,19 @@ export default function Events() {
             <label className="text-sm font-semibold">Description (optional)</label>
             <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Anything else players should know" />
           </div>
+
+          <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/30 transition-colors">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-border text-[#006B3C] focus:ring-[#006B3C]"
+              checked={form.isPublic}
+              onChange={(e) => setForm({ ...form, isPublic: e.target.checked })}
+            />
+            <div className="text-sm">
+              <div className="font-semibold">Show on public website</div>
+              <p className="text-xs text-muted-foreground mt-0.5">Tournament programme, ceremonies, social events. Leave off for internal team activities.</p>
+            </div>
+          </label>
 
           {formError && <p className="text-sm text-destructive">{formError}</p>}
 
