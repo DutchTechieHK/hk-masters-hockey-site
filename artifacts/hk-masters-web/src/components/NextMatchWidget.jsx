@@ -76,7 +76,7 @@ export default function NextMatchWidget() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">Next Match</h2>
           <Link
-            href="/schedule"
+            href="/fixtures"
             className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
           >
             Full schedule &rarr;
