@@ -83,7 +83,7 @@ function emailShell(headerBg: string, title: string, body: string): string {
           <td style="background-color:${headerBg};padding:24px 32px;text-align:center;">
             <img src="${LOGO_URL}" alt="HK Masters Hockey" width="64" height="64" style="display:block;margin:0 auto 14px auto;border-radius:8px;" />
             <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.02em;">HK Masters Hockey</p>
-            <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75);letter-spacing:0.08em;text-transform:uppercase;">2026 World Masters Championship</p>
+            <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75);letter-spacing:0.08em;text-transform:uppercase;">2026 Masters World Cup</p>
           </td>
         </tr>
         <tr><td style="padding:32px;">
