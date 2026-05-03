@@ -37,6 +37,7 @@ import type {
   LogisticsTask,
   Match,
   Player,
+  RotatePlayerAccessToken200,
   SelfPlayer,
   SendFeeRemindersBody,
   SendTravelRemindersBody,
@@ -1140,6 +1141,93 @@ export function useGetPlayerAccessToken<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Rotate a player's self-service access token (admin only). Invalidates the previous token.
+ */
+export const getRotatePlayerAccessTokenUrl = (id: number) => {
+  return `/api/players/${id}/access-token/rotate`;
+};
+
+export const rotatePlayerAccessToken = async (
+  id: number,
+  options?: RequestInit,
+): Promise<RotatePlayerAccessToken200> => {
+  return customFetch<RotatePlayerAccessToken200>(
+    getRotatePlayerAccessTokenUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getRotatePlayerAccessTokenMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rotatePlayerAccessToken>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof rotatePlayerAccessToken>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["rotatePlayerAccessToken"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof rotatePlayerAccessToken>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return rotatePlayerAccessToken(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RotatePlayerAccessTokenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof rotatePlayerAccessToken>>
+>;
+
+export type RotatePlayerAccessTokenMutationError = ErrorType<void>;
+
+/**
+ * @summary Rotate a player's self-service access token (admin only). Invalidates the previous token.
+ */
+export const useRotatePlayerAccessToken = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof rotatePlayerAccessToken>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof rotatePlayerAccessToken>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRotatePlayerAccessTokenMutationOptions(options));
+};
 
 /**
  * @summary Update a player

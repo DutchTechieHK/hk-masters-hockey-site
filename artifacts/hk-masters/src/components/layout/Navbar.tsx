@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { href: "/fees", label: "Fees", icon: Wallet },
   { href: "/fundraising", label: "Fundraising", icon: DollarSign },
   { href: "/sponsors", label: "Sponsors", icon: Star },
-  { href: "/schedule", label: "Schedule", icon: CalendarDays },
+  { href: "/matches", label: "Matches", icon: CalendarDays },
   { href: "/logistics", label: "Logistics", icon: Plane },
   { href: "/journal", label: "Journal", icon: BookOpen },
 ]

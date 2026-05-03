@@ -41,6 +41,7 @@ export * from "./logisticsTaskStatus";
 export * from "./match";
 export * from "./matchStatus";
 export * from "./player";
+export * from "./rotatePlayerAccessToken200";
 export * from "./selfPlayer";
 export * from "./sendFeeRemindersBody";
 export * from "./sendTravelRemindersBody";

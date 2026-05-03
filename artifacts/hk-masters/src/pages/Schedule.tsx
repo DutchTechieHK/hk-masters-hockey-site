@@ -238,7 +238,7 @@ export default function Schedule() {
 
   if (!sessionChecked) {
     return (
-      <PageLayout title="Schedule" description="Checking access...">
+      <PageLayout title="Matches" description="Checking access...">
         <div className="flex items-center justify-center py-24 text-muted-foreground">Loading...</div>
       </PageLayout>
     )
@@ -246,14 +246,14 @@ export default function Schedule() {
 
   if (!sessionToken) {
     return (
-      <PageLayout title="Schedule" description="Admin access required to manage matches.">
+      <PageLayout title="Matches" description="Admin access required to manage matches.">
         <div className="max-w-sm mx-auto mt-12">
           <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
             <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-5">
               <Lock className="w-6 h-6 text-primary" />
             </div>
             <h2 className="text-lg font-bold text-center mb-1">Admin Login</h2>
-            <p className="text-sm text-muted-foreground text-center mb-6">Enter your admin password to manage the schedule.</p>
+            <p className="text-sm text-muted-foreground text-center mb-6">Enter your admin password to manage matches.</p>
             <form onSubmit={handleLogin} className="space-y-4">
               <Input
                 type="password"
@@ -275,7 +275,7 @@ export default function Schedule() {
 
   return (
     <PageLayout
-      title="Schedule"
+      title="Matches"
       description="Add and manage match fixtures. Visible on the public website."
       action={
         <Button onClick={openAddModal} disabled={teams.length === 0}>

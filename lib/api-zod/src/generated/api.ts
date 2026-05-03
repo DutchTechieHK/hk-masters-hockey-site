@@ -336,6 +336,17 @@ export const GetPlayerAccessTokenResponse = zod.object({
 });
 
 /**
+ * @summary Rotate a player's self-service access token (admin only). Invalidates the previous token.
+ */
+export const RotatePlayerAccessTokenParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RotatePlayerAccessTokenResponse = zod.object({
+  accessToken: zod.string(),
+});
+
+/**
  * @summary Update a player
  */
 export const UpdatePlayerParams = zod.object({

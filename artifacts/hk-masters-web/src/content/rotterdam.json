@@ -31,12 +31,12 @@
   ],
   "squads": [
     {
-      "name": "Men's Over-40",
+      "name": "MO40",
       "category": "MO40",
       "player_list": []
     },
     {
-      "name": "Men's Over-50",
+      "name": "MO50",
       "category": "MO50",
       "player_list": [
         {

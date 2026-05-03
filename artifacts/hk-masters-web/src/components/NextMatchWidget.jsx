@@ -3,8 +3,8 @@ import { Link } from "wouter";
 import { API_BASE } from "../utils/api";
 
 const FALLBACK_TEAMS = [
-  { id: -1, name: "Men 40+", category: "Men 40+" },
-  { id: -2, name: "Men 50+", category: "Men 50+" },
+  { id: -1, name: "MO40", category: "MO40" },
+  { id: -2, name: "MO50", category: "MO50" },
 ];
 
 function formatDate(iso) {

@@ -158,7 +158,7 @@ export default function Teams() {
   const openAddModal = () => {
     setEditingTeam(null)
     reset({
-      name: "", category: "Men 40+",
+      name: "", category: "MO40",
       managerName: "", managerEmail: "", managerPhone: "",
       assistantManagerName: "", assistantManagerContact: "",
       whatsappGroupLink: "", targetPlayerCount: "", kitNotes: "", notes: ""
@@ -320,8 +320,8 @@ export default function Teams() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Category</label>
               <Select {...register("category")}>
-                <option value="Men 40+">Men 40+</option>
-                <option value="Men 50+">Men 50+</option>
+                <option value="MO40">MO40</option>
+                <option value="MO50">MO50</option>
               </Select>
               {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
             </div>

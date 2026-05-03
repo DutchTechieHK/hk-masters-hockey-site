@@ -67,9 +67,9 @@ export default function Dashboard() {
           trend={stats.nextMatchKickoffAt
             ? `Next: ${format(parseISO(stats.nextMatchKickoffAt), "EEE d MMM, HH:mm")}`
             : "No matches scheduled"}
-          onClick={() => navigate("/schedule")}
+          onClick={() => navigate("/matches")}
           clickable
-          clickableLabel="View Schedule"
+          clickableLabel="View Matches"
         />
         <StatCard 
           title="Fees Outstanding" 

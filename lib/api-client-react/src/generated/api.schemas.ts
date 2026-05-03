@@ -469,6 +469,10 @@ export type GetPlayerAccessToken200 = {
   accessToken: string | null;
 };
 
+export type RotatePlayerAccessToken200 = {
+  accessToken: string;
+};
+
 export type ListKitsParams = {
   playerId?: number;
 };
