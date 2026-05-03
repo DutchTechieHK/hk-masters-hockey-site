@@ -37,10 +37,12 @@ import type {
   ListPlayersParams,
   LogisticsTask,
   Match,
+  OnboardingInviteResult,
   Player,
   PlayerPayment,
   SelfPlayer,
   SendFeeRemindersBody,
+  SendOnboardingInvitesBody,
   SendTravelRemindersBody,
   Sponsor,
   Team,
@@ -793,6 +795,93 @@ export const useSendTravelReminders = <
   TContext
 > => {
   return useMutation(getSendTravelRemindersMutationOptions(options));
+};
+
+/**
+ * @summary Send onboarding invite emails (self-service link) to players
+ */
+export const getSendOnboardingInvitesUrl = () => {
+  return `/api/players/send-onboarding-invites`;
+};
+
+export const sendOnboardingInvites = async (
+  sendOnboardingInvitesBody?: SendOnboardingInvitesBody,
+  options?: RequestInit,
+): Promise<OnboardingInviteResult> => {
+  return customFetch<OnboardingInviteResult>(getSendOnboardingInvitesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendOnboardingInvitesBody),
+  });
+};
+
+export const getSendOnboardingInvitesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendOnboardingInvites>>,
+    TError,
+    { data: BodyType<SendOnboardingInvitesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendOnboardingInvites>>,
+  TError,
+  { data: BodyType<SendOnboardingInvitesBody> },
+  TContext
+> => {
+  const mutationKey = ["sendOnboardingInvites"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendOnboardingInvites>>,
+    { data: BodyType<SendOnboardingInvitesBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendOnboardingInvites(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendOnboardingInvitesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendOnboardingInvites>>
+>;
+export type SendOnboardingInvitesMutationBody =
+  BodyType<SendOnboardingInvitesBody>;
+export type SendOnboardingInvitesMutationError = ErrorType<void>;
+
+/**
+ * @summary Send onboarding invite emails (self-service link) to players
+ */
+export const useSendOnboardingInvites = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendOnboardingInvites>>,
+    TError,
+    { data: BodyType<SendOnboardingInvitesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendOnboardingInvites>>,
+  TError,
+  { data: BodyType<SendOnboardingInvitesBody> },
+  TContext
+> => {
+  return useMutation(getSendOnboardingInvitesMutationOptions(options));
 };
 
 /**

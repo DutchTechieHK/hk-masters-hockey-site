@@ -520,6 +520,63 @@ The HK Masters Hockey Team`;
   console.log(`[email] Author deletion notice sent for contribution #${opts.contributionId}`);
 }
 
+export async function sendOnboardingInviteEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  teamName: string;
+  accessToken: string;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeTeam = escapeHtml(opts.teamName);
+  const link = `${PUBLIC_URL}/my-details/${encodeURIComponent(opts.accessToken)}`;
+
+  const html = emailShell(
+    "#006B3C",
+    "Complete your tournament profile",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      You're confirmed on the <strong>${safeTeam}</strong> roster for the <strong>HK 2026 Masters World Cup</strong> in Rotterdam (22 July – 1 August 2026). Exciting times!
+    </p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      To finalise your spot, we need a few personal details — passport info, flight plans, kit sizes, dietary requirements and emergency contact. You can fill it all in via your private link below. No password needed; just click and go.
+    </p>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="${link}" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:6px;">Complete my details</a>
+    </p>
+    <p style="margin:0 0 16px 0;font-size:13px;color:#6b7280;line-height:1.6;">
+      Or paste this link into your browser:<br>
+      <a href="${link}" style="color:#006B3C;text-decoration:none;word-break:break-all;">${link}</a>
+    </p>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      You can come back to update your details any time before the tournament.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+You're confirmed on the ${opts.teamName} roster for the HK 2026 Masters World Cup in Rotterdam (22 July – 1 August 2026).
+
+To finalise your spot, we need a few personal details — passport info, flight plans, kit sizes, dietary requirements and emergency contact. Fill it all in via your private link below — no password needed.
+
+Complete your details: ${link}
+
+You can come back to update your details any time before the tournament.
+
+Questions? Email ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: "Complete your HK 2026 Masters World Cup profile",
+    html,
+    text,
+  });
+}
+
 export async function sendTravelReminderEmail(opts: {
   playerName: string;
   playerEmail: string;

@@ -182,6 +182,27 @@ paths:
         "401":
           description: Not authenticated
 
+  /players/send-onboarding-invites:
+    post:
+      operationId: sendOnboardingInvites
+      tags: [players]
+      summary: Send onboarding invite emails (self-service link) to players
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOnboardingInvitesBody"
+      responses:
+        "200":
+          description: Result of sending invites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OnboardingInviteResult"
+        "401":
+          description: Not authenticated
+
   /players/send-fee-reminders:
     post:
       operationId: sendFeeReminders
@@ -786,6 +807,29 @@ components:
         - failed
         - total
 
+    SendOnboardingInvitesBody:
+      type: object
+      properties:
+        playerIds:
+          type: array
+          items:
+            type: integer
+          description: Specific player IDs to email. If omitted, emails all players who have not yet been sent an onboarding invite.
+
+    OnboardingInviteResult:
+      type: object
+      properties:
+        sent:
+          type: integer
+        failed:
+          type: integer
+        total:
+          type: integer
+      required:
+        - sent
+        - failed
+        - total
+
     SendFeeRemindersBody:
       type: object
       properties:
@@ -1000,6 +1044,9 @@ components:
           type: string
           nullable: true
         feeReminderSentAt:
+          type: string
+          nullable: true
+        onboardingInviteSentAt:
           type: string
           nullable: true
         createdAt:

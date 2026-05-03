@@ -36,6 +36,7 @@ export const playersTable = pgTable("players", {
   notes: text("notes"),
   travelReminderSentAt: timestamp("travel_reminder_sent_at"),
   feeReminderSentAt: timestamp("fee_reminder_sent_at"),
+  onboardingInviteSentAt: timestamp("onboarding_invite_sent_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams } from "@workspace/api-client-react"
+import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -8,7 +8,7 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -126,6 +126,47 @@ export default function Players() {
   const createMutation = useCreatePlayer()
   const updateMutation = useUpdatePlayer()
   const deleteMutation = useDeletePlayer()
+  const sendInvitesMutation = useSendOnboardingInvites()
+
+  const handleSendInvite = async (player: Player) => {
+    if (!player.email) {
+      toast({ title: "Player has no email on file", variant: "destructive" })
+      return
+    }
+    if (player.onboardingInviteSentAt && !confirm(`Onboarding invite was already sent to ${player.name} on ${new Date(player.onboardingInviteSentAt).toLocaleDateString()}. Re-send?`)) return
+    try {
+      const result = await sendInvitesMutation.mutateAsync({ data: { playerIds: [player.id] } })
+      if (result.sent > 0) {
+        toast({ title: `Invite sent to ${player.name}` })
+        queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+      } else {
+        toast({ title: "Failed to send invite", description: `${result.failed} failed of ${result.total}`, variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Failed to send invite", variant: "destructive" })
+    }
+  }
+
+  const handleSendBulkInvites = async () => {
+    const uninvited = players.filter(p => !p.onboardingInviteSentAt && p.email)
+    if (uninvited.length === 0) {
+      toast({ title: "All players with an email have been invited" })
+      return
+    }
+    const scopeLabel = selectedTeamFilter === "all" ? "across all teams" : "in the selected team"
+    if (!confirm(`Send onboarding invites to ${uninvited.length} uninvited player${uninvited.length === 1 ? "" : "s"} ${scopeLabel}?`)) return
+    try {
+      const result = await sendInvitesMutation.mutateAsync({ data: { playerIds: uninvited.map(p => p.id) } })
+      toast({
+        title: `Sent ${result.sent} of ${result.total} invites`,
+        description: result.failed > 0 ? `${result.failed} failed — check server logs` : undefined,
+        variant: result.failed > 0 ? "destructive" : "default",
+      })
+      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+    } catch {
+      toast({ title: "Failed to send invites", variant: "destructive" })
+    }
+  }
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerSchema)
@@ -318,9 +359,20 @@ export default function Players() {
       title="Roster"
       description="Manage player profiles, travel details, sizes, and payments."
       action={
-        <Button onClick={openAddModal} disabled={teams.length === 0}>
-          <Plus className="w-5 h-5 mr-2" /> Add Player
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSendBulkInvites}
+            disabled={sendInvitesMutation.isPending || players.length === 0}
+            title="Email a self-service onboarding link to every player who hasn't received one yet"
+          >
+            <Send className="w-4 h-4 mr-2" />
+            {sendInvitesMutation.isPending ? "Sending…" : "Invite uninvited"}
+          </Button>
+          <Button onClick={openAddModal} disabled={teams.length === 0}>
+            <Plus className="w-5 h-5 mr-2" /> Add Player
+          </Button>
+        </div>
       }
     >
       <div className="bg-white rounded-2xl shadow-sm border border-border flex flex-col min-h-[500px] overflow-hidden">
@@ -440,6 +492,20 @@ export default function Players() {
                       {/* Actions */}
                       <td className="px-4 py-4 text-right">
                         <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleSendInvite(player)}
+                            disabled={sendInvitesMutation.isPending}
+                            title={player.onboardingInviteSentAt
+                              ? `Onboarding invite sent ${new Date(player.onboardingInviteSentAt).toLocaleDateString()} — click to re-send`
+                              : "Email onboarding link to this player"}
+                            className={`p-2 rounded bg-background border shadow-sm transition-all disabled:opacity-50 ${
+                              player.onboardingInviteSentAt
+                                ? "text-emerald-600 hover:bg-emerald-50"
+                                : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                            }`}
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleCopyLink(player)}
                             title="Copy self-service link (admin)"

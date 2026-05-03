@@ -161,6 +161,7 @@ export const ListPlayersResponseItem = zod.object({
   notes: zod.string().optional(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
+  onboardingInviteSentAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 export const ListPlayersResponse = zod.array(ListPlayersResponseItem);
@@ -212,6 +213,24 @@ export const SendTravelRemindersBody = zod.object({
 });
 
 export const SendTravelRemindersResponse = zod.object({
+  sent: zod.number(),
+  failed: zod.number(),
+  total: zod.number(),
+});
+
+/**
+ * @summary Send onboarding invite emails (self-service link) to players
+ */
+export const SendOnboardingInvitesBody = zod.object({
+  playerIds: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Specific player IDs to email. If omitted, emails all players who have not yet been sent an onboarding invite.",
+    ),
+});
+
+export const SendOnboardingInvitesResponse = zod.object({
   sent: zod.number(),
   failed: zod.number(),
   total: zod.number(),
@@ -475,6 +494,7 @@ export const UpdatePlayerResponse = zod.object({
   notes: zod.string().optional(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
+  onboardingInviteSentAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 

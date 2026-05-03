@@ -11,13 +11,14 @@ import {
   ListPlayersQueryParams,
   SendTravelRemindersBody,
   SendFeeRemindersBody,
+  SendOnboardingInvitesBody,
   UpdateSelfPlayerBody,
   CreatePlayerPaymentBody,
   CreatePlayerPaymentParams,
   ListPlayerPaymentsParams,
   DeletePlayerPaymentParams,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendOnboardingInviteEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -57,6 +58,7 @@ function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string |
     notes: player.notes,
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
     feeReminderSentAt: player.feeReminderSentAt?.toISOString() ?? null,
+    onboardingInviteSentAt: player.onboardingInviteSentAt?.toISOString() ?? null,
     createdAt: player.createdAt?.toISOString(),
   };
 }
@@ -345,6 +347,44 @@ router.post("/send-travel-reminders", requireSession, async (req, res) => {
   }
 
   console.log(`[travel-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
+  res.json({ sent, failed, total: players.length });
+});
+
+router.post("/send-onboarding-invites", requireSession, async (req, res) => {
+  const { playerIds } = SendOnboardingInvitesBody.parse(req.body ?? {});
+
+  const whereClause = playerIds && playerIds.length > 0
+    ? inArray(playersTable.id, playerIds)
+    : isNull(playersTable.onboardingInviteSentAt);
+
+  const players = await db
+    .select({ player: playersTable, teamName: teamsTable.name })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(whereClause);
+
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (const { player, teamName } of players) {
+    if (!player.email || !player.accessToken) {
+      skipped++;
+      continue;
+    }
+    const success = await sendOnboardingInviteEmail({
+      playerName: player.name,
+      playerEmail: player.email,
+      teamName: teamName ?? "your team",
+      accessToken: player.accessToken,
+    });
+    if (success) {
+      sent++;
+      await db.update(playersTable).set({ onboardingInviteSentAt: new Date() }).where(eq(playersTable.id, player.id));
+    } else failed++;
+  }
+
+  console.log(`[onboarding-invites] Sent ${sent}, failed ${failed}, skipped ${skipped} out of ${players.length} targeted players`);
   res.json({ sent, failed, total: players.length });
 });
 

@@ -20,6 +20,17 @@ export interface TravelReminderResult {
   total: number;
 }
 
+export interface SendOnboardingInvitesBody {
+  /** Specific player IDs to email. If omitted, emails all players who have not yet been sent an onboarding invite. */
+  playerIds?: number[];
+}
+
+export interface OnboardingInviteResult {
+  sent: number;
+  failed: number;
+  total: number;
+}
+
 export interface SendFeeRemindersBody {
   /** Specific player IDs to email. If omitted, emails all players whose fee is unpaid. */
   playerIds?: number[];
@@ -117,6 +128,7 @@ export interface Player {
   notes?: string;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
+  onboardingInviteSentAt?: string | null;
   createdAt?: string;
 }
 

@@ -39,5 +39,6 @@ export interface Player {
   notes?: string;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
+  onboardingInviteSentAt?: string | null;
   createdAt?: string;
 }
