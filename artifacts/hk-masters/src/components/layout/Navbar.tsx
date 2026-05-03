@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { href: "/fees", label: "Fees", icon: Wallet },
   { href: "/sponsors", label: "Sponsors", icon: Star },
   { href: "/schedule", label: "Matches", icon: CalendarDays },
-  { href: "/events", label: "Events", icon: CalendarClock },
+  { href: "/events", label: "Programme & Events", icon: CalendarClock },
   { href: "/announcements", label: "News", icon: Megaphone },
   { href: "/logistics", label: "Logistics", icon: Plane },
   { href: "/travel", label: "Travel", icon: Luggage },

@@ -19,6 +19,11 @@ function formatTime(iso) {
   });
 }
 
+// yyyy-mm-dd as observed in Rotterdam
+function rotterdamDateKey(iso) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
+}
+
 function getCountdown(iso) {
   const now = Date.now();
   const t = new Date(iso).getTime();
@@ -161,79 +166,11 @@ function SubscribeButton() {
   );
 }
 
-function formatDayHeading(iso) {
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long",
-    timeZone: ROTTERDAM_TZ,
-  });
-}
-
-// yyyy-mm-dd as observed in Rotterdam, used both for grouping keys and same-day comparison.
-function rotterdamDateKey(iso) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
-}
-
-function formatTimeRange(startIso, endIso) {
-  const start = formatTime(startIso);
-  if (!endIso) return start;
-  if (rotterdamDateKey(startIso) === rotterdamDateKey(endIso)) {
-    return `${start} – ${formatTime(endIso)}`;
-  }
-  const endLabel = new Date(endIso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short",
-    timeZone: ROTTERDAM_TZ,
-  });
-  return `${start} – ${endLabel} ${formatTime(endIso)}`;
-}
-
-const KIND_BADGE = {
-  meeting: "bg-blue-100 text-blue-800",
-  social: "bg-amber-100 text-amber-800",
-  training: "bg-emerald-100 text-emerald-800",
-};
-
-const KIND_LABEL = {
-  meeting: "Tournament",
-  social: "Social",
-  training: "Training",
-};
-
-function TournamentEventCard({ event }) {
-  const badgeColour = KIND_BADGE[event.kind] || "bg-gray-100 text-gray-700";
-  const label = KIND_LABEL[event.kind] || "Event";
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${badgeColour}`}>
-          {label}
-        </span>
-        <span className="text-xs font-medium text-gray-500">
-          {formatTimeRange(event.startsAt, event.endsAt)}
-        </span>
-      </div>
-      <h4 className="font-bold text-gray-900 text-lg leading-snug">{event.title}</h4>
-      {event.location && (
-        <p className="text-sm text-gray-500 mt-1.5 flex items-center gap-1">
-          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>{event.location}</span>
-        </p>
-      )}
-      {event.description && (
-        <p className="text-sm text-gray-600 mt-2 leading-relaxed">{event.description}</p>
-      )}
-    </div>
-  );
-}
-
 export default function Schedule() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tournamentEvents, setTournamentEvents] = useState([]);
+
   useEffect(() => {
     fetch(`${API_BASE}/api/matches`)
       .then((r) => {
@@ -248,24 +185,9 @@ export default function Schedule() {
         setError(e.message);
         setLoading(false);
       });
-    fetch(`${API_BASE}/api/events/public`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data) => setTournamentEvents(Array.isArray(data) ? data : []))
-      .catch(() => setTournamentEvents([]));
   }, []);
 
-  // Group tournament events by Rotterdam-local date, preserving order.
-  const tournamentGroups = (() => {
-    const groups = new Map();
-    for (const e of tournamentEvents) {
-      const key = rotterdamDateKey(e.startsAt);
-      if (!groups.has(key)) groups.set(key, { date: e.startsAt, items: [] });
-      groups.get(key).items.push(e);
-    }
-    return Array.from(groups.values());
-  })();
-
-  // Group by date (yyyy-mm-dd local) preserving sort
+  // Group by date (yyyy-mm-dd Rotterdam) preserving sort
   const sorted = [...matches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
   const now = Date.now();
   const upcoming = sorted.filter((m) => new Date(m.kickoffAt).getTime() >= now - 3 * 60 * 60 * 1000 && m.status !== "cancelled");
@@ -306,35 +228,6 @@ export default function Schedule() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {tournamentGroups.length > 0 && (
-          <section className="mb-16">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900">Tournament Schedule</h2>
-              <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {tournamentEvents.length}
-              </span>
-            </div>
-            <p className="text-sm text-gray-500 mb-6">
-              Official tournament programme: team checks, ceremonies, match days, social events and the wrap party.{" "}
-              <span className="text-gray-400">All times shown in Rotterdam local time (CEST).</span>
-            </p>
-            <div className="space-y-10">
-              {tournamentGroups.map((g) => (
-                <div key={g.date}>
-                  <h3 className="text-sm font-bold text-[#006B3C] uppercase tracking-wide mb-4">
-                    {formatDayHeading(g.date)}
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {g.items.map((e) => (
-                      <TournamentEventCard key={e.id} event={e} />
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         {loading ? (
           <div className="text-center py-16 text-gray-400">Loading schedule…</div>
         ) : error ? (
