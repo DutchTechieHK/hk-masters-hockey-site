@@ -29,6 +29,7 @@ function MatchCard({ match }) {
   const isPast = match.status === "final" || match.status === "cancelled";
   const isLive = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getCountdown(match.kickoffAt) : null;
+  const showCalendarButton = match.status !== "cancelled" && match.status !== "final";
 
   return (
     <div className={`bg-white rounded-xl border shadow-sm p-5 transition-all ${
@@ -95,6 +96,59 @@ function MatchCard({ match }) {
           </div>
         )}
       </div>
+
+      {showCalendarButton && (
+        <div className="mt-4 pt-3 border-t border-gray-100">
+          <a
+            href={`${API_BASE}/api/matches/${match.id}/calendar.ics`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Add to calendar
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SubscribeButton() {
+  const [copied, setCopied] = useState(false);
+  const url = `${API_BASE || (typeof window !== "undefined" ? window.location.origin : "")}/api/matches/calendar.ics`;
+  const webcalUrl = url.replace(/^https?:/, "webcal:");
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (_) {
+      // ignore — webcal link still works
+    }
+  };
+
+  return (
+    <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+      <a
+        href={webcalUrl}
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[#006B3C] hover:bg-green-50 transition-colors"
+        title="Open in your default calendar app"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        Subscribe to schedule
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="px-3 py-2 text-xs font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-50 border-l border-gray-200 transition-colors"
+        title="Copy subscription URL"
+      >
+        {copied ? "Copied!" : "Copy link"}
+      </button>
     </div>
   );
 }
@@ -179,12 +233,18 @@ export default function Schedule() {
           <>
             {upcomingGroups.length > 0 && (
               <section className="mb-16">
-                <div className="flex items-center gap-3 mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Upcoming Fixtures</h2>
-                  <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                    {upcoming.length}
-                  </span>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl font-bold text-gray-900">Upcoming Fixtures</h2>
+                    <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                      {upcoming.length}
+                    </span>
+                  </div>
+                  <SubscribeButton />
                 </div>
+                <p className="text-sm text-gray-500 mb-6 -mt-3">
+                  Subscribe once and your calendar updates automatically when fixtures change. Or use "Add to calendar" on any match below for a one-off download.
+                </p>
                 <div className="space-y-10">
                   {upcomingGroups.map((g) => (
                     <div key={g.date}>
