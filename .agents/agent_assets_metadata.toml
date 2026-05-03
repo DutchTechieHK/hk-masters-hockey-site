@@ -1,0 +1,26 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "PXT0JCFrKi93MbpWXJ_Ea"
+uri = "file://artifacts/hk-masters-web/public/images/rotterdam-hero.png"
+type = "image"
+title = "Rotterdam Erasmus Bridge dusk"
+
+[[generated]]
+id = "LXBV1ybFVmYSOlsqMxh0X"
+uri = "file://artifacts/hk-masters-web/public/images/field-hockey-training.png"
+type = "image"
+title = "Field hockey stick ball turf"
+
+[[generated]]
+id = "evc31q6X-dlSYOymaUqAY"
+uri = "file://artifacts/hk-masters-web/public/images/social-event.png"
+type = "image"
+title = "Sports social gala outdoor evening"
+
+[[generated]]
+id = "fgbbfyilOiPiAe0wwzYcA"
+uri = "file://artifacts/hk-masters-web/public/images/programme-event.png"
+type = "image"
+title = "Masters hockey World Cup stadium ceremony"

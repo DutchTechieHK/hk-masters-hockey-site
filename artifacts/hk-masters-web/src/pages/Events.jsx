@@ -50,29 +50,28 @@ function isRotterdamEvent(e) {
 
 // ─── Kind metadata ───────────────────────────────────────────────────────────
 
+const BASE = import.meta.env.BASE_URL;
+
 const KIND_META = {
   training: {
     label: "Training",
     badge: "bg-emerald-100 text-emerald-800",
-    // Green turf with ball — training/sports
-    photo: "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=600&q=75",
+    photo: `${BASE}images/field-hockey-training.png`,
   },
   meeting: {
     label: "Programme",
     badge: "bg-blue-100 text-blue-800",
-    // Stadium lit up at night with floodlights — World Cup tournament feel
-    photo: "https://images.unsplash.com/photo-1607627000458-210e8d2bdb1d?w=600&q=75",
+    photo: `${BASE}images/programme-event.png`,
   },
   social: {
     label: "Social",
     badge: "bg-amber-100 text-amber-800",
-    // Team social/celebration
-    photo: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=600&q=75",
+    photo: `${BASE}images/social-event.png`,
   },
 };
 
 function kindMeta(kind) {
-  return KIND_META[kind] ?? { label: "Event", badge: "bg-gray-100 text-gray-700", photo: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600&q=75" };
+  return KIND_META[kind] ?? { label: "Event", badge: "bg-gray-100 text-gray-700", photo: `${BASE}images/rotterdam-hero.png` };
 }
 
 // ─── Journey strip countdown ──────────────────────────────────────────────────
@@ -179,7 +178,7 @@ export default function Events() {
       {/* ── HERO: Rotterdam photo + title ── */}
       <div className="relative overflow-hidden" style={{ minHeight: 300 }}>
         <img
-          src="https://images.unsplash.com/photo-1467803738586-46b7eb7b16a1?w=1400&q=80"
+          src={`${import.meta.env.BASE_URL}images/rotterdam-hero.png`}
           alt="Rotterdam"
           className="absolute inset-0 w-full h-full object-cover object-center"
           style={{ filter: "brightness(0.8)" }}
