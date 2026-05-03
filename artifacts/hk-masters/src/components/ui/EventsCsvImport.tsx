@@ -1,8 +1,9 @@
 import { useState, useRef } from "react"
+import * as XLSX from "xlsx"
 import { Modal } from "@/components/ui/modal"
 import { Button } from "@/components/ui/button"
 import { getStoredAdminToken } from "@/lib/admin-auth"
-import { Upload, Download, X, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
+import { Upload, Download, X, CheckCircle2, AlertCircle, Loader2, FileSpreadsheet } from "lucide-react"
 
 type Team = { id: number; name: string }
 
@@ -26,6 +27,7 @@ type ParsedRow = {
 type ImportResult = { rowNum: number; title: string; ok: boolean; error?: string }
 
 const ROTTERDAM_TZ = "Europe/Amsterdam"
+const HK_TZ = "Asia/Hong_Kong"
 const ALLOWED_KINDS = ["training", "meeting", "social"]
 
 const TEMPLATE_CSV = `kind,title,starts_at,ends_at,location,description,team,is_public
@@ -72,6 +74,133 @@ function parseCsv(text: string): string[][] {
   return rows
 }
 
+// ---------------------------------------------------------------------------
+// Excel / training-schedule parsing helpers
+// ---------------------------------------------------------------------------
+
+const MONTH_MAP: Record<string, string> = {
+  january: "01", february: "02", march: "03", april: "04",
+  may: "05", june: "06", july: "07", august: "08",
+  september: "09", october: "10", november: "11", december: "12",
+}
+
+// "Friday 24 April" / "Friday 1 May (PH)" → "2026-04-24"
+function parseTrainingDate(raw: string): string | null {
+  const clean = raw.replace(/\(.*?\)/g, "").trim()
+  // Strip leading day name (e.g. "Friday ") — first word
+  const withoutDay = clean.replace(/^\w+\s+/, "").trim()
+  const parts = withoutDay.split(/\s+/)
+  if (parts.length < 2) return null
+  const day = parts[0].replace(/\D/g, "")
+  const month = MONTH_MAP[parts[1].toLowerCase()]
+  if (!day || !month) return null
+  return `2026-${month}-${day.padStart(2, "0")}`
+}
+
+// "2030-2200" → { start: "20:30", end: "22:00" }  |  "TBC" / "" → null
+function parseTimeRange(raw: string): { start: string; end: string | null } | null {
+  const clean = raw.trim()
+  if (!clean || clean.toUpperCase() === "TBC") return null
+  const m = clean.match(/^(\d{3,4})(?:-(\d{3,4}))?$/)
+  if (!m) return null
+  const fmt = (t: string) => {
+    const padded = t.padStart(4, "0")
+    return `${padded.slice(0, 2)}:${padded.slice(2)}`
+  }
+  return { start: fmt(m[1]), end: m[2] ? fmt(m[2]) : null }
+}
+
+// "Pitch Training" / "" → "training" | "social/fundraising" → "social" | else "meeting"
+function mapKind(purpose: string): string {
+  const lc = purpose.toLowerCase().trim()
+  if (lc.includes("training")) return "training"
+  if (lc.includes("social") || lc.includes("fundrais")) return "social"
+  if (lc.includes("meeting") || lc.includes("briefing") || lc.includes("review")) return "meeting"
+  return "training"
+}
+
+// Detect whether this sheet looks like the HK training-schedule format.
+// Returns the header row index, or -1 if not recognised.
+function detectTrainingScheduleHeaderRow(data: unknown[][]): number {
+  for (let i = 0; i < Math.min(data.length, 10); i++) {
+    const row = data[i].map(c => String(c ?? "").toUpperCase().trim())
+    if (row.includes("DATE") && row.includes("TIME") && row.includes("PURPOSE")) return i
+  }
+  return -1
+}
+
+// Convert the training-schedule sheet into [kind, title, starts_at, ends_at, location, description, team, is_public]
+function parseTrainingScheduleSheet(data: unknown[][]): { rows: string[][]; skipped: number } {
+  const headerIdx = detectTrainingScheduleHeaderRow(data)
+  if (headerIdx < 0) return { rows: [], skipped: 0 }
+
+  const header = data[headerIdx].map(c => String(c ?? "").toUpperCase().trim())
+  const col = (name: string) => header.indexOf(name)
+  const dateCol = col("DATE")
+  const timeCol = col("TIME")
+  const purposeCol = col("PURPOSE")
+  const venueCol = col("VENUE")
+  // SESSION FOCUS may have whitespace/newlines inside the cell
+  const focusCol = header.findIndex(h => h.replace(/\s+/g, " ").includes("SESSION FOCUS"))
+
+  const rows: string[][] = []
+  let skipped = 0
+
+  for (const row of data.slice(headerIdx + 1)) {
+    const get = (i: number) => String(row[i] ?? "").split("\n")[0].trim()
+
+    const dateRaw = dateCol >= 0 ? get(dateCol) : ""
+    const timeRaw = timeCol >= 0 ? get(timeCol) : ""
+    const purposeRaw = purposeCol >= 0 ? get(purposeCol) : ""
+    const venueRaw = venueCol >= 0 ? get(venueCol) : ""
+    const titleRaw = focusCol >= 0 ? get(focusCol) : ""
+
+    // Skip blank / TBC / no-time rows
+    if (!dateRaw || dateRaw.toUpperCase() === "TBC") { skipped++; continue }
+    const parsedDate = parseTrainingDate(dateRaw)
+    if (!parsedDate) { skipped++; continue }
+    const timeResult = parseTimeRange(timeRaw)
+    if (!timeResult) { skipped++; continue }
+    if (!titleRaw || titleRaw.toUpperCase() === "REST") { skipped++; continue }
+
+    const startsAt = `${parsedDate} ${timeResult.start}`
+    const endsAt = timeResult.end ? `${parsedDate} ${timeResult.end}` : ""
+    const kind = mapKind(purposeRaw)
+
+    rows.push([kind, titleRaw, startsAt, endsAt, venueRaw, purposeRaw, "", "false"])
+  }
+
+  return { rows, skipped }
+}
+
+// Parse an xlsx ArrayBuffer — auto-detect format and return data rows + metadata
+type XlsxResult =
+  | { mode: "training-schedule"; rows: string[][]; skipped: number; sheetName: string }
+  | { mode: "standard"; rawRows: string[][] }
+
+function parseXlsx(buffer: ArrayBuffer): XlsxResult {
+  const wb = XLSX.read(buffer, { type: "array" })
+  const sheetName = wb.SheetNames[0]
+  const ws = wb.Sheets[sheetName]
+  const data = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" })
+
+  // Try training-schedule detection first
+  const headerIdx = detectTrainingScheduleHeaderRow(data)
+  if (headerIdx >= 0) {
+    const { rows, skipped } = parseTrainingScheduleSheet(data)
+    return { mode: "training-schedule", rows, skipped, sheetName }
+  }
+
+  // Fall back: treat like a CSV — first row = headers, rest = data
+  const rawRows = data.filter(row => (row as string[]).some(c => String(c).trim() !== ""))
+    .map(row => (row as unknown[]).map(c => String(c ?? "").trim()))
+  return { mode: "standard", rawRows }
+}
+
+// ---------------------------------------------------------------------------
+// Timezone helpers (same DST-safe two-pass algorithm used elsewhere)
+// ---------------------------------------------------------------------------
+
 function zoneOffsetMs(instant: number, tz: string): number {
   const parts = Object.fromEntries(
     new Intl.DateTimeFormat("en-GB", {
@@ -107,7 +236,11 @@ function localInputToIso(local: string): string {
   return new Date(normalised).toISOString()
 }
 
-function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
+// ---------------------------------------------------------------------------
+// Row validation (same as before)
+// ---------------------------------------------------------------------------
+
+function validateRows(raw: string[][], teams: Team[], forceHkTz = false): ParsedRow[] {
   const teamLower = new Map(teams.map(t => [t.name.toLowerCase(), t.id]))
   return raw.map((cols, idx) => {
     const rowNum = idx + 2
@@ -122,8 +255,12 @@ function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
 
     const isPublic = is_public.trim().toLowerCase() === "true"
 
-    // Match form behaviour: public events → Rotterdam (CEST) conversion; internal events → local datetime
-    const toIso = (raw: string) => isPublic ? zoneInputToIso(normaliseDateTime(raw), ROTTERDAM_TZ) : localInputToIso(raw)
+    // xlsx training-schedule rows: treat times as HK time regardless of is_public
+    // Standard CSV: public events → Rotterdam (CEST); internal → browser local time
+    const toIso = (raw: string) => {
+      if (forceHkTz) return zoneInputToIso(normaliseDateTime(raw), HK_TZ)
+      return isPublic ? zoneInputToIso(normaliseDateTime(raw), ROTTERDAM_TZ) : localInputToIso(raw)
+    }
 
     let startsAtIso: string | null = null
     if (!starts_at.trim()) {
@@ -177,14 +314,47 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
   const [rows, setRows] = useState<ParsedRow[]>([])
   const [results, setResults] = useState<ImportResult[]>([])
   const [importing, setImporting] = useState(false)
+  const [xlsxMeta, setXlsxMeta] = useState<{ skipped: number; sheetName: string } | null>(null)
+  const [forceHkTz, setForceHkTz] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => setRawText(String(ev.target?.result ?? ""))
-    reader.readAsText(file)
+
+    const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls") ||
+      file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      file.type === "application/vnd.ms-excel"
+
+    if (isXlsx) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const buffer = ev.target?.result as ArrayBuffer
+        const result = parseXlsx(buffer)
+        if (result.mode === "training-schedule") {
+          setXlsxMeta({ skipped: result.skipped, sheetName: result.sheetName })
+          setForceHkTz(true)
+          const validated = validateRows(result.rows, teams, true)
+          setRows(validated)
+          setStep("preview")
+        } else {
+          // Standard xlsx — convert to pseudo-CSV text and hand off to existing flow
+          setXlsxMeta(null)
+          setForceHkTz(false)
+          const csv = result.rawRows.map(r => r.map(c => c.includes(",") ? `"${c}"` : c).join(",")).join("\n")
+          setRawText(csv)
+        }
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setXlsxMeta(null)
+        setForceHkTz(false)
+        setRawText(String(ev.target?.result ?? ""))
+      }
+      reader.readAsText(file)
+    }
   }
 
   const handlePreview = () => {
@@ -212,7 +382,7 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
       indices.team >= 0 ? row[indices.team] : "",
       indices.is_public >= 0 ? row[indices.is_public] : "",
     ])
-    setRows(validateRows(mapped, teams))
+    setRows(validateRows(mapped, teams, false))
     setStep("preview")
   }
 
@@ -256,13 +426,18 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
   const invalidCount = rows.filter(r => r.errors.length > 0).length
 
   return (
-    <Modal isOpen onClose={onClose} title="Import Events from CSV">
+    <Modal isOpen onClose={onClose} title="Import Events">
       {step === "input" && (
         <div className="space-y-5">
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800 space-y-1">
-            <p className="font-semibold">Required columns: <span className="font-mono font-normal">kind, title, starts_at</span></p>
-            <p className="text-blue-700">Optional: <span className="font-mono">ends_at, location, description, team, is_public</span></p>
-            <p className="text-blue-700">Times are interpreted as <strong>Rotterdam time (CEST)</strong>. Format: <span className="font-mono">YYYY-MM-DD HH:mm</span></p>
+            <p className="font-semibold">Accepts CSV or Excel (.xlsx) files</p>
+            <p className="text-blue-700">
+              <strong>Training schedule spreadsheets</strong> are detected automatically — no column mapping needed.
+            </p>
+            <p className="text-blue-700">
+              For CSV: columns <span className="font-mono">kind, title, starts_at</span> required.
+              Times = <strong>Rotterdam time (CEST)</strong>.
+            </p>
           </div>
 
           <div>
@@ -271,13 +446,19 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
               onClick={downloadTemplate}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-[#006B3C] hover:underline"
             >
-              <Download className="w-4 h-4" /> Download template CSV
+              <Download className="w-4 h-4" /> Download CSV template
             </button>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold mb-2">Upload CSV file</label>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={handleFile} className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:border-gray-300 file:text-sm file:font-medium file:bg-white hover:file:bg-gray-50" />
+            <label className="block text-sm font-semibold mb-2">Upload CSV or Excel file</label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={handleFile}
+              className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border file:border-gray-300 file:text-sm file:font-medium file:bg-white hover:file:bg-gray-50"
+            />
           </div>
 
           <div>
@@ -287,7 +468,7 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
               rows={6}
               placeholder={"kind,title,starts_at,...\ntraining,Wednesday Training,2026-04-02 18:00,..."}
               value={rawText}
-              onChange={e => setRawText(e.target.value)}
+              onChange={e => { setRawText(e.target.value); setXlsxMeta(null); setForceHkTz(false) }}
             />
           </div>
 
@@ -302,6 +483,17 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
 
       {step === "preview" && (
         <div className="space-y-4">
+          {xlsxMeta && (
+            <div className="flex items-start gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2.5 text-sm text-green-800">
+              <FileSpreadsheet className="w-4 h-4 shrink-0 mt-0.5 text-green-600" />
+              <span>
+                <strong>Training schedule detected</strong> — sheet "{xlsxMeta.sheetName}".
+                Times interpreted as <strong>Hong Kong time (HKT)</strong>.
+                {xlsxMeta.skipped > 0 && ` ${xlsxMeta.skipped} rows skipped (TBC / no time / World Cup days).`}
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center gap-3 text-sm flex-wrap">
             <span className="font-semibold text-gray-700">{rows.length} row{rows.length !== 1 ? "s" : ""} found</span>
             {validRows.length > 0 && <span className="text-emerald-700 font-medium">✓ {validRows.length} valid</span>}
@@ -315,9 +507,8 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
                   <th className="px-3 py-2 text-left">#</th>
                   <th className="px-3 py-2 text-left">Kind</th>
                   <th className="px-3 py-2 text-left">Title</th>
-                  <th className="px-3 py-2 text-left">Starts (CEST)</th>
-                  <th className="px-3 py-2 text-left">Team</th>
-                  <th className="px-3 py-2 text-left">Public</th>
+                  <th className="px-3 py-2 text-left">Date / Start</th>
+                  <th className="px-3 py-2 text-left">Location</th>
                   <th className="px-3 py-2 text-left">Status</th>
                 </tr>
               </thead>
@@ -328,8 +519,7 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
                     <td className="px-3 py-2">{row.kind}</td>
                     <td className="px-3 py-2 font-medium max-w-[140px] truncate">{row.title}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{row.starts_at}</td>
-                    <td className="px-3 py-2">{row.team || "All squads"}</td>
-                    <td className="px-3 py-2">{row.is_public}</td>
+                    <td className="px-3 py-2 max-w-[80px] truncate">{row.location || "—"}</td>
                     <td className="px-3 py-2">
                       {row.errors.length > 0
                         ? <span className="text-rose-600" title={row.errors.join("; ")}>⚠ {row.errors[0]}{row.errors.length > 1 ? ` +${row.errors.length - 1}` : ""}</span>
@@ -343,12 +533,12 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
 
           {invalidCount > 0 && (
             <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-              {invalidCount} row{invalidCount !== 1 ? "s" : ""} with errors will be skipped. Fix the CSV and re-import to include them.
+              {invalidCount} row{invalidCount !== 1 ? "s" : ""} with errors will be skipped.
             </p>
           )}
 
           <div className="flex justify-between gap-3 pt-2 border-t">
-            <Button type="button" variant="outline" onClick={() => setStep("input")}>← Back</Button>
+            <Button type="button" variant="outline" onClick={() => { setStep("input"); setXlsxMeta(null) }}>← Back</Button>
             <Button type="button" onClick={handleImport} disabled={validRows.length === 0 || importing}>
               {importing ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Importing…</> : `Import ${validRows.length} event${validRows.length !== 1 ? "s" : ""}`}
             </Button>
