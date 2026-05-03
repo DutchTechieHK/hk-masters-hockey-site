@@ -201,6 +201,32 @@ export interface UpdateSelfPlayer {
   medicalNotes?: string;
 }
 
+export interface PlayerPayment {
+  id: number;
+  playerId: number;
+  amount: number;
+  paymentDate: string;
+  method?: string | null;
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface CreatePlayerPayment {
+  /**
+   * Payment amount in HKD; must be greater than 0.
+   * @exclusiveMinimum 0
+   */
+  amount: number;
+  /**
+   * Payment date as YYYY-MM-DD.
+   * @minLength 1
+   * @pattern ^\d{4}-\d{2}-\d{2}$
+   */
+  paymentDate: string;
+  method?: string;
+  notes?: string;
+}
+
 export type KitOrderItemType =
   (typeof KitOrderItemType)[keyof typeof KitOrderItemType];
 

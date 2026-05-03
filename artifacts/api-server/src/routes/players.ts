@@ -1,8 +1,8 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { playersTable, teamsTable } from "@workspace/db/schema";
-import { eq, isNull, or, and, inArray } from "drizzle-orm";
+import { playersTable, teamsTable, playerPaymentsTable } from "@workspace/db/schema";
+import { eq, isNull, or, and, inArray, desc } from "drizzle-orm";
 import {
   CreatePlayerBody,
   UpdatePlayerBody,
@@ -12,6 +12,10 @@ import {
   SendTravelRemindersBody,
   SendFeeRemindersBody,
   UpdateSelfPlayerBody,
+  CreatePlayerPaymentBody,
+  CreatePlayerPaymentParams,
+  ListPlayerPaymentsParams,
+  DeletePlayerPaymentParams,
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail, sendFeeReminderEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
@@ -83,8 +87,23 @@ router.post("/", requireAdminAccess, async (req, res) => {
     .insert(playersTable)
     .values({ ...(body as any), accessToken: crypto.randomUUID() })
     .returning();
-  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
-  res.status(201).json(mapPlayer(player, team?.name));
+  // If an initial paid amount was supplied via the legacy fields,
+  // mirror it into the ledger so the new payments table remains the
+  // source of truth and the next recompute cannot lose the value.
+  const initialPaid = body.paymentAmountPaid;
+  if (typeof initialPaid === "number" && Number.isFinite(initialPaid) && initialPaid > 0) {
+    await db.insert(playerPaymentsTable).values({
+      playerId: player.id,
+      amount: initialPaid.toFixed(2),
+      paymentDate: body.paymentDate ?? "",
+      method: "",
+      notes: "Initial payment recorded at player creation",
+    });
+    await recomputePlayerAggregates(player.id);
+  }
+  const [refreshed] = await db.select().from(playersTable).where(eq(playersTable.id, player.id));
+  const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, refreshed.teamId));
+  res.status(201).json(mapPlayer(refreshed, team?.name));
 });
 
 const SELF_EDITABLE_FIELDS = [
@@ -190,6 +209,91 @@ router.patch("/self/:token", async (req, res) => {
   res.json(mapSelfPlayer(updated, team?.name));
 });
 
+function mapPayment(p: typeof playerPaymentsTable.$inferSelect) {
+  return {
+    id: p.id,
+    playerId: p.playerId,
+    amount: parseFloat(p.amount),
+    paymentDate: p.paymentDate,
+    method: p.method,
+    notes: p.notes,
+    createdAt: p.createdAt?.toISOString(),
+  };
+}
+
+async function recomputePlayerAggregates(playerId: number) {
+  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+  if (!player) return;
+  const payments = await db
+    .select()
+    .from(playerPaymentsTable)
+    .where(eq(playerPaymentsTable.playerId, playerId))
+    .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
+  const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const latestDate = payments.length > 0 ? payments[0].paymentDate : null;
+  const due = player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null;
+  const feePaid = due != null ? totalPaid + 1e-6 >= due && totalPaid > 0 : totalPaid > 0;
+  await db
+    .update(playersTable)
+    .set({
+      paymentAmountPaid: totalPaid > 0 ? totalPaid.toFixed(2) : null,
+      paymentDate: latestDate,
+      feePaid,
+    })
+    .where(eq(playersTable.id, playerId));
+}
+
+router.get("/:id/payments", requireAdminAccess, async (req, res) => {
+  const { id } = ListPlayerPaymentsParams.parse(req.params);
+  const [player] = await db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.id, id));
+  if (!player) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const payments = await db
+    .select()
+    .from(playerPaymentsTable)
+    .where(eq(playerPaymentsTable.playerId, id))
+    .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
+  res.json(payments.map(mapPayment));
+});
+
+router.post("/:id/payments", requireAdminAccess, async (req, res) => {
+  const { id } = CreatePlayerPaymentParams.parse(req.params);
+  const body = CreatePlayerPaymentBody.parse(req.body);
+  const [player] = await db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.id, id));
+  if (!player) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const [created] = await db
+    .insert(playerPaymentsTable)
+    .values({
+      playerId: id,
+      amount: body.amount.toFixed(2),
+      paymentDate: body.paymentDate,
+      method: body.method ?? "",
+      notes: body.notes ?? "",
+    })
+    .returning();
+  await recomputePlayerAggregates(id);
+  res.status(201).json(mapPayment(created));
+});
+
+router.delete("/:playerId/payments/:paymentId", requireAdminAccess, async (req, res) => {
+  const { playerId, paymentId } = DeletePlayerPaymentParams.parse(req.params);
+  const result = await db
+    .delete(playerPaymentsTable)
+    .where(and(eq(playerPaymentsTable.id, paymentId), eq(playerPaymentsTable.playerId, playerId)))
+    .returning({ id: playerPaymentsTable.id });
+  if (result.length === 0) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  await recomputePlayerAggregates(playerId);
+  res.status(204).send();
+});
+
 router.get("/:id/access-token", requireAdminAccess, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) {
@@ -283,7 +387,41 @@ router.post("/send-fee-reminders", requireSession, async (req, res) => {
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdatePlayerParams.parse(req.params);
   const body = UpdatePlayerBody.parse(req.body);
-  const [player] = await db.update(playersTable).set(body as any).where(eq(playersTable.id, id)).returning();
+  // Strip ledger-derived fields from the direct update — they are
+  // owned by player_payments and recomputed below. If the caller
+  // provided an explicit paymentAmountPaid, treat it as a delta and
+  // append a single ledger adjustment so the new ledger sum equals
+  // the requested value (preserves backward compat for older admin
+  // pages like Players.tsx / Travel.tsx that still PUT these fields).
+  const {
+    paymentAmountPaid: requestedPaid,
+    paymentDate: requestedDate,
+    feePaid: _ignoredFeePaid,
+    ...directUpdate
+  } = body;
+  void _ignoredFeePaid;
+  if (Object.keys(directUpdate).length > 0) {
+    await db.update(playersTable).set(directUpdate).where(eq(playersTable.id, id));
+  }
+  if (typeof requestedPaid === "number" && Number.isFinite(requestedPaid)) {
+    const existing = await db
+      .select()
+      .from(playerPaymentsTable)
+      .where(eq(playerPaymentsTable.playerId, id));
+    const currentSum = existing.reduce((s, p) => s + parseFloat(p.amount), 0);
+    const delta = requestedPaid - currentSum;
+    if (Math.abs(delta) > 1e-6) {
+      await db.insert(playerPaymentsTable).values({
+        playerId: id,
+        amount: delta.toFixed(2),
+        paymentDate: requestedDate || new Date().toISOString().slice(0, 10),
+        method: "",
+        notes: "Adjustment from player edit",
+      });
+    }
+  }
+  await recomputePlayerAggregates(id);
+  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   res.json(mapPlayer(player, team?.name));
 });

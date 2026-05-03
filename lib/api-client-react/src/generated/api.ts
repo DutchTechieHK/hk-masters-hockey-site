@@ -22,6 +22,7 @@ import type {
   CreateLogisticsTask,
   CreateMatch,
   CreatePlayer,
+  CreatePlayerPayment,
   CreateSponsor,
   CreateTeam,
   DashboardStats,
@@ -37,6 +38,7 @@ import type {
   LogisticsTask,
   Match,
   Player,
+  PlayerPayment,
   SelfPlayer,
   SendFeeRemindersBody,
   SendTravelRemindersBody,
@@ -1051,6 +1053,268 @@ export const useUpdateSelfPlayer = <
   TContext
 > => {
   return useMutation(getUpdateSelfPlayerMutationOptions(options));
+};
+
+/**
+ * @summary List recorded payments for a player
+ */
+export const getListPlayerPaymentsUrl = (id: number) => {
+  return `/api/players/${id}/payments`;
+};
+
+export const listPlayerPayments = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PlayerPayment[]> => {
+  return customFetch<PlayerPayment[]>(getListPlayerPaymentsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPlayerPaymentsQueryKey = (id: number) => {
+  return [`/api/players/${id}/payments`] as const;
+};
+
+export const getListPlayerPaymentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPlayerPayments>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPlayerPayments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPlayerPaymentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPlayerPayments>>
+  > = ({ signal }) => listPlayerPayments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPlayerPayments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPlayerPaymentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPlayerPayments>>
+>;
+export type ListPlayerPaymentsQueryError = ErrorType<void>;
+
+/**
+ * @summary List recorded payments for a player
+ */
+
+export function useListPlayerPayments<
+  TData = Awaited<ReturnType<typeof listPlayerPayments>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPlayerPayments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPlayerPaymentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record a new payment for a player
+ */
+export const getCreatePlayerPaymentUrl = (id: number) => {
+  return `/api/players/${id}/payments`;
+};
+
+export const createPlayerPayment = async (
+  id: number,
+  createPlayerPayment: CreatePlayerPayment,
+  options?: RequestInit,
+): Promise<PlayerPayment> => {
+  return customFetch<PlayerPayment>(getCreatePlayerPaymentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPlayerPayment),
+  });
+};
+
+export const getCreatePlayerPaymentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlayerPayment>>,
+    TError,
+    { id: number; data: BodyType<CreatePlayerPayment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPlayerPayment>>,
+  TError,
+  { id: number; data: BodyType<CreatePlayerPayment> },
+  TContext
+> => {
+  const mutationKey = ["createPlayerPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPlayerPayment>>,
+    { id: number; data: BodyType<CreatePlayerPayment> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createPlayerPayment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePlayerPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPlayerPayment>>
+>;
+export type CreatePlayerPaymentMutationBody = BodyType<CreatePlayerPayment>;
+export type CreatePlayerPaymentMutationError = ErrorType<void>;
+
+/**
+ * @summary Record a new payment for a player
+ */
+export const useCreatePlayerPayment = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlayerPayment>>,
+    TError,
+    { id: number; data: BodyType<CreatePlayerPayment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPlayerPayment>>,
+  TError,
+  { id: number; data: BodyType<CreatePlayerPayment> },
+  TContext
+> => {
+  return useMutation(getCreatePlayerPaymentMutationOptions(options));
+};
+
+/**
+ * @summary Delete a recorded payment for a player
+ */
+export const getDeletePlayerPaymentUrl = (
+  playerId: number,
+  paymentId: number,
+) => {
+  return `/api/players/${playerId}/payments/${paymentId}`;
+};
+
+export const deletePlayerPayment = async (
+  playerId: number,
+  paymentId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePlayerPaymentUrl(playerId, paymentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePlayerPaymentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlayerPayment>>,
+    TError,
+    { playerId: number; paymentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePlayerPayment>>,
+  TError,
+  { playerId: number; paymentId: number },
+  TContext
+> => {
+  const mutationKey = ["deletePlayerPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePlayerPayment>>,
+    { playerId: number; paymentId: number }
+  > = (props) => {
+    const { playerId, paymentId } = props ?? {};
+
+    return deletePlayerPayment(playerId, paymentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePlayerPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePlayerPayment>>
+>;
+
+export type DeletePlayerPaymentMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a recorded payment for a player
+ */
+export const useDeletePlayerPayment = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlayerPayment>>,
+    TError,
+    { playerId: number; paymentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePlayerPayment>>,
+  TError,
+  { playerId: number; paymentId: number },
+  TContext
+> => {
+  return useMutation(getDeletePlayerPaymentMutationOptions(options));
 };
 
 /**

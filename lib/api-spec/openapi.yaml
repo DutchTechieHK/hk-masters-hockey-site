@@ -249,6 +249,76 @@ paths:
         "404":
           description: Token not found
 
+  /players/{id}/payments:
+    get:
+      operationId: listPlayerPayments
+      tags: [players]
+      summary: List recorded payments for a player
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Player payment history (most recent first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerPayment"
+        "404":
+          description: Player not found
+    post:
+      operationId: createPlayerPayment
+      tags: [players]
+      summary: Record a new payment for a player
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlayerPayment"
+      responses:
+        "201":
+          description: Created payment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerPayment"
+        "404":
+          description: Player not found
+
+  /players/{playerId}/payments/{paymentId}:
+    delete:
+      operationId: deletePlayerPayment
+      tags: [players]
+      summary: Delete a recorded payment for a player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Payment not found
+
   /players/{id}/access-token:
     get:
       operationId: getPlayerAccessToken
@@ -1109,6 +1179,51 @@ components:
           type: string
         medicalNotes:
           type: string
+
+    PlayerPayment:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        amount:
+          type: number
+        paymentDate:
+          type: string
+        method:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - playerId
+        - amount
+        - paymentDate
+
+    CreatePlayerPayment:
+      type: object
+      properties:
+        amount:
+          type: number
+          exclusiveMinimum: 0
+          description: Payment amount in HKD; must be greater than 0.
+        paymentDate:
+          type: string
+          minLength: 1
+          pattern: "^\\d{4}-\\d{2}-\\d{2}$"
+          description: Payment date as YYYY-MM-DD.
+        method:
+          type: string
+        notes:
+          type: string
+      required:
+        - amount
+        - paymentDate
 
     KitOrder:
       type: object

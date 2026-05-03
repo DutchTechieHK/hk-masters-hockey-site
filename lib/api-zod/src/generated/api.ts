@@ -339,6 +339,61 @@ export const UpdateSelfPlayerResponse = zod.object({
 });
 
 /**
+ * @summary List recorded payments for a player
+ */
+export const ListPlayerPaymentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPlayerPaymentsResponseItem = zod.object({
+  id: zod.number(),
+  playerId: zod.number(),
+  amount: zod.number(),
+  paymentDate: zod.string(),
+  method: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string().optional(),
+});
+export const ListPlayerPaymentsResponse = zod.array(
+  ListPlayerPaymentsResponseItem,
+);
+
+/**
+ * @summary Record a new payment for a player
+ */
+export const CreatePlayerPaymentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const createPlayerPaymentBodyAmountExclusiveMin = 0;
+
+export const createPlayerPaymentBodyPaymentDateRegExp = new RegExp(
+  "^\\d{4}-\\d{2}-\\d{2}$",
+);
+
+export const CreatePlayerPaymentBody = zod.object({
+  amount: zod
+    .number()
+    .gt(createPlayerPaymentBodyAmountExclusiveMin)
+    .describe("Payment amount in HKD; must be greater than 0."),
+  paymentDate: zod
+    .string()
+    .min(1)
+    .regex(createPlayerPaymentBodyPaymentDateRegExp)
+    .describe("Payment date as YYYY-MM-DD."),
+  method: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Delete a recorded payment for a player
+ */
+export const DeletePlayerPaymentParams = zod.object({
+  playerId: zod.coerce.number(),
+  paymentId: zod.coerce.number(),
+});
+
+/**
  * @summary Get a player's self-service access token (admin only)
  */
 export const GetPlayerAccessTokenParams = zod.object({

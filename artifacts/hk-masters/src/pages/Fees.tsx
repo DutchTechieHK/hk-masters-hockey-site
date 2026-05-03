@@ -2,9 +2,14 @@ import { useState, useMemo } from "react"
 import {
   useListPlayers,
   useUpdatePlayer,
+  type CreatePlayer,
   useListTeams,
   getListPlayersQueryKey,
   useSendFeeReminders,
+  useListPlayerPayments,
+  useCreatePlayerPayment,
+  deletePlayerPayment,
+  getListPlayerPaymentsQueryKey,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -32,10 +37,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/utils"
 
 const feeSchema = z.object({
-  feePaid: z.boolean(),
   paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  paymentAmountPaid: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  paymentDate: z.string().optional(),
   notes: z.string().optional(),
 })
 
@@ -134,13 +136,40 @@ export default function Fees() {
     player: Player | null
     paymentDate: string
     amount: string
-  }>({ isOpen: false, player: null, paymentDate: "", amount: "" })
+    method: string
+    notes: string
+  }>({ isOpen: false, player: null, paymentDate: "", amount: "", method: "", notes: "" })
 
   const { data: teams = [] } = useListTeams()
   const { data: players = [], isLoading } = useListPlayers()
 
   const updateMutation = useUpdatePlayer()
   const sendRemindersMutation = useSendFeeReminders()
+  const createPaymentMutation = useCreatePlayerPayment()
+
+  const { data: editingPayments = [], isLoading: isLoadingPayments } = useListPlayerPayments(
+    editingPlayer?.id ?? 0,
+    { query: { enabled: !!editingPlayer } }
+  )
+
+  const editingPaymentsTotal = editingPayments.reduce((s, p) => s + (p.amount ?? 0), 0)
+  const editingDue = editingPlayer?.paymentAmountDue ?? null
+  const editingBalance = editingDue == null ? null : Math.max(0, editingDue - editingPaymentsTotal)
+
+  const invalidatePlayerData = (playerId: number) => {
+    queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+    queryClient.invalidateQueries({ queryKey: getListPlayerPaymentsQueryKey(playerId) })
+  }
+
+  const handleDeletePayment = async (playerId: number, paymentId: number) => {
+    try {
+      await deletePlayerPayment(playerId, paymentId)
+      invalidatePlayerData(playerId)
+      toast({ title: "Payment removed" })
+    } catch {
+      toast({ title: "Failed to remove payment", variant: "destructive" })
+    }
+  }
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FeeFormValues>({
     resolver: zodResolver(feeSchema),
@@ -149,43 +178,48 @@ export default function Fees() {
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
     reset({
-      feePaid: player.feePaid,
       paymentAmountDue: player.paymentAmountDue ?? "",
-      paymentAmountPaid: player.paymentAmountPaid ?? "",
-      paymentDate: player.paymentDate || "",
       notes: player.notes || "",
     })
     setIsModalOpen(true)
   }
 
+  const closeEditModal = () => {
+    setIsModalOpen(false)
+    setEditingPlayer(null)
+  }
+
   const onSubmit = async (data: FeeFormValues) => {
     if (!editingPlayer) return
     try {
-      const payload = {
+      const payload: CreatePlayer = {
         teamId: editingPlayer.teamId,
         name: editingPlayer.name,
         email: editingPlayer.email,
-        feePaid: data.feePaid,
+        feePaid: editingPlayer.feePaid,
         paymentAmountDue: data.paymentAmountDue === "" ? undefined : Number(data.paymentAmountDue),
-        paymentAmountPaid: data.paymentAmountPaid === "" ? undefined : Number(data.paymentAmountPaid),
-        paymentDate: data.paymentDate || undefined,
         notes: data.notes || editingPlayer.notes || undefined,
       }
-      await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload as any })
+      await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload })
       toast({ title: "Fee details updated" })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      setIsModalOpen(false)
+      closeEditModal()
     } catch {
       toast({ title: "Failed to update fee details", variant: "destructive" })
     }
   }
 
   const openMarkAsPaidDialog = (player: Player) => {
+    const due = player.paymentAmountDue ?? 0
+    const alreadyPaid = player.paymentAmountPaid ?? 0
+    const remaining = Math.max(0, due - alreadyPaid)
     setMarkAsPaidDialog({
       isOpen: true,
       player,
       paymentDate: todayStr(),
-      amount: String(player.paymentAmountPaid ?? player.paymentAmountDue ?? ""),
+      amount: remaining > 0 ? String(remaining) : "",
+      method: "",
+      notes: "",
     })
   }
 
@@ -193,30 +227,32 @@ export default function Fees() {
     setMarkAsPaidDialog(prev => ({ ...prev, isOpen: false }))
 
   const confirmMarkAsPaid = async () => {
-    const { player, paymentDate, amount } = markAsPaidDialog
+    const { player, paymentDate, amount, method, notes } = markAsPaidDialog
     if (!player) return
     const parsed = parseFloat(amount)
-    if (!Number.isFinite(parsed) || parsed < 0) {
+    if (!Number.isFinite(parsed) || parsed <= 0) {
       toast({ title: "Enter a valid amount", variant: "destructive" })
+      return
+    }
+    if (!paymentDate) {
+      toast({ title: "Pick a payment date", variant: "destructive" })
       return
     }
     closeMarkAsPaidDialog()
     try {
-      const payload = {
-        teamId: player.teamId,
-        name: player.name,
-        email: player.email,
-        feePaid: true,
-        paymentAmountDue: player.paymentAmountDue ?? parsed,
-        paymentAmountPaid: parsed,
-        paymentDate,
-        notes: player.notes || undefined,
-      }
-      await updateMutation.mutateAsync({ id: player.id, data: payload as any })
-      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      toast({ title: "Marked as paid", description: `Recorded ${formatCurrency(parsed)} from ${player.name}` })
+      await createPaymentMutation.mutateAsync({
+        id: player.id,
+        data: {
+          amount: parsed,
+          paymentDate,
+          method: method || undefined,
+          notes: notes || undefined,
+        },
+      })
+      invalidatePlayerData(player.id)
+      toast({ title: "Payment recorded", description: `Recorded ${formatCurrency(parsed)} from ${player.name}` })
     } catch {
-      toast({ title: "Failed to mark as paid", variant: "destructive" })
+      toast({ title: "Failed to record payment", variant: "destructive" })
     }
   }
 
@@ -546,13 +582,24 @@ export default function Fees() {
         </div>
       )}
 
-      {/* Mark as paid dialog */}
-      <Modal isOpen={markAsPaidDialog.isOpen} onClose={closeMarkAsPaidDialog} title="Mark fee as paid">
+      {/* Mark as paid / record payment dialog */}
+      <Modal isOpen={markAsPaidDialog.isOpen} onClose={closeMarkAsPaidDialog} title="Record payment">
         <div className="space-y-5">
           {markAsPaidDialog.player && (
-            <p className="text-sm text-muted-foreground">
-              Recording payment for <strong className="text-foreground">{markAsPaidDialog.player.name}</strong>.
-            </p>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>
+                Recording payment for <strong className="text-foreground">{markAsPaidDialog.player.name}</strong>.
+              </p>
+              {markAsPaidDialog.player.paymentAmountDue != null && (
+                <p className="text-xs">
+                  {formatCurrency(markAsPaidDialog.player.paymentAmountPaid ?? 0)} paid of{" "}
+                  {formatCurrency(markAsPaidDialog.player.paymentAmountDue)} due
+                  {(markAsPaidDialog.player.paymentAmountDue - (markAsPaidDialog.player.paymentAmountPaid ?? 0)) > 0 && (
+                    <> · <strong className="text-amber-700">{formatCurrency(Math.max(0, markAsPaidDialog.player.paymentAmountDue - (markAsPaidDialog.player.paymentAmountPaid ?? 0)))} outstanding</strong></>
+                  )}
+                </p>
+              )}
+            </div>
           )}
           <div className="space-y-2">
             <label className="text-sm font-semibold">Amount Received (HKD)</label>
@@ -565,11 +612,6 @@ export default function Fees() {
               placeholder="0.00"
               autoFocus
             />
-            {markAsPaidDialog.player?.paymentAmountDue != null && (
-              <p className="text-xs text-muted-foreground">
-                Amount due on file: {formatCurrency(markAsPaidDialog.player.paymentAmountDue)}
-              </p>
-            )}
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold">Payment Date</label>
@@ -581,15 +623,33 @@ export default function Fees() {
             />
             <p className="text-xs text-muted-foreground">Defaults to today.</p>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Method (optional)</label>
+              <Input
+                value={markAsPaidDialog.method}
+                onChange={e => setMarkAsPaidDialog(prev => ({ ...prev, method: e.target.value }))}
+                placeholder="Bank transfer, Cash…"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Notes (optional)</label>
+              <Input
+                value={markAsPaidDialog.notes}
+                onChange={e => setMarkAsPaidDialog(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Reference, instalment #2…"
+              />
+            </div>
+          </div>
           <div className="flex justify-end gap-3 pt-2 border-t border-border">
             <Button type="button" variant="outline" onClick={closeMarkAsPaidDialog}>Cancel</Button>
             <Button
               type="button"
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={confirmMarkAsPaid}
-              disabled={!markAsPaidDialog.paymentDate || !markAsPaidDialog.amount}
+              disabled={!markAsPaidDialog.paymentDate || !markAsPaidDialog.amount || createPaymentMutation.isPending}
             >
-              Confirm Payment
+              {createPaymentMutation.isPending ? "Saving…" : "Record Payment"}
             </Button>
           </div>
         </div>
@@ -598,31 +658,82 @@ export default function Fees() {
       {/* Edit fee modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={closeEditModal}
         title={editingPlayer ? `Fees: ${editingPlayer.name}` : "Edit Fees"}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Amount Due (HKD)</label>
-              <Input type="number" min="0" step="0.01" {...register("paymentAmountDue")} placeholder="0.00" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Amount Paid (HKD)</label>
-              <Input type="number" min="0" step="0.01" {...register("paymentAmountPaid")} placeholder="0.00" />
-            </div>
-          </div>
-
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Payment Date</label>
-            <Input type="date" max={todayStr()} {...register("paymentDate")} />
-            {errors.paymentDate && <p className="text-xs text-destructive">{errors.paymentDate.message}</p>}
+            <label className="text-sm font-semibold">Amount Due (HKD)</label>
+            <Input type="number" min="0" step="0.01" {...register("paymentAmountDue")} placeholder="0.00" />
+            {errors.paymentAmountDue && <p className="text-xs text-destructive">{String(errors.paymentAmountDue.message)}</p>}
           </div>
 
-          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-            <input type="checkbox" {...register("feePaid")} className="accent-primary w-4 h-4" />
-            Mark fee as paid
-          </label>
+          {/* Payment summary */}
+          <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Total received</span>
+              <span className="font-semibold text-emerald-700 tabular-nums">{formatCurrency(editingPaymentsTotal)}</span>
+            </div>
+            {editingDue != null && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Outstanding balance</span>
+                <span className={`font-semibold tabular-nums ${editingBalance && editingBalance > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                  {formatCurrency(editingBalance ?? 0)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Payment history */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold">Payment history</label>
+              {editingPlayer && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    closeEditModal()
+                    openMarkAsPaidDialog(editingPlayer)
+                  }}
+                >
+                  + Add payment
+                </Button>
+              )}
+            </div>
+            {isLoadingPayments ? (
+              <p className="text-xs text-muted-foreground">Loading…</p>
+            ) : editingPayments.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No payments recorded yet.</p>
+            ) : (
+              <div className="rounded-lg border border-border divide-y divide-border max-h-64 overflow-y-auto">
+                {editingPayments.map(p => (
+                  <div key={p.id} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-semibold tabular-nums text-emerald-700">{formatCurrency(p.amount)}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{formatPaymentDate(p.paymentDate)}</span>
+                      </div>
+                      {(p.method || p.notes) && (
+                        <div className="text-xs text-muted-foreground truncate">
+                          {[p.method, p.notes].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => editingPlayer && handleDeletePayment(editingPlayer.id, p.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive px-2 py-1 rounded hover:bg-destructive/10 transition-colors"
+                      title="Delete this payment"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-semibold">Notes</label>
@@ -630,7 +741,7 @@ export default function Fees() {
           </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={closeEditModal}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
