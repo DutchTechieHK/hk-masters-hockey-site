@@ -49,7 +49,8 @@ function Router() {
         <Route path="/my-details/:token" component={MyDetails} />
         <Route path="/login" component={Login} />
         <Route path="/dashboard" component={Dashboard} />
-        <Route path="/my-schedule" component={MySchedule} />
+        <Route path="/schedule" component={MySchedule} />
+        <Route path="/my-schedule">{() => { window.location.replace(import.meta.env.BASE_URL + "schedule"); return null; }}</Route>
         <Route path="/privacy" component={Privacy} />
         <Route>
           <div className="min-h-screen flex items-center justify-center">

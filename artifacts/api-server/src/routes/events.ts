@@ -1,9 +1,21 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db, eventsTable, teamsTable } from "@workspace/db";
 import { eq, asc, sql, or, isNull } from "drizzle-orm";
-import { requireAdminAccess } from "../middleware/adminAuth";
+import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
+import { requirePlayerSession } from "../middleware/playerSession";
 
 const router: IRouter = Router();
+
+// GET /api/events accepts either an admin session OR a player session.
+// - Admin callers see every event (used by the admin Events page).
+// - Player callers see only events visible to them (team-scoped or all-squad).
+function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
+  if (hasAdminAccess(req)) {
+    (req as Request & { isAdmin?: boolean }).isAdmin = true;
+    return next();
+  }
+  return requirePlayerSession(req, res, next);
+}
 
 const ALLOWED_KINDS = ["training", "meeting", "social"] as const;
 type EventKind = typeof ALLOWED_KINDS[number];
@@ -67,13 +79,19 @@ function parseBody(body: unknown): {
   };
 }
 
-router.get("/", requireAdminAccess, async (_req, res) => {
-  const rows = await db
-    .select({ event: eventsTable, teamName: teamsTable.name })
-    .from(eventsTable)
-    .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
-    .orderBy(asc(eventsTable.startsAt));
-  res.json(rows.map(({ event, teamName }) => serialize(event, teamName)));
+router.get("/", requireAdminOrPlayer, async (req, res) => {
+  const isAdmin = (req as Request & { isAdmin?: boolean }).isAdmin === true;
+  if (isAdmin) {
+    const rows = await db
+      .select({ event: eventsTable, teamName: teamsTable.name })
+      .from(eventsTable)
+      .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
+      .orderBy(asc(eventsTable.startsAt));
+    return res.json(rows.map(({ event, teamName }) => serialize(event, teamName)));
+  }
+  // Player path — scope to their team + all-squad events.
+  const filtered = await listEventsForPlayer(req.player?.teamId ?? null);
+  res.json(filtered);
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {

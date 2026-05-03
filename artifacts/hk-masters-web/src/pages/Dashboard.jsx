@@ -51,7 +51,7 @@ export default function Dashboard() {
       return;
     }
     if (card.key === "schedule") {
-      setLocation("/my-schedule");
+      setLocation("/schedule");
       return;
     }
     // other cards: no-op for now (coming soon)

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable } from "@workspace/db/schema";
+import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable } from "@workspace/db/schema";
 import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -64,7 +64,20 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const upcomingMatchCount = upcomingMatches.length;
   const nextMatchKickoffAt = upcomingMatches[0]?.kickoffAt?.toISOString() ?? null;
 
+  const eventsCutoff = new Date();
+  const upcomingEvents = await db
+    .select()
+    .from(eventsTable)
+    .where(gte(eventsTable.startsAt, eventsCutoff))
+    .orderBy(asc(eventsTable.startsAt));
+  const upcomingEventCount = upcomingEvents.length;
+  const nextEventStartsAt = upcomingEvents[0]?.startsAt?.toISOString() ?? null;
+  const nextEventTitle = upcomingEvents[0]?.title ?? null;
+
   res.json({
+    upcomingEventCount,
+    nextEventStartsAt,
+    nextEventTitle,
     totalPlayers,
     playersPaidCount,
     feesAmountDue,

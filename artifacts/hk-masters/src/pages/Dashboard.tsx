@@ -1,6 +1,6 @@
 import { useGetDashboard } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 
 const hkdPrecise = new Intl.NumberFormat("en-HK", {
@@ -47,7 +47,7 @@ export default function Dashboard() {
       description="Overview of your teams, financials, and upcoming logistics for Rotterdam 2026."
     >
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
         <StatCard 
           title="Total Players" 
           value={stats.totalPlayers.toString()} 
@@ -70,6 +70,19 @@ export default function Dashboard() {
           onClick={() => navigate("/matches")}
           clickable
           clickableLabel="View Matches"
+        />
+        <StatCard
+          title="Upcoming Events"
+          value={(stats as unknown as { upcomingEventCount?: number }).upcomingEventCount?.toString() ?? "0"}
+          icon={<CalendarClock className="w-6 h-6 text-amber-500" />}
+          trend={(() => {
+            const s = stats as unknown as { nextEventStartsAt?: string | null; nextEventTitle?: string | null }
+            if (!s.nextEventStartsAt) return "Nothing scheduled"
+            return `Next: ${format(parseISO(s.nextEventStartsAt), "EEE d MMM, HH:mm")}`
+          })()}
+          onClick={() => navigate("/events")}
+          clickable
+          clickableLabel="View Events"
         />
         <StatCard 
           title="Fees Outstanding" 
