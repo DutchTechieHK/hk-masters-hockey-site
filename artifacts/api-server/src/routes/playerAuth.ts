@@ -1,7 +1,8 @@
 import crypto from "crypto";
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, gt, sql } from "drizzle-orm";
-import { db, playersTable, playerLoginCodesTable } from "@workspace/db";
+import { db, playersTable, playerLoginCodesTable, playerPaymentsTable } from "@workspace/db";
+import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
 import { mapPlayer } from "./players";
@@ -119,6 +120,32 @@ router.get("/my-schedule", requirePlayerSession, async (req, res) => {
 
 router.post("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
 router.patch("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
+
+router.get("/my-fees", requirePlayerSession, async (req, res) => {
+  const player = req.player!;
+  const payments = await db
+    .select()
+    .from(playerPaymentsTable)
+    .where(eq(playerPaymentsTable.playerId, player.id))
+    .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
+  const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const amountDue = player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null;
+  const balance = amountDue == null ? null : Math.max(0, amountDue - totalPaid);
+  const feePaid = amountDue != null ? totalPaid + 1e-6 >= amountDue && totalPaid > 0 : totalPaid > 0;
+  res.json({
+    amountDue,
+    amountPaid: Number(totalPaid.toFixed(2)),
+    balance,
+    feePaid,
+    payments: payments.map((p) => ({
+      id: p.id,
+      amount: parseFloat(p.amount),
+      paymentDate: p.paymentDate,
+      method: p.method || null,
+      notes: p.notes || null,
+    })),
+  });
+});
 
 router.post("/logout", requirePlayerSession, async (req, res) => {
   const token =
