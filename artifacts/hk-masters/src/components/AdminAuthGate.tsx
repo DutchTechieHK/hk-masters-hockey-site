@@ -16,6 +16,7 @@ type Status = "checking" | "authed" | "unauthed";
 
 export function AdminAuthGate({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("checking");
+  const [hasEverAuthed, setHasEverAuthed] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -30,6 +31,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     apiCheckAdminSession(stored).then((valid) => {
       if (valid) {
         setStatus("authed");
+        setHasEverAuthed(true);
       } else {
         clearAdminToken();
         setStatus("unauthed");
@@ -57,6 +59,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
       setPassword("");
       queryClient.invalidateQueries();
       setStatus("authed");
+      setHasEverAuthed(true);
     } catch (err) {
       setError((err as Error).message || "Login failed");
     } finally {
@@ -72,39 +75,54 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (status === "unauthed") {
+  const loginCard = (
+    <div className="max-w-sm w-full bg-white rounded-2xl border border-border shadow-xl p-8">
+      <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-5">
+        <Lock className="w-6 h-6 text-primary" />
+      </div>
+      <h2 className="text-lg font-bold text-center mb-1">HK Masters Admin</h2>
+      <p className="text-sm text-muted-foreground text-center mb-6">
+        {hasEverAuthed
+          ? "Your session expired. Please sign in again to continue."
+          : "Enter your admin password to continue."}
+      </p>
+      <form onSubmit={handleLogin} className="space-y-4">
+        <Input
+          type="password"
+          placeholder="Admin password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoFocus
+          autoComplete="current-password"
+        />
+        {error && <p className="text-xs text-destructive">{error}</p>}
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={submitting || !password}
+        >
+          {submitting ? "Signing in…" : "Sign in"}
+        </Button>
+      </form>
+    </div>
+  );
+
+  if (status === "unauthed" && !hasEverAuthed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
-        <div className="max-w-sm w-full bg-white rounded-2xl border border-border shadow-sm p-8">
-          <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-5">
-            <Lock className="w-6 h-6 text-primary" />
-          </div>
-          <h2 className="text-lg font-bold text-center mb-1">HK Masters Admin</h2>
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Enter your admin password to continue.
-          </p>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Admin password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoFocus
-              autoComplete="current-password"
-            />
-            {error && <p className="text-xs text-destructive">{error}</p>}
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={submitting || !password}
-            >
-              {submitting ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </div>
+        {loginCard}
       </div>
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {status === "unauthed" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          {loginCard}
+        </div>
+      )}
+    </>
+  );
 }
