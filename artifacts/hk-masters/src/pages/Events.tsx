@@ -7,10 +7,11 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
+import EventsCsvImport from "@/components/ui/EventsCsvImport"
 
 type EventRow = {
   id: number
@@ -145,6 +146,7 @@ export default function Events() {
   const [rosterEventId, setRosterEventId] = useState<number | null>(null)
   const [roster, setRoster] = useState<RsvpRoster | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
+  const [showCsvImport, setShowCsvImport] = useState(false)
 
   const openRoster = async (id: number) => {
     setRosterEventId(id)
@@ -274,9 +276,14 @@ export default function Events() {
       title="Events"
       description="Training sessions, team meetings, and social events. Visible to logged-in players."
       action={
-        <Button onClick={openAddModal}>
-          <Plus className="w-5 h-5 mr-2" /> Add Event
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowCsvImport(true)}>
+            <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+          </Button>
+          <Button onClick={openAddModal}>
+            <Plus className="w-5 h-5 mr-2" /> Add Event
+          </Button>
+        </div>
       }
     >
       {loading ? (
@@ -470,6 +477,14 @@ export default function Events() {
           </div>
         </form>
       </Modal>
+
+      {showCsvImport && (
+        <EventsCsvImport
+          teams={teams}
+          onClose={() => setShowCsvImport(false)}
+          onImported={() => { setShowCsvImport(false); refresh() }}
+        />
+      )}
 
       <Modal
         isOpen={rosterEventId !== null}

@@ -15,7 +15,8 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban } from "lucide-react"
+import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban, Upload } from "lucide-react"
+import MatchesCsvImport from "@/components/ui/MatchesCsvImport"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -125,6 +126,7 @@ export default function Schedule() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editing, setEditing] = useState<Match | null>(null)
+  const [showCsvImport, setShowCsvImport] = useState(false)
 
   const createMutation = useCreateMatch()
   const updateMutation = useUpdateMatch()
@@ -278,9 +280,14 @@ export default function Schedule() {
       title="Matches"
       description="Add and manage match fixtures. Visible on the public website."
       action={
-        <Button onClick={openAddModal} disabled={teams.length === 0}>
-          <Plus className="w-5 h-5 mr-2" /> Add Match
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowCsvImport(true)} disabled={teams.length === 0}>
+            <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+          </Button>
+          <Button onClick={openAddModal} disabled={teams.length === 0}>
+            <Plus className="w-5 h-5 mr-2" /> Add Match
+          </Button>
+        </div>
       }
     >
       {teams.length === 0 && (
@@ -393,6 +400,18 @@ export default function Schedule() {
             </section>
           ))}
         </div>
+      )}
+
+      {showCsvImport && sessionToken && (
+        <MatchesCsvImport
+          teams={teams}
+          sessionToken={sessionToken}
+          onClose={() => setShowCsvImport(false)}
+          onImported={() => {
+            setShowCsvImport(false)
+            queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
+          }}
+        />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Match" : "Add Match"}>
