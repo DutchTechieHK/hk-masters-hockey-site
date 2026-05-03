@@ -7,6 +7,6 @@
  */
 
 export interface SendFeeRemindersBody {
-  /** Specific player IDs to email. If omitted, emails all unpaid players. */
+  /** Specific player IDs to email. If omitted, emails all players whose fee is unpaid. */
   playerIds?: number[];
 }

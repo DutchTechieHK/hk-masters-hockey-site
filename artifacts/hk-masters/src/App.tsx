@@ -8,10 +8,10 @@ import Teams from "@/pages/Teams";
 import Players from "@/pages/Players";
 import Kits from "@/pages/Kits";
 import Fundraising from "@/pages/Fundraising";
+import Fees from "@/pages/Fees";
 import Logistics from "@/pages/Logistics";
 import Journal from "@/pages/Journal";
 import Travel from "@/pages/Travel";
-import Fees from "@/pages/Fees";
 import Sponsors from "@/pages/Sponsors";
 import Schedule from "@/pages/Schedule";
 import { Redirect } from "wouter";
@@ -35,9 +35,9 @@ function Router() {
       <Route path="/players" component={Players} />
       <Route path="/kits" component={Kits} />
       <Route path="/fundraising" component={Fundraising} />
+      <Route path="/fees" component={Fees} />
       <Route path="/logistics" component={Logistics} />
       <Route path="/travel" component={Travel} />
-      <Route path="/fees" component={Fees} />
       <Route path="/journal" component={Journal} />
       <Route path="/sponsors" component={Sponsors} />
       <Route path="/matches" component={Schedule} />

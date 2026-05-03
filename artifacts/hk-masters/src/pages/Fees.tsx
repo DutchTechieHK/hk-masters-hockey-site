@@ -17,105 +17,103 @@ import {
   Download,
   AlertTriangle,
   Edit2,
-  Search,
   Mail,
-  Wallet,
-  Check,
-  Clock,
+  Search,
   CheckCircle2,
-  XCircle,
+  Clock,
+  HandCoins,
+  Wallet,
 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { Player } from "@workspace/api-client-react/src/generated/api.schemas"
 import { useToast } from "@/hooks/use-toast"
+import { formatCurrency } from "@/lib/utils"
 
 const feeSchema = z.object({
   feePaid: z.boolean(),
   paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   paymentAmountPaid: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   paymentDate: z.string().optional(),
+  notes: z.string().optional(),
 })
 
 type FeeFormValues = z.infer<typeof feeSchema>
-
-const markPaidSchema = z.object({
-  paymentAmountPaid: z.coerce.number().min(0, "Amount is required"),
-  paymentDate: z.string().min(1, "Date is required"),
-})
-
-type MarkPaidFormValues = z.infer<typeof markPaidSchema>
-
-function formatCurrency(n: number | null | undefined): string {
-  if (n == null || isNaN(n)) return "—"
-  return `HK$${n.toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-}
-
-function formatDate(d?: string | null) {
-  if (!d) return null
-  const dt = new Date(d)
-  if (isNaN(dt.getTime())) return d
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-}
 
 function formatReminderDate(dt?: string | null) {
   if (!dt) return null
   const d = new Date(dt)
   if (isNaN(d.getTime())) return null
-  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
 }
 
-function todayISO(): string {
-  const d = new Date()
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, "0")
-  const dd = String(d.getDate()).padStart(2, "0")
-  return `${yyyy}-${mm}-${dd}`
+function formatPaymentDate(s?: string | null) {
+  if (!s) return null
+  const d = new Date(s)
+  if (isNaN(d.getTime())) return s
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+function todayStr() {
+  return new Date().toISOString().split("T")[0]
+}
+
+function isMissingFeeDetails(p: Player): boolean {
+  // amount due not set OR (marked paid but missing amount paid / payment date)
+  const dueMissing = p.paymentAmountDue == null
+  if (dueMissing) return true
+  if (p.feePaid) {
+    if (p.paymentAmountPaid == null || !p.paymentDate) return true
+  }
+  return false
 }
 
 function exportToCSV(players: Player[], teams: { id: number; name: string; category: string }[]) {
-  const teamMap = Object.fromEntries(teams.map((t) => [t.id, t]))
+  const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
   const headers = [
     "Team",
     "Category",
     "Name",
-    "Shirt #",
     "Email",
-    "Amount Due (HK$)",
-    "Amount Paid (HK$)",
-    "Outstanding (HK$)",
-    "Status",
+    "Amount Due (HKD)",
+    "Amount Paid (HKD)",
     "Payment Date",
-    "Last Reminder Sent",
+    "Status",
+    "Reminded On",
   ]
-  const rows = players.map((p) => {
+  const rows = players.map(p => {
     const team = teamMap[p.teamId]
-    const due = p.paymentAmountDue ?? 0
-    const paid = p.paymentAmountPaid ?? 0
-    const outstanding = Math.max(due - paid, 0)
     return [
       team ? team.name : `Team ${p.teamId}`,
       team ? team.category : "",
       p.name,
-      p.shirtNumber ?? "",
       p.email,
-      due || "",
-      paid || "",
-      outstanding || "",
-      p.feePaid ? "Paid" : "Unpaid",
+      p.paymentAmountDue ?? "",
+      p.paymentAmountPaid ?? "",
       p.paymentDate ?? "",
-      p.feeReminderSentAt ?? "",
+      p.feePaid ? "Paid" : "Unpaid",
+      p.feeReminderSentAt ? new Date(p.feeReminderSentAt).toISOString().split("T")[0] : "",
     ]
   })
+
   const csv = [headers, ...rows]
-    .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n")
+
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = "fees.csv"
+  a.download = "player-fees.csv"
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -126,9 +124,17 @@ export default function Fees() {
 
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
-  const [unpaidOnly, setUnpaidOnly] = useState(false)
+  const [showOnlyUnpaid, setShowOnlyUnpaid] = useState(false)
+
+  const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
-  const [markingPaidPlayer, setMarkingPaidPlayer] = useState<Player | null>(null)
+
+  const [markAsPaidDialog, setMarkAsPaidDialog] = useState<{
+    isOpen: boolean
+    player: Player | null
+    paymentDate: string
+    amount: string
+  }>({ isOpen: false, player: null, paymentDate: "", amount: "" })
 
   const { data: teams = [] } = useListTeams()
   const { data: players = [], isLoading } = useListPlayers()
@@ -136,157 +142,96 @@ export default function Fees() {
   const updateMutation = useUpdatePlayer()
   const sendRemindersMutation = useSendFeeReminders()
 
-  const editForm = useForm<FeeFormValues>({ resolver: zodResolver(feeSchema) })
-  const markPaidForm = useForm<MarkPaidFormValues>({ resolver: zodResolver(markPaidSchema) })
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FeeFormValues>({
+    resolver: zodResolver(feeSchema),
+  })
 
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
-    editForm.reset({
+    reset({
       feePaid: player.feePaid,
       paymentAmountDue: player.paymentAmountDue ?? "",
       paymentAmountPaid: player.paymentAmountPaid ?? "",
-      paymentDate: player.paymentDate ?? "",
+      paymentDate: player.paymentDate || "",
+      notes: player.notes || "",
     })
+    setIsModalOpen(true)
   }
 
-  const openMarkPaidModal = (player: Player, e?: React.MouseEvent) => {
-    e?.stopPropagation()
-    setMarkingPaidPlayer(player)
-    const due = player.paymentAmountDue ?? 0
-    const paid = player.paymentAmountPaid ?? 0
-    const suggested = paid > 0 ? paid : due
-    markPaidForm.reset({
-      paymentAmountPaid: suggested,
-      paymentDate: player.paymentDate || todayISO(),
-    })
-  }
-
-  const buildUpdatePayload = (player: Player, overrides: Partial<Player>) => {
-    return {
-      teamId: player.teamId,
-      name: player.name,
-      email: player.email,
-      shirtNumber: player.shirtNumber ?? undefined,
-      feePaid: overrides.feePaid ?? player.feePaid,
-      paymentAmountDue:
-        overrides.paymentAmountDue !== undefined
-          ? overrides.paymentAmountDue ?? undefined
-          : player.paymentAmountDue ?? undefined,
-      paymentAmountPaid:
-        overrides.paymentAmountPaid !== undefined
-          ? overrides.paymentAmountPaid ?? undefined
-          : player.paymentAmountPaid ?? undefined,
-      paymentDate:
-        overrides.paymentDate !== undefined
-          ? overrides.paymentDate ?? undefined
-          : player.paymentDate ?? undefined,
-      phone: player.phone ?? undefined,
-      position: player.position ?? undefined,
-      dateOfBirth: player.dateOfBirth ?? undefined,
-      nationality: player.nationality ?? undefined,
-      passportNumber: player.passportNumber ?? undefined,
-      passportExpiry: player.passportExpiry ?? undefined,
-      emergencyContactName: player.emergencyContactName ?? undefined,
-      emergencyContactPhone: player.emergencyContactPhone ?? undefined,
-      flightArrivalDateTime: player.flightArrivalDateTime ?? undefined,
-      flightDepartureDateTime: player.flightDepartureDateTime ?? undefined,
-      arrivalCity: player.arrivalCity ?? undefined,
-      roomSharingPreference: player.roomSharingPreference ?? undefined,
-      roomSharingWith: player.roomSharingWith ?? undefined,
-      shirtSize: player.shirtSize ?? undefined,
-      shortsSize: player.shortsSize ?? undefined,
-      jacketSize: player.jacketSize ?? undefined,
-      travelDates: player.travelDates ?? undefined,
-      dietaryRequirements: player.dietaryRequirements ?? undefined,
-      medicalNotes: player.medicalNotes ?? undefined,
-      notes: player.notes ?? undefined,
-    }
-  }
-
-  // Re-fetch the latest player record before sending a PUT so we don't accidentally
-  // clobber unrelated fields (passport, travel, notes…) that another admin may have
-  // updated after this page loaded. Returns the freshest copy of the given player.
-  const fetchFreshPlayer = async (player: Player): Promise<Player> => {
-    try {
-      await queryClient.refetchQueries({ queryKey: getListPlayersQueryKey() })
-      const freshList = queryClient.getQueryData<Player[]>(getListPlayersQueryKey()) ?? players
-      return freshList.find((p) => p.id === player.id) ?? player
-    } catch {
-      return player
-    }
-  }
-
-  const onSubmitEdit = async (data: FeeFormValues) => {
+  const onSubmit = async (data: FeeFormValues) => {
     if (!editingPlayer) return
     try {
-      const fresh = await fetchFreshPlayer(editingPlayer)
-      const payload = buildUpdatePayload(fresh, {
+      const payload = {
+        teamId: editingPlayer.teamId,
+        name: editingPlayer.name,
+        email: editingPlayer.email,
         feePaid: data.feePaid,
-        paymentAmountDue: data.paymentAmountDue === "" ? undefined : data.paymentAmountDue,
-        paymentAmountPaid: data.paymentAmountPaid === "" ? undefined : data.paymentAmountPaid,
+        paymentAmountDue: data.paymentAmountDue === "" ? undefined : Number(data.paymentAmountDue),
+        paymentAmountPaid: data.paymentAmountPaid === "" ? undefined : Number(data.paymentAmountPaid),
         paymentDate: data.paymentDate || undefined,
-      })
+        notes: data.notes || editingPlayer.notes || undefined,
+      }
       await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload as any })
       toast({ title: "Fee details updated" })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      setEditingPlayer(null)
+      setIsModalOpen(false)
     } catch {
-      toast({ title: "An error occurred", variant: "destructive" })
+      toast({ title: "Failed to update fee details", variant: "destructive" })
     }
   }
 
-  const onSubmitMarkPaid = async (data: MarkPaidFormValues) => {
-    if (!markingPaidPlayer) return
-    const due = markingPaidPlayer.paymentAmountDue ?? 0
-    const isFullyPaid = due === 0 || data.paymentAmountPaid >= due
-    if (!isFullyPaid) {
-      const confirmed = window.confirm(
-        `${formatCurrency(data.paymentAmountPaid)} is less than the amount due (${formatCurrency(due)}).\n\nRecord as a partial payment? The player will remain marked as Unpaid until the full amount is received.`,
-      )
-      if (!confirmed) return
+  const openMarkAsPaidDialog = (player: Player) => {
+    setMarkAsPaidDialog({
+      isOpen: true,
+      player,
+      paymentDate: todayStr(),
+      amount: String(player.paymentAmountPaid ?? player.paymentAmountDue ?? ""),
+    })
+  }
+
+  const closeMarkAsPaidDialog = () =>
+    setMarkAsPaidDialog(prev => ({ ...prev, isOpen: false }))
+
+  const confirmMarkAsPaid = async () => {
+    const { player, paymentDate, amount } = markAsPaidDialog
+    if (!player) return
+    const parsed = parseFloat(amount)
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      toast({ title: "Enter a valid amount", variant: "destructive" })
+      return
     }
+    closeMarkAsPaidDialog()
     try {
-      const fresh = await fetchFreshPlayer(markingPaidPlayer)
-      const payload = buildUpdatePayload(fresh, {
-        feePaid: isFullyPaid,
-        paymentAmountPaid: data.paymentAmountPaid,
-        paymentDate: data.paymentDate,
-      })
-      await updateMutation.mutateAsync({ id: markingPaidPlayer.id, data: payload as any })
-      toast({
-        title: isFullyPaid ? "Marked as paid" : "Partial payment recorded",
-        description: `${markingPaidPlayer.name} – ${formatCurrency(data.paymentAmountPaid)}`,
-      })
+      const payload = {
+        teamId: player.teamId,
+        name: player.name,
+        email: player.email,
+        feePaid: true,
+        paymentAmountDue: player.paymentAmountDue ?? parsed,
+        paymentAmountPaid: parsed,
+        paymentDate,
+        notes: player.notes || undefined,
+      }
+      await updateMutation.mutateAsync({ id: player.id, data: payload as any })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      setMarkingPaidPlayer(null)
+      toast({ title: "Marked as paid", description: `Recorded ${formatCurrency(parsed)} from ${player.name}` })
     } catch {
-      toast({ title: "Failed to record payment", variant: "destructive" })
+      toast({ title: "Failed to mark as paid", variant: "destructive" })
     }
   }
 
   const handleSendReminders = async () => {
-    const unpaidVisible = visiblePlayers.filter((p) => !p.feePaid)
-    if (unpaidVisible.length === 0) return
-    if (
-      !window.confirm(
-        `Send fee reminder to ${unpaidVisible.length} unpaid player${unpaidVisible.length !== 1 ? "s" : ""}?`,
-      )
-    )
-      return
+    const unpaid = visiblePlayers.filter(p => !p.feePaid)
+    if (unpaid.length === 0) return
     try {
-      const result = await sendRemindersMutation.mutateAsync({
-        data: { playerIds: unpaidVisible.map((p) => p.id) },
-      })
+      const result = await sendRemindersMutation.mutateAsync({ data: { playerIds: unpaid.map(p => p.id) } })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
       if (result.failed === 0) {
-        toast({
-          title: `${result.sent} reminder${result.sent !== 1 ? "s" : ""} sent`,
-          description: `Successfully emailed ${result.sent} unpaid player${result.sent !== 1 ? "s" : ""}.`,
-        })
+        toast({ title: `${result.sent} reminder${result.sent !== 1 ? "s" : ""} sent`, description: `Successfully emailed ${result.sent} unpaid player${result.sent !== 1 ? "s" : ""}.` })
       } else {
         toast({
           title: `${result.sent} sent, ${result.failed} failed`,
-          description: `${result.sent} delivered. ${result.failed} could not be sent.`,
+          description: `${result.sent} reminder${result.sent !== 1 ? "s" : ""} delivered. ${result.failed} could not be sent.`,
           variant: "destructive",
         })
       }
@@ -295,49 +240,68 @@ export default function Fees() {
     }
   }
 
-  const uniqueCategories = Array.from(new Set(teams.map((t) => t.category)))
-  const teamCategoryMap = Object.fromEntries(teams.map((t) => [t.id, t.category]))
+  const uniqueCategories = Array.from(new Set(teams.map(t => t.category)))
+  const teamCategoryMap = Object.fromEntries(teams.map(t => [t.id, t.category]))
 
   const visiblePlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    let filtered =
-      categoryFilter === "all"
-        ? players
-        : players.filter((p) => teamCategoryMap[p.teamId] === categoryFilter)
-    if (q) filtered = filtered.filter((p) => p.name.toLowerCase().includes(q))
-    if (unpaidOnly) filtered = filtered.filter((p) => !p.feePaid)
+    let filtered = categoryFilter === "all"
+      ? players
+      : players.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+    if (q) {
+      filtered = filtered.filter(p => p.name.toLowerCase().includes(q))
+    }
+    if (showOnlyUnpaid) {
+      filtered = filtered.filter(p => !p.feePaid)
+    }
     return filtered
-  }, [players, categoryFilter, searchQuery, unpaidOnly, teamCategoryMap])
+  }, [players, categoryFilter, searchQuery, showOnlyUnpaid, teamCategoryMap])
 
   const teamGroups = useMemo(
     () =>
       teams
-        .filter((t) => categoryFilter === "all" || t.category === categoryFilter)
-        .map((team) => {
-          const groupPlayers = visiblePlayers.filter((p) => p.teamId === team.id)
-          const due = groupPlayers.reduce((sum, p) => sum + (p.paymentAmountDue ?? 0), 0)
-          const paid = groupPlayers.reduce((sum, p) => sum + (p.paymentAmountPaid ?? 0), 0)
-          const paidCount = groupPlayers.filter((p) => p.feePaid).length
-          return { team, players: groupPlayers, due, paid, paidCount }
-        })
-        .filter((g) => g.players.length > 0),
-    [teams, categoryFilter, visiblePlayers],
+        .filter(t => categoryFilter === "all" || t.category === categoryFilter)
+        .map(team => ({
+          team,
+          players: visiblePlayers.filter(p => p.teamId === team.id),
+        }))
+        .filter(g => g.players.length > 0),
+    [teams, categoryFilter, visiblePlayers]
   )
 
-  // Overall summary across full player list (not filtered) so the headline stays stable
-  const overall = useMemo(() => {
-    const due = players.reduce((s, p) => s + (p.paymentAmountDue ?? 0), 0)
-    const paid = players.reduce((s, p) => s + (p.paymentAmountPaid ?? 0), 0)
-    const paidCount = players.filter((p) => p.feePaid).length
-    return { due, paid, paidCount, total: players.length }
-  }, [players])
+  // Per-team totals computed from the FULL player list (not search-filtered) so summary stays stable
+  const teamTotals = useMemo(() => {
+    const map = new Map<number, { paid: number; total: number; collected: number; due: number }>()
+    for (const team of teams) {
+      const teamPlayers = players.filter(p => p.teamId === team.id)
+      map.set(team.id, {
+        total: teamPlayers.length,
+        paid: teamPlayers.filter(p => p.feePaid).length,
+        collected: teamPlayers.reduce((sum, p) => sum + (p.paymentAmountPaid ?? 0), 0),
+        due: teamPlayers.reduce((sum, p) => sum + (p.paymentAmountDue ?? 0), 0),
+      })
+    }
+    return map
+  }, [teams, players])
 
-  const unpaidVisibleCount = visiblePlayers.filter((p) => !p.feePaid).length
+  const overallTotals = useMemo(() => {
+    const scoped = categoryFilter === "all"
+      ? players
+      : players.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+    return {
+      total: scoped.length,
+      paid: scoped.filter(p => p.feePaid).length,
+      collected: scoped.reduce((sum, p) => sum + (p.paymentAmountPaid ?? 0), 0),
+      due: scoped.reduce((sum, p) => sum + (p.paymentAmountDue ?? 0), 0),
+    }
+  }, [players, categoryFilter, teamCategoryMap])
+
+  const unpaidCount = visiblePlayers.filter(p => !p.feePaid).length
 
   return (
     <PageLayout
       title="Fees"
-      description="Tournament contribution tracking — see who's paid, mark payments received, and chase the outstanding ones."
+      description="Track tournament fees: who has paid, who still owes, and chase the rest."
       action={
         <Button
           variant="outline"
@@ -348,48 +312,53 @@ export default function Fees() {
         </Button>
       }
     >
-      {/* Overall summary cards */}
-      {!isLoading && overall.total > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <SummaryCard
-            label="Players paid"
-            value={`${overall.paidCount} of ${overall.total}`}
-            icon={<CheckCircle2 className="w-4 h-4" />}
-            tone="green"
-          />
-          <SummaryCard
-            label="Total due"
-            value={formatCurrency(overall.due)}
-            icon={<Wallet className="w-4 h-4" />}
-            tone="neutral"
-          />
-          <SummaryCard
-            label="Collected"
-            value={formatCurrency(overall.paid)}
-            icon={<Check className="w-4 h-4" />}
-            tone="green"
-          />
-          <SummaryCard
-            label="Outstanding"
-            value={formatCurrency(Math.max(overall.due - overall.paid, 0))}
-            icon={<AlertTriangle className="w-4 h-4" />}
-            tone="amber"
-          />
+      {/* Top summary banner */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="bg-gradient-to-br from-emerald-600 to-emerald-900 rounded-2xl p-7 text-white relative overflow-hidden shadow-lg shadow-emerald-900/20">
+          <div className="absolute right-0 bottom-0 opacity-10 translate-x-1/4 translate-y-1/4">
+            <HandCoins className="w-56 h-56" />
+          </div>
+          <div className="relative z-10">
+            <p className="text-emerald-100 font-medium mb-1 uppercase tracking-wider text-sm">Total Collected</p>
+            <p className="text-4xl font-display font-bold">{formatCurrency(overallTotals.collected)}</p>
+            <p className="text-emerald-100/80 text-sm mt-2">
+              of {formatCurrency(overallTotals.due)} expected ·{" "}
+              {overallTotals.due > 0
+                ? Math.round((overallTotals.collected / overallTotals.due) * 100)
+                : 0}
+              % collected
+            </p>
+          </div>
         </div>
-      )}
+        <div className="bg-white rounded-2xl p-7 border border-border shadow-sm flex flex-col justify-center">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center text-muted-foreground"><Wallet className="w-5 h-5 mr-2"/> Players Paid</div>
+          </div>
+          <p className="text-3xl font-display font-bold text-foreground">
+            {overallTotals.paid} <span className="text-muted-foreground text-xl font-medium">of {overallTotals.total}</span>
+          </p>
+          <div className="w-full bg-muted h-2 rounded-full mt-4 overflow-hidden">
+            <div
+              className="bg-emerald-500 h-full rounded-full transition-all duration-1000"
+              style={{ width: `${overallTotals.total > 0 ? (overallTotals.paid / overallTotals.total) * 100 : 0}%` }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 text-right">
+            {overallTotals.total - overallTotals.paid} still outstanding
+          </p>
+        </div>
+      </div>
 
-      {/* Filters + actions */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-3 mb-4 items-start sm:items-center">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4 items-start sm:items-center">
         <Select
-          className="sm:w-48 bg-white"
+          className="sm:w-56 bg-white"
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
+          onChange={e => setCategoryFilter(e.target.value)}
         >
           <option value="all">All Teams</option>
-          {uniqueCategories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
+          {uniqueCategories.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
           ))}
         </Select>
 
@@ -399,26 +368,24 @@ export default function Fees() {
             className="pl-9 bg-white"
             placeholder="Search by name…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <label className="flex items-center gap-2 text-sm font-medium select-none cursor-pointer bg-white border border-input rounded-md px-3 h-10">
+        <label className="flex items-center gap-2 text-sm font-medium text-foreground bg-white border border-border rounded-md px-3 py-2 cursor-pointer hover:bg-muted/30 transition-colors">
           <input
             type="checkbox"
+            checked={showOnlyUnpaid}
+            onChange={e => setShowOnlyUnpaid(e.target.checked)}
             className="accent-primary"
-            checked={unpaidOnly}
-            onChange={(e) => setUnpaidOnly(e.target.checked)}
           />
-          Unpaid only
+          Only show unpaid
         </label>
 
-        {!isLoading && unpaidVisibleCount > 0 && (
+        {!isLoading && unpaidCount > 0 && (
           <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>
-              {unpaidVisibleCount} unpaid player{unpaidVisibleCount !== 1 ? "s" : ""}
-            </span>
+            <span>{unpaidCount} player{unpaidCount !== 1 ? "s" : ""} still to pay</span>
             <Button
               size="sm"
               variant="outline"
@@ -439,47 +406,28 @@ export default function Fees() {
         </div>
       ) : visiblePlayers.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm border border-border p-12 text-center text-muted-foreground">
-          No players found.
+          No players match these filters.
         </div>
       ) : (
         <div className="space-y-6">
-          {teamGroups.map(({ team, players: groupPlayers, due, paid, paidCount }) => {
-            const outstanding = Math.max(due - paid, 0)
+          {teamGroups.map(({ team, players: groupPlayers }) => {
+            const totals = teamTotals.get(team.id) ?? { paid: 0, total: 0, collected: 0, due: 0 }
             return (
-              <div
-                key={team.id}
-                className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden"
-              >
-                {/* Team heading */}
-                <div className="px-5 py-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div key={team.id} className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+                {/* Team heading + per-team summary */}
+                <div className="px-5 py-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="font-bold text-foreground text-base">{team.name}</h3>
                     <div className="text-sm text-muted-foreground mt-0.5">
-                      {team.category} ·{" "}
-                      <span className="font-semibold text-foreground">
-                        {paidCount} of {groupPlayers.length} paid
-                      </span>
-                      {due > 0 && (
-                        <>
-                          {" "}
-                          · <span className="text-foreground font-medium">{formatCurrency(paid)}</span>{" "}
-                          of <span className="text-foreground font-medium">{formatCurrency(due)}</span>{" "}
-                          collected
-                          {outstanding > 0 && (
-                            <>
-                              {" "}
-                              ·{" "}
-                              <span className="text-amber-700 font-semibold">
-                                {formatCurrency(outstanding)} outstanding
-                              </span>
-                            </>
-                          )}
-                        </>
-                      )}
+                      <span className="font-medium text-foreground">{totals.paid}</span> of{" "}
+                      <span className="font-medium text-foreground">{totals.total}</span> paid
+                      <span className="text-muted-foreground/50 mx-1.5">·</span>
+                      <span className="font-medium text-emerald-700">{formatCurrency(totals.collected)}</span> of{" "}
+                      <span className="font-medium text-foreground">{formatCurrency(totals.due)}</span> collected
                     </div>
                   </div>
                   <Badge variant="outline" className="text-xs self-start sm:self-auto">
-                    {groupPlayers.length} player{groupPlayers.length !== 1 ? "s" : ""}
+                    {team.category}
                   </Badge>
                 </div>
 
@@ -488,118 +436,76 @@ export default function Fees() {
                   <table className="w-full text-sm text-left">
                     <thead className="text-xs text-muted-foreground uppercase bg-muted/10 border-b border-border">
                       <tr>
-                        <th className="px-4 py-3 font-semibold">#</th>
                         <th className="px-4 py-3 font-semibold">Name</th>
+                        <th className="px-4 py-3 font-semibold text-right">Due</th>
+                        <th className="px-4 py-3 font-semibold text-right">Paid</th>
+                        <th className="px-4 py-3 font-semibold hidden md:table-cell">Date</th>
                         <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 font-semibold hidden md:table-cell">Due</th>
-                        <th className="px-4 py-3 font-semibold hidden md:table-cell">Paid</th>
-                        <th className="px-4 py-3 font-semibold hidden lg:table-cell">Payment Date</th>
                         <th className="px-4 py-3 font-semibold hidden lg:table-cell">
-                          <span className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5" />
-                            Reminded
-                          </span>
+                          <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" />Reminded</span>
                         </th>
                         <th className="px-4 py-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {groupPlayers.map((player) => {
-                        const isPaid = player.feePaid
-                        const isUnpaid = !isPaid
-                        const dueAmount = player.paymentAmountDue ?? null
-                        const paidAmount = player.paymentAmountPaid ?? null
-                        const missingDue = dueAmount == null
+                      {groupPlayers.map(player => {
+                        const missing = isMissingFeeDetails(player)
+                        const rowBg = !player.feePaid
+                          ? "bg-amber-50/60 hover:bg-amber-50"
+                          : "hover:bg-muted/10"
                         return (
                           <tr
                             key={player.id}
-                            className={`transition-colors group cursor-pointer ${
-                              isUnpaid ? "bg-amber-50/40 hover:bg-amber-50" : "hover:bg-muted/10"
-                            }`}
+                            className={`transition-colors group cursor-pointer ${rowBg}`}
                             onClick={() => openEditModal(player)}
                           >
-                            {/* Shirt # */}
-                            <td className="px-4 py-3">
-                              {player.shirtNumber != null ? (
-                                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                                  {player.shirtNumber}
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg bg-muted/50 text-muted-foreground flex items-center justify-center text-xs">
-                                  —
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Name */}
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold text-foreground">{player.name}</span>
-                                {missingDue && (
-                                  <AlertTriangle
-                                    className="w-3.5 h-3.5 text-amber-500 shrink-0"
-                                    aria-label="No fee amount set"
-                                  />
+                                {missing && (
+                                  <span title="Missing fee details">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                  </span>
                                 )}
                               </div>
+                              <div className="text-xs text-muted-foreground">{player.email}</div>
                             </td>
 
-                            {/* Status */}
-                            <td className="px-4 py-3">
-                              {isPaid ? (
-                                <Badge className="gap-1 bg-green-100 text-green-800 border border-green-200 hover:bg-green-100">
-                                  <CheckCircle2 className="w-3 h-3" />
-                                  Paid
-                                </Badge>
+                            <td className="px-4 py-3 text-right tabular-nums">
+                              {player.paymentAmountDue != null ? (
+                                <span className="text-foreground font-medium">{formatCurrency(player.paymentAmountDue)}</span>
                               ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="gap-1 text-amber-700 border-amber-300 bg-amber-50"
-                                >
-                                  <XCircle className="w-3 h-3" />
-                                  Unpaid
-                                </Badge>
+                                <span className="text-muted-foreground text-xs">Not set</span>
                               )}
                             </td>
 
-                            {/* Due */}
-                            <td className="px-4 py-3 hidden md:table-cell tabular-nums">
-                              {dueAmount != null ? (
-                                <span className="text-foreground font-medium">
-                                  {formatCurrency(dueAmount)}
-                                </span>
-                              ) : (
-                                <span className="text-amber-600 text-xs">Not set</span>
-                              )}
-                            </td>
-
-                            {/* Paid */}
-                            <td className="px-4 py-3 hidden md:table-cell tabular-nums">
-                              {paidAmount != null && paidAmount > 0 ? (
-                                <span className="text-foreground">{formatCurrency(paidAmount)}</span>
+                            <td className="px-4 py-3 text-right tabular-nums">
+                              {player.paymentAmountPaid != null && player.paymentAmountPaid > 0 ? (
+                                <span className="text-emerald-700 font-bold">{formatCurrency(player.paymentAmountPaid)}</span>
                               ) : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
 
-                            {/* Payment date */}
-                            <td className="px-4 py-3 hidden lg:table-cell">
+                            <td className="px-4 py-3 hidden md:table-cell">
                               {player.paymentDate ? (
-                                <span className="text-foreground tabular-nums">
-                                  {formatDate(player.paymentDate)}
-                                </span>
+                                <span className="text-foreground tabular-nums">{formatPaymentDate(player.paymentDate)}</span>
                               ) : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
 
-                            {/* Reminded */}
+                            <td className="px-4 py-3">
+                              {player.feePaid ? (
+                                <Badge className="bg-emerald-100 text-emerald-800 border-0 shadow-none capitalize">Paid</Badge>
+                              ) : (
+                                <Badge className="bg-amber-100 text-amber-800 border-0 shadow-none capitalize">Unpaid</Badge>
+                              )}
+                            </td>
+
                             <td className="px-4 py-3 hidden lg:table-cell">
                               {player.feeReminderSentAt ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 whitespace-nowrap"
-                                >
+                                <Badge variant="secondary" className="gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 whitespace-nowrap">
                                   <Clock className="w-3 h-3" />
                                   {formatReminderDate(player.feeReminderSentAt)}
                                 </Badge>
@@ -608,27 +514,21 @@ export default function Fees() {
                               )}
                             </td>
 
-                            {/* Actions */}
-                            <td
-                              className="px-4 py-3 text-right whitespace-nowrap"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="flex items-center justify-end gap-1.5">
-                                {isUnpaid && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 px-2.5 text-xs border-green-300 text-green-700 hover:bg-green-50 hover:border-green-400 bg-white"
-                                    onClick={(e) => openMarkPaidModal(player, e)}
+                            <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                              <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {!player.feePaid && (
+                                  <button
+                                    onClick={() => openMarkAsPaidDialog(player)}
+                                    title="Mark as paid"
+                                    className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
                                   >
-                                    <Check className="w-3.5 h-3.5 mr-1" />
-                                    Mark as paid
-                                  </Button>
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
                                 )}
                                 <button
                                   onClick={() => openEditModal(player)}
-                                  className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-colors"
-                                  aria-label={`Edit fee details for ${player.name}`}
+                                  title="Edit fee details"
+                                  className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all"
                                 >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
@@ -646,152 +546,97 @@ export default function Fees() {
         </div>
       )}
 
-      {/* Edit Fee Modal */}
-      <Modal
-        isOpen={!!editingPlayer}
-        onClose={() => setEditingPlayer(null)}
-        title={editingPlayer ? `Fee details: ${editingPlayer.name}` : "Edit Fee"}
-      >
-        {editingPlayer && (
-          <form onSubmit={editForm.handleSubmit(onSubmitEdit)} className="space-y-4">
-            <label className="flex items-center gap-3 p-3 border border-border rounded-lg bg-muted/20 cursor-pointer">
-              <input
-                type="checkbox"
-                className="accent-primary w-4 h-4"
-                {...editForm.register("feePaid")}
-              />
-              <div>
-                <div className="text-sm font-semibold">Fee paid in full</div>
-                <div className="text-xs text-muted-foreground">
-                  Tick once the player's tournament contribution has been received.
-                </div>
-              </div>
-            </label>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Amount Due (HK$)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g. 3500"
-                  {...editForm.register("paymentAmountDue")}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Amount Paid (HK$)</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g. 3500"
-                  {...editForm.register("paymentAmountPaid")}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold">Payment Date</label>
-                <Input type="date" {...editForm.register("paymentDate")} />
-              </div>
-            </div>
-
-            <div className="pt-4 flex justify-end gap-3 border-t">
-              <Button type="button" variant="outline" onClick={() => setEditingPlayer(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={editForm.formState.isSubmitting}>
-                {editForm.formState.isSubmitting ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </form>
-        )}
+      {/* Mark as paid dialog */}
+      <Modal isOpen={markAsPaidDialog.isOpen} onClose={closeMarkAsPaidDialog} title="Mark fee as paid">
+        <div className="space-y-5">
+          {markAsPaidDialog.player && (
+            <p className="text-sm text-muted-foreground">
+              Recording payment for <strong className="text-foreground">{markAsPaidDialog.player.name}</strong>.
+            </p>
+          )}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Amount Received (HKD)</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={markAsPaidDialog.amount}
+              onChange={e => setMarkAsPaidDialog(prev => ({ ...prev, amount: e.target.value }))}
+              placeholder="0.00"
+              autoFocus
+            />
+            {markAsPaidDialog.player?.paymentAmountDue != null && (
+              <p className="text-xs text-muted-foreground">
+                Amount due on file: {formatCurrency(markAsPaidDialog.player.paymentAmountDue)}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Payment Date</label>
+            <Input
+              type="date"
+              value={markAsPaidDialog.paymentDate}
+              max={todayStr()}
+              onChange={e => setMarkAsPaidDialog(prev => ({ ...prev, paymentDate: e.target.value }))}
+            />
+            <p className="text-xs text-muted-foreground">Defaults to today.</p>
+          </div>
+          <div className="flex justify-end gap-3 pt-2 border-t border-border">
+            <Button type="button" variant="outline" onClick={closeMarkAsPaidDialog}>Cancel</Button>
+            <Button
+              type="button"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={confirmMarkAsPaid}
+              disabled={!markAsPaidDialog.paymentDate || !markAsPaidDialog.amount}
+            >
+              Confirm Payment
+            </Button>
+          </div>
+        </div>
       </Modal>
 
-      {/* Mark As Paid Modal */}
+      {/* Edit fee modal */}
       <Modal
-        isOpen={!!markingPaidPlayer}
-        onClose={() => setMarkingPaidPlayer(null)}
-        title={markingPaidPlayer ? `Mark as paid: ${markingPaidPlayer.name}` : "Mark as Paid"}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={editingPlayer ? `Fees: ${editingPlayer.name}` : "Edit Fees"}
       >
-        {markingPaidPlayer && (
-          <form onSubmit={markPaidForm.handleSubmit(onSubmitMarkPaid)} className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Confirm the amount received and the payment date. If the amount is less than the amount
-              due, the player will be recorded as a partial payment and remain Unpaid in summaries.
-            </p>
-            {markingPaidPlayer.paymentAmountDue != null && (
-              <div className="text-sm bg-muted/30 border border-border rounded-md px-3 py-2">
-                <span className="text-muted-foreground">Amount due on file: </span>
-                <span className="font-semibold">
-                  {formatCurrency(markingPaidPlayer.paymentAmountDue)}
-                </span>
-              </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Amount Received (HK$) *</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...markPaidForm.register("paymentAmountPaid")}
-                />
-                {markPaidForm.formState.errors.paymentAmountPaid && (
-                  <p className="text-xs text-destructive">
-                    {markPaidForm.formState.errors.paymentAmountPaid.message}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Payment Date *</label>
-                <Input type="date" {...markPaidForm.register("paymentDate")} />
-                {markPaidForm.formState.errors.paymentDate && (
-                  <p className="text-xs text-destructive">
-                    {markPaidForm.formState.errors.paymentDate.message}
-                  </p>
-                )}
-              </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Amount Due (HKD)</label>
+              <Input type="number" min="0" step="0.01" {...register("paymentAmountDue")} placeholder="0.00" />
             </div>
-            <div className="pt-4 flex justify-end gap-3 border-t">
-              <Button type="button" variant="outline" onClick={() => setMarkingPaidPlayer(null)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={markPaidForm.formState.isSubmitting}>
-                <Check className="w-4 h-4 mr-1.5" />
-                {markPaidForm.formState.isSubmitting ? "Saving..." : "Mark as paid"}
-              </Button>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Amount Paid (HKD)</label>
+              <Input type="number" min="0" step="0.01" {...register("paymentAmountPaid")} placeholder="0.00" />
             </div>
-          </form>
-        )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Payment Date</label>
+            <Input type="date" max={todayStr()} {...register("paymentDate")} />
+            {errors.paymentDate && <p className="text-xs text-destructive">{errors.paymentDate.message}</p>}
+          </div>
+
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input type="checkbox" {...register("feePaid")} className="accent-primary w-4 h-4" />
+            Mark fee as paid
+          </label>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Notes</label>
+            <Input {...register("notes")} placeholder="Bank transfer reference, instalment plan, etc." />
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 border-t">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save"}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </PageLayout>
-  )
-}
-
-function SummaryCard({
-  label,
-  value,
-  icon,
-  tone,
-}: {
-  label: string
-  value: string
-  icon: React.ReactNode
-  tone: "green" | "amber" | "neutral"
-}) {
-  const toneClass =
-    tone === "green"
-      ? "text-green-700 bg-green-50 border-green-200"
-      : tone === "amber"
-        ? "text-amber-700 bg-amber-50 border-amber-200"
-        : "text-foreground bg-muted/30 border-border"
-  return (
-    <div className={`rounded-xl border px-4 py-3 ${toneClass}`}>
-      <div className="flex items-center gap-2 text-xs uppercase tracking-wider font-semibold opacity-80">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-1 text-lg font-bold tabular-nums">{value}</div>
-    </div>
   )
 }

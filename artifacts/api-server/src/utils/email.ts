@@ -594,73 +594,87 @@ export async function sendFeeReminderEmail(opts: {
   const safeName = escapeHtml(opts.playerName);
   const safeTeam = escapeHtml(opts.teamName);
 
-  const formatCurrency = (n: number) =>
+  const formatAmount = (n: number) =>
     `HK$${n.toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 
-  const due = opts.amountDue ?? 0;
-  const paid = opts.amountPaid ?? 0;
-  const outstanding = Math.max(due - paid, 0);
+  const due = typeof opts.amountDue === "number" ? opts.amountDue : null;
+  const paid = typeof opts.amountPaid === "number" ? opts.amountPaid : 0;
+  const outstanding = due !== null ? Math.max(0, due - paid) : null;
 
-  const amountSection = due > 0
-    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-        <tr style="background-color:#f9fafb;">
-          <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:140px;">Amount due</td>
-          <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${formatCurrency(due)}</td>
-        </tr>
-        ${paid > 0 ? `<tr>
-          <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Already paid</td>
-          <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${formatCurrency(paid)}</td>
-        </tr>` : ""}
-        <tr style="background-color:#fff7ed;">
-          <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#9a3412;border-top:1px solid #e5e7eb;">Outstanding</td>
-          <td style="padding:10px 16px;font-size:15px;font-weight:700;color:#9a3412;border-top:1px solid #e5e7eb;">${formatCurrency(outstanding)}</td>
-        </tr>
-      </table>`
-    : "";
+  const amountRows: string[] = [];
+  if (due !== null) {
+    amountRows.push(
+      `<tr style="background-color:#f9fafb;">
+         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:160px;">Amount due</td>
+         <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${formatAmount(due)}</td>
+       </tr>`
+    );
+  }
+  if (paid > 0) {
+    amountRows.push(
+      `<tr>
+         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Already paid</td>
+         <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${formatAmount(paid)}</td>
+       </tr>`
+    );
+  }
+  if (outstanding !== null && outstanding > 0) {
+    amountRows.push(
+      `<tr style="background-color:#fef3c7;">
+         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Outstanding balance</td>
+         <td style="padding:10px 16px;font-size:14px;font-weight:700;color:#b45309;border-top:1px solid #e5e7eb;">${formatAmount(outstanding)}</td>
+       </tr>`
+    );
+  }
 
-  const amountText = due > 0
-    ? `Amount due: ${formatCurrency(due)}\n${paid > 0 ? `Already paid: ${formatCurrency(paid)}\n` : ""}Outstanding: ${formatCurrency(outstanding)}\n\n`
+  const amountTable = amountRows.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">${amountRows.join("")}</table>`
     : "";
 
   const html = emailShell(
     "#006B3C",
-    "Tournament fee outstanding",
+    "Tournament fee reminder",
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      A friendly reminder from <strong>${safeTeam}</strong>: our records show that your tournament contribution for the <strong>HK 2026 Masters World Cup</strong> is still outstanding.
+      We're writing on behalf of <strong>${safeTeam}</strong> regarding your tournament contribution for the <strong>HK 2026 Masters World Cup</strong>.
     </p>
-    ${amountSection}
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      Please arrange your payment at your earliest convenience so we can finalise team logistics, kit and accommodation. If you've already paid recently, please ignore this message — it may not have been recorded yet.
+      Our records show that your tournament fee has <strong>not yet been received</strong>. With the tournament approaching, please arrange your payment as soon as possible so we can finalise team logistics and bookings.
+    </p>
+    ${amountTable}
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Please contact your team manager for bank transfer details, or reply to this email if you've already paid and we'll update our records.
     </p>
     <p style="margin:0 0 24px 0;text-align:center;">
-      <a href="mailto:${ADMIN_EMAIL}?subject=Tournament%20fee%20payment%20-%20HK%202026%20Masters%20World%20Cup" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Contact team manager</a>
-    </p>
-    <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
-      Tournament info: <a href="${PUBLIC_URL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${PUBLIC_URL}</a>
+      <a href="mailto:${ADMIN_EMAIL}?subject=HK%202026%20Masters%20World%20Cup%20fee%20payment" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Get in touch about my fee</a>
     </p>
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
-      Thanks for getting this sorted — we can't wait to see you in the Netherlands!
+      Thank you for your support — we look forward to seeing you in the Netherlands!
     </p>`
   );
 
+  const amountText: string[] = [];
+  if (due !== null) amountText.push(`Amount due: ${formatAmount(due)}`);
+  if (paid > 0) amountText.push(`Already paid: ${formatAmount(paid)}`);
+  if (outstanding !== null && outstanding > 0) amountText.push(`Outstanding balance: ${formatAmount(outstanding)}`);
+
   const text = `Hi ${opts.playerName},
 
-A friendly reminder from ${opts.teamName}: our records show that your tournament contribution for the HK 2026 Masters World Cup is still outstanding.
+We're writing on behalf of ${opts.teamName} regarding your tournament contribution for the HK 2026 Masters World Cup.
 
-${amountText}Please arrange your payment at your earliest convenience so we can finalise team logistics, kit and accommodation. If you've already paid recently, please ignore this message — it may not have been recorded yet.
+Our records show that your tournament fee has not yet been received. With the tournament approaching, please arrange your payment as soon as possible so we can finalise team logistics and bookings.
+${amountText.length > 0 ? `\n${amountText.join("\n")}\n` : ""}
+Please contact your team manager for bank transfer details, or reply to this email if you've already paid and we'll update our records.
 
-Reply to this email or contact us at ${ADMIN_EMAIL} to arrange payment.
+Get in touch: ${ADMIN_EMAIL}
 
-Tournament info: ${PUBLIC_URL}
-
-Thanks for getting this sorted — we can't wait to see you in the Netherlands!
+Thank you for your support — we look forward to seeing you in the Netherlands!
 
 The HK Masters Hockey Team`;
 
   return sendEmail({
     to: opts.playerEmail,
-    subject: `[Action Required] Tournament fee outstanding – HK 2026 Masters World Cup`,
+    subject: `[Action Required] Tournament fee reminder – HK 2026 Masters World Cup`,
     html,
     text,
   });

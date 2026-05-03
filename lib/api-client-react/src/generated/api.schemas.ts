@@ -21,7 +21,7 @@ export interface TravelReminderResult {
 }
 
 export interface SendFeeRemindersBody {
-  /** Specific player IDs to email. If omitted, emails all unpaid players. */
+  /** Specific player IDs to email. If omitted, emails all players whose fee is unpaid. */
   playerIds?: number[];
 }
 
@@ -48,12 +48,6 @@ export type DashboardStatsUpcomingDeadlinesItem = {
 
 export interface DashboardStats {
   totalPlayers: number;
-  playersPaidCount: number;
-  feesAmountDue: number;
-  feesAmountPaid: number;
-  feesAmountOutstanding: number;
-  upcomingMatchCount: number;
-  nextMatchKickoffAt?: string | null;
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
@@ -467,10 +461,6 @@ export type ListPlayersParams = {
 
 export type GetPlayerAccessToken200 = {
   accessToken: string | null;
-};
-
-export type RotatePlayerAccessToken200 = {
-  accessToken: string;
 };
 
 export type ListKitsParams = {

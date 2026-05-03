@@ -19,12 +19,6 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetDashboardResponse = zod.object({
   totalPlayers: zod.number(),
-  playersPaidCount: zod.number(),
-  feesAmountDue: zod.number(),
-  feesAmountPaid: zod.number(),
-  feesAmountOutstanding: zod.number(),
-  upcomingMatchCount: zod.number(),
-  nextMatchKickoffAt: zod.string().nullish(),
   teamStats: zod.array(
     zod.object({
       teamId: zod.number(),
@@ -224,14 +218,14 @@ export const SendTravelRemindersResponse = zod.object({
 });
 
 /**
- * @summary Send fee reminder emails to players who have not paid their tournament fee
+ * @summary Send fee reminder emails to players who haven't paid yet
  */
 export const SendFeeRemindersBody = zod.object({
   playerIds: zod
     .array(zod.number())
     .optional()
     .describe(
-      "Specific player IDs to email. If omitted, emails all unpaid players.",
+      "Specific player IDs to email. If omitted, emails all players whose fee is unpaid.",
     ),
 });
 
@@ -333,17 +327,6 @@ export const GetPlayerAccessTokenParams = zod.object({
 
 export const GetPlayerAccessTokenResponse = zod.object({
   accessToken: zod.string().nullable(),
-});
-
-/**
- * @summary Rotate a player's self-service access token (admin only). Invalidates the previous token.
- */
-export const RotatePlayerAccessTokenParams = zod.object({
-  id: zod.coerce.number(),
-});
-
-export const RotatePlayerAccessTokenResponse = zod.object({
-  accessToken: zod.string(),
 });
 
 /**
