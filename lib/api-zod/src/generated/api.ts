@@ -19,6 +19,10 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetDashboardResponse = zod.object({
   totalPlayers: zod.number(),
+  playersPaidCount: zod.number(),
+  feesAmountDue: zod.number(),
+  feesAmountPaid: zod.number(),
+  feesAmountOutstanding: zod.number(),
   teamStats: zod.array(
     zod.object({
       teamId: zod.number(),

@@ -8,8 +8,10 @@ const router = Router();
 router.get("/", async (_req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
 
-  const teamStats = await Promise.all(teams.map(async (team) => {
-    const players = await db.select().from(playersTable).where(eq(playersTable.teamId, team.id));
+  const allPlayers = await db.select().from(playersTable);
+
+  const teamStats = teams.map((team) => {
+    const players = allPlayers.filter((p) => p.teamId === team.id);
     const feesPaid = players.filter((p) => p.feePaid).length;
     const feesOutstanding = players.filter((p) => !p.feePaid).length;
     return {
@@ -20,9 +22,17 @@ router.get("/", async (_req, res) => {
       feesPaid,
       feesOutstanding,
     };
-  }));
+  });
 
   const totalPlayers = teamStats.reduce((sum, t) => sum + t.playerCount, 0);
+  const playersPaidCount = allPlayers.filter((p) => p.feePaid).length;
+  const feesAmountDue = allPlayers.reduce((sum, p) => sum + parseFloat(p.paymentAmountDue ?? "0"), 0);
+  const feesAmountPaid = allPlayers.reduce((sum, p) => sum + parseFloat(p.paymentAmountPaid ?? "0"), 0);
+  const feesAmountOutstanding = allPlayers.reduce((sum, p) => {
+    const due = parseFloat(p.paymentAmountDue ?? "0");
+    const paid = parseFloat(p.paymentAmountPaid ?? "0");
+    return sum + Math.max(0, due - paid);
+  }, 0);
 
   const fundraisingRows = await db.select().from(fundraisingTable);
   const totalFundsRaised = fundraisingRows.reduce((sum, f) => sum + parseFloat(f.amountReceived ?? "0"), 0);
@@ -46,6 +56,10 @@ router.get("/", async (_req, res) => {
 
   res.json({
     totalPlayers,
+    playersPaidCount,
+    feesAmountDue,
+    feesAmountPaid,
+    feesAmountOutstanding,
     teamStats,
     totalFundsRaised,
     fundraisingTarget,

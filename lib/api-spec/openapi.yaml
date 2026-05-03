@@ -744,6 +744,14 @@ components:
       properties:
         totalPlayers:
           type: integer
+        playersPaidCount:
+          type: integer
+        feesAmountDue:
+          type: number
+        feesAmountPaid:
+          type: number
+        feesAmountOutstanding:
+          type: number
         teamStats:
           type: array
           items:
@@ -789,6 +797,10 @@ components:
               - category
       required:
         - totalPlayers
+        - playersPaidCount
+        - feesAmountDue
+        - feesAmountPaid
+        - feesAmountOutstanding
         - teamStats
         - totalFundsRaised
         - fundraisingTarget

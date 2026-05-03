@@ -2,6 +2,13 @@ import { useGetDashboard } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+
+const hkdPrecise = new Intl.NumberFormat("en-HK", {
+  style: "currency",
+  currency: "HKD",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
 import { format, parseISO } from "date-fns"
 import { useLocation } from "wouter"
 
@@ -62,10 +69,13 @@ export default function Dashboard() {
           clickable
         />
         <StatCard 
-          title="Total Outstanding" 
-          value={formatCurrency(stats.teamStats.reduce((sum, t) => sum + t.feesOutstanding, 0))} 
+          title="Fees Outstanding" 
+          value={hkdPrecise.format(stats.feesAmountOutstanding)} 
           icon={<DollarSign className="w-6 h-6 text-rose-500" />}
-          trend="Player fees remaining"
+          trend={`${stats.playersPaidCount} of ${stats.totalPlayers} players paid`}
+          onClick={() => navigate("/fees")}
+          clickable
+          clickableLabel="View Fees"
         />
       </div>
 
@@ -185,10 +195,10 @@ export default function Dashboard() {
 }
 
 function StatCard({ 
-  title, value, icon, trend, onClick, clickable 
+  title, value, icon, trend, onClick, clickable, clickableLabel
 }: { 
   title: string; value: string; icon: React.ReactNode; trend: string; 
-  onClick?: () => void; clickable?: boolean 
+  onClick?: () => void; clickable?: boolean; clickableLabel?: string
 }) {
   const Component = clickable ? 'button' : 'div'
   return (
@@ -209,7 +219,7 @@ function StatCard({
         <p className="text-sm text-muted-foreground mt-1">{trend}</p>
         {clickable && (
           <p className="text-xs text-primary font-medium mt-2 flex items-center gap-1">
-            View Logistics <ArrowRight className="w-3 h-3" />
+            {clickableLabel ?? "View Logistics"} <ArrowRight className="w-3 h-3" />
           </p>
         )}
       </div>

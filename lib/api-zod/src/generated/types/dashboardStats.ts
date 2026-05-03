@@ -10,6 +10,10 @@ import type { DashboardStatsUpcomingDeadlinesItem } from "./dashboardStatsUpcomi
 
 export interface DashboardStats {
   totalPlayers: number;
+  playersPaidCount: number;
+  feesAmountDue: number;
+  feesAmountPaid: number;
+  feesAmountOutstanding: number;
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
