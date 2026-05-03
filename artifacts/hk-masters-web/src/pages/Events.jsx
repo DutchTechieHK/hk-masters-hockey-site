@@ -4,15 +4,17 @@ import RichText from "../components/RichText";
 import SponsorStrip from "../components/SponsorStrip";
 import { API_BASE } from "../utils/api";
 
+// ─── Timezone helpers ────────────────────────────────────────────────────────
+
 const ROTTERDAM_TZ = "Europe/Amsterdam";
 
 function rotterdamDateKey(iso) {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
 }
 
-function formatDayHeading(iso) {
+function formatDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long",
+    weekday: "short", day: "numeric", month: "short",
     timeZone: ROTTERDAM_TZ,
   });
 }
@@ -36,84 +38,115 @@ function formatTimeRange(startIso, endIso) {
   return `${start} – ${endLabel} ${formatTime(endIso)}`;
 }
 
-const KIND_BADGE = {
-  meeting: "bg-blue-100 text-blue-800",
-  social:  "bg-amber-100 text-amber-800",
-  training:"bg-emerald-100 text-emerald-800",
-};
-const KIND_LABEL = {
-  meeting:  "Programme",
-  social:   "Social",
-  training: "Training",
-};
-
-function EventCard({ event }) {
-  const badgeColour = KIND_BADGE[event.kind] || "bg-gray-100 text-gray-700";
-  const label = KIND_LABEL[event.kind] || "Event";
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 hover:shadow-md transition-shadow">
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded ${badgeColour}`}>
-          {label}
-        </span>
-        <span className="text-xs font-medium text-gray-500">
-          {formatTimeRange(event.startsAt, event.endsAt)}
-        </span>
-      </div>
-      <h4 className="font-bold text-gray-900 text-lg leading-snug">{event.title}</h4>
-      {event.location && (
-        <p className="text-sm text-gray-500 mt-1.5 flex items-center gap-1">
-          <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>{event.location}</span>
-        </p>
-      )}
-      {event.description && (
-        <p className="text-sm text-gray-600 mt-2 leading-relaxed">{event.description}</p>
-      )}
-    </div>
-  );
-}
-
-function groupByDay(list) {
-  const groups = new Map();
-  for (const e of list) {
-    const key = rotterdamDateKey(e.startsAt);
-    if (!groups.has(key)) groups.set(key, { date: e.startsAt, items: [] });
-    groups.get(key).items.push(e);
-  }
-  return Array.from(groups.values());
-}
-
-// Rotterdam tournament window — 21 Jul to 1 Aug 2026 inclusive (Rotterdam time)
+// Rotterdam tournament window: 21 Jul – 1 Aug 2026
 const RTM_START = "2026-07-21";
 const RTM_END   = "2026-08-01";
+const TOURNAMENT_DATE = new Date("2026-07-22T09:00:00+02:00");
 
 function isRotterdamEvent(e) {
   const key = rotterdamDateKey(e.startsAt);
   return key >= RTM_START && key <= RTM_END;
 }
 
-function DayGroup({ group, headingColour = "text-[#006B3C]" }) {
+// ─── Kind metadata ───────────────────────────────────────────────────────────
+
+const KIND_META = {
+  training: {
+    label: "Training",
+    badge: "bg-emerald-100 text-emerald-800",
+    // Green turf with ball — training/sports
+    photo: "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=600&q=75",
+  },
+  meeting: {
+    label: "Programme",
+    badge: "bg-blue-100 text-blue-800",
+    // Stadium lit up at night with floodlights — World Cup tournament feel
+    photo: "https://images.unsplash.com/photo-1607627000458-210e8d2bdb1d?w=600&q=75",
+  },
+  social: {
+    label: "Social",
+    badge: "bg-amber-100 text-amber-800",
+    // Team social/celebration
+    photo: "https://images.unsplash.com/photo-1519671482749-fd09be7ccebf?w=600&q=75",
+  },
+};
+
+function kindMeta(kind) {
+  return KIND_META[kind] ?? { label: "Event", badge: "bg-gray-100 text-gray-700", photo: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=600&q=75" };
+}
+
+// ─── Journey strip countdown ──────────────────────────────────────────────────
+
+function useDaysUntil(target) {
+  const calc = () => Math.max(0, Math.ceil((target.getTime() - Date.now()) / 86400000));
+  const [days, setDays] = useState(calc);
+  useEffect(() => {
+    const id = setInterval(() => setDays(calc()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  return days;
+}
+
+// ─── Event card ───────────────────────────────────────────────────────────────
+
+function EventCard({ event, muted = false }) {
+  const meta = kindMeta(event.kind);
   return (
-    <div>
-      <h3 className={`text-sm font-bold uppercase tracking-wide mb-4 ${headingColour}`}>
-        {formatDayHeading(group.date)}
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {group.items.map((e) => (
-          <EventCard key={e.id} event={e} />
-        ))}
+    <div className={`bg-white rounded-2xl overflow-hidden border shadow-sm transition-all duration-200 group ${
+      muted ? "border-gray-100 opacity-70 hover:opacity-90" : "border-gray-100 hover:shadow-xl hover:-translate-y-0.5"
+    }`}>
+      {/* Photo */}
+      <div className="relative h-40 overflow-hidden">
+        <img
+          src={meta.photo}
+          alt={meta.label}
+          className={`w-full h-full object-cover transition-transform duration-500 ${muted ? "grayscale" : "group-hover:scale-105"}`}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+        <span className={`absolute top-3 left-3 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${meta.badge}`}>
+          {meta.label}
+        </span>
+        {muted && (
+          <span className="absolute top-3 right-3 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+            Past
+          </span>
+        )}
+      </div>
+      {/* Body */}
+      <div className="p-4">
+        <div className="flex items-center gap-2 mb-1.5 text-xs text-gray-500">
+          <span className="font-semibold">{formatDate(event.startsAt)}</span>
+          <span className="text-gray-200">·</span>
+          <span className="font-mono">{formatTimeRange(event.startsAt, event.endsAt)}</span>
+        </div>
+        <h3 className="font-bold text-gray-900 leading-snug mb-1.5">{event.title}</h3>
+        {event.location && (
+          <p className="flex items-center gap-1 text-xs text-gray-400">
+            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {event.location}
+          </p>
+        )}
+        {event.description && (
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{event.description}</p>
+        )}
       </div>
     </div>
   );
 }
 
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+const TABS = ["All", "Training", "Programme", "Social"];
+
 export default function Events() {
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("All");
+  const daysUntil = useDaysUntil(TOURNAMENT_DATE);
+  const tournamentPast = daysUntil === 0;
 
   useEffect(() => {
     fetch(`${API_BASE}/api/events/public`)
@@ -128,108 +161,146 @@ export default function Events() {
   const upcoming = sorted.filter((e) => new Date(e.endsAt || e.startsAt) >= now);
   const past     = sorted.filter((e) => new Date(e.endsAt || e.startsAt) < now).reverse();
 
-  // Split upcoming into HK club events and Rotterdam tournament programme
-  const hkEvents  = upcoming.filter((e) => !isRotterdamEvent(e));
-  const rtmEvents = upcoming.filter((e) =>  isRotterdamEvent(e));
+  // Filter by active tab (tab maps to kind label)
+  function matchesTab(e) {
+    if (tab === "All") return true;
+    return kindMeta(e.kind).label === tab;
+  }
 
-  const hkGroups  = groupByDay(hkEvents);
-  const rtmGroups = groupByDay(rtmEvents);
-  const pastGroups = groupByDay(past);
+  const visibleUpcoming = upcoming.filter(matchesTab);
+  const visiblePast     = past.filter(matchesTab);
+
+  // Count per tab
+  const tabCount = (t) => t === "All" ? upcoming.length : upcoming.filter(e => kindMeta(e.kind).label === t).length;
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="bg-[#006B3C] text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
+
+      {/* ── HERO: Rotterdam photo + title ── */}
+      <div className="relative overflow-hidden" style={{ minHeight: 300 }}>
+        <img
+          src="https://images.unsplash.com/photo-1467803738586-46b7eb7b16a1?w=1400&q=80"
+          alt="Rotterdam"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ filter: "brightness(0.8)" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#003d22]/80 via-[#006B3C]/60 to-[#005a2e]/95" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-10">
+          <span className="inline-block bg-[#DE2910] text-white text-[11px] font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
             Rotterdam 2026
           </span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Events</h1>
-          <p className="text-green-200 text-lg max-w-2xl">
+          <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-2 leading-none">Events</h1>
+          <p className="text-green-200 text-lg max-w-xl">
             The full tournament programme, club events, and social nights — all in one place.
           </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-20">
+      {/* ── JOURNEY STRIP (hidden after tournament) ── */}
+      {!tournamentPast && (
+        <div className="bg-[#005a2e] border-t border-white/10">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center">
+            <div className="flex flex-col items-center shrink-0">
+              <span className="text-2xl mb-0.5">🇭🇰</span>
+              <span className="text-white text-[11px] font-bold uppercase tracking-wide">Hong Kong</span>
+              <span className="text-green-400 text-[10px]">Training</span>
+            </div>
+
+            <div className="flex-1 flex items-center mx-4">
+              <div className="flex-1 border-t-2 border-dashed border-white/20" />
+              <div className="mx-3 bg-white/10 border border-white/20 rounded-xl px-5 py-2.5 flex items-center gap-3 shrink-0">
+                <svg className="w-4 h-4 text-green-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <div className="flex flex-col items-center">
+                  <span className="text-2xl font-black text-white tabular-nums leading-none">{daysUntil}</span>
+                  <span className="text-[9px] text-green-300 uppercase tracking-widest leading-none mt-0.5">days to go</span>
+                </div>
+              </div>
+              <div className="flex-1 border-t-2 border-dashed border-white/20" />
+            </div>
+
+            <div className="flex flex-col items-center shrink-0">
+              <span className="text-2xl mb-0.5">🇳🇱</span>
+              <span className="text-white text-[11px] font-bold uppercase tracking-wide">Rotterdam</span>
+              <span className="text-green-400 text-[10px]">22 Jul – 1 Aug</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── FILTER TABS ── */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1 overflow-x-auto">
+          {TABS.map((t) => {
+            const count = tabCount(t);
+            if (t !== "All" && count === 0) return null;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex items-center gap-1.5 px-5 py-3.5 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors shrink-0 ${
+                  tab === t ? "border-[#006B3C] text-[#006B3C]" : "border-transparent text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                {t}
+                {t !== "All" && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                    tab === t ? "bg-[#006B3C] text-white" : "bg-gray-100 text-gray-500"
+                  }`}>{count}</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── CONTENT ── */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
         {loading && (
-          <div className="text-center py-10 text-gray-400">Loading events…</div>
+          <div className="text-center py-20 text-gray-400">Loading events…</div>
         )}
 
-        {/* Hong Kong Events */}
-        {!loading && hkGroups.length > 0 && (
+        {/* Upcoming events */}
+        {!loading && visibleUpcoming.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+            {visibleUpcoming.map((e) => (
+              <EventCard key={e.id} event={e} />
+            ))}
+          </div>
+        )}
+
+        {/* No upcoming events message */}
+        {!loading && upcoming.length === 0 && (
+          <div className="bg-gray-50 rounded-2xl p-12 text-center mb-16">
+            <p className="text-gray-500 font-medium">No upcoming events</p>
+            <p className="text-sm text-gray-400 mt-1">Events will appear here once published.</p>
+          </div>
+        )}
+
+        {/* Past events */}
+        {!loading && visiblePast.length > 0 && (
           <section>
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-2xl font-bold text-gray-900">Hong Kong Events</h2>
-              <span className="bg-[#DE2910] text-white text-xs font-bold px-2.5 py-1 rounded-full">
-                {hkEvents.length}
-              </span>
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Past Events</h2>
+              <div className="flex-1 h-px bg-gray-200" />
             </div>
-            <p className="text-sm text-gray-500 mb-6">Training sessions, fundraisers, and social events in Hong Kong.</p>
-            <div className="space-y-10">
-              {hkGroups.map((g) => (
-                <DayGroup key={g.date} group={g} headingColour="text-[#DE2910]" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+              {visiblePast.map((e) => (
+                <EventCard key={e.id} event={e} muted />
               ))}
             </div>
           </section>
         )}
 
-        {/* Rotterdam 2026 Programme */}
-        {!loading && (rtmGroups.length > 0 || hkGroups.length === 0) && (
-          <section>
-            {/* Section banner */}
-            <div className="rounded-2xl bg-[#006B3C] text-white px-6 py-5 mb-8 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">
-                    22 Jul – 1 Aug 2026
-                  </span>
-                  <span className="text-green-300 text-xs">All times Rotterdam local (CEST)</span>
-                </div>
-                <h2 className="text-2xl font-extrabold leading-none">Rotterdam 2026 Programme</h2>
-                <p className="text-green-200 text-sm mt-1">
-                  World Masters Hockey Cup · HC Rotterdam, Netherlands
-                </p>
-              </div>
-              {rtmGroups.length > 0 && (
-                <span className="self-start sm:self-auto bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
-                  {rtmEvents.length} event{rtmEvents.length !== 1 ? "s" : ""}
-                </span>
-              )}
-            </div>
-
-            {rtmGroups.length === 0 ? (
-              <div className="bg-gray-50 rounded-2xl p-10 text-center">
-                <p className="text-gray-500 font-medium">Programme coming soon</p>
-                <p className="text-sm text-gray-400 mt-1">Tournament events will appear here once published.</p>
-              </div>
-            ) : (
-              <div className="space-y-10">
-                {rtmGroups.map((g) => (
-                  <DayGroup key={g.date} group={g} headingColour="text-[#006B3C]" />
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* Past Events */}
-        {!loading && pastGroups.length > 0 && (
-          <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Past Events</h2>
-            <div className="space-y-10">
-              {pastGroups.map((g) => (
-                <DayGroup key={g.date} group={g} headingColour="text-gray-400" />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Tournament Archive (static — historical records) */}
+        {/* Tournament Archive */}
         {content.tournament_archive.length > 0 && (
           <section>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Tournament Archive</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Tournament Archive</h2>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
             <p className="text-sm text-gray-500 mb-6">Historical records from past tournaments.</p>
             <div className="space-y-4">
               {content.tournament_archive.map((tournament) => (
@@ -255,12 +326,8 @@ export default function Events() {
                     <RichText content={tournament.description} className="text-gray-600 text-sm leading-relaxed mb-4" />
                     <div className="flex flex-wrap gap-3">
                       {tournament.notion_url && (
-                        <a
-                          href={tournament.notion_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 bg-[#006B3C] text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors duration-150 text-sm"
-                        >
+                        <a href={tournament.notion_url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 bg-[#006B3C] text-white font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 transition-colors text-sm">
                           View Tournament Site
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -268,12 +335,8 @@ export default function Events() {
                         </a>
                       )}
                       {tournament.result_url && (
-                        <a
-                          href={tournament.result_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 border border-[#006B3C] text-[#006B3C] font-semibold px-5 py-2.5 rounded-lg hover:bg-[#006B3C]/5 transition-colors duration-150 text-sm"
-                        >
+                        <a href={tournament.result_url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 border border-[#006B3C] text-[#006B3C] font-semibold px-5 py-2.5 rounded-lg hover:bg-[#006B3C]/5 transition-colors text-sm">
                           View Results
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
