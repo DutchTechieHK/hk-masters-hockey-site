@@ -14,6 +14,7 @@ import matchesRouter from "./matches";
 import publicSquadRouter from "./publicSquad";
 import playerAuthRouter from "./playerAuth";
 import eventsRouter from "./events";
+import announcementsRouter from "./announcements";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use("/matches", matchesRouter);
 router.use("/public", publicSquadRouter);
 router.use("/player-auth", playerAuthRouter);
 router.use("/events", eventsRouter);
+router.use("/announcements", announcementsRouter);
 
 export default router;

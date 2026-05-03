@@ -15,6 +15,7 @@ import Travel from "@/pages/Travel";
 import Sponsors from "@/pages/Sponsors";
 import Schedule from "@/pages/Schedule";
 import Events from "@/pages/Events";
+import Announcements from "@/pages/Announcements";
 import { Redirect } from "wouter";
 import Readiness from "@/pages/Readiness";
 import NotFound from "@/pages/not-found";
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/matches" component={Schedule} />
       <Route path="/schedule">{() => <Redirect to="/matches" />}</Route>
       <Route path="/events" component={Events} />
+      <Route path="/announcements" component={Announcements} />
       <Route path="/readiness" component={Readiness} />
       <Route component={NotFound} />
     </Switch>

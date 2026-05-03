@@ -6,7 +6,7 @@ const CARDS = [
   { key: "fees", title: "My fees", desc: "Your tournament fee balance and payment history.", emoji: "💳", to: "fees" },
   { key: "travel", title: "My travel", desc: "Flights, arrival, hotel and transfers.", emoji: "✈️", to: "travel" },
   { key: "schedule", title: "My schedule", desc: "Training, meetings and team events with calendar download.", emoji: "📅", to: "schedule" },
-  { key: "announcements", title: "Announcements", desc: "Latest news from the team and tournament.", emoji: "📣", to: null },
+  { key: "announcements", title: "Announcements", desc: "Latest news from the team and tournament.", emoji: "📣", to: "announcements" },
   { key: "profile", title: "My profile", desc: "Passport, kit sizes, dietary needs, emergency contact.", emoji: "👤", to: "profile" },
 ];
 
@@ -120,9 +120,6 @@ export default function Dashboard() {
           })}
         </div>
 
-        <p className="mt-10 text-center text-xs text-gray-400">
-          More features (announcements) are on the way.
-        </p>
       </div>
     </div>
   );
