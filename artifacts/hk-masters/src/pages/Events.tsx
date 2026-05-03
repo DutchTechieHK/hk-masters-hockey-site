@@ -448,24 +448,10 @@ export default function Events() {
               className="mt-0.5 h-4 w-4 rounded border-border text-[#006B3C] focus:ring-[#006B3C]"
               checked={form.isPublic}
               onChange={(e) => {
-                const nextPublic = e.target.checked
-                // Re-interpret the displayed times so the underlying instant is preserved
-                // when toggling between browser-local and Rotterdam-local input.
-                const convert = (val: string): string => {
-                  if (!val) return val
-                  const instantIso = nextPublic
-                    ? new Date(val).toISOString() // was local, becomes Rotterdam: show Rotterdam wall for same instant
-                    : zoneInputToIso(val, ROTTERDAM_TZ) // was Rotterdam, becomes local: show local wall for same instant
-                  return nextPublic
-                    ? toZoneInputValue(instantIso, ROTTERDAM_TZ)
-                    : toLocalInputValue(instantIso)
-                }
-                setForm({
-                  ...form,
-                  isPublic: nextPublic,
-                  startsAt: convert(form.startsAt),
-                  endsAt: convert(form.endsAt),
-                })
+                // Don't touch the typed time values — just change the interpretation.
+                // The label updates to show whether the time is read as browser-local
+                // or Rotterdam-local, so what you see is what gets saved.
+                setForm({ ...form, isPublic: e.target.checked })
               }}
             />
             <div className="text-sm">
