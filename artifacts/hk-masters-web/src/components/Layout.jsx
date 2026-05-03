@@ -12,12 +12,29 @@ const NAV_LINKS = [
   { href: "/journal", label: "Journal" },
   { href: "/media", label: "Media" },
   { href: "/sponsors", label: "Sponsors" },
+  { href: "/support", label: "Support", cta: true },
   { href: "/contact", label: "Contact" },
 ];
 
-function NavLink({ href, label, onClick }) {
+function NavLink({ href, label, onClick, cta }) {
   const [location] = useLocation();
   const isActive = location === href || (href !== "/" && location.startsWith(href));
+
+  if (cta) {
+    return (
+      <Link
+        href={href}
+        onClick={onClick}
+        className={`inline-flex items-center text-base font-bold px-4 py-2 rounded-lg transition-colors duration-150 ${
+          isActive
+            ? "bg-red-700 text-white"
+            : "bg-[#DE2910] text-white hover:bg-red-700"
+        }`}
+      >
+        {label}
+      </Link>
+    );
+  }
 
   return (
     <Link
@@ -59,7 +76,7 @@ export default function Layout({ children }) {
             {/* Desktop Nav */}
             <div className="hidden lg:flex items-center gap-6">
               {NAV_LINKS.map((link) => (
-                <NavLink key={link.href} href={link.href} label={link.label} />
+                <NavLink key={link.href} href={link.href} label={link.label} cta={link.cta} />
               ))}
             </div>
 
@@ -88,6 +105,7 @@ export default function Layout({ children }) {
                     key={link.href}
                     href={link.href}
                     label={link.label}
+                    cta={link.cta}
                     onClick={() => setMenuOpen(false)}
                   />
                 ))}

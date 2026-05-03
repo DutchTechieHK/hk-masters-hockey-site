@@ -11,6 +11,7 @@ import Journal from "./pages/Journal";
 import JournalArticle from "./pages/JournalArticle";
 import Media from "./pages/Media";
 import Sponsors from "./pages/Sponsors";
+import Support from "./pages/Support";
 import Contact from "./pages/Contact";
 import SubmissionStatus from "./pages/SubmissionStatus";
 import MyDetails from "./pages/MyDetails";
@@ -38,6 +39,7 @@ function Router() {
         <Route path="/journal" component={Journal} />
         <Route path="/media" component={Media} />
         <Route path="/sponsors" component={Sponsors} />
+        <Route path="/support" component={Support} />
         <Route path="/contact" component={Contact} />
         <Route path="/my-submission" component={SubmissionStatus} />
         <Route path="/my-details/:token" component={MyDetails} />
