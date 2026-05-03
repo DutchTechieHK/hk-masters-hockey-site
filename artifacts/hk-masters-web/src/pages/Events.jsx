@@ -6,72 +6,95 @@ import { API_BASE } from "../utils/api";
 
 // ─── Timezone helpers ────────────────────────────────────────────────────────
 
-const ROTTERDAM_TZ = "Europe/Amsterdam";
+const HK_TZ         = "Asia/Hong_Kong";
+const ROTTERDAM_TZ  = "Europe/Amsterdam";
 
-function rotterdamDateKey(iso) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
+// Midnight HKT on the first Rotterdam match day
+const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime();
+
+// HK events → HKT (UTC+8).  Rotterdam events → CEST (UTC+2).
+function eventTz(event) {
+  return new Date(event.startsAt).getTime() >= RTM_START_EPOCH
+    ? ROTTERDAM_TZ
+    : HK_TZ;
 }
 
-function formatDate(iso) {
+function formatDate(iso, tz) {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
-    timeZone: ROTTERDAM_TZ,
+    timeZone: tz,
   });
 }
 
-function formatTime(iso) {
+function formatTime(iso, tz) {
   return new Date(iso).toLocaleTimeString("en-GB", {
     hour: "2-digit", minute: "2-digit", hour12: false,
-    timeZone: ROTTERDAM_TZ,
+    timeZone: tz,
   });
 }
 
-function formatTimeRange(startIso, endIso) {
-  const start = formatTime(startIso);
+function formatTimeRange(startIso, endIso, tz) {
+  const start = formatTime(startIso, tz);
   if (!endIso) return start;
-  if (rotterdamDateKey(startIso) === rotterdamDateKey(endIso)) {
-    return `${start} – ${formatTime(endIso)}`;
-  }
+  const startKey = new Date(startIso).toLocaleDateString("en-CA", { timeZone: tz });
+  const endKey   = new Date(endIso).toLocaleDateString("en-CA", { timeZone: tz });
+  if (startKey === endKey) return `${start} – ${formatTime(endIso, tz)}`;
   const endLabel = new Date(endIso).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", timeZone: ROTTERDAM_TZ,
+    day: "numeric", month: "short", timeZone: tz,
   });
-  return `${start} – ${endLabel} ${formatTime(endIso)}`;
+  return `${start} – ${endLabel} ${formatTime(endIso, tz)}`;
 }
 
 // Rotterdam tournament window: 21 Jul – 1 Aug 2026
-const RTM_START = "2026-07-21";
-const RTM_END   = "2026-08-01";
 const TOURNAMENT_DATE = new Date("2026-07-22T09:00:00+02:00");
 
 function isRotterdamEvent(e) {
-  const key = rotterdamDateKey(e.startsAt);
-  return key >= RTM_START && key <= RTM_END;
+  return new Date(e.startsAt).getTime() >= RTM_START_EPOCH;
 }
 
 // ─── Kind metadata ───────────────────────────────────────────────────────────
 
 const BASE = import.meta.env.BASE_URL;
 
+// ─── Per-kind photo pools ─────────────────────────────────────────────────────
+// Replace placeholder URLs with your Cloudinary URLs.
+// Add as many as you like — events rotate through them automatically.
+
 const KIND_META = {
   training: {
     label: "Training",
     badge: "bg-emerald-100 text-emerald-800",
-    photo: `${BASE}images/field-hockey-training.png`,
+    photos: [
+      // ── paste Cloudinary training photo URLs here ──
+      `${BASE}images/field-hockey-training.png`,
+    ],
   },
   meeting: {
     label: "Programme",
     badge: "bg-blue-100 text-blue-800",
-    photo: `${BASE}images/programme-event.png`,
+    photos: [
+      // ── paste Cloudinary programme photo URLs here ──
+      `${BASE}images/programme-event.png`,
+    ],
   },
   social: {
     label: "Social",
     badge: "bg-amber-100 text-amber-800",
-    photo: `${BASE}images/social-event.png`,
+    photos: [
+      // ── paste Cloudinary social photo URLs here ──
+      `${BASE}images/social-event.png`,
+    ],
   },
 };
 
-function kindMeta(kind) {
-  return KIND_META[kind] ?? { label: "Event", badge: "bg-gray-100 text-gray-700", photo: `${BASE}images/rotterdam-hero.png` };
+function kindMeta(kind, eventId = 0) {
+  const meta = KIND_META[kind] ?? {
+    label: "Event",
+    badge: "bg-gray-100 text-gray-700",
+    photos: [`${BASE}images/rotterdam-hero.png`],
+  };
+  const photos = meta.photos;
+  return { ...meta, photo: photos[eventId % photos.length] };
 }
 
 // ─── Journey strip countdown ──────────────────────────────────────────────────
@@ -89,7 +112,9 @@ function useDaysUntil(target) {
 // ─── Event card ───────────────────────────────────────────────────────────────
 
 function EventCard({ event, muted = false }) {
-  const meta = kindMeta(event.kind);
+  const meta  = kindMeta(event.kind, event.id);
+  const photo = event.photoUrl || meta.photo;
+  const tz    = eventTz(event);
   return (
     <div className={`bg-white rounded-2xl overflow-hidden border shadow-sm transition-all duration-200 group ${
       muted ? "border-gray-100 opacity-70 hover:opacity-90" : "border-gray-100 hover:shadow-xl hover:-translate-y-0.5"
@@ -97,7 +122,7 @@ function EventCard({ event, muted = false }) {
       {/* Photo */}
       <div className="relative h-40 overflow-hidden">
         <img
-          src={meta.photo}
+          src={photo}
           alt={meta.label}
           className={`w-full h-full object-cover transition-transform duration-500 ${muted ? "grayscale" : "group-hover:scale-105"}`}
         />
@@ -114,9 +139,9 @@ function EventCard({ event, muted = false }) {
       {/* Body */}
       <div className="p-4">
         <div className="flex items-center gap-2 mb-1.5 text-xs text-gray-500">
-          <span className="font-semibold">{formatDate(event.startsAt)}</span>
+          <span className="font-semibold">{formatDate(event.startsAt, tz)}</span>
           <span className="text-gray-200">·</span>
-          <span className="font-mono">{formatTimeRange(event.startsAt, event.endsAt)}</span>
+          <span className="font-mono">{formatTimeRange(event.startsAt, event.endsAt, tz)}</span>
         </div>
         <h3 className="font-bold text-gray-900 leading-snug mb-1.5">{event.title}</h3>
         {event.location && (
