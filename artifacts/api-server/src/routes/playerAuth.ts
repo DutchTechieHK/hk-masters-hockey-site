@@ -113,7 +113,7 @@ router.get("/me", requirePlayerSession, async (req, res) => {
 });
 
 router.get("/my-schedule", requirePlayerSession, async (req, res) => {
-  const events = await listEventsForPlayer(req.player!.teamId ?? null);
+  const events = await listEventsForPlayer(req.player!.teamId ?? null, req.player!.id);
   res.json({ events });
 });
 

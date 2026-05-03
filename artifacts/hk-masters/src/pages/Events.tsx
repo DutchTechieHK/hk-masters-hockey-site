@@ -12,6 +12,8 @@ import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 
+type RsvpCounts = { yes: number; no: number; maybe: number }
+
 type EventRow = {
   id: number
   kind: "training" | "meeting" | "social"
@@ -22,6 +24,15 @@ type EventRow = {
   description: string | null
   teamId: number | null
   teamName: string | null
+  rsvpCounts?: RsvpCounts
+}
+
+type RsvpDetail = {
+  playerId: number
+  playerName: string
+  teamName: string | null
+  status: "yes" | "no" | "maybe"
+  respondedAt: string
 }
 
 type FormState = {
@@ -71,6 +82,9 @@ export default function Events() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [rosterEventId, setRosterEventId] = useState<number | null>(null)
+  const [roster, setRoster] = useState<RsvpDetail[]>([])
+  const [rosterLoading, setRosterLoading] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -108,6 +122,23 @@ export default function Events() {
     })
     setFormError(null)
     setIsModalOpen(true)
+  }
+
+  const openRoster = async (eventId: number) => {
+    setRosterEventId(eventId)
+    setRoster([])
+    setRosterLoading(true)
+    try {
+      const res = await fetch(`/api/events/${eventId}/rsvps`, { headers: authHeaders() })
+      if (!res.ok) throw new Error("Failed to load attendance")
+      const data = await res.json() as { rsvps: RsvpDetail[] }
+      setRoster(data.rsvps)
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+      setRosterEventId(null)
+    } finally {
+      setRosterLoading(false)
+    }
   }
 
   const handleDelete = async (id: number, title: string) => {
@@ -202,6 +233,7 @@ export default function Events() {
                         <th className="px-6 py-3 font-semibold">Title</th>
                         <th className="px-6 py-3 font-semibold">Where</th>
                         <th className="px-6 py-3 font-semibold">Visibility</th>
+                        <th className="px-6 py-3 font-semibold">Attendance</th>
                         <th className="px-6 py-3 font-semibold text-right">Actions</th>
                       </tr>
                     </thead>
@@ -226,6 +258,24 @@ export default function Events() {
                             <td className="px-6 py-4 font-medium text-foreground">{ev.title}</td>
                             <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
                             <td className="px-6 py-4 text-muted-foreground">{ev.teamName || "All squads"}</td>
+                            <td className="px-6 py-4">
+                              {(() => {
+                                const c = ev.rsvpCounts ?? { yes: 0, no: 0, maybe: 0 }
+                                const total = c.yes + c.no + c.maybe
+                                if (total === 0) return <span className="text-xs text-muted-foreground">No replies yet</span>
+                                return (
+                                  <button
+                                    onClick={() => openRoster(ev.id)}
+                                    className="text-xs hover:underline text-foreground"
+                                    title="See who's going"
+                                  >
+                                    <span className="text-emerald-700 font-semibold">{c.yes} going</span>
+                                    {c.maybe > 0 && <span className="text-amber-700"> · {c.maybe} maybe</span>}
+                                    {c.no > 0 && <span className="text-rose-700"> · {c.no} can't</span>}
+                                  </button>
+                                )
+                              })()}
+                            </td>
                             <td className="px-6 py-4 text-right">
                               <div className="flex justify-end items-center gap-1">
                                 <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
@@ -247,6 +297,36 @@ export default function Events() {
           ))}
         </div>
       )}
+
+      <Modal isOpen={rosterEventId !== null} onClose={() => setRosterEventId(null)} title="Attendance">
+        {rosterLoading ? (
+          <p className="text-muted-foreground py-6 text-center">Loading…</p>
+        ) : roster.length === 0 ? (
+          <p className="text-muted-foreground py-6 text-center">No responses yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {(["yes", "maybe", "no"] as const).map((status) => {
+              const group = roster.filter((r) => r.status === status)
+              if (group.length === 0) return null
+              const label = status === "yes" ? "Going" : status === "maybe" ? "Maybe" : "Can't make it"
+              const colour = status === "yes" ? "text-emerald-700" : status === "maybe" ? "text-amber-700" : "text-rose-700"
+              return (
+                <div key={status}>
+                  <h4 className={`text-sm font-bold mb-2 ${colour}`}>{label} ({group.length})</h4>
+                  <ul className="space-y-1 text-sm">
+                    {group.map((r) => (
+                      <li key={r.playerId} className="flex justify-between">
+                        <span>{r.playerName}</span>
+                        <span className="text-muted-foreground">{r.teamName ?? "—"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Modal>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Event" : "Add Event"}>
         <form onSubmit={onSubmit} className="space-y-5">
