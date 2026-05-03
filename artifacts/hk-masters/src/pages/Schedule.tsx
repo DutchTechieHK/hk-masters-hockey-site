@@ -77,10 +77,47 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-rose-100 text-rose-700",
 }
 
-function toLocalInputValue(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+const ROTTERDAM_TZ = "Europe/Amsterdam"
+
+function zoneOffsetMs(instant: number, tz: string): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(new Date(instant))
+      .filter(p => p.type !== "literal")
+      .map(p => [p.type, p.value])
+  ) as Record<string, string>
+  const wallAsUtc = Date.UTC(
+    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
+    Number(parts.hour), Number(parts.minute), Number(parts.second),
+  )
+  return wallAsUtc - instant
+}
+
+// Convert a UTC ISO string to a "YYYY-MM-DDTHH:mm" wall-clock string in the given zone.
+function toZoneInputValue(iso: string, tz: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone: tz, hour12: false,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    }).formatToParts(new Date(iso))
+      .filter(p => p.type !== "literal")
+      .map(p => [p.type, p.value])
+  ) as Record<string, string>
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
+}
+
+// Treat a "YYYY-MM-DDTHH:mm" string as wall-clock time in the given zone and return UTC ISO.
+function zoneInputToIso(localDateTime: string, tz: string): string {
+  const target = new Date(`${localDateTime}:00Z`).getTime()
+  let offset = zoneOffsetMs(target, tz)
+  let instant = target - offset
+  offset = zoneOffsetMs(instant, tz)
+  instant = target - offset
+  return new Date(instant).toISOString()
 }
 
 export default function Schedule() {
@@ -160,7 +197,7 @@ export default function Schedule() {
     reset({
       teamId: m.teamId,
       opponent: m.opponent,
-      kickoffAt: toLocalInputValue(m.kickoffAt),
+      kickoffAt: toZoneInputValue(m.kickoffAt, ROTTERDAM_TZ),
       venue: m.venue || "",
       status: m.status,
       ourScore: m.ourScore ?? "",
@@ -209,7 +246,7 @@ export default function Schedule() {
       const payload = {
         teamId: data.teamId,
         opponent: data.opponent,
-        kickoffAt: new Date(data.kickoffAt).toISOString(),
+        kickoffAt: zoneInputToIso(data.kickoffAt, ROTTERDAM_TZ),
         venue: data.venue || undefined,
         status: data.status,
         ourScore: data.ourScore === "" || data.ourScore === undefined ? null : Number(data.ourScore),
@@ -334,8 +371,19 @@ export default function Schedule() {
                         {teamMatches.map((m) => (
                           <tr key={m.id} className="hover:bg-muted/10 transition-colors group">
                             <td className="px-6 py-4">
-                              <div className="font-semibold text-foreground">{format(new Date(m.kickoffAt), "EEE d MMM yyyy")}</div>
-                              <div className="text-xs text-muted-foreground">{format(new Date(m.kickoffAt), "HH:mm")}</div>
+                              <div className="font-semibold text-foreground">
+                                {new Date(m.kickoffAt).toLocaleDateString("en-GB", {
+                                  weekday: "short", day: "numeric", month: "short", year: "numeric",
+                                  timeZone: ROTTERDAM_TZ,
+                                })}
+                              </div>
+                              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                {new Date(m.kickoffAt).toLocaleTimeString("en-GB", {
+                                  hour: "2-digit", minute: "2-digit", hour12: false,
+                                  timeZone: ROTTERDAM_TZ,
+                                })}
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-[#006B3C]">CEST</span>
+                              </div>
                             </td>
                             <td className="px-6 py-4 font-medium text-foreground">{m.opponent}</td>
                             <td className="px-6 py-4 text-muted-foreground">{m.venue || "—"}</td>
@@ -435,7 +483,7 @@ export default function Schedule() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Kick-off (local time)
+                <Clock className="w-3.5 h-3.5" /> Kick-off (Rotterdam time)
               </label>
               <Input type="datetime-local" {...register("kickoffAt")} />
               {errors.kickoffAt && <p className="text-xs text-destructive">{errors.kickoffAt.message}</p>}
