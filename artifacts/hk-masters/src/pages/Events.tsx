@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -147,6 +147,8 @@ export default function Events() {
   const [roster, setRoster] = useState<RsvpRoster | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
   const [showCsvImport, setShowCsvImport] = useState(false)
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const [bulkWorking, setBulkWorking] = useState(false)
 
   const openRoster = async (id: number) => {
     setRosterEventId(id)
@@ -202,6 +204,52 @@ export default function Events() {
     })
     setFormError(null)
     setIsModalOpen(true)
+  }
+
+  const toggleSelect = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const allIds = events.map(e => e.id)
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id))
+  const someSelected = selected.size > 0
+
+  const toggleSelectAll = () => {
+    setSelected(allSelected ? new Set() : new Set(allIds))
+  }
+
+  const handleBulkSetPublic = async (isPublic: boolean) => {
+    setBulkWorking(true)
+    let ok = 0; let fail = 0
+    for (const id of selected) {
+      const ev = events.find(e => e.id === id)
+      if (!ev) continue
+      try {
+        const res = await fetch(`/api/events/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({
+            kind: ev.kind,
+            title: ev.title,
+            startsAt: ev.startsAt,
+            endsAt: ev.endsAt,
+            location: ev.location,
+            description: ev.description,
+            teamId: ev.teamId,
+            isPublic,
+          }),
+        })
+        res.ok ? ok++ : fail++
+      } catch { fail++ }
+    }
+    setBulkWorking(false)
+    setSelected(new Set())
+    toast({ title: `${ok} event${ok !== 1 ? "s" : ""} updated${fail ? ` (${fail} failed)` : ""}` })
+    refresh()
   }
 
   const handleDelete = async (id: number, title: string) => {
@@ -303,6 +351,9 @@ export default function Events() {
                   <table className="w-full text-sm text-left">
                     <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
                       <tr>
+                        <th className="px-4 py-3 w-8">
+                          <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded accent-[#006B3C]" />
+                        </th>
                         <th className="px-6 py-3 font-semibold">When</th>
                         <th className="px-6 py-3 font-semibold">Kind</th>
                         <th className="px-6 py-3 font-semibold">Title</th>
@@ -317,7 +368,10 @@ export default function Events() {
                         const meta = KIND_META[ev.kind] ?? KIND_META.meeting
                         const Icon = meta.icon
                         return (
-                          <tr key={ev.id} className="hover:bg-muted/10">
+                          <tr key={ev.id} className={`hover:bg-muted/10 ${selected.has(ev.id) ? "bg-green-50/50" : ""}`}>
+                            <td className="px-4 py-4">
+                              <input type="checkbox" checked={selected.has(ev.id)} onChange={() => toggleSelect(ev.id)} className="w-4 h-4 rounded accent-[#006B3C]" />
+                            </td>
                             <td className="px-6 py-4">
                               <div className="font-semibold text-foreground">
                                 {new Date(ev.startsAt).toLocaleDateString("en-GB", {
@@ -387,6 +441,29 @@ export default function Events() {
               </div>
             </section>
           ))}
+        </div>
+      )}
+
+      {someSelected && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white rounded-2xl shadow-2xl px-5 py-3">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="w-px h-5 bg-white/20" />
+          <button
+            onClick={() => handleBulkSetPublic(true)}
+            disabled={bulkWorking}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-400 hover:text-green-300 disabled:opacity-50"
+          >
+            <Globe className="w-4 h-4" /> Make public
+          </button>
+          <button
+            onClick={() => handleBulkSetPublic(false)}
+            disabled={bulkWorking}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-400 hover:text-gray-300 disabled:opacity-50"
+          >
+            <EyeOff className="w-4 h-4" /> Make private
+          </button>
+          <div className="w-px h-5 bg-white/20" />
+          <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-white">✕ Clear</button>
         </div>
       )}
 
