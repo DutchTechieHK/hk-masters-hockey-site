@@ -34,4 +34,16 @@ router.get("/squad", async (_req, res) => {
   );
 });
 
+router.get("/teams", async (_req, res) => {
+  const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
+  res.set("Cache-Control", "public, max-age=60");
+  res.json(
+    teams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      category: t.category,
+    })),
+  );
+});
+
 export default router;

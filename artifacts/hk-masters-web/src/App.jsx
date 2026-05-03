@@ -15,6 +15,7 @@ import Support from "./pages/Support";
 import Contact from "./pages/Contact";
 import SubmissionStatus from "./pages/SubmissionStatus";
 import MyDetails from "./pages/MyDetails";
+import Privacy from "./pages/Privacy";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -43,6 +44,7 @@ function Router() {
         <Route path="/contact" component={Contact} />
         <Route path="/my-submission" component={SubmissionStatus} />
         <Route path="/my-details/:token" component={MyDetails} />
+        <Route path="/privacy" component={Privacy} />
         <Route>
           <div className="min-h-screen flex items-center justify-center">
             <div className="text-center">

@@ -9,8 +9,11 @@ import {
   DeleteLogisticsTaskParams,
   ListLogisticsQueryParams,
 } from "@workspace/api-zod";
+import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
+
+router.use(requireAdminAccess);
 
 router.get("/", async (req, res) => {
   const query = ListLogisticsQueryParams.parse(req.query);

@@ -4,10 +4,11 @@ import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -42,6 +43,16 @@ async function adminLogin(password: string): Promise<string> {
 }
 async function fetchAccessToken(playerId: number, sessionToken: string): Promise<{ status: number; accessToken: string | null }> {
   const res = await fetch(`/api/players/${playerId}/access-token`, {
+    headers: { "x-session-token": sessionToken },
+  })
+  if (res.status === 401) return { status: 401, accessToken: null }
+  if (!res.ok) return { status: res.status, accessToken: null }
+  const data = await res.json() as { accessToken: string | null }
+  return { status: 200, accessToken: data.accessToken }
+}
+async function rotateAccessToken(playerId: number, sessionToken: string): Promise<{ status: number; accessToken: string | null }> {
+  const res = await fetch(`/api/players/${playerId}/access-token/rotate`, {
+    method: "POST",
     headers: { "x-session-token": sessionToken },
   })
   if (res.status === 401) return { status: 401, accessToken: null }
@@ -220,6 +231,27 @@ export default function Players() {
       return
     }
     await completeCopy(player, result.accessToken)
+  }
+
+  const handleRotateLink = async (player: Player) => {
+    if (!confirm(`Rotate self-service link for ${player.name}? The current link will stop working immediately.`)) return
+    const session = getStoredSession()
+    if (!session) {
+      toast({ title: "Sign in to rotate the link", variant: "destructive" })
+      return
+    }
+    const result = await rotateAccessToken(player.id, session)
+    if (result.status === 401) {
+      clearStoredSession()
+      toast({ title: "Session expired — copy the link again to sign in", variant: "destructive" })
+      return
+    }
+    if (result.status !== 200 || !result.accessToken) {
+      toast({ title: "Failed to rotate link", variant: "destructive" })
+      return
+    }
+    await completeCopy(player, result.accessToken)
+    toast({ title: "Link rotated and copied to clipboard" })
   }
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -415,6 +447,13 @@ export default function Players() {
                           >
                             <LinkIcon className="w-4 h-4" />
                           </button>
+                          <button
+                            onClick={() => handleRotateLink(player)}
+                            title="Rotate self-service link (revokes old one)"
+                            className="p-2 text-muted-foreground hover:text-amber-600 rounded bg-background hover:bg-amber-50 border shadow-sm transition-all"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </button>
                           <button onClick={() => openEditModal(player)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
                             <Edit2 className="w-4 h-4" />
                           </button>
@@ -485,7 +524,7 @@ export default function Players() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Number</label>
-              <Input {...register("passportNumber")} placeholder="A1234567" />
+              <MaskedInput {...register("passportNumber")} placeholder="A1234567" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Expiry</label>

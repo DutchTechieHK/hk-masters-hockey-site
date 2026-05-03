@@ -8,6 +8,7 @@ import {
   UpdateTeamParams,
   DeleteTeamParams,
 } from "@workspace/api-zod";
+import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -29,25 +30,25 @@ function mapTeam(t: typeof teamsTable.$inferSelect) {
   };
 }
 
-router.get("/", async (_req, res) => {
+router.get("/", requireAdminAccess, async (_req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
   res.json(teams.map(mapTeam));
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdminAccess, async (req, res) => {
   const body = CreateTeamBody.parse(req.body);
   const [team] = await db.insert(teamsTable).values(body as any).returning();
   res.status(201).json(mapTeam(team));
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateTeamParams.parse(req.params);
   const body = UpdateTeamBody.parse(req.body);
   const [team] = await db.update(teamsTable).set(body as any).where(eq(teamsTable.id, id)).returning();
   res.json(mapTeam(team));
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteTeamParams.parse(req.params);
   await db.delete(teamsTable).where(eq(teamsTable.id, id));
   res.status(204).send();

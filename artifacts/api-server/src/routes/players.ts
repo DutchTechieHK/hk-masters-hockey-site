@@ -57,7 +57,7 @@ function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string |
   };
 }
 
-router.get("/", async (req, res) => {
+router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListPlayersQueryParams.parse(req.query);
   let players;
   if (query.teamId) {
@@ -77,7 +77,7 @@ router.get("/", async (req, res) => {
   res.json(players.map(({ player, teamName }) => mapPlayer(player, teamName)));
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdminAccess, async (req, res) => {
   const body = CreatePlayerBody.parse(req.body);
   const [player] = await db
     .insert(playersTable)
@@ -199,6 +199,25 @@ router.get("/:id/access-token", requireAdminAccess, async (req, res) => {
   res.json({ accessToken: player.accessToken ?? null });
 });
 
+router.post("/:id/access-token/rotate", requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const newToken = crypto.randomUUID();
+  const [updated] = await db
+    .update(playersTable)
+    .set({ accessToken: newToken })
+    .where(eq(playersTable.id, id))
+    .returning({ accessToken: playersTable.accessToken });
+  if (!updated) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  res.json({ accessToken: updated.accessToken });
+});
+
 router.post("/send-travel-reminders", requireSession, async (req, res) => {
   const { playerIds } = SendTravelRemindersBody.parse(req.body ?? {});
 
@@ -272,7 +291,7 @@ router.post("/send-fee-reminders", requireSession, async (req, res) => {
   res.json({ sent, failed, total: players.length });
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdatePlayerParams.parse(req.params);
   const body = UpdatePlayerBody.parse(req.body);
   const [player] = await db.update(playersTable).set(body as any).where(eq(playersTable.id, id)).returning();
@@ -280,7 +299,7 @@ router.put("/:id", async (req, res) => {
   res.json(mapPlayer(player, team?.name));
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeletePlayerParams.parse(req.params);
   await db.delete(playersTable).where(eq(playersTable.id, id));
   res.status(204).send();

@@ -9,8 +9,11 @@ import {
   DeleteKitParams,
   ListKitsQueryParams,
 } from "@workspace/api-zod";
+import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
+
+router.use(requireAdminAccess);
 
 router.get("/", async (req, res) => {
   const query = ListKitsQueryParams.parse(req.query);

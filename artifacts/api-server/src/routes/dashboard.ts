@@ -2,10 +2,11 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable } from "@workspace/db/schema";
 import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
+import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
+router.get("/", requireAdminAccess, async (_req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
 
   const allPlayers = await db.select().from(playersTable);

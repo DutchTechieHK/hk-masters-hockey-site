@@ -9,14 +9,19 @@ import {
   DeleteMatchParams,
   ListMatchesQueryParams,
 } from "@workspace/api-zod";
-import { requireAdminAccess } from "../middleware/adminAuth";
+import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { buildIcsCalendar, icsFilename } from "../utils/ics";
 
 const router = Router();
 
 type MatchRow = typeof matchesTable.$inferSelect;
 
-function serialize(row: MatchRow, teamName?: string | null, teamCategory?: string | null) {
+function serialize(
+  row: MatchRow,
+  teamName?: string | null,
+  teamCategory?: string | null,
+  includeAdminFields = false,
+) {
   return {
     id: row.id,
     teamId: row.teamId,
@@ -28,7 +33,7 @@ function serialize(row: MatchRow, teamName?: string | null, teamCategory?: strin
     ourScore: row.ourScore,
     theirScore: row.theirScore,
     status: row.status,
-    notes: row.notes ?? undefined,
+    notes: includeAdminFields ? (row.notes ?? undefined) : undefined,
     createdAt: row.createdAt?.toISOString(),
   };
 }
@@ -43,7 +48,8 @@ router.get("/", async (req, res) => {
   const rows = query.teamId
     ? await baseQuery.where(eq(matchesTable.teamId, query.teamId))
     : await baseQuery;
-  res.json(rows.map(({ match, teamName, teamCategory }) => serialize(match, teamName, teamCategory)));
+  const isAdmin = hasAdminAccess(req);
+  res.json(rows.map(({ match, teamName, teamCategory }) => serialize(match, teamName, teamCategory, isAdmin)));
 });
 
 router.get("/calendar.ics", async (req, res) => {
@@ -65,7 +71,7 @@ router.get("/calendar.ics", async (req, res) => {
     kickoffAt: match.kickoffAt,
     venue: match.venue,
     status: match.status as "scheduled" | "in_progress" | "final" | "cancelled",
-    notes: match.notes,
+    notes: null,
     ourScore: match.ourScore,
     theirScore: match.theirScore,
     createdAt: match.createdAt ?? null,
@@ -103,7 +109,7 @@ router.get("/:id/calendar.ics", async (req, res) => {
     kickoffAt: row.match.kickoffAt,
     venue: row.match.venue,
     status: row.match.status as "scheduled" | "in_progress" | "final" | "cancelled",
-    notes: row.match.notes,
+    notes: null,
     ourScore: row.match.ourScore,
     theirScore: row.match.theirScore,
     createdAt: row.match.createdAt ?? null,
@@ -136,7 +142,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     notes: body.notes || null,
   }).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
-  res.status(201).json(serialize(match, team?.name, team?.category));
+  res.status(201).json(serialize(match, team?.name, team?.category, true));
 });
 
 async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {
@@ -162,7 +168,7 @@ async function handleUpdateMatch(req: import("express").Request, res: import("ex
     return;
   }
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
-  res.json(serialize(match, team?.name, team?.category));
+  res.json(serialize(match, team?.name, team?.category, true));
 }
 
 router.patch("/:id", requireAdminAccess, handleUpdateMatch);

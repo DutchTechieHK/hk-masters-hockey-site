@@ -631,7 +631,7 @@ export default function Travel() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Number</label>
-              <Input {...register("passportNumber")} placeholder="A1234567" />
+              <MaskedInput {...register("passportNumber")} placeholder="A1234567" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Expiry</label>

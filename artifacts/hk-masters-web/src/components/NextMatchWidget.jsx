@@ -38,7 +38,7 @@ export default function NextMatchWidget() {
     let cancelled = false;
     Promise.all([
       fetch(`${API_BASE}/api/matches`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch(`${API_BASE}/api/teams`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+      fetch(`${API_BASE}/api/public/teams`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
     ]).then(([matchData, teamData]) => {
       if (cancelled) return;
       setMatches(Array.isArray(matchData) ? matchData : []);

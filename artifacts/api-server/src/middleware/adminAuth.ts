@@ -27,3 +27,14 @@ export function requireAdminAccess(req: Request, res: Response, next: NextFuncti
   }
   return requireAdminKey(req, res, next);
 }
+
+export function hasAdminAccess(req: Request): boolean {
+  const sessionToken = req.headers["x-session-token"] as string | undefined;
+  if (sessionToken && validateSession(sessionToken)) return true;
+  const adminKey = process.env.ADMIN_API_KEY;
+  if (!adminKey) return false;
+  const provided =
+    req.headers["x-admin-key"] ||
+    req.headers["authorization"]?.toString().replace(/^Bearer\s+/i, "");
+  return Boolean(provided && provided === adminKey);
+}

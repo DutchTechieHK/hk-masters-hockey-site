@@ -205,6 +205,10 @@ export default function Layout({ children }) {
             <p className="text-white font-bold italic text-base mb-2 tracking-wide">— Hockey For Life —</p>
             <p className="text-green-300 text-xs">
               &copy; 2026 Hong Kong Masters Hockey. All rights reserved.
+              {" \u00B7 "}
+              <Link href="/privacy" className="hover:text-white underline-offset-2 hover:underline">
+                Privacy & data handling
+              </Link>
             </p>
           </div>
         </div>
