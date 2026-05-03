@@ -72,12 +72,23 @@ const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: 
   social: { label: "Social", icon: Coffee, colour: "bg-amber-100 text-amber-800" },
 }
 
+const HK_TZ        = "Asia/Hong_Kong"
 const ROTTERDAM_TZ = "Europe/Amsterdam"
 
-function toLocalInputValue(iso: string): string {
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, "0")
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+// Midnight HKT on the first Rotterdam match day — same threshold as the public site
+const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime()
+
+// HK training events → HKT.  Rotterdam tournament events → CEST.
+function eventTz(startsAt: string): string {
+  return new Date(startsAt).getTime() >= RTM_START_EPOCH ? ROTTERDAM_TZ : HK_TZ
+}
+
+// Given a "YYYY-MM-DDTHH:mm" datetime-local value (no zone), guess which IANA
+// zone to use for saving — same threshold as eventTz but operating on the raw
+// local string (treated as UTC for comparison purposes, which is accurate enough
+// since May vs July are far apart).
+function formTz(localDt: string): string {
+  return new Date(`${localDt}:00Z`).getTime() >= RTM_START_EPOCH ? ROTTERDAM_TZ : HK_TZ
 }
 
 // Format a UTC instant as a "YYYY-MM-DDTHH:mm" string in a given IANA time zone.
@@ -191,16 +202,16 @@ export default function Events() {
 
   const openEditModal = (e: EventRow) => {
     setEditing(e)
-    const usePublicTz = e.isPublic ?? false
+    const tz = eventTz(e.startsAt)
     setForm({
       kind: e.kind,
       title: e.title,
-      startsAt: usePublicTz ? toZoneInputValue(e.startsAt, ROTTERDAM_TZ) : toLocalInputValue(e.startsAt),
-      endsAt: e.endsAt ? (usePublicTz ? toZoneInputValue(e.endsAt, ROTTERDAM_TZ) : toLocalInputValue(e.endsAt)) : "",
+      startsAt: toZoneInputValue(e.startsAt, tz),
+      endsAt: e.endsAt ? toZoneInputValue(e.endsAt, tz) : "",
       location: e.location ?? "",
       description: e.description ?? "",
       teamId: e.teamId ? String(e.teamId) : "",
-      isPublic: usePublicTz,
+      isPublic: e.isPublic ?? false,
     })
     setFormError(null)
     setIsModalOpen(true)
@@ -274,15 +285,12 @@ export default function Events() {
     }
     setSaving(true)
     try {
+      const tz = formTz(form.startsAt)
       const payload = {
         kind: form.kind,
         title: form.title.trim(),
-        startsAt: form.isPublic
-          ? zoneInputToIso(form.startsAt, ROTTERDAM_TZ)
-          : new Date(form.startsAt).toISOString(),
-        endsAt: form.endsAt
-          ? (form.isPublic ? zoneInputToIso(form.endsAt, ROTTERDAM_TZ) : new Date(form.endsAt).toISOString())
-          : null,
+        startsAt: zoneInputToIso(form.startsAt, tz),
+        endsAt: form.endsAt ? zoneInputToIso(form.endsAt, tz) : null,
         location: form.location.trim() || null,
         description: form.description.trim() || null,
         teamId: form.teamId ? Number(form.teamId) : null,
@@ -309,11 +317,11 @@ export default function Events() {
     }
   }
 
-  // group by month — use Rotterdam tz for public events so the month header matches their displayed date
+  // group by month — use the event's correct timezone so headers match displayed dates
   const grouped = events.reduce<Record<string, EventRow[]>>((acc, ev) => {
-    const key = ev.isPublic
-      ? new Date(ev.startsAt).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: ROTTERDAM_TZ })
-      : format(new Date(ev.startsAt), "MMMM yyyy")
+    const key = new Date(ev.startsAt).toLocaleDateString("en-GB", {
+      month: "long", year: "numeric", timeZone: eventTz(ev.startsAt),
+    })
     if (!acc[key]) acc[key] = []
     acc[key].push(ev)
     return acc
@@ -373,23 +381,30 @@ export default function Events() {
                               <input type="checkbox" checked={selected.has(ev.id)} onChange={() => toggleSelect(ev.id)} className="w-4 h-4 rounded accent-[#006B3C]" />
                             </td>
                             <td className="px-6 py-4">
-                              <div className="font-semibold text-foreground">
-                                {new Date(ev.startsAt).toLocaleDateString("en-GB", {
-                                  weekday: "short", day: "numeric", month: "short",
-                                  ...(ev.isPublic ? { timeZone: ROTTERDAM_TZ } : {}),
-                                })}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                {new Date(ev.startsAt).toLocaleTimeString("en-GB", {
-                                  hour: "2-digit", minute: "2-digit", hour12: false,
-                                  ...(ev.isPublic ? { timeZone: ROTTERDAM_TZ } : {}),
-                                })}
-                                {ev.endsAt && ` – ${new Date(ev.endsAt).toLocaleTimeString("en-GB", {
-                                  hour: "2-digit", minute: "2-digit", hour12: false,
-                                  ...(ev.isPublic ? { timeZone: ROTTERDAM_TZ } : {}),
-                                })}`}
-                                {ev.isPublic && <span className="ml-1 text-[10px] uppercase tracking-wide text-[#006B3C]">RTM</span>}
-                              </div>
+                              {(() => {
+                                const tz = eventTz(ev.startsAt)
+                                const isRtm = tz === ROTTERDAM_TZ
+                                return (
+                                  <>
+                                    <div className="font-semibold text-foreground">
+                                      {new Date(ev.startsAt).toLocaleDateString("en-GB", {
+                                        weekday: "short", day: "numeric", month: "short", timeZone: tz,
+                                      })}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      {new Date(ev.startsAt).toLocaleTimeString("en-GB", {
+                                        hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
+                                      })}
+                                      {ev.endsAt && ` – ${new Date(ev.endsAt).toLocaleTimeString("en-GB", {
+                                        hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
+                                      })}`}
+                                      <span className={`ml-1 text-[10px] uppercase tracking-wide ${isRtm ? "text-[#006B3C]" : "text-blue-500"}`}>
+                                        {isRtm ? "RTM" : "HKT"}
+                                      </span>
+                                    </div>
+                                  </>
+                                )
+                              })()}
                             </td>
                             <td className="px-6 py-4">
                               <Badge className={`${meta.colour} border-0 inline-flex items-center gap-1`}>
@@ -486,7 +501,12 @@ export default function Events() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Starts {form.isPublic ? "(Rotterdam time)" : "(your local time)"}
+                <Clock className="w-3.5 h-3.5" /> Starts{" "}
+                {form.startsAt
+                  ? formTz(form.startsAt) === ROTTERDAM_TZ
+                    ? "(Rotterdam time, CEST)"
+                    : "(Hong Kong time, HKT)"
+                  : form.isPublic ? "(Rotterdam time, CEST)" : "(Hong Kong time, HKT)"}
               </label>
               <Input type="datetime-local" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
             </div>
@@ -497,9 +517,11 @@ export default function Events() {
               <Input type="datetime-local" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} />
             </div>
           </div>
-          {form.isPublic && (
+          {form.startsAt && (
             <p className="text-xs text-muted-foreground -mt-2">
-              Public tournament event — times entered above are interpreted as Rotterdam local time (Europe/Amsterdam).
+              {formTz(form.startsAt) === ROTTERDAM_TZ
+                ? "Rotterdam tournament event — times interpreted as CEST (Europe/Amsterdam)."
+                : "Hong Kong event — times interpreted as HKT (Asia/Hong_Kong)."}
             </p>
           )}
 
