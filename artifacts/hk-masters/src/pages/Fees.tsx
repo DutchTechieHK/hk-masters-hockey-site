@@ -551,7 +551,7 @@ export default function Fees() {
                             </td>
 
                             <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                              <div className="flex justify-end items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex justify-end items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                 {!player.feePaid && (
                                   <button
                                     onClick={() => openMarkAsPaidDialog(player)}

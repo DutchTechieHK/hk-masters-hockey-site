@@ -201,7 +201,7 @@ export default function Logistics() {
                         </div>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(task.id) }}
-                          className="text-muted-foreground hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded"
+                          className="text-muted-foreground hover:text-rose-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1 rounded"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

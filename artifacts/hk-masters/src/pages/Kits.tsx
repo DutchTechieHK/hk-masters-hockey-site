@@ -272,7 +272,7 @@ export default function Kits() {
                           </Badge>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button onClick={() => openEditModal(kit)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
                               <Edit2 className="w-4 h-4" />
                             </button>

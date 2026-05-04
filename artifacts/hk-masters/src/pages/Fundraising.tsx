@@ -415,7 +415,7 @@ export default function Fundraising() {
                           </span>
                         )}
                       </div>
-                      <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         {entry.status !== "received" && (
                           <button
                             onClick={() => handleMarkAsPaid(entry)}

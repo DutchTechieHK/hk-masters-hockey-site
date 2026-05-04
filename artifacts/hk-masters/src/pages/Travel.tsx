@@ -535,7 +535,7 @@ export default function Travel() {
                             <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                               <button
                                 onClick={() => openEditModal(player)}
-                                className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all opacity-0 group-hover:opacity-100"
+                                className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
                               >
                                 <Edit2 className="w-4 h-4" />
                               </button>

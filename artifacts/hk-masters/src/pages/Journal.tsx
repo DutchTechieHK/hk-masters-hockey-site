@@ -787,7 +787,7 @@ export default function Journal() {
                         ].join(" ")}
                       >
                         <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" loading="lazy" draggable={false} />
-                        <div className="absolute top-1 left-1 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-1 left-1 flex flex-col gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
                             type="button"
                             onClick={() => {
@@ -829,7 +829,7 @@ export default function Journal() {
                             if (editTouchDidDragRef.current || editTouchDrag.from !== null) return
                             setEditPhotoUrls((prev) => prev.filter((_, j) => j !== i))
                           }}
-                          className="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow"
+                          className="absolute top-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow"
                           title="Remove photo"
                         >
                           <Trash2 className="w-3 h-3" />

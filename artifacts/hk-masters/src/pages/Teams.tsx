@@ -252,13 +252,13 @@ export default function Teams() {
                     <div className="absolute top-4 right-4 flex space-x-2">
                       <button
                         onClick={(e) => { e.stopPropagation(); openEditModal(team) }}
-                        className="p-1.5 bg-white rounded-md shadow text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1.5 bg-white rounded-md shadow text-blue-600 hover:bg-blue-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
-                        className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
