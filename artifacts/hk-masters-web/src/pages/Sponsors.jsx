@@ -120,10 +120,18 @@ export default function Sponsors() {
   }, []);
 
   // Merge static content sponsors with API sponsors (API takes precedence; dedup by name)
+  // If a DB entry has no logo, fall back to the matching markdown file's logo
   const staticSponsors = loadStaticSponsors();
+  const staticByName = Object.fromEntries(
+    staticSponsors.map((s) => [s.name.toLowerCase(), s])
+  );
   const apiNames = new Set(apiSponsors.map((s) => s.name.toLowerCase()));
   const mergedSponsors = [
-    ...apiSponsors.filter((s) => s.active),
+    ...apiSponsors.filter((s) => s.active).map((s) => ({
+      ...s,
+      logoUrl: s.logoUrl || staticByName[s.name.toLowerCase()]?.logoUrl,
+      websiteUrl: s.websiteUrl || staticByName[s.name.toLowerCase()]?.websiteUrl,
+    })),
     ...staticSponsors.filter((s) => !apiNames.has(s.name.toLowerCase())),
   ];
 
