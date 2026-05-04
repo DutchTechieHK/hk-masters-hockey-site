@@ -26,10 +26,8 @@ function NavLink({ href, label, onClick, cta }) {
       <Link
         href={href}
         onClick={onClick}
-        className={`inline-flex items-center text-base font-bold px-4 py-2 rounded-lg transition-colors duration-150 ${
-          isActive
-            ? "bg-red-700 text-white"
-            : "bg-[#DE2910] text-white hover:bg-red-700"
+        className={`inline-flex items-center text-sm font-bold px-4 py-1 rounded-md transition-colors duration-150 ${
+          isActive ? "bg-red-700 text-white" : "bg-[#DE2910] text-white hover:bg-red-700"
         }`}
       >
         {label}
@@ -41,8 +39,8 @@ function NavLink({ href, label, onClick, cta }) {
     <Link
       href={href}
       onClick={onClick}
-      className={`nav-link text-base font-medium transition-colors duration-150 hover:text-red-600 ${
-        isActive ? "text-red-600 active" : "text-white"
+      className={`nav-link text-sm font-medium whitespace-nowrap transition-colors duration-150 hover:text-white ${
+        isActive ? "text-white active" : "text-green-200"
       }`}
     >
       {label}
@@ -61,34 +59,62 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top Navigation */}
-      <header className="bg-[#006B3C] shadow-md sticky top-0 z-50">
-        <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-24">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="h-20 w-20 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center">
-                <img
-                  src={`${import.meta.env.BASE_URL}logo.png`}
-                  alt="HK Masters Hockey logo"
-                  className="w-full h-full object-contain scale-150"
-                />
-              </div>
-              <div className="leading-tight shrink-0">
-                <p className="text-white font-bold text-base sm:text-lg leading-none whitespace-nowrap">Hong Kong Masters Hockey</p>
-                <p className="text-[#DE2910] text-sm font-semibold italic leading-none mt-4 tracking-wide whitespace-nowrap">— Hockey For Life —</p>
-              </div>
-            </Link>
+      {/* ── Header ──────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-50 shadow-lg">
 
-            {/* Desktop Nav */}
-            <div className="hidden lg:flex items-center gap-3 xl:gap-5">
+        {/* Row 1 — Branding strip */}
+        <div className="bg-[#006B3C]">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-[72px]">
+
+              {/* Logo */}
+              <Link href="/" className="flex items-center gap-3 group shrink-0">
+                <div className="h-14 w-14 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center shadow-sm">
+                  <img
+                    src={`${import.meta.env.BASE_URL}logo.png`}
+                    alt="HK Masters Hockey logo"
+                    className="w-full h-full object-contain scale-150"
+                  />
+                </div>
+                <div className="leading-tight">
+                  <p className="text-white font-extrabold text-lg leading-tight tracking-tight">
+                    Hong Kong<br />Masters Hockey
+                  </p>
+                  <p className="text-[#DE2910] text-xs font-semibold italic tracking-widest mt-0.5">
+                    — Hockey For Life —
+                  </p>
+                </div>
+              </Link>
+
+              {/* Mobile hamburger */}
+              <button
+                className="lg:hidden p-2 text-white focus:outline-none"
+                aria-label="Toggle navigation menu"
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {menuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2 — Navigation strip (desktop) */}
+        <div className="hidden lg:block bg-[#005430] border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-6 h-10">
               {NAV_LINKS.map((link) => (
                 <NavLink key={link.href} href={link.href} label={link.label} cta={link.cta} />
               ))}
               {isPlayerLoggedIn && (
                 <Link
                   href="/dashboard"
-                  className="inline-flex items-center gap-1.5 text-base font-medium text-green-200 hover:text-white transition-colors duration-150"
+                  className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-green-300 hover:text-white transition-colors duration-150 whitespace-nowrap"
                 >
                   <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -97,26 +123,13 @@ export default function Layout({ children }) {
                 </Link>
               )}
             </div>
-
-            {/* Mobile Hamburger */}
-            <button
-              className="lg:hidden p-2 text-white focus:outline-none"
-              aria-label="Toggle navigation menu"
-              onClick={() => setMenuOpen(!menuOpen)}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {menuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
           </div>
+        </div>
 
-          {/* Mobile Menu */}
-          {menuOpen && (
-            <div className="lg:hidden border-t border-green-600 py-3 pb-4">
+        {/* Mobile dropdown menu */}
+        {menuOpen && (
+          <div className="lg:hidden bg-[#005430] border-t border-white/10">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 pb-4">
               <div className="flex flex-col gap-1">
                 {NAV_LINKS.map((link) => (
                   <NavLink
@@ -131,7 +144,7 @@ export default function Layout({ children }) {
                   <Link
                     href="/dashboard"
                     onClick={() => setMenuOpen(false)}
-                    className="inline-flex items-center gap-1.5 text-base font-medium text-green-200 hover:text-white transition-colors duration-150 py-1"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-green-300 hover:text-white transition-colors duration-150 py-1"
                   >
                     <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
@@ -141,22 +154,23 @@ export default function Layout({ children }) {
                 )}
               </div>
             </div>
-          )}
-        </nav>
+          </div>
+        )}
       </header>
 
-      {/* Main Content */}
+      {/* ── Main Content ─────────────────────────────────────────── */}
       <main className="flex-1">
         {children}
       </main>
 
-      {/* Footer */}
+      {/* ── Footer ───────────────────────────────────────────────── */}
       <footer className="bg-[#004A2A] text-white mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+
             {/* Club Info */}
             <div>
-              <div className="flex items-start gap-2 mb-3">
+              <div className="flex items-start gap-3 mb-3">
                 <div className="h-12 w-12 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center">
                   <img
                     src={`${import.meta.env.BASE_URL}logo.png`}
@@ -166,7 +180,7 @@ export default function Layout({ children }) {
                 </div>
                 <div>
                   <span className="font-bold text-white block leading-tight">Hong Kong Masters Hockey</span>
-                  <p className="text-[#DE2910] text-sm font-semibold italic mt-3">— Hockey For Life —</p>
+                  <p className="text-[#DE2910] text-xs font-semibold italic mt-1 tracking-widest">— Hockey For Life —</p>
                 </div>
               </div>
               <p className="text-green-200 text-sm leading-relaxed">
@@ -178,7 +192,7 @@ export default function Layout({ children }) {
             <div>
               <h3 className="font-semibold text-white mb-3">Quick Links</h3>
               <div className="grid grid-cols-2 gap-x-4">
-                {[NAV_LINKS.slice(0, 4), NAV_LINKS.slice(4)].map((col, ci) => (
+                {[NAV_LINKS.slice(0, 5), NAV_LINKS.slice(5)].map((col, ci) => (
                   <ul key={ci} className="space-y-1">
                     {col.map((link) => (
                       <li key={link.href}>
