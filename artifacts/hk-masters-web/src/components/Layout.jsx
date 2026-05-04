@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import contactContent from "../content/contact.json";
+import { getPlayerToken } from "../lib/playerAuth";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -51,6 +52,12 @@ function NavLink({ href, label, onClick, cta }) {
 
 export default function Layout({ children }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isPlayerLoggedIn, setIsPlayerLoggedIn] = useState(false);
+  const [location] = useLocation();
+
+  useEffect(() => {
+    setIsPlayerLoggedIn(!!getPlayerToken());
+  }, [location]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -78,6 +85,17 @@ export default function Layout({ children }) {
               {NAV_LINKS.map((link) => (
                 <NavLink key={link.href} href={link.href} label={link.label} cta={link.cta} />
               ))}
+              {isPlayerLoggedIn && (
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-1.5 text-base font-medium text-green-200 hover:text-white transition-colors duration-150"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                  </svg>
+                  My Portal
+                </Link>
+              )}
             </div>
 
             {/* Mobile Hamburger */}
@@ -109,6 +127,18 @@ export default function Layout({ children }) {
                     onClick={() => setMenuOpen(false)}
                   />
                 ))}
+                {isPlayerLoggedIn && (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMenuOpen(false)}
+                    className="inline-flex items-center gap-1.5 text-base font-medium text-green-200 hover:text-white transition-colors duration-150 py-1"
+                  >
+                    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                    My Portal
+                  </Link>
+                )}
               </div>
             </div>
           )}
