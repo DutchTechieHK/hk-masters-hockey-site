@@ -203,7 +203,7 @@ export default function Events() {
       {/* ── HERO: Rotterdam photo + title ── */}
       <div className="relative overflow-hidden" style={{ minHeight: 300 }}>
         <img
-          src={`${import.meta.env.BASE_URL}images/rotterdam-hero.png`}
+          src={`${import.meta.env.BASE_URL}images/rotterdam-hero.jpg`}
           alt="Rotterdam"
           className="absolute inset-0 w-full h-full object-cover object-center"
           style={{ filter: "brightness(0.8)" }}
