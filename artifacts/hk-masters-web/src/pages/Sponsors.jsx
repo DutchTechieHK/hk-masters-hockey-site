@@ -5,25 +5,16 @@ import { API_BASE } from "../utils/api";
 const TIER_STYLES = {
   Gold: {
     color: "from-yellow-400 to-yellow-500",
-    textColor: "text-yellow-700",
-    bgColor: "bg-yellow-50",
-    borderColor: "border-yellow-200",
     description:
       "Our Gold sponsors receive maximum visibility — logo on all playing kits, website homepage banner, and exclusive hospitality at tournaments.",
   },
   Silver: {
     color: "from-gray-300 to-gray-400",
-    textColor: "text-gray-600",
-    bgColor: "bg-gray-50",
-    borderColor: "border-gray-200",
     description:
       "Silver sponsors receive website listing, social media recognition, and prominent branding at club events.",
   },
   Bronze: {
     color: "from-orange-400 to-orange-500",
-    textColor: "text-orange-700",
-    bgColor: "bg-orange-50",
-    borderColor: "border-orange-200",
     description:
       "Bronze sponsors are acknowledged on our website and in club communications throughout the season.",
   },
@@ -32,45 +23,6 @@ const TIER_STYLES = {
 const TIER_ORDER = ["Gold", "Silver", "Bronze"];
 
 const sponsorshipEmail = "sponsorship@hkmastershockey.com";
-
-// Read static sponsor markdown files at build time
-const sponsorFiles = import.meta.glob("../content/sponsors/*.md", {
-  eager: true,
-  query: "?raw",
-  import: "default",
-});
-
-function parseFrontmatter(raw) {
-  const match = raw.match(/^---\n([\s\S]*?)\n---/);
-  if (!match) return null;
-  const fm = {};
-  match[1].split("\n").forEach((line) => {
-    const idx = line.indexOf(":");
-    if (idx > -1) {
-      fm[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
-    }
-  });
-  return fm;
-}
-
-function loadStaticSponsors() {
-  return Object.entries(sponsorFiles)
-    .map(([, raw]) => {
-      const fm = parseFrontmatter(raw);
-      if (!fm || !fm.title || !fm.tier) return null;
-      if (fm.active !== "true") return null;
-      return {
-        id: `static-${fm.title}`,
-        name: fm.title,
-        logoUrl: fm.logo || undefined,
-        websiteUrl: fm.website || undefined,
-        tier: fm.tier,
-        active: true,
-        isStatic: true,
-      };
-    })
-    .filter(Boolean);
-}
 
 function SponsorLogo({ sponsor }) {
   const displayUrl = cloudinaryResize(sponsor.logoUrl, 400);
@@ -108,36 +60,22 @@ function SponsorLogo({ sponsor }) {
 }
 
 export default function Sponsors() {
-  const [apiSponsors, setApiSponsors] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/sponsors`)
       .then((res) => res.json())
-      .then((data) => setApiSponsors(Array.isArray(data) ? data : []))
-      .catch(() => setApiSponsors([]))
+      .then((data) => setSponsors(Array.isArray(data) ? data : []))
+      .catch(() => setSponsors([]))
       .finally(() => setLoading(false));
   }, []);
 
-  // Merge static content sponsors with API sponsors (API takes precedence; dedup by name)
-  // If a DB entry has no logo, fall back to the matching markdown file's logo
-  const staticSponsors = loadStaticSponsors();
-  const staticByName = Object.fromEntries(
-    staticSponsors.map((s) => [s.name.toLowerCase(), s])
-  );
-  const apiNames = new Set(apiSponsors.map((s) => s.name.toLowerCase()));
-  const mergedSponsors = [
-    ...apiSponsors.filter((s) => s.active).map((s) => ({
-      ...s,
-      logoUrl: s.logoUrl || staticByName[s.name.toLowerCase()]?.logoUrl,
-      websiteUrl: s.websiteUrl || staticByName[s.name.toLowerCase()]?.websiteUrl,
-    })),
-    ...staticSponsors.filter((s) => !apiNames.has(s.name.toLowerCase())),
-  ];
+  const activeSponsors = sponsors.filter((s) => s.active);
 
   const tierGroups = TIER_ORDER.map((tierName) => ({
     name: tierName,
-    sponsors: mergedSponsors.filter((s) => s.tier === tierName),
+    sponsors: activeSponsors.filter((s) => s.tier === tierName),
     ...TIER_STYLES[tierName],
   })).filter((t) => t.sponsors.length > 0);
 
@@ -181,8 +119,8 @@ export default function Sponsors() {
                     : "grid-cols-2 sm:grid-cols-4"
                 }`}
               >
-                {tier.sponsors.map((sponsor, i) => (
-                  <SponsorLogo key={sponsor.id ?? i} sponsor={sponsor} />
+                {tier.sponsors.map((sponsor) => (
+                  <SponsorLogo key={sponsor.id} sponsor={sponsor} />
                 ))}
               </div>
             </div>
