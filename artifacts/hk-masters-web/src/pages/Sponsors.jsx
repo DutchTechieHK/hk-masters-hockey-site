@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { cloudinaryResize } from "../utils/cloudinary.js";
+import { API_BASE } from "../utils/api";
 
 const TIER_STYLES = {
   Gold: {
@@ -32,6 +33,45 @@ const TIER_ORDER = ["Gold", "Silver", "Bronze"];
 
 const sponsorshipEmail = "sponsorship@hkmastershockey.com";
 
+// Read static sponsor markdown files at build time
+const sponsorFiles = import.meta.glob("../content/sponsors/*.md", {
+  eager: true,
+  query: "?raw",
+  import: "default",
+});
+
+function parseFrontmatter(raw) {
+  const match = raw.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const fm = {};
+  match[1].split("\n").forEach((line) => {
+    const idx = line.indexOf(":");
+    if (idx > -1) {
+      fm[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    }
+  });
+  return fm;
+}
+
+function loadStaticSponsors() {
+  return Object.entries(sponsorFiles)
+    .map(([, raw]) => {
+      const fm = parseFrontmatter(raw);
+      if (!fm || !fm.title || !fm.tier) return null;
+      if (fm.active !== "true") return null;
+      return {
+        id: `static-${fm.title}`,
+        name: fm.title,
+        logoUrl: fm.logo || undefined,
+        websiteUrl: fm.website || undefined,
+        tier: fm.tier,
+        active: true,
+        isStatic: true,
+      };
+    })
+    .filter(Boolean);
+}
+
 function SponsorLogo({ sponsor }) {
   const displayUrl = cloudinaryResize(sponsor.logoUrl, 400);
   const inner = displayUrl ? (
@@ -42,7 +82,7 @@ function SponsorLogo({ sponsor }) {
     />
   ) : (
     <div className="text-center">
-      <p className="text-gray-400 font-medium text-sm">{sponsor.name}</p>
+      <p className="text-gray-500 font-semibold text-sm">{sponsor.name}</p>
       <p className="text-gray-300 text-xs mt-0.5">Logo coming soon</p>
     </div>
   );
@@ -68,24 +108,28 @@ function SponsorLogo({ sponsor }) {
 }
 
 export default function Sponsors() {
-  const [sponsors, setSponsors] = useState([]);
+  const [apiSponsors, setApiSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/sponsors")
+    fetch(`${API_BASE}/api/sponsors`)
       .then((res) => res.json())
-      .then((data) => {
-        setSponsors(Array.isArray(data) ? data : []);
-      })
-      .catch(() => setSponsors([]))
+      .then((data) => setApiSponsors(Array.isArray(data) ? data : []))
+      .catch(() => setApiSponsors([]))
       .finally(() => setLoading(false));
   }, []);
 
-  const activeSponsors = sponsors.filter((s) => s.active);
+  // Merge static content sponsors with API sponsors (API takes precedence; dedup by name)
+  const staticSponsors = loadStaticSponsors();
+  const apiNames = new Set(apiSponsors.map((s) => s.name.toLowerCase()));
+  const mergedSponsors = [
+    ...apiSponsors.filter((s) => s.active),
+    ...staticSponsors.filter((s) => !apiNames.has(s.name.toLowerCase())),
+  ];
 
   const tierGroups = TIER_ORDER.map((tierName) => ({
     name: tierName,
-    sponsors: activeSponsors.filter((s) => s.tier === tierName),
+    sponsors: mergedSponsors.filter((s) => s.tier === tierName),
     ...TIER_STYLES[tierName],
   })).filter((t) => t.sponsors.length > 0);
 

@@ -5,6 +5,25 @@ import { sendNewPledgeEmail, sendPledgeConfirmationEmail } from "../utils/email"
 
 const router = Router();
 
+// Public endpoint — returns donor names only (no emails) for all pledges
+router.get("/public", async (_req, res) => {
+  const pledges = await db
+    .select({
+      donorName: fundraisingTable.donorName,
+      status: fundraisingTable.status,
+      createdAt: fundraisingTable.createdAt,
+    })
+    .from(fundraisingTable)
+    .orderBy(fundraisingTable.createdAt);
+  res.json(
+    pledges.map((p) => ({
+      name: p.donorName,
+      status: p.status,
+      createdAt: p.createdAt?.toISOString(),
+    }))
+  );
+});
+
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
