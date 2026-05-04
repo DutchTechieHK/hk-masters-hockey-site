@@ -74,11 +74,11 @@ export default function FundraisingThermometer({ goal = FUNDRAISING_GOAL }) {
 
           <div className="grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-xl font-extrabold text-[#006B3C]">{formatHKD(totalPledged)}</p>
+              <p className="text-xl font-extrabold text-[#006B3C]/60">{formatHKD(totalPledged)}</p>
               <p className="text-xs text-gray-500 mt-0.5">Total pledged</p>
             </div>
             <div>
-              <p className="text-xl font-extrabold text-gray-700">{formatHKD(totalReceived)}</p>
+              <p className="text-xl font-extrabold text-[#006B3C]">{formatHKD(totalReceived)}</p>
               <p className="text-xs text-gray-500 mt-0.5">Received</p>
             </div>
             <div>

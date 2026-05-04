@@ -3,15 +3,29 @@ import FundraisingThermometer from "../components/FundraisingThermometer";
 import PledgeForm from "../components/PledgeForm";
 import { API_BASE } from "../utils/api";
 
+const TIER_THRESHOLDS = [
+  { min: 5000, label: "Champ" },
+  { min: 2500, label: "Patron" },
+  { min: 1000, label: "Friend of the Team" },
+  { min: 500,  label: "Supporter" },
+];
+
+function tierLabel(amount) {
+  for (const t of TIER_THRESHOLDS) {
+    if (amount >= t.min) return t.label;
+  }
+  return null;
+}
+
 function useSupporterWall() {
-  const [names, setNames] = useState(null);
+  const [supporters, setSupporters] = useState(null);
   useEffect(() => {
     fetch(`${API_BASE}/api/pledges/public`)
       .then((r) => r.ok ? r.json() : [])
-      .then((data) => setNames(Array.isArray(data) ? data.map((p) => p.name) : []))
-      .catch(() => setNames([]));
+      .then((data) => setSupporters(Array.isArray(data) ? data : []))
+      .catch(() => setSupporters([]));
   }, []);
-  return names;
+  return supporters;
 }
 
 const TIERS = [
@@ -53,7 +67,7 @@ const REASONS = [
 ];
 
 export default function Support() {
-  const wallNames = useSupporterWall();
+  const supporters = useSupporterWall();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -143,7 +157,7 @@ export default function Support() {
       </section>
 
       {/* Supporter Wall */}
-      {wallNames !== null && wallNames.length > 0 && (
+      {supporters !== null && supporters.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Our Supporters</h2>
@@ -152,15 +166,21 @@ export default function Support() {
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
-            {wallNames.map((name, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 bg-[#006B3C]/8 border border-[#006B3C]/15 text-[#006B3C] font-semibold text-sm px-4 py-2 rounded-full"
-              >
-                <span className="text-base leading-none">🏑</span>
-                {name}
-              </span>
-            ))}
+            {supporters.map((s, i) => {
+              const tier = tierLabel(s.amountPledged);
+              return (
+                <span
+                  key={i}
+                  className="inline-flex items-center gap-1.5 bg-[#006B3C]/8 border border-[#006B3C]/15 text-[#006B3C] font-semibold text-sm px-4 py-2 rounded-full"
+                >
+                  <span className="text-base leading-none">🏑</span>
+                  {s.name}
+                  {tier && (
+                    <span className="text-[#006B3C]/60 font-normal">· {tier}</span>
+                  )}
+                </span>
+              );
+            })}
           </div>
         </section>
       )}

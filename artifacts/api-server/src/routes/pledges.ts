@@ -10,6 +10,7 @@ router.get("/public", async (_req, res) => {
   const pledges = await db
     .select({
       donorName: fundraisingTable.donorName,
+      amountPledged: fundraisingTable.amountPledged,
       status: fundraisingTable.status,
       createdAt: fundraisingTable.createdAt,
     })
@@ -18,6 +19,7 @@ router.get("/public", async (_req, res) => {
   res.json(
     pledges.map((p) => ({
       name: p.donorName,
+      amountPledged: parseFloat(p.amountPledged ?? "0"),
       status: p.status,
       createdAt: p.createdAt?.toISOString(),
     }))
