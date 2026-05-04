@@ -26,7 +26,7 @@ function NavLink({ href, label, onClick, cta }) {
       <Link
         href={href}
         onClick={onClick}
-        className={`inline-flex items-center text-sm font-bold px-3 py-1.5 rounded-lg transition-colors duration-150 ${
+        className={`inline-flex items-center text-base font-bold px-4 py-2 rounded-lg transition-colors duration-150 ${
           isActive
             ? "bg-red-700 text-white"
             : "bg-[#DE2910] text-white hover:bg-red-700"
@@ -41,7 +41,7 @@ function NavLink({ href, label, onClick, cta }) {
     <Link
       href={href}
       onClick={onClick}
-      className={`nav-link text-sm font-medium transition-colors duration-150 hover:text-red-600 ${
+      className={`nav-link text-base font-medium transition-colors duration-150 hover:text-red-600 ${
         isActive ? "text-red-600 active" : "text-white"
       }`}
     >
@@ -74,9 +74,9 @@ export default function Layout({ children }) {
                   className="w-full h-full object-contain scale-150"
                 />
               </div>
-              <div className="leading-tight">
-                <p className="text-white font-bold text-base sm:text-lg leading-none">Hong Kong Masters Hockey</p>
-                <p className="text-[#DE2910] text-sm font-semibold italic leading-none mt-4 tracking-wide">— Hockey For Life —</p>
+              <div className="leading-tight shrink-0">
+                <p className="text-white font-bold text-base sm:text-lg leading-none whitespace-nowrap">Hong Kong Masters Hockey</p>
+                <p className="text-[#DE2910] text-sm font-semibold italic leading-none mt-4 tracking-wide whitespace-nowrap">— Hockey For Life —</p>
               </div>
             </Link>
 
