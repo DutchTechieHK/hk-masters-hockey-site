@@ -16,7 +16,7 @@ const TIER_STYLES = {
   Bronze: {
     color: "from-orange-400 to-orange-500",
     description:
-      "Bronze sponsors are acknowledged on our website and in club communications throughout the season.",
+      "Bronze sponsors are acknowledged on our website and in club communications.",
   },
 };
 
