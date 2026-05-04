@@ -76,20 +76,20 @@ export default function Media() {
             <p className="text-sm mt-1">Add photo albums via the CMS under Media → Photo Albums</p>
           </div>
         ) : (
-          <div className="flex gap-8">
-            {/* Album Sidebar */}
-            <div className="w-56 shrink-0 space-y-1">
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
+            {/* Album List — horizontal scroll on mobile, sidebar on sm+ */}
+            <div className="flex sm:flex-col gap-2 sm:gap-1 overflow-x-auto sm:overflow-x-visible sm:w-56 sm:shrink-0 pb-1 sm:pb-0">
               {albums.map((album, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveAlbum(album)}
-                  className={`w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                  className={`shrink-0 sm:shrink text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     displayAlbum?.name === album.name
                       ? "bg-[#006B3C] text-white"
-                      : "text-gray-700 hover:bg-gray-100"
+                      : "text-gray-700 hover:bg-gray-100 bg-gray-50 sm:bg-transparent"
                   }`}
                 >
-                  <span className="block leading-snug">{album.name}</span>
+                  <span className="block leading-snug whitespace-nowrap sm:whitespace-normal">{album.name}</span>
                   <span className={`text-xs mt-0.5 block ${displayAlbum?.name === album.name ? "text-green-200" : "text-gray-400"}`}>
                     {(album.photos || []).length} photo{(album.photos || []).length !== 1 ? "s" : ""}
                   </span>

@@ -223,29 +223,29 @@ export default function Events() {
       {/* ── JOURNEY STRIP (hidden after tournament) ── */}
       {!tournamentPast && (
         <div className="bg-[#005a2e] border-t border-white/10">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center">
+          <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5 flex items-center">
             <div className="flex flex-col items-center shrink-0">
-              <span className="text-2xl mb-0.5">🇭🇰</span>
-              <span className="text-white text-[11px] font-bold uppercase tracking-wide">Hong Kong</span>
-              <span className="text-green-400 text-[10px]">Training</span>
+              <span className="text-xl sm:text-2xl mb-0.5">🇭🇰</span>
+              <span className="text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wide">HK</span>
+              <span className="text-green-400 text-[9px] sm:text-[10px]">Training</span>
             </div>
 
-            <div className="flex-1 flex items-center mx-4">
+            <div className="flex-1 flex items-center mx-2 sm:mx-4">
               <div className="flex-1 border-t-2 border-dashed border-white/20" />
-              <div className="mx-3 bg-white/10 border border-white/20 rounded-xl px-5 py-2.5 flex items-center gap-3 shrink-0">
-                <span className="text-xl leading-none">✈️</span>
+              <div className="mx-2 sm:mx-3 bg-white/10 border border-white/20 rounded-xl px-3 sm:px-5 py-2 sm:py-2.5 flex items-center gap-2 sm:gap-3 shrink-0">
+                <span className="text-lg sm:text-xl leading-none">✈️</span>
                 <div className="flex flex-col items-center">
-                  <span className="text-2xl font-black text-white tabular-nums leading-none">{daysUntil}</span>
-                  <span className="text-[9px] text-green-300 uppercase tracking-widest leading-none mt-0.5">days to go</span>
+                  <span className="text-xl sm:text-2xl font-black text-white tabular-nums leading-none">{daysUntil}</span>
+                  <span className="text-[8px] sm:text-[9px] text-green-300 uppercase tracking-widest leading-none mt-0.5">days to go</span>
                 </div>
               </div>
               <div className="flex-1 border-t-2 border-dashed border-white/20" />
             </div>
 
             <div className="flex flex-col items-center shrink-0">
-              <span className="text-2xl mb-0.5">🇳🇱</span>
-              <span className="text-white text-[11px] font-bold uppercase tracking-wide">Rotterdam</span>
-              <span className="text-green-400 text-[10px]">22 Jul – 1 Aug</span>
+              <span className="text-xl sm:text-2xl mb-0.5">🇳🇱</span>
+              <span className="text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-wide">Rotterdam</span>
+              <span className="text-green-400 text-[9px] sm:text-[10px]">22 Jul – 1 Aug</span>
             </div>
           </div>
         </div>
