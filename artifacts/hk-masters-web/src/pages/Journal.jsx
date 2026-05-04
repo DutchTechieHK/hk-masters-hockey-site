@@ -8,7 +8,7 @@ import SponsorStrip from "../components/SponsorStrip";
 
 const CLOUD_NAME = "djyvdrhal";
 const UPLOAD_PRESET = "hk_masters_unsigned";
-const MAX_PHOTOS = 10;
+const MAX_PHOTOS = 25;
 
 function useApprovedContributions() {
   const [data, setData] = useState([]);
