@@ -19,7 +19,7 @@ const TIERS = [
     blurb: "Friend benefits + a signed team photo from Rotterdam.",
   },
   {
-    name: "Major Sponsor",
+    name: "Champ",
     amount: "HK$5,000+",
     blurb: "All of the above + recognition on the public website and team kit (subject to design approval).",
   },
