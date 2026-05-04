@@ -2,61 +2,89 @@ import { useState, useEffect } from "react";
 import { cloudinaryResize } from "../utils/cloudinary.js";
 import { API_BASE } from "../utils/api";
 
-const TIER_STYLES = {
-  Gold: {
-    color: "from-yellow-400 to-yellow-500",
-    description:
-      "Our Gold sponsors receive maximum visibility — logo on all playing kits, website homepage banner, and exclusive hospitality at tournaments.",
-  },
-  Silver: {
-    color: "from-gray-300 to-gray-400",
-    description:
-      "Silver sponsors receive website listing, social media recognition, and prominent branding at club events.",
-  },
-  Bronze: {
-    color: "from-orange-400 to-orange-500",
-    description:
-      "Bronze sponsors are acknowledged on our website and in club communications.",
-  },
+const TIER_ORDER = ["Gold", "Silver", "Bronze"];
+
+const TIER_GLOW = {
+  Gold:   "255,200,50",
+  Silver: "180,180,200",
+  Bronze: "220,130,40",
 };
 
-const TIER_ORDER = ["Gold", "Silver", "Bronze"];
+const TIER_LABEL = {
+  Gold:   { text: "#f59e0b", border: "rgba(245,158,11,0.4)"  },
+  Silver: { text: "#9ca3af", border: "rgba(156,163,175,0.4)" },
+  Bronze: { text: "#f97316", border: "rgba(249,115,22,0.4)"  },
+};
+
+const TIER_COLS = {
+  Gold:   { one: "max-w-md mx-auto", multi: "grid-cols-1 sm:grid-cols-2" },
+  Silver: { one: "max-w-md mx-auto", multi: "grid-cols-2 sm:grid-cols-3" },
+  Bronze: { one: "max-w-md mx-auto", multi: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4" },
+};
 
 const sponsorshipEmail = "sponsorship@hkmastershockey.com";
 
-function SponsorLogo({ sponsor }) {
-  const displayUrl = cloudinaryResize(sponsor.logoUrl, 400);
-  const inner = displayUrl ? (
+function SponsorCard({ sponsor }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const displayUrl = cloudinaryResize(sponsor.logoUrl, 600);
+  const glow  = TIER_GLOW[sponsor.tier]  || TIER_GLOW.Bronze;
+  const label = TIER_LABEL[sponsor.tier] || TIER_LABEL.Bronze;
+
+  const logoArea = displayUrl && !imgFailed ? (
     <img
       src={displayUrl}
       alt={sponsor.name}
-      className="max-h-16 max-w-[180px] object-contain"
+      className="max-h-28 max-w-xs object-contain"
+      onError={() => setImgFailed(true)}
     />
   ) : (
-    <div className="text-center">
-      <p className="text-gray-500 font-semibold text-sm">{sponsor.name}</p>
-      <p className="text-gray-300 text-xs mt-0.5">Logo coming soon</p>
+    <div className="text-center px-4">
+      <p className="text-white font-bold text-xl tracking-wide">{sponsor.name}</p>
+      <p style={{ color: label.text }} className="text-xs mt-1 tracking-widest uppercase">Logo coming soon</p>
+    </div>
+  );
+
+  const card = (
+    <div className="group relative">
+      {/* Hover glow halo */}
+      <div
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ boxShadow: `0 0 60px 10px rgba(${glow},0.3)` }}
+      />
+      {/* Glass card */}
+      <div
+        className="relative rounded-2xl flex flex-col items-center justify-center py-10 px-8 gap-5 overflow-hidden min-h-[180px]"
+        style={{
+          background: "linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
+          border: `1px solid rgba(${glow},0.25)`,
+          boxShadow: `0 0 30px rgba(${glow},0.08), inset 0 1px 0 rgba(255,255,255,0.07)`,
+        }}
+      >
+        {/* Radial glow behind logo */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `radial-gradient(ellipse at 50% 50%, rgba(${glow},0.13) 0%, transparent 68%)` }}
+        />
+        <div className="relative z-10 flex items-center justify-center">
+          {logoArea}
+        </div>
+        {sponsor.websiteUrl && (
+          <p className="relative z-10 text-white/35 text-xs tracking-widest uppercase">
+            {sponsor.websiteUrl.replace(/^https?:\/\//, "")}
+          </p>
+        )}
+      </div>
     </div>
   );
 
   if (sponsor.websiteUrl) {
     return (
-      <a
-        href={sponsor.websiteUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center justify-center min-h-[100px] hover:shadow-md transition-shadow"
-      >
-        {inner}
+      <a href={sponsor.websiteUrl} target="_blank" rel="noopener noreferrer" className="block">
+        {card}
       </a>
     );
   }
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex items-center justify-center min-h-[100px]">
-      {inner}
-    </div>
-  );
+  return card;
 }
 
 export default function Sponsors() {
@@ -72,17 +100,15 @@ export default function Sponsors() {
   }, []);
 
   const activeSponsors = sponsors.filter((s) => s.active);
-
-  const tierGroups = TIER_ORDER.map((tierName) => ({
-    name: tierName,
-    sponsors: activeSponsors.filter((s) => s.tier === tierName),
-    ...TIER_STYLES[tierName],
+  const tierGroups = TIER_ORDER.map((name) => ({
+    name,
+    sponsors: activeSponsors.filter((s) => s.tier === name),
   })).filter((t) => t.sponsors.length > 0);
-
   const hasSponsors = tierGroups.length > 0;
 
   return (
     <div>
+      {/* ── Page header ─────────────────────────────────────────── */}
       <div className="bg-[#006B3C] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold mb-3">Our Sponsors</h1>
@@ -92,51 +118,66 @@ export default function Sponsors() {
         </div>
       </div>
 
+      {/* ── Sponsor showcase ────────────────────────────────────── */}
       {loading ? (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <div className="bg-gray-50 rounded-2xl p-12">
-            <p className="text-gray-400 text-sm">Loading sponsors...</p>
-          </div>
+        <section
+          className="py-24 text-center"
+          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
+        >
+          <p className="text-white/30 text-sm tracking-widest uppercase">Loading…</p>
         </section>
       ) : hasSponsors ? (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-          {tierGroups.map((tier) => (
-            <div key={tier.name}>
-              <div className="flex items-center gap-3 mb-6">
-                <span
-                  className={`inline-flex items-center px-4 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r ${tier.color} text-white`}
-                >
-                  {tier.name} Sponsors
-                </span>
-              </div>
-              <p className="text-gray-600 text-sm mb-6 max-w-2xl">{tier.description}</p>
-              <div
-                className={`grid gap-4 ${
-                  tier.name === "Gold"
-                    ? "grid-cols-1 sm:grid-cols-2"
-                    : tier.name === "Silver"
-                    ? "grid-cols-2 sm:grid-cols-3"
-                    : "grid-cols-2 sm:grid-cols-4"
-                }`}
-              >
-                {tier.sponsors.map((sponsor) => (
-                  <SponsorLogo key={sponsor.id} sponsor={sponsor} />
-                ))}
-              </div>
-            </div>
-          ))}
+        <section
+          className="py-20 px-4 sm:px-6 lg:px-8"
+          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
+        >
+          <div className="max-w-5xl mx-auto space-y-20">
+            {tierGroups.map(({ name, sponsors }) => {
+              const glow = TIER_GLOW[name] || TIER_GLOW.Bronze;
+              const lbl  = TIER_LABEL[name] || TIER_LABEL.Bronze;
+              const cols = TIER_COLS[name]  || TIER_COLS.Bronze;
+              return (
+                <div key={name}>
+                  {/* Tier divider */}
+                  <div className="flex items-center gap-4 mb-10">
+                    <div className="h-px flex-1" style={{ background: `rgba(${glow},0.3)` }} />
+                    <span
+                      className="text-xs font-bold tracking-widest uppercase px-5 py-2 rounded-full border"
+                      style={{
+                        color: lbl.text,
+                        borderColor: lbl.border,
+                        background: `rgba(${glow},0.08)`,
+                      }}
+                    >
+                      {name} Sponsors
+                    </span>
+                    <div className="h-px flex-1" style={{ background: `rgba(${glow},0.3)` }} />
+                  </div>
+
+                  {/* Logo grid */}
+                  <div className={`grid gap-6 ${sponsors.length === 1 ? cols.one : cols.multi}`}>
+                    {sponsors.map((sponsor) => (
+                      <SponsorCard key={sponsor.id} sponsor={sponsor} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       ) : (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <div className="bg-gray-50 rounded-2xl p-12">
-            <p className="text-gray-500 text-lg font-medium mb-2">Sponsor announcements coming soon</p>
-            <p className="text-gray-400 text-sm">
-              We're finalising our sponsorship packages for the 2026 season. Check back shortly.
-            </p>
-          </div>
+        <section
+          className="py-24 text-center px-4"
+          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
+        >
+          <p className="text-white/50 text-lg font-medium mb-2">Sponsor announcements coming soon</p>
+          <p className="text-white/25 text-sm">
+            We're finalising our sponsorship packages for the 2026 season. Check back shortly.
+          </p>
         </section>
       )}
 
+      {/* ── Become a Sponsor CTA ────────────────────────────────── */}
       <section className="bg-[#006B3C] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
