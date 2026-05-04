@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import FundraisingThermometer from "../components/FundraisingThermometer";
-import PledgeForm from "../components/PledgeForm";
 import { cloudinaryResize } from "../utils/cloudinary.js";
 
 const TIER_STYLES = {
@@ -148,29 +146,6 @@ export default function Sponsors() {
           </div>
         </section>
       )}
-
-      <section className="bg-gray-50 border-y border-gray-100 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Rotterdam 2026 Fundraising</h2>
-            <p className="text-gray-600 text-sm mb-6">
-              Help Hong Kong Masters Hockey reach their goal for the 2026 World Masters Cup in Rotterdam.
-            </p>
-            <FundraisingThermometer />
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Pledge Your Support</h2>
-          <p className="text-gray-600 text-sm mb-8">
-            Make a pledge toward Hong Kong's 2026 World Masters Hockey campaign. No payment is taken
-            now — a team member will follow up with you directly.
-          </p>
-          <PledgeForm />
-        </div>
-      </section>
 
       <section className="bg-[#006B3C] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

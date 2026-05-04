@@ -128,22 +128,17 @@ export default function Support() {
         </div>
       </section>
 
-      {/* Corporate sponsorship CTA */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="bg-[#006B3C] rounded-2xl p-8 sm:p-10 text-white text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-3">
-            Looking to sponsor the team?
-          </h2>
-          <p className="text-green-100 max-w-2xl mx-auto mb-6 leading-relaxed">
-            We work with corporate partners on tailored sponsorship packages — kit
-            branding, event hospitality, and brand exposure across our public channels
-            during the Rotterdam 2026 campaign.
+      {/* Corporate sponsorship link */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="bg-gray-50 rounded-2xl p-6 sm:p-8 border border-gray-100 text-center">
+          <p className="text-gray-600 text-sm mb-3">
+            Looking to partner with us as a corporate sponsor?
           </p>
           <a
-            href="mailto:sponsorship@hkmastershockey.com?subject=Rotterdam%202026%20sponsorship"
-            className="inline-block bg-white text-[#006B3C] font-bold px-8 py-3 rounded-lg hover:bg-green-50 transition-colors duration-150"
+            href="/sponsors"
+            className="inline-block text-[#006B3C] font-semibold text-sm hover:underline"
           >
-            Talk to us about sponsorship →
+            View our sponsorship packages →
           </a>
         </div>
       </section>
