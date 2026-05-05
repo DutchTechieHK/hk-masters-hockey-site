@@ -178,17 +178,22 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
   const widgetRef = useRef(null);
   const onUploadedRef = useRef(onUploaded);
   onUploadedRef.current = onUploaded;
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
 
-  const openWidget = () => {
-    if (widgetOpen) return;
-    setUploadError("");
-    setUploadSuccess(false);
-    if (!window.cloudinary) {
-      setUploadError("Upload service unavailable. Please refresh and try again.");
-      return;
-    }
-    setWidgetOpen(true);
-    if (!widgetRef.current) {
+  // Pre-initialise the widget as soon as the Cloudinary script is ready.
+  // The script is loaded in <head> with async, so it may arrive slightly
+  // after mount — poll for it briefly rather than waiting for a user click.
+  useEffect(() => {
+    let cancelled = false;
+    let timerId = null;
+
+    const tryInit = () => {
+      if (cancelled || widgetRef.current) return;
+      if (!window.cloudinary) {
+        timerId = setTimeout(tryInit, 100);
+        return;
+      }
       widgetRef.current = window.cloudinary.createUploadWidget(
         {
           cloudName: CLOUDINARY_CLOUD_NAME,
@@ -237,11 +242,14 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
             const url = result.info.secure_url;
             setUploading(false);
             try {
-              const res = await fetch(`${API_BASE}/api/players/self/${encodeURIComponent(token)}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ passportCopyUrl: url }),
-              });
+              const res = await fetch(
+                `${API_BASE}/api/players/self/${encodeURIComponent(tokenRef.current)}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ passportCopyUrl: url }),
+                }
+              );
               if (!res.ok) throw new Error("Could not save passport copy URL.");
               const updated = await res.json();
               onUploadedRef.current(updated);
@@ -252,7 +260,24 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
           }
         }
       );
+    };
+
+    tryInit();
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, []);
+
+  const openWidget = () => {
+    if (widgetOpen) return;
+    setUploadError("");
+    setUploadSuccess(false);
+    if (!widgetRef.current) {
+      setUploadError("Upload service unavailable. Please refresh and try again.");
+      return;
     }
+    setWidgetOpen(true);
     widgetRef.current.open();
   };
 
