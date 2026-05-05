@@ -212,24 +212,34 @@ export default function Rotterdam2026() {
 
       {/* Team Management App CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="bg-[#006B3C] rounded-2xl p-8 text-white text-center">
+        <div className="bg-[#006B3C] rounded-2xl p-8 sm:p-10 text-white text-center">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
-            Team Members Only
+            Rotterdam 2026 Squad
           </span>
-          <h2 className="text-2xl font-bold mb-3">Team Management Portal</h2>
-          <p className="text-green-100 max-w-lg mx-auto mb-6 leading-relaxed">
-            If you are a registered player travelling to Rotterdam, access the team management
-            app for squad lists, schedules, fundraising updates, kit assignments, and logistics details.
+          <h2 className="text-2xl font-bold mb-3">Access Your Team Portal</h2>
+          <p className="text-green-100 max-w-lg mx-auto mb-8 leading-relaxed">
+            Registered players can view their personal schedule, fees, and travel details. Team managers have full access to the management portal.
           </p>
-          <a
-            href={teamManagementUrl}
-            className="inline-block bg-white text-[#006B3C] font-bold px-8 py-3 rounded-lg hover:bg-green-50 transition-colors duration-150"
-          >
-            Go to Team App &rarr;
-          </a>
-          <p className="text-green-300 text-xs mt-3">
-            You will need your club login credentials to access this portal.
-          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col items-center gap-1">
+              <Link
+                href="/my-schedule"
+                className="inline-block bg-white text-[#006B3C] font-bold px-8 py-3 rounded-lg hover:bg-green-50 transition-colors duration-150 whitespace-nowrap"
+              >
+                I'm a Player &rarr;
+              </Link>
+              <span className="text-green-300 text-xs">My schedule, fees &amp; travel</span>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <a
+                href={teamManagementUrl}
+                className="inline-block border-2 border-white/40 text-white font-bold px-8 py-3 rounded-lg hover:bg-white/10 transition-colors duration-150 whitespace-nowrap"
+              >
+                Team Management &rarr;
+              </a>
+              <span className="text-green-300 text-xs">Managers &amp; coaches only</span>
+            </div>
+          </div>
         </div>
       </section>
 
