@@ -39,6 +39,7 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     passportNumber: player.passportNumber,
     passportExpiry: player.passportExpiry,
     passportCopyUrl: player.passportCopyUrl,
+    passportCopyReviewed: player.passportCopyReviewed,
     emergencyContactName: player.emergencyContactName,
     emergencyContactPhone: player.emergencyContactPhone,
     flightArrivalDateTime: player.flightArrivalDateTime,

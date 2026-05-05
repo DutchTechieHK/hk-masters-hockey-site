@@ -110,6 +110,7 @@ export interface Player {
   passportNumber?: string;
   passportExpiry?: string;
   passportCopyUrl?: string;
+  passportCopyReviewed?: boolean;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -157,6 +158,7 @@ export interface CreatePlayer {
   jacketSize?: string;
   travelDates?: string;
   feePaid: boolean;
+  passportCopyReviewed?: boolean;
   paymentAmountDue?: number;
   paymentAmountPaid?: number;
   paymentDate?: string;

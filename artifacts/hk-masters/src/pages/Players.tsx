@@ -8,11 +8,11 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { Player } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Player } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getInitials } from "@/lib/utils"
 
@@ -90,6 +90,7 @@ const playerSchema = z.object({
   jacketSize: z.string().optional(),
   travelDates: z.string().optional(),
   feePaid: z.boolean().default(false),
+  passportCopyReviewed: z.boolean().default(false),
   paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   paymentAmountPaid: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   paymentDate: z.string().optional(),
@@ -189,7 +190,8 @@ export default function Players() {
     flightArrivalDateTime: "", flightDepartureDateTime: "", arrivalCity: "",
     roomSharingPreference: "shared", roomSharingWith: "",
     shirtSize: "", shortsSize: "", jacketSize: "", travelDates: "",
-    feePaid: false, paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
+    feePaid: false, passportCopyReviewed: false,
+    paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
   })
 
@@ -224,6 +226,7 @@ export default function Players() {
       jacketSize: player.jacketSize || "",
       travelDates: player.travelDates || "",
       feePaid: player.feePaid,
+      passportCopyReviewed: player.passportCopyReviewed ?? false,
       paymentAmountDue: player.paymentAmountDue ?? "",
       paymentAmountPaid: player.paymentAmountPaid ?? "",
       paymentDate: player.paymentDate || "",
@@ -320,6 +323,25 @@ export default function Players() {
       setLoginError((err as Error).message || "Login failed")
     } finally {
       setLoginLoading(false)
+    }
+  }
+
+  const handleToggleReviewed = async (player: Player) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: player.id,
+        data: {
+          name: player.name,
+          teamId: player.teamId,
+          email: player.email,
+          feePaid: player.feePaid,
+          passportCopyReviewed: !player.passportCopyReviewed,
+        },
+      })
+      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+      toast({ title: player.passportCopyReviewed ? "Marked as not reviewed" : "Marked as reviewed" })
+    } catch {
+      toast({ title: "Failed to update review status", variant: "destructive" })
     }
   }
 
@@ -501,16 +523,32 @@ export default function Players() {
                           <span className="text-xs text-muted-foreground">Not set</span>
                         )}
                         {player.passportCopyUrl && (
-                          <a
-                            href={player.passportCopyUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <LinkIcon className="w-3 h-3" />
-                            View copy
-                          </a>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <a
+                              href={player.passportCopyUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <LinkIcon className="w-3 h-3" />
+                              View copy
+                            </a>
+                            <button
+                              onClick={() => handleToggleReviewed(player)}
+                              title={player.passportCopyReviewed ? "Reviewed — click to unmark" : "Not yet reviewed — click to mark as reviewed"}
+                              className={`inline-flex items-center gap-1 text-xs font-medium rounded px-1.5 py-0.5 border transition-colors ${
+                                player.passportCopyReviewed
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                  : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                              }`}
+                            >
+                              {player.passportCopyReviewed
+                                ? <><CheckCircle className="w-3 h-3" /> Reviewed</>
+                                : <><Clock className="w-3 h-3" /> Unreviewed</>
+                              }
+                            </button>
+                          </div>
                         )}
                       </td>
                       {/* Actions */}
@@ -635,6 +673,17 @@ export default function Players() {
                     <LinkIcon className="w-3.5 h-3.5" />
                     View
                   </a>
+                </div>
+                <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-xl border">
+                  <input
+                    type="checkbox"
+                    id="passportCopyReviewed"
+                    className="w-5 h-5 rounded border-2 text-primary focus:ring-primary accent-primary"
+                    {...register("passportCopyReviewed")}
+                  />
+                  <label htmlFor="passportCopyReviewed" className="font-semibold cursor-pointer text-sm">
+                    Passport copy reviewed and valid
+                  </label>
                 </div>
               </div>
             )}

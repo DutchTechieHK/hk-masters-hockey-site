@@ -120,6 +120,15 @@ const CHECKS: BlockerCheck[] = [
     href: "/players",
     detect: (p) => !p.emergencyContactName || !p.emergencyContactPhone,
   },
+  {
+    key: "passport-copy-unreviewed",
+    label: "Passport copy not reviewed",
+    description: "Players who uploaded a passport copy that hasn't been marked as reviewed",
+    icon: BookUser,
+    tone: "amber",
+    href: "/players",
+    detect: (p) => !!p.passportCopyUrl && !p.passportCopyReviewed,
+  },
 ]
 
 function toneClasses(tone: "amber" | "red" | "blue") {
