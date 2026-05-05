@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { API_BASE } from "../utils/api";
+import { cloudinaryResize } from "../utils/cloudinary";
+
+const TIER_ORDER = ["Gold", "Silver", "Bronze"];
+
+const TIER_GLOW = {
+  Gold:   "255,200,50",
+  Silver: "180,180,200",
+  Bronze: "220,130,40",
+};
 
 function useSponsors() {
   const [sponsors, setSponsors] = useState([]);
@@ -17,116 +26,106 @@ function useSponsors() {
   return { sponsors, loading };
 }
 
-const TIER_ORDER = ["Gold", "Silver", "Bronze"];
+function GlassCard({ sponsor }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const glow = TIER_GLOW[sponsor.tier] || TIER_GLOW.Bronze;
+  const displayUrl = cloudinaryResize(sponsor.logoUrl, 400);
 
-function SponsorCard({ sponsor, size }) {
-  const inner = sponsor.logoUrl ? (
+  const logoArea = displayUrl && !imgFailed ? (
     <img
-      src={sponsor.logoUrl}
+      src={displayUrl}
       alt={sponsor.name}
-      className={`object-contain ${size === "gold" ? "max-h-20 max-w-[220px]" : "max-h-12 max-w-[140px]"}`}
+      className="max-h-20 max-w-[200px] object-contain"
+      onError={() => setImgFailed(true)}
     />
   ) : (
-    <span className={`font-semibold text-gray-500 ${size === "gold" ? "text-sm" : "text-xs"}`}>
-      {sponsor.name}
-    </span>
+    <span className="text-white font-semibold text-sm text-center px-4">{sponsor.name}</span>
   );
 
-  const cardClass = `flex items-center justify-center rounded-xl border border-gray-100 shadow-sm bg-white transition-shadow hover:shadow-md ${
-    size === "gold" ? "p-6 min-h-[100px]" : "p-4 min-h-[72px]"
-  }`;
+  const inner = (
+    <div className="group relative">
+      {/* Hover halo */}
+      <div
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ boxShadow: `0 0 60px 10px rgba(${glow},0.35)` }}
+      />
+      {/* Glass card */}
+      <div
+        className="relative rounded-2xl flex items-center justify-center py-8 px-6 min-h-[120px] overflow-hidden"
+        style={{
+          background: "linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
+          border: `1px solid rgba(${glow},0.25)`,
+          boxShadow: `0 0 30px rgba(${glow},0.08), inset 0 1px 0 rgba(255,255,255,0.07)`,
+        }}
+      >
+        {/* Radial glow */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: `radial-gradient(ellipse at 50% 50%, rgba(${glow},0.13) 0%, transparent 68%)` }}
+        />
+        <div className="relative z-10 flex items-center justify-center">
+          {logoArea}
+        </div>
+      </div>
+    </div>
+  );
 
   if (sponsor.websiteUrl) {
     return (
-      <a href={sponsor.websiteUrl} target="_blank" rel="noopener noreferrer" className={cardClass}>
+      <a href={sponsor.websiteUrl} target="_blank" rel="noopener noreferrer" className="block">
         {inner}
       </a>
     );
   }
-  return <div className={cardClass}>{inner}</div>;
+  return inner;
 }
 
-export default function SponsorStrip({ borderTop = true }) {
+export default function SponsorStrip() {
   const { sponsors, loading } = useSponsors();
 
   const activeSponsors = sponsors.filter((s) => s.active);
-  const grouped = TIER_ORDER.map((tier) => ({
-    tier,
-    items: activeSponsors.filter((s) => s.tier === tier),
-  })).filter((g) => g.items.length > 0);
-
-  const borderClass = borderTop ? "border-t border-gray-100" : "";
-
-  if (loading || grouped.length === 0) {
-    return (
-      <section className={`py-12 ${borderClass}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm font-medium text-gray-400 uppercase tracking-widest mb-8">
-            Our Sponsors
-          </p>
-          {loading ? (
-            <div className="flex justify-center">
-              <div className="text-gray-300 text-sm">Loading…</div>
-            </div>
-          ) : (
-            <div className="flex flex-wrap justify-center gap-8 items-center">
-              <div className="bg-gray-100 rounded-lg px-8 py-4 text-gray-400 font-medium text-sm">
-                Sponsor logos managed via CMS &rarr; Sponsors section
-              </div>
-            </div>
-          )}
-          <div className="text-center mt-6">
-            <Link href="/sponsors" className="text-[#006B3C] text-sm font-medium hover:text-green-800 transition-colors duration-150">
-              Become a sponsor &rarr;
-            </Link>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  const goldGroup = grouped.find((g) => g.tier === "Gold");
-  const otherGroups = grouped.filter((g) => g.tier !== "Gold");
+  const sorted = TIER_ORDER.flatMap((tier) =>
+    activeSponsors.filter((s) => s.tier === tier)
+  );
 
   return (
-    <section className={`py-12 ${borderClass}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p className="text-center text-sm font-medium text-gray-400 uppercase tracking-widest mb-8">
+    <section
+      className="py-16"
+      style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
+    >
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p className="text-center text-xs font-semibold text-white/30 uppercase tracking-[0.2em] mb-10">
           Our Sponsors
         </p>
 
-        {goldGroup && (
-          <div className="mb-8">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-yellow-400 to-yellow-500 text-white uppercase tracking-wide">
-                Gold
-              </span>
-            </div>
-            <div className={`grid gap-5 mx-auto max-w-3xl ${
-              goldGroup.items.length === 1 ? "grid-cols-1 max-w-xs" : "grid-cols-1 sm:grid-cols-2"
-            }`}>
-              {goldGroup.items.map((s, i) => (
-                <SponsorCard key={s.id ?? i} sponsor={s} size="gold" />
-              ))}
-            </div>
+        {loading ? (
+          <div className="flex justify-center">
+            <p className="text-white/20 text-sm tracking-widest uppercase">Loading…</p>
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="flex justify-center">
+            <p className="text-white/20 text-sm">Sponsors coming soon.</p>
+          </div>
+        ) : (
+          <div className={`grid gap-5 ${
+            sorted.length === 1
+              ? "grid-cols-1 max-w-xs mx-auto"
+              : sorted.length === 2
+              ? "grid-cols-1 sm:grid-cols-2 max-w-xl mx-auto"
+              : "grid-cols-2 sm:grid-cols-3"
+          }`}>
+            {sorted.map((s) => (
+              <GlassCard key={s.id} sponsor={s} />
+            ))}
           </div>
         )}
 
-        {otherGroups.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-4">
-            {otherGroups.flatMap((g) =>
-              g.items.map((s, i) => (
-                <div key={`${g.tier}-${s.id ?? i}`} className="w-36 sm:w-44">
-                  <SponsorCard sponsor={s} size="small" />
-                </div>
-              ))
-            )}
-          </div>
-        )}
-
-        <div className="text-center mt-8">
-          <Link href="/sponsors" className="text-[#006B3C] text-sm font-medium hover:text-green-800 transition-colors duration-150">
-            View all sponsors &rarr;
+        <div className="text-center mt-10">
+          <Link
+            href="/sponsors"
+            className="text-sm font-medium text-white/40 hover:text-white/70 tracking-wide transition-colors duration-150"
+          >
+            View all sponsors →
           </Link>
         </div>
       </div>
