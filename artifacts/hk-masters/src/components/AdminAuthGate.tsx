@@ -80,16 +80,16 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
       <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-5">
         <Lock className="w-6 h-6 text-primary" />
       </div>
-      <h2 className="text-lg font-bold text-center mb-1">HK Masters Admin</h2>
+      <h2 className="text-lg font-bold text-center mb-1">HK Masters Team Portal</h2>
       <p className="text-sm text-muted-foreground text-center mb-6">
         {hasEverAuthed
           ? "Your session expired. Please sign in again to continue."
-          : "Enter your admin password to continue."}
+          : "Enter your team password to access the portal."}
       </p>
       <form onSubmit={handleLogin} className="space-y-4">
         <Input
           type="password"
-          placeholder="Admin password"
+          placeholder="Team password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoFocus
