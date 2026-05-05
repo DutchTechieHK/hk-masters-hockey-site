@@ -18,7 +18,7 @@ import {
   ListPlayerPaymentsParams,
   DeletePlayerPaymentParams,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendOnboardingInviteEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -207,11 +207,30 @@ router.patch("/self/:token", async (req, res) => {
       updates[field] = value === "" ? null : value;
     }
   }
+  const newPassportCopyUrl = updates.passportCopyUrl as string | null | undefined;
+  const passportCopyChanged =
+    "passportCopyUrl" in updates &&
+    newPassportCopyUrl !== existing.passportCopyUrl &&
+    typeof newPassportCopyUrl === "string" &&
+    newPassportCopyUrl.length > 0;
+
   const [updated] = Object.keys(updates).length > 0
     ? await db.update(playersTable).set(updates).where(eq(playersTable.id, existing.id)).returning()
     : [existing];
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
   res.json(mapSelfPlayer(updated, team?.name));
+
+  if (passportCopyChanged) {
+    sendPassportUploadNotificationEmail({
+      playerName: updated.name,
+      playerEmail: updated.email,
+      teamName: team?.name ?? "Unknown Team",
+      passportCopyUrl: newPassportCopyUrl as string,
+      isUpdate: existing.passportCopyUrl !== null && existing.passportCopyUrl !== "",
+    }).catch((err) => {
+      console.error("[passport-notify] Failed to send notification email:", err);
+    });
+  }
 });
 
 function mapPayment(p: typeof playerPaymentsTable.$inferSelect) {
