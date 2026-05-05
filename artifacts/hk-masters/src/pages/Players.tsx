@@ -18,6 +18,10 @@ import { getInitials } from "@/lib/utils"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
+function cloudinaryDownloadUrl(url: string): string {
+  return url.replace(/\/(image|raw|video)\/upload\//, "/$1/upload/fl_attachment/")
+}
+
 const SESSION_KEY = "hkm_admin_session"
 function getStoredSession(): string | null {
   try { return localStorage.getItem(SESSION_KEY) } catch { return null }
@@ -567,7 +571,7 @@ export default function Players() {
                         {player.passportCopyUrl && (
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <a
-                              href={player.passportCopyUrl}
+                              href={cloudinaryDownloadUrl(player.passportCopyUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
@@ -707,7 +711,7 @@ export default function Players() {
                   <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="text-sm text-muted-foreground flex-1">File uploaded by player</span>
                   <a
-                    href={editingPlayer.passportCopyUrl}
+                    href={cloudinaryDownloadUrl(editingPlayer.passportCopyUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"

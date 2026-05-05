@@ -5,6 +5,11 @@ import { API_BASE } from "../utils/api";
 const CLOUDINARY_CLOUD_NAME = "djyvdrhal";
 const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned";
 
+function cloudinaryDownloadUrl(url) {
+  if (!url) return url;
+  return url.replace(/\/(image|raw|video)\/upload\//, "/$1/upload/fl_attachment/");
+}
+
 const SECTIONS = [
   {
     title: "Travel",
@@ -306,7 +311,7 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-800 truncate">Passport copy on file</p>
             <a
-              href={passportCopyUrl}
+              href={cloudinaryDownloadUrl(passportCopyUrl)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-[#006B3C] hover:underline"
