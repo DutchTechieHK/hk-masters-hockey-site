@@ -116,8 +116,9 @@ export default function Players() {
   const [searchQuery, setSearchQuery] = useState("")
 
   const { data: teams = [] } = useListTeams()
-  const { data: players = [], isLoading } = useListPlayers(
-    selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined
+  const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
+    selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined,
+    { query: { refetchInterval: 30_000 } }
   )
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -362,6 +363,15 @@ export default function Players() {
       description="Manage player profiles, travel details, sizes, and payments."
       action={
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            title="Refresh player list (also auto-refreshes every 30 seconds)"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
+            {isFetching ? "Refreshing…" : "Refresh"}
+          </Button>
           <Button
             variant="outline"
             onClick={handleSendBulkInvites}

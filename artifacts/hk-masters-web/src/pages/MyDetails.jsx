@@ -174,11 +174,15 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
   const [uploading, setUploading] = useState(false);
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const widgetRef = useRef(null);
+  const onUploadedRef = useRef(onUploaded);
+  onUploadedRef.current = onUploaded;
 
   const openWidget = () => {
     if (widgetOpen) return;
     setUploadError("");
+    setUploadSuccess(false);
     if (!window.cloudinary) {
       setUploadError("Upload service unavailable. Please refresh and try again.");
       return;
@@ -240,13 +244,11 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
               });
               if (!res.ok) throw new Error("Could not save passport copy URL.");
               const updated = await res.json();
-              onUploaded(updated);
+              onUploadedRef.current(updated);
+              setUploadSuccess(true);
             } catch {
               setUploadError("File uploaded but could not be saved. Please try again.");
             }
-          }
-          if (result.event === "close") {
-            setUploading(false);
           }
         }
       );
@@ -286,6 +288,18 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
             >
               View uploaded file ↗
             </a>
+          </div>
+        </div>
+      )}
+
+      {uploadSuccess && !uploadError && (
+        <div className="mb-4 flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+          <svg className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">Passport copy saved successfully</p>
+            <p className="text-xs text-emerald-700 mt-0.5">Your admin can now see it and access the file above.</p>
           </div>
         </div>
       )}
@@ -339,15 +353,6 @@ export default function MyDetails() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState(null);
-
-  // Load Cloudinary upload widget script once
-  useEffect(() => {
-    if (window.cloudinary) return;
-    const script = document.createElement("script");
-    script.src = "https://upload-widget.cloudinary.com/global/all.js";
-    script.async = true;
-    document.head.appendChild(script);
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
