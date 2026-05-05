@@ -215,6 +215,12 @@ router.patch("/self/:token", async (req, res) => {
     typeof newPassportCopyUrl === "string" &&
     newPassportCopyUrl.length > 0;
 
+  // If the player is uploading a new (or replacement) passport copy, clear the
+  // admin's reviewed flag automatically — the admin must review the new file.
+  if (passportCopyChanged) {
+    updates.passportCopyReviewed = false;
+  }
+
   const [updated] = Object.keys(updates).length > 0
     ? await db.update(playersTable).set(updates).where(eq(playersTable.id, existing.id)).returning()
     : [existing];
