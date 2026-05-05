@@ -4,8 +4,6 @@ import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
 import AutoLink from "../components/AutoLink";
 import RichText from "../components/RichText";
-import FundraisingThermometer from "../components/FundraisingThermometer";
-import PledgeForm from "../components/PledgeForm";
 import SponsorStrip from "../components/SponsorStrip";
 import NextMatchWidget from "../components/NextMatchWidget";
 
@@ -189,38 +187,25 @@ export default function Rotterdam2026() {
         </div>
       </section>
 
-      {/* Travel & Logistics */}
-      <section className="bg-[#006B3C]/5 border-y border-[#006B3C]/10 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Travel &amp; Logistics</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {content.travel.map((item) => (
-              <div key={item.title} className="bg-white rounded-xl p-6 shadow-sm border border-[#006B3C]/10">
-                <div className="text-3xl mb-3">{item.icon}</div>
-                <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
-                <RichText content={item.body} className="text-sm text-gray-600 leading-relaxed" />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Fundraising Thermometer & Pledge Form */}
-      <section id="fundraising" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Fundraising Progress</h2>
-            <p className="text-gray-600 text-sm mb-6">
-              Help Hong Kong Masters Hockey reach their goal for Rotterdam 2026.
+      {/* Fundraising CTA */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="bg-gradient-to-br from-[#006B3C] to-[#005430] rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row items-center gap-6 text-white">
+          <div className="flex-1">
+            <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wide">
+              Support the Team
+            </span>
+            <h2 className="text-2xl font-bold mb-2">Help Us Get to Rotterdam</h2>
+            <p className="text-green-100 leading-relaxed max-w-lg">
+              We're raising funds to send two HK squads to the World Masters Hockey Cup. Every pledge — big or small — makes a difference. See our progress and add your support.
             </p>
-            <FundraisingThermometer />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Pledge Your Support</h2>
-            <p className="text-gray-600 text-sm mb-6">
-              No payment is taken now — a team member will follow up with you directly.
-            </p>
-            <PledgeForm />
+          <div className="shrink-0">
+            <Link
+              href="/support"
+              className="inline-block bg-white text-[#006B3C] font-bold px-8 py-3 rounded-lg hover:bg-green-50 transition-colors duration-150 whitespace-nowrap"
+            >
+              View Fundraising &rarr;
+            </Link>
           </div>
         </div>
       </section>

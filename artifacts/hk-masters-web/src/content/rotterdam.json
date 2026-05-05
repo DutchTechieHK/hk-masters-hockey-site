@@ -64,14 +64,6 @@
   ],
   "key_dates": [
     {
-      "date": "March 31, 2026",
-      "event": "Final squad registration deadline with World Hockey"
-    },
-    {
-      "date": "April 24, 2026",
-      "event": "Masters Training Night | MO40 | MO50"
-    },
-    {
       "date": "May 23, 2026",
       "event": "WMH | Uniform Advertising Approval Form"
     },
@@ -100,21 +92,5 @@
       "event": "Return travel to Hong Kong"
     }
   ],
-  "travel": [
-    {
-      "icon": "✈️",
-      "title": "Flights",
-      "body": "Group flights from Hong Kong International Airport are being arranged via [Travel Agent Name]. Individual bookings must be approved by the team manager. Details to be confirmed by March 1, 2026."
-    },
-    {
-      "icon": "🏨",
-      "title": "Accommodation",
-      "body": "The club has secured a block booking at [Hotel Name] in central Rotterdam. All squad members are expected to stay together. Room-sharing arrangements will be communicated by the team manager."
-    },
-    {
-      "icon": "👕",
-      "title": "Kit & Equipment",
-      "body": "Official HK Masters playing kit will be provided to all registered players. Players are responsible for their own sticks, shin guards, and footwear. Kit collection event: May 1, 2026."
-    }
-  ]
+  "travel": []
 }
