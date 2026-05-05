@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -27,6 +27,21 @@ function storeSession(token: string) {
 }
 function clearStoredSession() {
   try { localStorage.removeItem(SESSION_KEY) } catch { /* noop */ }
+}
+
+const PASSPORT_ACK_KEY = "hkm_passport_ack"
+function getPassportAck(): Record<number, number> {
+  try {
+    const raw = localStorage.getItem(PASSPORT_ACK_KEY)
+    return raw ? (JSON.parse(raw) as Record<number, number>) : {}
+  } catch { return {} }
+}
+function setPassportAck(playerId: number) {
+  try {
+    const ack = getPassportAck()
+    ack[playerId] = Date.now()
+    localStorage.setItem(PASSPORT_ACK_KEY, JSON.stringify(ack))
+  } catch { /* noop */ }
 }
 async function adminLogin(password: string): Promise<string> {
   const res = await fetch("/api/admin/auth", {
@@ -115,6 +130,24 @@ export default function Players() {
 
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
+
+  const acknowledgePassport = (playerId: number) => {
+    setPassportAck(playerId)
+    setPassportAckState(prev => ({ ...prev, [playerId]: Date.now() }))
+  }
+
+  const getPassportBadge = (player: { id: number; passportCopyUploadedAt?: string | null; passportCopyUploadedIsUpdate?: boolean }): "new" | "updated" | null => {
+    if (!player.passportCopyUploadedAt) return null
+    const uploadedMs = new Date(player.passportCopyUploadedAt).getTime()
+    const ackedMs = passportAck[player.id] ?? 0
+    if (uploadedMs <= ackedMs) return null
+    return player.passportCopyUploadedIsUpdate ? "updated" : "new"
+  }
+
+  useEffect(() => {
+    setPassportAckState(getPassportAck())
+  }, [])
 
   const { data: teams = [] } = useListTeams()
   const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
@@ -480,7 +513,16 @@ export default function Players() {
                             {getInitials(player.name)}
                           </div>
                           <div>
-                            <div className="font-bold text-foreground">{player.name}</div>
+                            <div className="font-bold text-foreground flex items-center gap-2">
+                              {player.name}
+                              {(() => {
+                                const badge = getPassportBadge(player)
+                                if (!badge) return null
+                                return badge === "updated"
+                                  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200 leading-none">Updated</span>
+                                  : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200 leading-none">New</span>
+                              })()}
+                            </div>
                             <div className="text-muted-foreground text-xs sm:hidden">{player.teamName}</div>
                           </div>
                         </div>
@@ -529,7 +571,7 @@ export default function Players() {
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => { e.stopPropagation(); acknowledgePassport(player.id) }}
                             >
                               <LinkIcon className="w-3 h-3" />
                               View copy

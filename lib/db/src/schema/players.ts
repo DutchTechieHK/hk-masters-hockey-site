@@ -36,6 +36,8 @@ export const playersTable = pgTable("players", {
   medicalNotes: text("medical_notes"),
   notes: text("notes"),
   passportCopyReviewed: boolean("passport_copy_reviewed").default(false).notNull(),
+  passportCopyUploadedAt: timestamp("passport_copy_uploaded_at"),
+  passportCopyUploadedIsUpdate: boolean("passport_copy_uploaded_is_update").default(false).notNull(),
   travelReminderSentAt: timestamp("travel_reminder_sent_at"),
   feeReminderSentAt: timestamp("fee_reminder_sent_at"),
   onboardingInviteSentAt: timestamp("onboarding_invite_sent_at"),

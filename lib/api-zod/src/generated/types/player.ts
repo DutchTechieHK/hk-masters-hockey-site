@@ -19,6 +19,10 @@ export interface Player {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string;
+  passportCopyReviewed?: boolean;
+  passportCopyUploadedAt?: string | null;
+  passportCopyUploadedIsUpdate?: boolean;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;

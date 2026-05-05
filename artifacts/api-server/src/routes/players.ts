@@ -40,6 +40,8 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     passportExpiry: player.passportExpiry,
     passportCopyUrl: player.passportCopyUrl,
     passportCopyReviewed: player.passportCopyReviewed,
+    passportCopyUploadedAt: player.passportCopyUploadedAt?.toISOString() ?? null,
+    passportCopyUploadedIsUpdate: player.passportCopyUploadedIsUpdate,
     emergencyContactName: player.emergencyContactName,
     emergencyContactPhone: player.emergencyContactPhone,
     flightArrivalDateTime: player.flightArrivalDateTime,
@@ -218,7 +220,10 @@ router.patch("/self/:token", async (req, res) => {
   // If the player is uploading a new (or replacement) passport copy, clear the
   // admin's reviewed flag automatically — the admin must review the new file.
   if (passportCopyChanged) {
+    const isUpdate = existing.passportCopyUrl !== null && existing.passportCopyUrl !== "";
     updates.passportCopyReviewed = false;
+    updates.passportCopyUploadedAt = new Date();
+    updates.passportCopyUploadedIsUpdate = isUpdate;
   }
 
   const [updated] = Object.keys(updates).length > 0
