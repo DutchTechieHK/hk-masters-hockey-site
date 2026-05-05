@@ -109,6 +109,7 @@ export interface Player {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -176,6 +177,7 @@ export interface SelfPlayer {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -201,6 +203,7 @@ export interface UpdateSelfPlayer {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;

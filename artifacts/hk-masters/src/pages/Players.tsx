@@ -490,6 +490,18 @@ export default function Players() {
                         {pStatus === "missing" && (
                           <span className="text-xs text-muted-foreground">Not set</span>
                         )}
+                        {player.passportCopyUrl && (
+                          <a
+                            href={player.passportCopyUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <LinkIcon className="w-3 h-3" />
+                            View copy
+                          </a>
+                        )}
                       </td>
                       {/* Actions */}
                       <td className="px-4 py-4 text-right">
@@ -598,6 +610,24 @@ export default function Players() {
               <label className="text-sm font-semibold">Passport Expiry</label>
               <Input type="date" {...register("passportExpiry")} />
             </div>
+            {editingPlayer?.passportCopyUrl && (
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-semibold">Passport Copy</label>
+                <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-2.5 border">
+                  <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="text-sm text-muted-foreground flex-1">File uploaded by player</span>
+                  <a
+                    href={editingPlayer.passportCopyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    View
+                  </a>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-semibold">Emergency Contact Name</label>
               <Input {...register("emergencyContactName")} placeholder="John Doe" />
