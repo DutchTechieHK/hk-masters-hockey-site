@@ -191,6 +191,8 @@ function ContributeForm() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
   const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const [widgetOpen, setWidgetOpen] = useState(false);
+  const widgetOpenRef = useRef(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
   const dragIndex = useRef(null);
   const [touchDrag, setTouchDrag] = useState({ from: null, over: null });
@@ -223,8 +225,11 @@ function ContributeForm() {
 
   const openUploadWidget = useCallback((currentPhotoUrls, currentUploadingPhotos) => {
     if (!window.cloudinary) return;
+    if (widgetOpenRef.current) return;
     const totalQueued = currentPhotoUrls.length + currentUploadingPhotos.length;
     if (totalQueued >= MAX_PHOTOS) return;
+    widgetOpenRef.current = true;
+    setWidgetOpen(true);
     const remaining = MAX_PHOTOS - totalQueued;
     const widget = window.cloudinary.createUploadWidget(
       {
@@ -289,6 +294,9 @@ function ContributeForm() {
               prev.map((p) => (p.id === id ? { ...p, error: true } : p))
             );
           }
+        } else if (result.event === "close") {
+          widgetOpenRef.current = false;
+          setWidgetOpen(false);
         }
       }
     );
@@ -735,7 +743,7 @@ function ContributeForm() {
               <button
                 type="button"
                 onClick={() => openUploadWidget(photoUrls, uploadingPhotos)}
-                disabled={!widgetLoaded || uploadingPhotos.some((p) => !p.error) || atPhotoLimit}
+                disabled={!widgetLoaded || widgetOpen || uploadingPhotos.some((p) => !p.error) || atPhotoLimit}
                 title={atPhotoLimit ? `Maximum of ${MAX_PHOTOS} photos reached` : undefined}
                 className="inline-flex items-center gap-2 bg-[#006B3C] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >

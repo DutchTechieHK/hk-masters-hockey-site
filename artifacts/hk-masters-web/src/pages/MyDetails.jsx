@@ -172,15 +172,18 @@ function FeesPanel({ player }) {
 
 function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
   const [uploading, setUploading] = useState(false);
+  const [widgetOpen, setWidgetOpen] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const widgetRef = useRef(null);
 
   const openWidget = () => {
+    if (widgetOpen) return;
     setUploadError("");
     if (!window.cloudinary) {
       setUploadError("Upload service unavailable. Please refresh and try again.");
       return;
     }
+    setWidgetOpen(true);
     if (!widgetRef.current) {
       widgetRef.current = window.cloudinary.createUploadWidget(
         {
@@ -221,6 +224,10 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
           }
           if (result.event === "upload-added") {
             setUploading(true);
+          }
+          if (result.event === "close") {
+            setWidgetOpen(false);
+            setUploading(false);
           }
           if (result.event === "success") {
             const url = result.info.secure_url;
@@ -290,7 +297,7 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
       <button
         type="button"
         onClick={openWidget}
-        disabled={uploading}
+        disabled={uploading || widgetOpen}
         className="inline-flex items-center gap-2 bg-gray-900 text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {uploading ? (
