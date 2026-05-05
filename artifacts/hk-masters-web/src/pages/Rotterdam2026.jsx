@@ -8,7 +8,7 @@ import SponsorStrip from "../components/SponsorStrip";
 import NextMatchWidget from "../components/NextMatchWidget";
 
 export default function Rotterdam2026() {
-  const teamManagementUrl = "/";
+  const teamManagementUrl = "https://app.hkmastershockey.com";
   const [expandedSquad, setExpandedSquad] = useState(null);
 
   useEffect(() => {
