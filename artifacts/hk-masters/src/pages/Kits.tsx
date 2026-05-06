@@ -46,7 +46,7 @@ type GarmentKey = typeof GARMENTS[number]["key"]
 
 const DEFAULT_SUPPLIERS: Record<string, string> = {
   playing_kit: "Kukri",
-  training_kit: "Kukri",
+  training_kit: "",
   travel_leisure_kit: "",
   accessories: "",
 }
@@ -55,10 +55,11 @@ function derivePaymentStatus(order: KitOrder): { label: string; color: string } 
   if (!order.unitCostHKD || order.totalCostHKD === 0) return { label: "N/A", color: "bg-slate-100 text-slate-500" }
   if (order.balancePaidDate) return { label: "Fully Paid", color: "bg-emerald-100 text-emerald-800" }
   if (order.depositPaidDate) {
-    const balanceDue = order.balanceDueDate && new Date(order.balanceDueDate) <= new Date()
-    return balanceDue
-      ? { label: "Balance Due", color: "bg-amber-100 text-amber-800" }
-      : { label: "Deposit Paid", color: "bg-blue-100 text-blue-700" }
+    const depositCoversAll =
+      !order.depositAmountHKD || Number(order.depositAmountHKD) >= Number(order.totalCostHKD)
+    return depositCoversAll
+      ? { label: "Deposit Paid", color: "bg-blue-100 text-blue-700" }
+      : { label: "Balance Due", color: "bg-amber-100 text-amber-800" }
   }
   return { label: "Deposit Due", color: "bg-rose-100 text-rose-700" }
 }
@@ -558,65 +559,66 @@ export default function Kits() {
 
       {/* ─────────── ORDER MODAL ─────────── */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingOrder ? "Edit Order" : "New Kit Order"}>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
+        <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="space-y-5 max-h-[65vh] overflow-y-auto pr-1 pb-2">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2">
-              <label className="text-sm font-semibold">Item Name *</label>
-              <Input {...register("itemName")} placeholder="e.g. Playing Shirt, Track Top..." />
+              <label htmlFor="ko-itemName" className="text-sm font-semibold">Item Name *</label>
+              <Input id="ko-itemName" {...register("itemName")} placeholder="e.g. Playing Shirt, Track Top..." />
               {errors.itemName && <p className="text-xs text-destructive">{errors.itemName.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Category</label>
-              <Select {...register("itemType")}>
+              <label htmlFor="ko-itemType" className="text-sm font-semibold">Category</label>
+              <Select id="ko-itemType" {...register("itemType")}>
                 {ITEM_TYPES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Supplier</label>
-              <Input {...register("supplier")} placeholder="e.g. Kukri" />
+              <label htmlFor="ko-supplier" className="text-sm font-semibold">Supplier</label>
+              <Input id="ko-supplier" {...register("supplier")} placeholder="e.g. Kukri" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Quantity</label>
-              <Input type="number" min="1" {...register("quantity")} />
+              <label htmlFor="ko-quantity" className="text-sm font-semibold">Quantity</label>
+              <Input id="ko-quantity" type="number" min="1" {...register("quantity")} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Unit Cost (HKD)</label>
-              <Input type="number" step="0.01" min="0" {...register("unitCostHKD")} />
+              <label htmlFor="ko-unitCost" className="text-sm font-semibold">Unit Cost (HKD)</label>
+              <Input id="ko-unitCost" type="number" step="0.01" min="0" {...register("unitCostHKD")} />
             </div>
           </div>
 
           <div className="flex justify-between items-center bg-primary/5 rounded-xl px-4 py-3 border border-primary/20">
             <span className="text-sm font-medium text-primary">Total Cost</span>
-            <span className="text-lg font-bold text-primary">{formatCurrency(totalPreview)}</span>
+            <span className="text-lg font-bold text-primary" aria-label={`Total Cost ${formatCurrency(totalPreview)}`}>{formatCurrency(totalPreview)}</span>
           </div>
 
           <div className="border-t pt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Order Lifecycle</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Order Status</label>
-                <Select {...register("orderStatus")}>
+                <label htmlFor="ko-orderStatus" className="text-sm font-semibold">Order Status</label>
+                <Select id="ko-orderStatus" {...register("orderStatus")}>
                   {ORDER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </Select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Order Placed Date</label>
-                <Input type="date" {...register("orderPlacedDate")} />
+                <label htmlFor="ko-orderPlacedDate" className="text-sm font-semibold">Order Placed Date</label>
+                <Input id="ko-orderPlacedDate" type="date" {...register("orderPlacedDate")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Artwork Approved Date</label>
-                <Input type="date" {...register("artworkApprovedDate")} />
+                <label htmlFor="ko-artworkApprovedDate" className="text-sm font-semibold">Artwork Approved Date</label>
+                <Input id="ko-artworkApprovedDate" type="date" {...register("artworkApprovedDate")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Expected Delivery</label>
-                <Input type="date" {...register("expectedDeliveryDate")} />
+                <label htmlFor="ko-expectedDelivery" className="text-sm font-semibold">Expected Delivery</label>
+                <Input id="ko-expectedDelivery" type="date" {...register("expectedDeliveryDate")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Actual Delivery</label>
-                <Input type="date" {...register("actualDeliveryDate")} />
+                <label htmlFor="ko-actualDelivery" className="text-sm font-semibold">Actual Delivery</label>
+                <Input id="ko-actualDelivery" type="date" {...register("actualDeliveryDate")} />
               </div>
             </div>
           </div>
@@ -625,30 +627,31 @@ export default function Kits() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Payments</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Deposit Amount (HKD)</label>
-                <Input type="number" step="0.01" min="0" {...register("depositAmountHKD")} placeholder="0" />
+                <label htmlFor="ko-depositAmount" className="text-sm font-semibold">Deposit Amount (HKD)</label>
+                <Input id="ko-depositAmount" type="number" step="0.01" min="0" {...register("depositAmountHKD")} placeholder="0" />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Deposit Paid Date</label>
-                <Input type="date" {...register("depositPaidDate")} />
+                <label htmlFor="ko-depositPaidDate" className="text-sm font-semibold">Deposit Paid Date</label>
+                <Input id="ko-depositPaidDate" type="date" {...register("depositPaidDate")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Balance Due Date</label>
-                <Input type="date" {...register("balanceDueDate")} />
+                <label htmlFor="ko-balanceDueDate" className="text-sm font-semibold">Balance Due Date</label>
+                <Input id="ko-balanceDueDate" type="date" {...register("balanceDueDate")} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-semibold">Balance Paid Date</label>
-                <Input type="date" {...register("balancePaidDate")} />
+                <label htmlFor="ko-balancePaidDate" className="text-sm font-semibold">Balance Paid Date</label>
+                <Input id="ko-balancePaidDate" type="date" {...register("balancePaidDate")} />
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Notes</label>
-            <Input {...register("notes")} placeholder="Artwork notes, customisation, special instructions..." />
+            <label htmlFor="ko-notes" className="text-sm font-semibold">Notes</label>
+            <Input id="ko-notes" {...register("notes")} placeholder="Artwork notes, customisation, special instructions..." />
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t">
+        </div>
+          <div className="pt-4 flex justify-end gap-3 border-t mt-4">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : editingOrder ? "Update Order" : "Add Order"}
