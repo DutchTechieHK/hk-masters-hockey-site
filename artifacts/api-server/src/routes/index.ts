@@ -15,6 +15,7 @@ import publicSquadRouter from "./publicSquad";
 import playerAuthRouter from "./playerAuth";
 import eventsRouter from "./events";
 import announcementsRouter from "./announcements";
+import emailTemplatesRouter from "./email-templates";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use("/public", publicSquadRouter);
 router.use("/player-auth", playerAuthRouter);
 router.use("/events", eventsRouter);
 router.use("/announcements", announcementsRouter);
+router.use("/email-templates", emailTemplatesRouter);
 
 export default router;

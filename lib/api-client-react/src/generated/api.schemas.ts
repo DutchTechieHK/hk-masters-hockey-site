@@ -540,3 +540,18 @@ export interface EmailBlastItem {
   sentByEmail?: string | null;
   sentAt: string;
 }
+
+export interface EmailTemplate {
+  id: number;
+  name: string;
+  subject: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEmailTemplateBody {
+  name: string;
+  subject: string;
+  body: string;
+}

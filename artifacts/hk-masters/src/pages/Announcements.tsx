@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useListTeams, useListPlayers } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
+import { TemplateLoader } from "@/components/email/TemplateLoader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -470,6 +471,16 @@ export default function Announcements() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Templates */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Templates</label>
+              <TemplateLoader
+                currentSubject={emailForm.subject}
+                currentBody={emailForm.body}
+                onLoad={(subject, body) => setEmailForm((f) => ({ ...f, subject, body }))}
+              />
             </div>
 
             {/* Subject */}

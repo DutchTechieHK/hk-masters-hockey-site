@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
 import { useListPlayers, useListTeams } from "@workspace/api-client-react"
+import { TemplateLoader } from "@/components/email/TemplateLoader"
 import type { Player } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Badge } from "@/components/ui/badge"
@@ -603,6 +604,18 @@ export default function Readiness() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Templates */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+              Templates
+            </label>
+            <TemplateLoader
+              currentSubject={chaseSubject}
+              currentBody={chaseBody}
+              onLoad={(subject, body) => { setChaseSubject(subject); setChaseBody(body) }}
+            />
           </div>
 
           {/* Subject */}
