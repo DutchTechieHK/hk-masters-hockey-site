@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useListKits, useCreateKit, useUpdateKit, useDeleteKit, getListKitsQueryKey, useListPlayers } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -58,13 +58,38 @@ export default function Kits() {
   const updateMutation = useUpdateKit()
   const deleteMutation = useDeleteKit()
 
-  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<KitFormValues>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<KitFormValues>({
     resolver: zodResolver(kitSchema)
   })
 
   const qty = watch("quantity") || 1
   const unitCost = watch("unitCost") || 0
   const totalPreview = (Number(qty) || 1) * (Number(unitCost) || 0)
+
+  const watchedPlayerId = watch("playerId")
+  const watchedItemType = watch("itemType")
+
+  useEffect(() => {
+    if (editingKit) return
+    const player = players.find(p => p.id === Number(watchedPlayerId))
+    if (!player) return
+    let size = ""
+    switch (watchedItemType) {
+      case "playing_kit":
+        size = player.shirtSize || ""
+        break
+      case "training_kit":
+        size = player.poloSize || player.trackTopSize || ""
+        break
+      case "travel_leisure_kit":
+        size = player.jacketSize || ""
+        break
+      case "accessories":
+        size = ""
+        break
+    }
+    setValue("size", size)
+  }, [watchedPlayerId, watchedItemType, editingKit])
 
   const filteredKits = categoryFilter === "all" ? kits : kits.filter(k => k.itemType === categoryFilter)
 
