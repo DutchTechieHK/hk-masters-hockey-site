@@ -29,18 +29,18 @@
       window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
       plausible.init()
     </script>
-    <!-- Netlify Identity: forward invite/recovery/confirmation tokens to the CMS admin -->
+    <!-- Netlify Identity Widget: handles password reset, invites, and email confirmation -->
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
     <script>
-      (function () {
-        var hash = window.location.hash;
-        if (hash && (
-          hash.indexOf('invite_token=') !== -1 ||
-          hash.indexOf('recovery_token=') !== -1 ||
-          hash.indexOf('confirmation_token=') !== -1
-        )) {
-          window.location.replace('/admin/' + hash);
-        }
-      })();
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on('init', function (user) {
+          if (!user) {
+            window.netlifyIdentity.on('login', function () {
+              document.location.href = '/admin/';
+            });
+          }
+        });
+      }
     </script>
   </head>
   <body>
