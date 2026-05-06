@@ -54,7 +54,12 @@ const DEFAULT_SUPPLIERS: Record<string, string> = {
 function derivePaymentStatus(order: KitOrder): { label: string; color: string } {
   if (!order.unitCostHKD || order.totalCostHKD === 0) return { label: "N/A", color: "bg-slate-100 text-slate-500" }
   if (order.balancePaidDate) return { label: "Fully Paid", color: "bg-emerald-100 text-emerald-800" }
-  if (order.depositPaidDate) return { label: "Balance Due", color: "bg-amber-100 text-amber-800" }
+  if (order.depositPaidDate) {
+    const balanceDue = order.balanceDueDate && new Date(order.balanceDueDate) <= new Date()
+    return balanceDue
+      ? { label: "Balance Due", color: "bg-amber-100 text-amber-800" }
+      : { label: "Deposit Paid", color: "bg-blue-100 text-blue-700" }
+  }
   return { label: "Deposit Due", color: "bg-rose-100 text-rose-700" }
 }
 

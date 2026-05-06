@@ -16,7 +16,7 @@ CREATE TABLE kit_orders (
   artwork_approved_date TEXT,
   expected_delivery_date TEXT,
   actual_delivery_date TEXT,
-  order_status TEXT NOT NULL DEFAULT 'not_ordered',
+  order_status TEXT NOT NULL DEFAULT 'not_ordered' CHECK (order_status IN ('not_ordered','artwork_pending','artwork_approved','ordered','in_production','dispatched','received')),
   notes TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
