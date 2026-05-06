@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
 import { useListPlayers, useListTeams } from "@workspace/api-client-react"
-import type { Player } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Player as BasePlayer } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Badge } from "@/components/ui/badge"
+import { Select } from "@/components/ui/select"
+import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 import {
   Plane,
   BedDouble,
@@ -13,10 +15,19 @@ import {
   Phone,
   CheckCircle2,
   ChevronRight,
+  CheckCheck,
+  XCircle,
+  Filter,
 } from "lucide-react"
 
-const TOURNAMENT_END = new Date("2026-08-01")
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
+
+type Player = BasePlayer & {
+  passportCopyUrl?: string
+  passportCopyReviewed?: boolean
+}
+
+// ─── Blocker checks (existing per-category cards) ────────────────────────────
 
 type BlockerCheck = {
   key: string
@@ -168,11 +179,33 @@ export default function Readiness() {
   const { data: teams = [] } = useListTeams()
 
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [incompleteOnly, setIncompleteOnly] = useState(false)
+  const [teamFilter, setTeamFilter] = useState<string>("")
 
   const teamMap = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t])),
     [teams],
   )
+
+  // Per-player readiness
+  const playerReadiness = useMemo(() => {
+    return players.map((p) => ({
+      player: p,
+      criteria: computeReadiness(p),
+      ready: isFullyReady(p),
+    }))
+  }, [players])
+
+  const playersFullyReady = playerReadiness.filter((r) => r.ready).length
+
+  // Filtered rows for grid
+  const filteredRows = useMemo(() => {
+    return playerReadiness.filter((r) => {
+      if (teamFilter && String(r.player.teamId) !== teamFilter) return false
+      if (incompleteOnly && r.ready) return false
+      return true
+    })
+  }, [playerReadiness, teamFilter, incompleteOnly])
 
   const blockerStats = useMemo(() => {
     return CHECKS.map((check) => {
@@ -182,10 +215,7 @@ export default function Readiness() {
   }, [players])
 
   const totalBlockers = blockerStats.reduce((s, b) => s + b.players.length, 0)
-  const playersFullyReady = useMemo(() => {
-    return players.filter((p) => !CHECKS.some((c) => c.detect(p))).length
-  }, [players])
-
+  const readyPct = players.length > 0 ? Math.round((playersFullyReady / players.length) * 100) : 0
   const days = daysUntilTournament()
 
   return (
@@ -203,43 +233,162 @@ export default function Readiness() {
         </div>
       ) : (
         <>
-          {/* Top summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div className="bg-white rounded-2xl shadow-sm border border-border p-5">
-              <p className="text-sm font-medium text-muted-foreground">Days to tournament</p>
-              <p className="text-3xl font-bold text-foreground mt-1">{days}</p>
-              <p className="text-xs text-muted-foreground mt-1">Kicks off 22 Jul 2026</p>
+          {/* ── Headline stat + progress bar ── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-border p-6 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Tournament ready</p>
+                <p className="text-4xl font-bold text-foreground">
+                  <span className={readyPct === 100 ? "text-green-700" : "text-primary"}>
+                    {playersFullyReady}
+                  </span>
+                  <span className="text-xl text-muted-foreground font-medium"> of {players.length} players</span>
+                </p>
+              </div>
+              <div className="flex gap-4 text-center shrink-0">
+                <div className="px-4 py-2 rounded-xl bg-muted/30 border border-border">
+                  <p className="text-2xl font-bold text-foreground">{days}</p>
+                  <p className="text-xs text-muted-foreground">days to go</p>
+                </div>
+                <div className="px-4 py-2 rounded-xl bg-muted/30 border border-border">
+                  <p className={`text-2xl font-bold ${totalBlockers === 0 ? "text-green-700" : "text-amber-700"}`}>{totalBlockers}</p>
+                  <p className="text-xs text-muted-foreground">blockers</p>
+                </div>
+              </div>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-border p-5">
-              <p className="text-sm font-medium text-muted-foreground">Players fully ready</p>
-              <p className="text-3xl font-bold text-green-700 mt-1">
-                {playersFullyReady}{" "}
-                <span className="text-base text-muted-foreground font-medium">
-                  of {players.length}
-                </span>
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {players.length > 0
-                  ? `${Math.round((playersFullyReady / players.length) * 100)}% complete`
-                  : "—"}
+            <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${readyPct === 100 ? "bg-green-500" : "bg-primary"}`}
+                style={{ width: `${readyPct}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5 text-right">{readyPct}% complete</p>
+          </div>
+
+          {/* ── Per-player grid ── */}
+          <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden mb-6">
+            {/* Grid header with filters */}
+            <div className="p-4 border-b border-border flex flex-wrap items-center gap-3">
+              <h2 className="text-base font-semibold text-foreground flex-1">Player readiness grid</h2>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Select
+                  value={teamFilter}
+                  onChange={(e) => setTeamFilter(e.target.value)}
+                  className="h-8 text-sm w-40"
+                >
+                  <option value="">All squads</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={String(t.id)}>{t.name}</option>
+                  ))}
+                </Select>
+                <button
+                  onClick={() => setIncompleteOnly((v) => !v)}
+                  className={`flex items-center gap-1.5 px-3 h-8 rounded-lg text-sm font-medium border transition-all ${
+                    incompleteOnly
+                      ? "bg-amber-100 text-amber-800 border-amber-300"
+                      : "bg-white text-muted-foreground border-border hover:border-primary/40"
+                  }`}
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  Incomplete only
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground w-full sm:w-auto">
+                {filteredRows.length} player{filteredRows.length !== 1 ? "s" : ""} shown
               </p>
             </div>
-            <div className="bg-white rounded-2xl shadow-sm border border-border p-5">
-              <p className="text-sm font-medium text-muted-foreground">Open blockers</p>
-              <p
-                className={`text-3xl font-bold mt-1 ${
-                  totalBlockers === 0 ? "text-green-700" : "text-amber-700"
-                }`}
-              >
-                {totalBlockers}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Across {players.length} player{players.length !== 1 ? "s" : ""}
-              </p>
+
+            {/* Scrollable table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[700px]">
+                <thead className="bg-muted/30 border-b border-border">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground sticky left-0 bg-muted/30 w-48">Player</th>
+                    <th className="text-center px-3 py-2.5 text-xs font-semibold text-muted-foreground">Status</th>
+                    {GRID_CRITERIA.map((c) => (
+                      <th key={c.key} className="text-center px-2 py-2.5 text-xs font-semibold text-muted-foreground whitespace-nowrap" title={c.label}>
+                        {c.short}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filteredRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={2 + GRID_CRITERIA.length} className="px-4 py-8 text-center text-muted-foreground">
+                        {incompleteOnly ? "All players in this view are fully ready!" : "No players match the current filter."}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRows.map(({ player, criteria, ready }) => {
+                      const team = teamMap[player.teamId]
+                      return (
+                        <Link key={player.id} href="/players" asChild>
+                          <tr className="hover:bg-muted/10 cursor-pointer group">
+                            <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-muted/10 border-r border-border/50">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                                  {player.shirtNumber ?? "—"}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-foreground truncate">{player.name}</p>
+                                  {team && <p className="text-xs text-muted-foreground truncate">{team.name}</p>}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="text-center px-3 py-2.5">
+                              {ready ? (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
+                                  <CheckCheck className="w-3 h-3" /> Ready
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                                  {GRID_CRITERIA.filter((c) => !criteria[c.key]).length} issue{GRID_CRITERIA.filter((c) => !criteria[c.key]).length !== 1 ? "s" : ""}
+                                </span>
+                              )}
+                            </td>
+                            {GRID_CRITERIA.map((c) => {
+                              const passed = criteria[c.key]
+                              return (
+                                <td key={c.key} className="text-center px-2 py-2.5">
+                                  {passed ? (
+                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700 mx-auto">
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </span>
+                                  ) : (
+                                    <span
+                                      className={`inline-flex items-center justify-center w-6 h-6 rounded-full mx-auto ${
+                                        c.severity === "red"
+                                          ? "bg-red-100 text-red-700"
+                                          : "bg-amber-100 text-amber-700"
+                                      }`}
+                                    >
+                                      <XCircle className="w-4 h-4" />
+                                    </span>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        </Link>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Legend */}
+            <div className="px-4 py-2.5 border-t border-border bg-muted/20 flex flex-wrap gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full bg-green-100 flex items-center justify-center"><CheckCircle2 className="w-3 h-3 text-green-700" /></span> Complete</span>
+              <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full bg-amber-100 flex items-center justify-center"><XCircle className="w-3 h-3 text-amber-700" /></span> Missing (low)</span>
+              <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full bg-red-100 flex items-center justify-center"><XCircle className="w-3 h-3 text-red-700" /></span> Missing (urgent)</span>
+              <span className="ml-auto">Click a row to view the player record →</span>
             </div>
           </div>
 
-          {/* Blocker cards */}
+          {/* ── Blocker cards (retained) ── */}
+          <h2 className="text-sm font-semibold text-muted-foreground mb-3 mt-2">Blockers by category</h2>
           <div className="space-y-3">
             {blockerStats.map(({ check, players: blockedPlayers }) => {
               const Icon = check.icon

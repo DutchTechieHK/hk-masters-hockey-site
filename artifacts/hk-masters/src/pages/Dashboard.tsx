@@ -1,7 +1,9 @@
-import { useGetDashboard } from "@workspace/api-client-react"
+import { useGetDashboard, useListPlayers } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
+import { isFullyReady } from "@/lib/readiness"
+import { useMemo } from "react"
 
 const hkdPrecise = new Intl.NumberFormat("en-HK", {
   style: "currency",
@@ -14,7 +16,13 @@ import { useLocation } from "wouter"
 
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboard()
+  const { data: players = [] } = useListPlayers()
   const [, navigate] = useLocation()
+
+  const readinessStats = useMemo(() => {
+    const ready = players.filter(isFullyReady).length
+    return { ready, total: players.length }
+  }, [players])
 
   if (isLoading) {
     return (
@@ -161,6 +169,48 @@ export default function Dashboard() {
         {/* Right Column (1/3 width) */}
         <div className="space-y-8">
           
+          {/* Readiness summary card */}
+          <button
+            className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+            onClick={() => navigate("/readiness")}
+          >
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <h2 className="text-xl font-display font-bold">Readiness</h2>
+              <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                <ShieldCheck className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="p-6">
+              {readinessStats.total === 0 ? (
+                <p className="text-sm text-muted-foreground">No players yet.</p>
+              ) : (
+                <>
+                  <div className="flex items-end gap-2 mb-3">
+                    <p className="text-4xl font-bold text-foreground">
+                      <span className={readinessStats.ready === readinessStats.total ? "text-green-700" : "text-primary"}>
+                        {readinessStats.ready}
+                      </span>
+                    </p>
+                    <p className="text-lg text-muted-foreground font-medium mb-1">/ {readinessStats.total} ready</p>
+                  </div>
+                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden mb-3">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${readinessStats.ready === readinessStats.total ? "bg-green-500" : "bg-primary"}`}
+                      style={{ width: readinessStats.total > 0 ? `${Math.round((readinessStats.ready / readinessStats.total) * 100)}%` : "0%" }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {readinessStats.total - readinessStats.ready} player{readinessStats.total - readinessStats.ready !== 1 ? "s" : ""} still have open items
+                  </p>
+                  <p className="text-xs text-primary font-medium mt-3 flex items-center gap-1">
+                    View readiness dashboard <ArrowRight className="w-3 h-3" />
+                  </p>
+                </>
+              )}
+            </div>
+          </button>
+
           {/* Upcoming Deadlines — clickable, navigates to Logistics */}
           <button
             className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group"
