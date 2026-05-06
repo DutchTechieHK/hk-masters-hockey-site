@@ -74,7 +74,7 @@ const KIND_META = {
     badge: "bg-blue-100 text-blue-800",
     photos: [
       // ── paste Cloudinary programme photo URLs here ──
-      `${BASE}images/programme-event.png`,
+      `${BASE}images/rotterdam-hc.jpeg`,
     ],
   },
   social: {
