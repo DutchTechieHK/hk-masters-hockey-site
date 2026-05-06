@@ -123,6 +123,9 @@ export interface Player {
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
+  poloSize?: string;
+  trackTopSize?: string;
+  goalieSmockSize?: string;
   travelDates?: string;
   feePaid: boolean;
   paymentAmountDue?: number;
@@ -158,6 +161,9 @@ export interface CreatePlayer {
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
+  poloSize?: string;
+  trackTopSize?: string;
+  goalieSmockSize?: string;
   travelDates?: string;
   feePaid: boolean;
   passportCopyReviewed?: boolean;
@@ -191,6 +197,9 @@ export interface SelfPlayer {
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
+  poloSize?: string;
+  trackTopSize?: string;
+  goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
   feePaid: boolean;
@@ -217,6 +226,9 @@ export interface UpdateSelfPlayer {
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
+  poloSize?: string;
+  trackTopSize?: string;
+  goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
 }

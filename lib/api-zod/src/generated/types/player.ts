@@ -33,6 +33,9 @@ export interface Player {
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
+  poloSize?: string;
+  trackTopSize?: string;
+  goalieSmockSize?: string;
   travelDates?: string;
   feePaid: boolean;
   paymentAmountDue?: number;

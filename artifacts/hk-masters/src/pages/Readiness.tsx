@@ -112,16 +112,18 @@ const CHECKS: BlockerCheck[] = [
   {
     key: "kit-sizes",
     label: "Kit sizes missing",
-    description: "Players who haven't submitted shirt / shorts / jacket sizes",
+    description: "Players who haven't submitted shirt / shorts / jacket / polo / track top sizes",
     icon: Shirt,
     tone: "amber",
     href: "/kits",
-    detect: (p) => !p.shirtSize || !p.shortsSize || !p.jacketSize,
+    detect: (p) => !p.shirtSize || !p.shortsSize || !p.jacketSize || !p.poloSize || !p.trackTopSize,
     detail: (p) => {
       const missing: string[] = []
       if (!p.shirtSize) missing.push("shirt")
       if (!p.shortsSize) missing.push("shorts")
       if (!p.jacketSize) missing.push("jacket")
+      if (!p.poloSize) missing.push("polo")
+      if (!p.trackTopSize) missing.push("track top")
       return missing.length ? `Missing: ${missing.join(", ")}` : null
     },
   },

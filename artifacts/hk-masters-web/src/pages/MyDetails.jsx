@@ -46,6 +46,9 @@ const SECTIONS = [
       { key: "shirtSize", label: "Shirt", type: "text", placeholder: "S / M / L / XL" },
       { key: "shortsSize", label: "Shorts", type: "text", placeholder: "S / M / L / XL" },
       { key: "jacketSize", label: "Jacket", type: "text", placeholder: "S / M / L / XL" },
+      { key: "poloSize", label: "Polo", type: "text", placeholder: "S / M / L / XL" },
+      { key: "trackTopSize", label: "Track Top", type: "text", placeholder: "S / M / L / XL" },
+      { key: "goalieSmockSize", label: "Goalie Smock (GK only)", type: "text", placeholder: "S / M / L / XL" },
     ],
   },
   {

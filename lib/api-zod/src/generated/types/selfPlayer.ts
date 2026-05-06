@@ -27,6 +27,9 @@ export interface SelfPlayer {
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
+  poloSize?: string;
+  trackTopSize?: string;
+  goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
   feePaid: boolean;

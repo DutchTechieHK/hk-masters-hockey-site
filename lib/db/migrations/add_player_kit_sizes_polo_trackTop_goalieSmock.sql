@@ -1,0 +1,3 @@
+ALTER TABLE players ADD COLUMN IF NOT EXISTS polo_size TEXT;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS track_top_size TEXT;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS goalie_smock_size TEXT;

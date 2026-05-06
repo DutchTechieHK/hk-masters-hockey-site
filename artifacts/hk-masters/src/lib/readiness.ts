@@ -62,7 +62,7 @@ export const GRID_CRITERIA: GridCriterion[] = [
     label: "Kit sizes filled",
     short: "Kit",
     severity: "amber",
-    pass: (p) => !!p.shirtSize && !!p.shortsSize && !!p.jacketSize,
+    pass: (p) => !!p.shirtSize && !!p.shortsSize && !!p.jacketSize && !!p.poloSize && !!p.trackTopSize,
   },
 ]
 

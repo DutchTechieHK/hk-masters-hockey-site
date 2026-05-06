@@ -111,6 +111,9 @@ const playerSchema = z.object({
   shirtSize: z.string().optional(),
   shortsSize: z.string().optional(),
   jacketSize: z.string().optional(),
+  poloSize: z.string().optional(),
+  trackTopSize: z.string().optional(),
+  goalieSmockSize: z.string().optional(),
   travelDates: z.string().optional(),
   feePaid: z.boolean().default(false),
   passportCopyReviewed: z.boolean().default(false),
@@ -231,7 +234,7 @@ export default function Players() {
     emergencyContactName: "", emergencyContactPhone: "",
     flightArrivalDateTime: "", flightDepartureDateTime: "", arrivalCity: "",
     roomSharingPreference: "shared", roomSharingWith: "",
-    shirtSize: "", shortsSize: "", jacketSize: "", travelDates: "",
+    shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
     feePaid: false, passportCopyReviewed: false,
     paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
@@ -266,6 +269,9 @@ export default function Players() {
       shirtSize: player.shirtSize || "",
       shortsSize: player.shortsSize || "",
       jacketSize: player.jacketSize || "",
+      poloSize: player.poloSize || "",
+      trackTopSize: player.trackTopSize || "",
+      goalieSmockSize: player.goalieSmockSize || "",
       travelDates: player.travelDates || "",
       feePaid: player.feePaid,
       passportCopyReviewed: player.passportCopyReviewed ?? false,
@@ -845,6 +851,18 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Jacket</label>
               <Input {...register("jacketSize")} placeholder="S/M/L/XL" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Polo</label>
+              <Input {...register("poloSize")} placeholder="S/M/L/XL" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Track Top</label>
+              <Input {...register("trackTopSize")} placeholder="S/M/L/XL" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Goalie Smock (GK only)</label>
+              <Input {...register("goalieSmockSize")} placeholder="S/M/L/XL" />
             </div>
           </div>
 
