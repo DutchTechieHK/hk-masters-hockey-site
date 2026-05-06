@@ -11,3 +11,4 @@ export * from "./player-auth";
 export * from "./events";
 export * from "./event-rsvps";
 export * from "./announcements";
+export * from "./email-blasts";

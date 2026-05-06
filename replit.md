@@ -123,12 +123,22 @@ Community members can submit articles and photos via the public Journal page. Su
 6. Logistics — Kanban board
 7. Journal — admin moderation (login required, session-based)
 8. Schedule — match fixtures CRUD (login required); per-team grouping; conditional score inputs based on status
+9. Announcements — two tabs: "In-app feed" (pinnable CRUD board for players), "Email players" (bulk email composer with audience selector, recipient preview, confirmation modal, send history table)
 
 ## Database Tables
 
 - `teams`, `players`, `kits`, `fundraising`, `logistics`
 - `contributions` — id, title, author_name, author_email, content_type (article|photo|both), article_body, photo_urls (text[]), status (pending|approved|declined), admin_note, created_at, reviewed_at
 - `matches` — id, team_id (FK), opponent, kickoff_at, venue, our_score (nullable), their_score (nullable), status (scheduled|in_progress|final|cancelled), notes, created_at
+- `email_blasts` — id, subject, body, audience_type, team_ids (JSON), player_ids (JSON), recipient_count, sent_count, failed_count, sent_by_email, sent_at
+
+## Bulk Email
+
+Admin can send emails to all players, by squad, or selected individuals from Announcements → "Email players" tab.
+- Endpoint: `POST /api/players/send-bulk-email` (requireAdminAccess) — body: `{audienceType, teamIds?, playerIds?, subject, body}`
+- History: `GET /api/players/email-blasts` — returns last 50 blasts with sent/failed counts
+- Email function: `sendBulkAnnouncementEmail()` in `artifacts/api-server/src/utils/email.ts`
+- Schema: `lib/db/src/schema/email-blasts.ts`, Zod: `lib/api-zod/src/email-blasts.ts`
 
 ## Rotterdam 2026
 

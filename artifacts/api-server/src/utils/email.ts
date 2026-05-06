@@ -1128,3 +1128,40 @@ The HK Masters Hockey Team`;
     text,
   });
 }
+
+export async function sendBulkAnnouncementEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  subject: string;
+  body: string;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeBody = escapeHtml(opts.body).replace(/\n/g, "<br>");
+
+  const html = emailShell(
+    "#006B3C",
+    opts.subject,
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${safeBody}</div>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+    <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+${opts.body}
+
+---
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: opts.subject,
+    html,
+    text,
+  });
+}

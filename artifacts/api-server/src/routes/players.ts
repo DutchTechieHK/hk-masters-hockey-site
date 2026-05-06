@@ -1,7 +1,7 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { playersTable, teamsTable, playerPaymentsTable } from "@workspace/db/schema";
+import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable } from "@workspace/db/schema";
 import { eq, isNull, or, and, inArray, desc } from "drizzle-orm";
 import {
   CreatePlayerBody,
@@ -17,8 +17,9 @@ import {
   CreatePlayerPaymentParams,
   ListPlayerPaymentsParams,
   DeletePlayerPaymentParams,
+  SendBulkEmailBody,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -509,6 +510,83 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeletePlayerParams.parse(req.params);
   await db.delete(playersTable).where(eq(playersTable.id, id));
   res.status(204).send();
+});
+
+router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
+  const parseResult = SendBulkEmailBody.safeParse(req.body ?? {});
+  if (!parseResult.success) {
+    res.status(400).json({ error: "Invalid request", details: parseResult.error.flatten() });
+    return;
+  }
+  const { audienceType, teamIds, playerIds, subject, body } = parseResult.data;
+
+  let players: Array<typeof playersTable.$inferSelect>;
+
+  if (audienceType === "all") {
+    players = await db.select().from(playersTable);
+  } else if (audienceType === "teams" && teamIds && teamIds.length > 0) {
+    players = await db.select().from(playersTable).where(inArray(playersTable.teamId, teamIds));
+  } else if (audienceType === "individuals" && playerIds && playerIds.length > 0) {
+    players = await db.select().from(playersTable).where(inArray(playersTable.id, playerIds));
+  } else {
+    res.status(400).json({ error: "No recipients matched the provided audience" });
+    return;
+  }
+
+  const recipientCount = players.length;
+  let sent = 0;
+  let failed = 0;
+  let skipped = 0;
+
+  for (const player of players) {
+    if (!player.email) { skipped++; continue; }
+    const ok = await sendBulkAnnouncementEmail({
+      playerName: player.name,
+      playerEmail: player.email,
+      subject,
+      body,
+    });
+    if (ok) sent++; else failed++;
+  }
+
+  const adminEmail = (req as any).adminEmail as string | undefined;
+
+  const [blast] = await db.insert(emailBlastsTable).values({
+    subject,
+    body,
+    audienceType,
+    teamIds: teamIds ? JSON.stringify(teamIds) : null,
+    playerIds: playerIds ? JSON.stringify(playerIds) : null,
+    recipientCount,
+    sentCount: sent,
+    failedCount: failed,
+    sentByEmail: adminEmail ?? null,
+  }).returning();
+
+  console.log(`[bulk-email] audienceType=${audienceType} sent=${sent} failed=${failed} skipped=${skipped} blastId=${blast.id}`);
+  res.json({ sent, failed, skipped, total: recipientCount, blastId: blast.id });
+});
+
+router.get("/email-blasts", requireAdminAccess, async (req, res) => {
+  const rows = await db
+    .select({
+      id: emailBlastsTable.id,
+      subject: emailBlastsTable.subject,
+      audienceType: emailBlastsTable.audienceType,
+      recipientCount: emailBlastsTable.recipientCount,
+      sentCount: emailBlastsTable.sentCount,
+      failedCount: emailBlastsTable.failedCount,
+      sentByEmail: emailBlastsTable.sentByEmail,
+      sentAt: emailBlastsTable.sentAt,
+    })
+    .from(emailBlastsTable)
+    .orderBy(desc(emailBlastsTable.sentAt))
+    .limit(50);
+
+  res.json(rows.map((r) => ({
+    ...r,
+    sentAt: r.sentAt.toISOString(),
+  })));
 });
 
 export default router;
