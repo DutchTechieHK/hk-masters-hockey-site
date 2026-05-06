@@ -82,7 +82,7 @@ const KIND_META = {
     badge: "bg-amber-100 text-amber-800",
     photos: [
       // ── paste Cloudinary social photo URLs here ──
-      `${BASE}images/social-event.png`,
+      `${BASE}images/social-event.jpeg`,
     ],
   },
 };
