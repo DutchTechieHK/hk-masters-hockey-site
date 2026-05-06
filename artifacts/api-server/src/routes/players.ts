@@ -581,8 +581,7 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
       sentAt: emailBlastsTable.sentAt,
     })
     .from(emailBlastsTable)
-    .orderBy(desc(emailBlastsTable.sentAt))
-    .limit(200);
+    .orderBy(desc(emailBlastsTable.sentAt));
 
   res.json(rows.map((r) => ({
     ...r,
