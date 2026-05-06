@@ -66,7 +66,7 @@ const KIND_META = {
     badge: "bg-emerald-100 text-emerald-800",
     photos: [
       // ── paste Cloudinary training photo URLs here ──
-      `${BASE}images/field-hockey-training.png`,
+      `${BASE}images/training-session.jpeg`,
     ],
   },
   meeting: {
