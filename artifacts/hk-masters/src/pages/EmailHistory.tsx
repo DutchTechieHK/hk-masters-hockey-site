@@ -2,7 +2,7 @@ import { useState } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { useListEmailBlasts } from "@workspace/api-client-react"
 import { format } from "date-fns"
-import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw } from "lucide-react"
 import type { EmailBlastItem } from "@workspace/api-client-react"
 
 function audienceLabel(blast: EmailBlastItem): string {
@@ -10,14 +10,14 @@ function audienceLabel(blast: EmailBlastItem): string {
   if (blast.audienceType === "teams") {
     try {
       const ids: number[] = JSON.parse(blast.teamIds ?? "[]")
-      return `${ids.length} squad${ids.length !== 1 ? "s" : ""}`
+      return `Teams: ${ids.length}`
     } catch {
-      return "By squad"
+      return "Teams"
     }
   }
   try {
     const ids: number[] = JSON.parse(blast.playerIds ?? "[]")
-    return `${ids.length} individual${ids.length !== 1 ? "s" : ""}`
+    return `Individuals: ${ids.length}`
   } catch {
     return "Selected players"
   }
@@ -30,7 +30,7 @@ function AudienceIcon({ audienceType }: { audienceType: string }) {
 }
 
 export default function EmailHistory() {
-  const { data: blasts = [], isLoading } = useListEmailBlasts()
+  const { data: blasts = [], isLoading, isError, refetch } = useListEmailBlasts()
   const [expandedId, setExpandedId] = useState<number | null>(null)
 
   const toggle = (id: number) => setExpandedId((prev) => (prev === id ? null : id))
@@ -40,7 +40,22 @@ export default function EmailHistory() {
       title="Email History"
       description="A log of every bulk email sent to players."
     >
-      {isLoading ? (
+      {isError ? (
+        <div className="bg-white rounded-2xl border border-rose-200 p-16 text-center">
+          <AlertTriangle className="w-10 h-10 mx-auto text-rose-400 mb-3" />
+          <p className="font-semibold text-foreground">Couldn't load email history</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">
+            There was a problem fetching the blast log.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Try again
+          </button>
+        </div>
+      ) : isLoading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="bg-white rounded-xl border border-border p-4 animate-pulse">
