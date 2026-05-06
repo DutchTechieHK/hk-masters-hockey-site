@@ -18,6 +18,7 @@ import Events from "@/pages/Events";
 import Announcements from "@/pages/Announcements";
 import { Redirect } from "wouter";
 import Readiness from "@/pages/Readiness";
+import EmailHistory from "@/pages/EmailHistory";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate } from "@/components/AdminAuthGate";
 
@@ -47,6 +48,7 @@ function Router() {
       <Route path="/schedule">{() => <Redirect to="/matches" />}</Route>
       <Route path="/events" component={Events} />
       <Route path="/announcements" component={Announcements} />
+      <Route path="/email-history" component={EmailHistory} />
       <Route path="/readiness" component={Readiness} />
       <Route component={NotFound} />
     </Switch>

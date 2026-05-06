@@ -526,3 +526,17 @@ export type ListLogisticsParams = {
 export type ListMatchesParams = {
   teamId?: number;
 };
+
+export interface EmailBlastItem {
+  id: number;
+  subject: string;
+  body: string;
+  audienceType: string;
+  teamIds?: string | null;
+  playerIds?: string | null;
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  sentByEmail?: string | null;
+  sentAt: string;
+}

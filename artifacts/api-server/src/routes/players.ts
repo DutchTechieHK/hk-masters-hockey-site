@@ -570,7 +570,10 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     .select({
       id: emailBlastsTable.id,
       subject: emailBlastsTable.subject,
+      body: emailBlastsTable.body,
       audienceType: emailBlastsTable.audienceType,
+      teamIds: emailBlastsTable.teamIds,
+      playerIds: emailBlastsTable.playerIds,
       recipientCount: emailBlastsTable.recipientCount,
       sentCount: emailBlastsTable.sentCount,
       failedCount: emailBlastsTable.failedCount,
@@ -579,7 +582,7 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     })
     .from(emailBlastsTable)
     .orderBy(desc(emailBlastsTable.sentAt))
-    .limit(50);
+    .limit(200);
 
   res.json(rows.map((r) => ({
     ...r,

@@ -21,7 +21,10 @@ export const SendBulkEmailResponse = z.object({
 export const EmailBlastItem = z.object({
   id: z.number(),
   subject: z.string(),
+  body: z.string(),
   audienceType: z.string(),
+  teamIds: z.string().nullable(),
+  playerIds: z.string().nullable(),
   recipientCount: z.number(),
   sentCount: z.number(),
   failedCount: z.number(),
