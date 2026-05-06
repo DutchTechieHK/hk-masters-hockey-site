@@ -15,6 +15,7 @@ import { z } from "zod"
 import type { Player } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getInitials } from "@/lib/utils"
+import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
@@ -669,6 +670,46 @@ export default function Players() {
         title={editingPlayer ? "Edit Player" : "Add Player"}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-1">
+
+          {/* ── Readiness summary strip (edit mode only) ── */}
+          {editingPlayer && (() => {
+            const ready = computeReadiness(editingPlayer)
+            const passCount = Object.values(ready).filter(Boolean).length
+            const total = GRID_CRITERIA.length
+            const allReady = isFullyReady(editingPlayer)
+            return (
+              <div className={`rounded-xl border px-4 py-3 mb-2 ${allReady ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className={`text-xs font-semibold uppercase tracking-wide ${allReady ? "text-green-700" : "text-amber-700"}`}>
+                    Tournament readiness
+                  </span>
+                  <span className={`text-xs font-bold tabular-nums ${allReady ? "text-green-700" : "text-amber-700"}`}>
+                    {passCount}/{total}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {GRID_CRITERIA.map((c) => {
+                    const pass = ready[c.key]
+                    return (
+                      <span
+                        key={c.key}
+                        title={c.label}
+                        className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border ${
+                          pass
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : c.severity === "red"
+                              ? "bg-red-100 text-red-800 border-red-200"
+                              : "bg-amber-100 text-amber-800 border-amber-200"
+                        }`}
+                      >
+                        {pass ? "✓" : "✗"} {c.short}
+                      </span>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
 
           <SectionHeading>Basic Info</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

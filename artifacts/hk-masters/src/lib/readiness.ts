@@ -1,9 +1,4 @@
-import type { Player as BasePlayer } from "@workspace/api-client-react"
-
-type Player = BasePlayer & {
-  passportCopyUrl?: string
-  passportCopyReviewed?: boolean
-}
+import type { Player } from "@workspace/api-client-react"
 
 const TOURNAMENT_END = new Date("2026-08-01")
 

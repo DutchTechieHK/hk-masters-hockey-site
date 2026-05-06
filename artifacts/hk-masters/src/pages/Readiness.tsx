@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
 import { useListPlayers, useListTeams } from "@workspace/api-client-react"
-import type { Player as BasePlayer } from "@workspace/api-client-react"
+import type { Player } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
@@ -28,11 +28,6 @@ import {
 } from "lucide-react"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
-
-type Player = BasePlayer & {
-  passportCopyUrl?: string
-  passportCopyReviewed?: boolean
-}
 
 // ─── Blocker checks (existing per-category cards) ────────────────────────────
 
