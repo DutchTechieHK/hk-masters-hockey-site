@@ -323,7 +323,7 @@ export default function Readiness() {
                     filteredRows.map(({ player, criteria, ready }) => {
                       const team = teamMap[player.teamId]
                       return (
-                        <Link key={player.id} href="/players" asChild>
+                        <Link key={player.id} href={`/players?playerId=${player.id}`} asChild>
                           <tr className="hover:bg-muted/10 cursor-pointer group">
                             <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-muted/10 border-r border-border/50">
                               <div className="flex items-center gap-2 min-w-0">

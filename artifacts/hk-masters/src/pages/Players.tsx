@@ -164,6 +164,7 @@ export default function Players() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
+  const [deepLinkHandled, setDeepLinkHandled] = useState(false)
 
   const createMutation = useCreatePlayer()
   const updateMutation = useUpdatePlayer()
@@ -276,6 +277,19 @@ export default function Players() {
     })
     setIsModalOpen(true)
   }
+
+  useEffect(() => {
+    if (deepLinkHandled || isLoading || players.length === 0) return
+    const params = new URLSearchParams(window.location.search)
+    const playerIdParam = params.get("playerId")
+    if (!playerIdParam) return
+    const targetId = parseInt(playerIdParam, 10)
+    const target = players.find((p) => p.id === targetId)
+    if (target) {
+      openEditModal(target)
+    }
+    setDeepLinkHandled(true)
+  }, [players, isLoading, deepLinkHandled])
 
   const PUBLIC_SITE_URL = (import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) || "https://hkmastershockey.com"
 
