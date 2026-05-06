@@ -493,7 +493,7 @@ export default function Readiness() {
             })}
           </div>
 
-          {totalBlockers === 0 && (
+          {playersFullyReady === players.length && players.length > 0 && (
             <div className="mt-6 bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
               <CheckCircle2 className="w-10 h-10 text-green-600 mx-auto mb-2" />
               <h3 className="font-semibold text-green-900">All players fully ready</h3>
