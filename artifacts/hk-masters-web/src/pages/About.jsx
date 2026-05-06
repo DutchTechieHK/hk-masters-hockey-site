@@ -56,7 +56,7 @@ export default function About() {
       {/* Committee Grid */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Club Committee &amp; Leadership</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-8">Committee Members</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {content.committee.map((person) => (
               <div key={person.name} className="text-center">
