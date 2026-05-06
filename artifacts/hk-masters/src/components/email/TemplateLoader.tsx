@@ -3,10 +3,11 @@ import {
   useListEmailTemplates,
   useCreateEmailTemplate,
   useDeleteEmailTemplate,
+  useUpdateEmailTemplate,
 } from "@workspace/api-client-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { BookMarked, Trash2, ChevronDown, ChevronUp, Plus } from "lucide-react"
+import { BookMarked, Trash2, ChevronDown, ChevronUp, Plus, Pencil, Check, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface TemplateLoaderProps {
@@ -15,16 +16,25 @@ interface TemplateLoaderProps {
   onLoad: (subject: string, body: string) => void
 }
 
+interface EditState {
+  id: number
+  name: string
+  subject: string
+  body: string
+}
+
 export function TemplateLoader({ currentSubject, currentBody, onLoad }: TemplateLoaderProps) {
   const { toast } = useToast()
   const { data: templates = [] } = useListEmailTemplates()
   const createTemplate = useCreateEmailTemplate()
   const deleteTemplate = useDeleteEmailTemplate()
+  const updateTemplate = useUpdateEmailTemplate()
 
   const [selectedId, setSelectedId] = useState("")
   const [showSave, setShowSave] = useState(false)
   const [showManage, setShowManage] = useState(false)
   const [saveName, setSaveName] = useState("")
+  const [editState, setEditState] = useState<EditState | null>(null)
 
   const handleLoad = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value
@@ -62,6 +72,30 @@ export function TemplateLoader({ currentSubject, currentBody, onLoad }: Template
     }
   }
 
+  const startEdit = (tpl: { id: number; name: string; subject: string; body: string }) => {
+    setEditState({ id: tpl.id, name: tpl.name, subject: tpl.subject, body: tpl.body })
+  }
+
+  const cancelEdit = () => setEditState(null)
+
+  const handleUpdate = async () => {
+    if (!editState || !editState.name.trim() || !editState.subject.trim() || !editState.body.trim()) return
+    try {
+      await updateTemplate.mutateAsync({
+        id: editState.id,
+        body: {
+          name: editState.name.trim(),
+          subject: editState.subject.trim(),
+          body: editState.body.trim(),
+        },
+      })
+      toast({ title: `Template "${editState.name.trim()}" updated` })
+      setEditState(null)
+    } catch {
+      toast({ title: "Failed to update template", variant: "destructive" })
+    }
+  }
+
   const canSave = currentSubject.trim().length > 0 && currentBody.trim().length > 0
 
   return (
@@ -93,6 +127,7 @@ export function TemplateLoader({ currentSubject, currentBody, onLoad }: Template
           onClick={() => {
             setShowSave((v) => !v)
             setShowManage(false)
+            setEditState(null)
           }}
           disabled={!canSave}
           className="flex items-center gap-1.5 h-9 px-3 rounded-lg text-sm font-medium border transition-all bg-white border-border text-muted-foreground hover:text-foreground hover:border-primary/50 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
@@ -107,6 +142,7 @@ export function TemplateLoader({ currentSubject, currentBody, onLoad }: Template
             onClick={() => {
               setShowManage((v) => !v)
               setShowSave(false)
+              setEditState(null)
             }}
             className="flex items-center gap-1 h-9 px-2.5 rounded-lg text-sm text-muted-foreground hover:text-foreground border border-transparent hover:border-border transition-all shrink-0"
           >
@@ -151,27 +187,102 @@ export function TemplateLoader({ currentSubject, currentBody, onLoad }: Template
         </div>
       )}
 
-      {/* Manage — list with delete icons */}
+      {/* Manage — list with edit + delete icons */}
       {showManage && templates.length > 0 && (
         <div className="rounded-xl border border-border bg-white overflow-hidden">
           <ul className="divide-y divide-border">
-            {templates.map((t) => (
-              <li key={t.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{t.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">{t.subject}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(t.id, t.name)}
-                  disabled={deleteTemplate.isPending}
-                  className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all shrink-0"
-                  title={`Delete template "${t.name}"`}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </li>
-            ))}
+            {templates.map((t) => {
+              const isEditing = editState?.id === t.id
+              return (
+                <li key={t.id}>
+                  {isEditing && editState ? (
+                    /* ── Inline edit form ── */
+                    <div className="flex flex-col gap-2 px-4 py-3 bg-primary/5">
+                      <Input
+                        value={editState.name}
+                        onChange={(e) => setEditState({ ...editState, name: e.target.value })}
+                        placeholder="Template name"
+                        className="h-8 text-sm"
+                        aria-label="Edit template name"
+                        autoFocus
+                        onKeyDown={(e) => { if (e.key === "Escape") cancelEdit() }}
+                      />
+                      <Input
+                        value={editState.subject}
+                        onChange={(e) => setEditState({ ...editState, subject: e.target.value })}
+                        placeholder="Subject"
+                        className="h-8 text-sm"
+                        aria-label="Edit template subject"
+                        onKeyDown={(e) => { if (e.key === "Escape") cancelEdit() }}
+                      />
+                      <textarea
+                        value={editState.body}
+                        onChange={(e) => setEditState({ ...editState, body: e.target.value })}
+                        placeholder="Body"
+                        rows={4}
+                        aria-label="Edit template body"
+                        className="w-full rounded-lg border border-border bg-white text-sm px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                        onKeyDown={(e) => { if (e.key === "Escape") cancelEdit() }}
+                      />
+                      <div className="flex items-center gap-2 justify-end">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleUpdate}
+                          disabled={
+                            !editState.name.trim() ||
+                            !editState.subject.trim() ||
+                            !editState.body.trim() ||
+                            updateTemplate.isPending
+                          }
+                          className="h-8 px-3 gap-1.5"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          {updateTemplate.isPending ? "Saving…" : "Save changes"}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={cancelEdit}
+                          className="h-8 px-3 gap-1.5"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* ── Normal row ── */
+                    <div className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{t.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{t.subject}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(t)}
+                        className="p-1.5 text-muted-foreground hover:text-primary rounded border border-transparent hover:border-primary/30 transition-all shrink-0"
+                        title={`Edit template "${t.name}"`}
+                        aria-label={`Edit template ${t.name}`}
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(t.id, t.name)}
+                        disabled={deleteTemplate.isPending}
+                        className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all shrink-0"
+                        title={`Delete template "${t.name}"`}
+                        aria-label={`Delete template ${t.name}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}

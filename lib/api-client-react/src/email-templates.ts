@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult, QueryKey, UseMutationOptions, UseMutationResult } from "@tanstack/react-query";
 import { customFetch } from "./custom-fetch";
 import type { ErrorType } from "./custom-fetch";
-import type { EmailTemplate, CreateEmailTemplateBody } from "./generated/api.schemas";
+import type { EmailTemplate, CreateEmailTemplateBody, UpdateEmailTemplateBody, UpdateEmailTemplateVariables } from "./generated/api.schemas";
 
 export const getListEmailTemplatesQueryKey = () => ["/api/email-templates"] as const;
 
@@ -40,6 +40,28 @@ export function useCreateEmailTemplate(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createEmailTemplate,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: getListEmailTemplatesQueryKey() });
+      mutationOptions?.onSuccess?.(...args);
+    },
+    ...mutationOptions,
+  });
+}
+
+export const updateEmailTemplate = async ({ id, body }: UpdateEmailTemplateVariables): Promise<EmailTemplate> => {
+  return customFetch<EmailTemplate>(`/api/email-templates/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+};
+
+export function useUpdateEmailTemplate(
+  mutationOptions?: UseMutationOptions<EmailTemplate, ErrorType<unknown>, UpdateEmailTemplateVariables>
+): UseMutationResult<EmailTemplate, ErrorType<unknown>, UpdateEmailTemplateVariables> {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateEmailTemplate,
     onSuccess: (...args) => {
       queryClient.invalidateQueries({ queryKey: getListEmailTemplatesQueryKey() });
       mutationOptions?.onSuccess?.(...args);

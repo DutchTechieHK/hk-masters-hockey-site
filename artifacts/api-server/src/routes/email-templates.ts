@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { emailTemplatesTable } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { CreateEmailTemplateBody, DeleteEmailTemplateParams } from "@workspace/api-zod";
+import { CreateEmailTemplateBody, DeleteEmailTemplateParams, UpdateEmailTemplateBody, UpdateEmailTemplateParams } from "@workspace/api-zod";
 
 const router = Router();
 
@@ -35,6 +35,31 @@ router.post("/", requireAdminAccess, async (req, res) => {
     ...created,
     createdAt: created.createdAt.toISOString(),
     updatedAt: created.updatedAt.toISOString(),
+  });
+});
+
+router.put("/:id", requireAdminAccess, async (req, res) => {
+  const { id } = UpdateEmailTemplateParams.parse(req.params);
+  const body = UpdateEmailTemplateBody.parse(req.body);
+  const [updated] = await db
+    .update(emailTemplatesTable)
+    .set({
+      name: body.name.trim(),
+      subject: body.subject.trim(),
+      body: body.body,
+      updatedAt: new Date(),
+    })
+    .where(eq(emailTemplatesTable.id, id))
+    .returning();
+
+  if (!updated) {
+    res.status(404).json({ error: "Template not found" });
+    return;
+  }
+  res.json({
+    ...updated,
+    createdAt: updated.createdAt.toISOString(),
+    updatedAt: updated.updatedAt.toISOString(),
   });
 });
 

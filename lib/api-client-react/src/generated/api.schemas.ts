@@ -555,3 +555,14 @@ export interface CreateEmailTemplateBody {
   subject: string;
   body: string;
 }
+
+export interface UpdateEmailTemplateBody {
+  name: string;
+  subject: string;
+  body: string;
+}
+
+export interface UpdateEmailTemplateVariables {
+  id: number;
+  body: UpdateEmailTemplateBody;
+}
