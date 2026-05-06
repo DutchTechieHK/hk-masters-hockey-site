@@ -9,13 +9,19 @@ import type { CreateKitOrderItemType } from "./createKitOrderItemType";
 import type { CreateKitOrderOrderStatus } from "./createKitOrderOrderStatus";
 
 export interface CreateKitOrder {
-  playerId: number;
-  itemType: CreateKitOrderItemType;
   itemName: string;
-  size: string;
-  quantity: number;
-  unitCost: number;
+  itemType: CreateKitOrderItemType;
   supplier?: string;
+  quantity: number;
+  unitCostHKD: number;
+  depositAmountHKD?: number;
+  depositPaidDate?: string;
+  balanceDueDate?: string;
+  balancePaidDate?: string;
+  orderPlacedDate?: string;
+  artworkApprovedDate?: string;
+  expectedDeliveryDate?: string;
+  actualDeliveryDate?: string;
   orderStatus: CreateKitOrderOrderStatus;
   notes?: string;
 }

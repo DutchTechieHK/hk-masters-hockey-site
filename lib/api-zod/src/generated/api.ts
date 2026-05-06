@@ -541,29 +541,42 @@ export const DeletePlayerParams = zod.object({
 /**
  * @summary List all kit orders
  */
-export const ListKitsQueryParams = zod.object({
-  playerId: zod.coerce.number().optional(),
-});
+export const ListKitsQueryParams = zod.object({});
+
+const kitOrderStatusEnum = zod.enum([
+  "not_ordered",
+  "artwork_pending",
+  "artwork_approved",
+  "ordered",
+  "in_production",
+  "dispatched",
+  "received",
+]);
+
+const kitItemTypeEnum = zod.enum([
+  "playing_kit",
+  "training_kit",
+  "travel_leisure_kit",
+  "accessories",
+]);
 
 export const ListKitsResponseItem = zod.object({
   id: zod.number(),
-  playerId: zod.number(),
-  playerName: zod.string().optional(),
-  teamId: zod.number().optional(),
-  teamName: zod.string().optional(),
-  itemType: zod.enum([
-    "playing_kit",
-    "training_kit",
-    "travel_leisure_kit",
-    "accessories",
-  ]),
   itemName: zod.string(),
-  size: zod.string(),
-  quantity: zod.number(),
-  unitCost: zod.number(),
-  totalCost: zod.number(),
+  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
-  orderStatus: zod.enum(["not_ordered", "ordered", "received", "distributed"]),
+  quantity: zod.number(),
+  unitCostHKD: zod.number(),
+  totalCostHKD: zod.number(),
+  depositAmountHKD: zod.number().optional(),
+  depositPaidDate: zod.string().optional(),
+  balanceDueDate: zod.string().optional(),
+  balancePaidDate: zod.string().optional(),
+  orderPlacedDate: zod.string().optional(),
+  artworkApprovedDate: zod.string().optional(),
+  expectedDeliveryDate: zod.string().optional(),
+  actualDeliveryDate: zod.string().optional(),
+  orderStatus: kitOrderStatusEnum,
   notes: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
@@ -573,19 +586,20 @@ export const ListKitsResponse = zod.array(ListKitsResponseItem);
  * @summary Create a kit order
  */
 export const CreateKitBody = zod.object({
-  playerId: zod.number(),
-  itemType: zod.enum([
-    "playing_kit",
-    "training_kit",
-    "travel_leisure_kit",
-    "accessories",
-  ]),
   itemName: zod.string(),
-  size: zod.string(),
-  quantity: zod.number(),
-  unitCost: zod.number(),
+  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
-  orderStatus: zod.enum(["not_ordered", "ordered", "received", "distributed"]),
+  quantity: zod.number(),
+  unitCostHKD: zod.number(),
+  depositAmountHKD: zod.number().optional(),
+  depositPaidDate: zod.string().optional(),
+  balanceDueDate: zod.string().optional(),
+  balancePaidDate: zod.string().optional(),
+  orderPlacedDate: zod.string().optional(),
+  artworkApprovedDate: zod.string().optional(),
+  expectedDeliveryDate: zod.string().optional(),
+  actualDeliveryDate: zod.string().optional(),
+  orderStatus: kitOrderStatusEnum,
   notes: zod.string().optional(),
 });
 
@@ -597,41 +611,40 @@ export const UpdateKitParams = zod.object({
 });
 
 export const UpdateKitBody = zod.object({
-  playerId: zod.number(),
-  itemType: zod.enum([
-    "playing_kit",
-    "training_kit",
-    "travel_leisure_kit",
-    "accessories",
-  ]),
   itemName: zod.string(),
-  size: zod.string(),
-  quantity: zod.number(),
-  unitCost: zod.number(),
+  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
-  orderStatus: zod.enum(["not_ordered", "ordered", "received", "distributed"]),
+  quantity: zod.number(),
+  unitCostHKD: zod.number(),
+  depositAmountHKD: zod.number().optional(),
+  depositPaidDate: zod.string().optional(),
+  balanceDueDate: zod.string().optional(),
+  balancePaidDate: zod.string().optional(),
+  orderPlacedDate: zod.string().optional(),
+  artworkApprovedDate: zod.string().optional(),
+  expectedDeliveryDate: zod.string().optional(),
+  actualDeliveryDate: zod.string().optional(),
+  orderStatus: kitOrderStatusEnum,
   notes: zod.string().optional(),
 });
 
 export const UpdateKitResponse = zod.object({
   id: zod.number(),
-  playerId: zod.number(),
-  playerName: zod.string().optional(),
-  teamId: zod.number().optional(),
-  teamName: zod.string().optional(),
-  itemType: zod.enum([
-    "playing_kit",
-    "training_kit",
-    "travel_leisure_kit",
-    "accessories",
-  ]),
   itemName: zod.string(),
-  size: zod.string(),
-  quantity: zod.number(),
-  unitCost: zod.number(),
-  totalCost: zod.number(),
+  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
-  orderStatus: zod.enum(["not_ordered", "ordered", "received", "distributed"]),
+  quantity: zod.number(),
+  unitCostHKD: zod.number(),
+  totalCostHKD: zod.number(),
+  depositAmountHKD: zod.number().optional(),
+  depositPaidDate: zod.string().optional(),
+  balanceDueDate: zod.string().optional(),
+  balancePaidDate: zod.string().optional(),
+  orderPlacedDate: zod.string().optional(),
+  artworkApprovedDate: zod.string().optional(),
+  expectedDeliveryDate: zod.string().optional(),
+  actualDeliveryDate: zod.string().optional(),
+  orderStatus: kitOrderStatusEnum,
   notes: zod.string().optional(),
   createdAt: zod.string().optional(),
 });

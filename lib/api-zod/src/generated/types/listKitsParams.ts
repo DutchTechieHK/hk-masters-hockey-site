@@ -6,6 +6,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListKitsParams = {
-  playerId?: number;
-};
+export type ListKitsParams = Record<string, never>;

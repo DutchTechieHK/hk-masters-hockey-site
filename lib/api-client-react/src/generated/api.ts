@@ -1668,20 +1668,8 @@ export const useDeletePlayer = <
 /**
  * @summary List all kit orders
  */
-export const getListKitsUrl = (params?: ListKitsParams) => {
-  const normalizedParams = new URLSearchParams();
-
-  Object.entries(params || {}).forEach(([key, value]) => {
-    if (value !== undefined) {
-      normalizedParams.append(key, value === null ? "null" : value.toString());
-    }
-  });
-
-  const stringifiedParams = normalizedParams.toString();
-
-  return stringifiedParams.length > 0
-    ? `/api/kits?${stringifiedParams}`
-    : `/api/kits`;
+export const getListKitsUrl = (_params?: ListKitsParams) => {
+  return `/api/kits`;
 };
 
 export const listKits = async (

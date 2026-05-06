@@ -274,24 +274,30 @@ export type KitOrderOrderStatus =
 
 export const KitOrderOrderStatus = {
   not_ordered: "not_ordered",
+  artwork_pending: "artwork_pending",
+  artwork_approved: "artwork_approved",
   ordered: "ordered",
+  in_production: "in_production",
+  dispatched: "dispatched",
   received: "received",
-  distributed: "distributed",
 } as const;
 
 export interface KitOrder {
   id: number;
-  playerId: number;
-  playerName?: string;
-  teamId?: number;
-  teamName?: string;
-  itemType: KitOrderItemType;
   itemName: string;
-  size: string;
-  quantity: number;
-  unitCost: number;
-  totalCost: number;
+  itemType: KitOrderItemType;
   supplier?: string;
+  quantity: number;
+  unitCostHKD: number;
+  totalCostHKD: number;
+  depositAmountHKD?: number;
+  depositPaidDate?: string;
+  balanceDueDate?: string;
+  balancePaidDate?: string;
+  orderPlacedDate?: string;
+  artworkApprovedDate?: string;
+  expectedDeliveryDate?: string;
+  actualDeliveryDate?: string;
   orderStatus: KitOrderOrderStatus;
   notes?: string;
   createdAt?: string;
@@ -312,19 +318,28 @@ export type CreateKitOrderOrderStatus =
 
 export const CreateKitOrderOrderStatus = {
   not_ordered: "not_ordered",
+  artwork_pending: "artwork_pending",
+  artwork_approved: "artwork_approved",
   ordered: "ordered",
+  in_production: "in_production",
+  dispatched: "dispatched",
   received: "received",
-  distributed: "distributed",
 } as const;
 
 export interface CreateKitOrder {
-  playerId: number;
-  itemType: CreateKitOrderItemType;
   itemName: string;
-  size: string;
-  quantity: number;
-  unitCost: number;
+  itemType: CreateKitOrderItemType;
   supplier?: string;
+  quantity: number;
+  unitCostHKD: number;
+  depositAmountHKD?: number;
+  depositPaidDate?: string;
+  balanceDueDate?: string;
+  balancePaidDate?: string;
+  orderPlacedDate?: string;
+  artworkApprovedDate?: string;
+  expectedDeliveryDate?: string;
+  actualDeliveryDate?: string;
   orderStatus: CreateKitOrderOrderStatus;
   notes?: string;
 }
@@ -527,9 +542,7 @@ export type GetPlayerAccessToken200 = {
   accessToken: string | null;
 };
 
-export type ListKitsParams = {
-  playerId?: number;
-};
+export type ListKitsParams = Record<string, never>;
 
 export type ListLogisticsParams = {
   teamId?: number;

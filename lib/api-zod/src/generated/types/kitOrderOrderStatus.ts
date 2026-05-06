@@ -11,7 +11,10 @@ export type KitOrderOrderStatus =
 
 export const KitOrderOrderStatus = {
   not_ordered: "not_ordered",
+  artwork_pending: "artwork_pending",
+  artwork_approved: "artwork_approved",
   ordered: "ordered",
+  in_production: "in_production",
+  dispatched: "dispatched",
   received: "received",
-  distributed: "distributed",
 } as const;
