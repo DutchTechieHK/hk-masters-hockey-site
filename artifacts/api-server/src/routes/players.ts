@@ -549,8 +549,6 @@ router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
     if (ok) sent++; else failed++;
   }
 
-  const adminEmail = (req as any).adminEmail as string | undefined;
-
   const [blast] = await db.insert(emailBlastsTable).values({
     subject,
     body,
@@ -560,7 +558,7 @@ router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
     recipientCount,
     sentCount: sent,
     failedCount: failed,
-    sentByEmail: adminEmail ?? null,
+    sentByEmail: null,
   }).returning();
 
   console.log(`[bulk-email] audienceType=${audienceType} sent=${sent} failed=${failed} skipped=${skipped} blastId=${blast.id}`);

@@ -252,12 +252,18 @@ export default function Announcements() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Failed to send emails")
-      toast({ title: `Sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${data.failed > 0 ? ` (${data.failed} failed)` : ""}` })
+      if (data.failed > 0) {
+        toast({ title: `Sent to ${data.sent} player${data.sent !== 1 ? "s" : ""} — ${data.failed} failed to deliver`, variant: "destructive" })
+      } else {
+        toast({ title: `Email sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}` })
+      }
       setEmailForm(EMPTY_EMAIL_FORM)
       setPlayerSearch("")
       refreshBlasts()
     } catch (err) {
-      setEmailError((err as Error).message)
+      const msg = (err as Error).message
+      setEmailError(msg)
+      toast({ title: msg, variant: "destructive" })
     } finally {
       setSending(false)
     }
@@ -494,11 +500,12 @@ export default function Announcements() {
                 <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
                   <Users className="w-3.5 h-3.5" /> {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}
                 </p>
-                <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto">
+                <div className="max-h-32 overflow-y-auto space-y-1">
                   {recipients.map((p) => (
-                    <span key={p.id} className="text-xs bg-white border border-border rounded-full px-2 py-0.5 text-foreground">
-                      {p.name}
-                    </span>
+                    <div key={p.id} className="flex items-center gap-2 text-xs px-1">
+                      <span className="font-medium text-foreground">{p.name}</span>
+                      <span className="text-muted-foreground truncate">{p.email}</span>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -622,11 +629,12 @@ export default function Announcements() {
           <p className="text-sm text-foreground">
             You're about to send <strong>"{emailForm.subject}"</strong> to <strong>{recipients.length} player{recipients.length !== 1 ? "s" : ""}</strong>. This cannot be undone.
           </p>
-          <div className="max-h-32 overflow-y-auto flex flex-wrap gap-1.5 rounded-lg border border-border bg-muted/20 p-3">
+          <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-muted/20 p-3 space-y-1">
             {recipients.map((p) => (
-              <span key={p.id} className="text-xs bg-white border border-border rounded-full px-2 py-0.5">
-                {p.name}
-              </span>
+              <div key={p.id} className="flex items-center gap-2 text-xs">
+                <span className="font-medium text-foreground">{p.name}</span>
+                <span className="text-muted-foreground truncate">{p.email}</span>
+              </div>
             ))}
           </div>
           {emailError && <p className="text-sm text-rose-600">{emailError}</p>}
