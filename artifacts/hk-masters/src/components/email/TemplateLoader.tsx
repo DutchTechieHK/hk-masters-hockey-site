@@ -125,7 +125,9 @@ export function TemplateLoader({ currentSubject, currentBody, onLoad }: Template
         <button
           type="button"
           onClick={() => {
-            setShowSave((v) => !v)
+            const nextShow = !showSave
+            setShowSave(nextShow)
+            setSaveName(nextShow ? currentSubject.slice(0, 40).trim() : "")
             setShowManage(false)
             setEditState(null)
           }}
