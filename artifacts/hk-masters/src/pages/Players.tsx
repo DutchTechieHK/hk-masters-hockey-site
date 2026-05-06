@@ -18,6 +18,12 @@ import { getInitials } from "@/lib/utils"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
+function cloudinaryViewUrl(url: string): string {
+  if (url.includes("res.cloudinary.com") && url.includes("/image/upload/") && url.toLowerCase().endsWith(".pdf")) {
+    return url.replace(/\.pdf$/i, ".jpg")
+  }
+  return url
+}
 
 const SESSION_KEY = "hkm_admin_session"
 function getStoredSession(): string | null {
@@ -568,7 +574,7 @@ export default function Players() {
                         {player.passportCopyUrl && (
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <a
-                              href={player.passportCopyUrl}
+                              href={cloudinaryViewUrl(player.passportCopyUrl)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
@@ -708,7 +714,7 @@ export default function Players() {
                   <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
                   <span className="text-sm text-muted-foreground flex-1">File uploaded by player</span>
                   <a
-                    href={editingPlayer.passportCopyUrl}
+                    href={cloudinaryViewUrl(editingPlayer.passportCopyUrl)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"

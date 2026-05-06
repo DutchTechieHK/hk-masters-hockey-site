@@ -5,6 +5,14 @@ import { API_BASE } from "../utils/api";
 const CLOUDINARY_CLOUD_NAME = "djyvdrhal";
 const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned";
 
+function cloudinaryViewUrl(url) {
+  if (!url) return url;
+  if (url.includes("res.cloudinary.com") && url.includes("/image/upload/") && url.toLowerCase().endsWith(".pdf")) {
+    return url.replace(/\.pdf$/i, ".jpg");
+  }
+  return url;
+}
+
 
 const SECTIONS = [
   {
@@ -308,7 +316,7 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-800 truncate">Passport copy on file</p>
             <a
-              href={passportCopyUrl}
+              href={cloudinaryViewUrl(passportCopyUrl)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-[#006B3C] hover:underline"
