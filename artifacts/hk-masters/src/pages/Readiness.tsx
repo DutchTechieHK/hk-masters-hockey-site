@@ -5,7 +5,13 @@ import type { Player as BasePlayer } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Badge } from "@/components/ui/badge"
 import { Select } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Modal } from "@/components/ui/modal"
 import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
+import { getStoredAdminToken } from "@/lib/admin-auth"
+import { useToast } from "@/hooks/use-toast"
 import {
   Plane,
   BedDouble,
@@ -18,6 +24,7 @@ import {
   CheckCheck,
   XCircle,
   Filter,
+  Send,
 } from "lucide-react"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
@@ -174,13 +181,38 @@ function daysUntilTournament(): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
 }
 
+const DEFAULT_CHASE_SUBJECT = "Rotterdam 2026 — Action needed before the tournament"
+const DEFAULT_CHASE_BODY = `Hi {firstName},
+
+We're getting closer to Rotterdam and we just need a couple of things from you before we can mark you as tournament-ready.
+
+Please log in to your self-service page and make sure everything is filled in — especially any items that might be flagged as missing.
+
+If you have any questions, reply to this email and we'll help you out.
+
+See you in Rotterdam!
+
+The HK Masters Team`
+
+function authHeaders(): Record<string, string> {
+  const token = getStoredAdminToken()
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (token) headers["x-session-token"] = token
+  return headers
+}
+
 export default function Readiness() {
   const { data: players = [], isLoading } = useListPlayers()
   const { data: teams = [] } = useListTeams()
+  const { toast } = useToast()
 
   const [expanded, setExpanded] = useState<string | null>(null)
   const [incompleteOnly, setIncompleteOnly] = useState(false)
   const [teamFilter, setTeamFilter] = useState<string>("")
+  const [chaseModalOpen, setChaseModalOpen] = useState(false)
+  const [chaseSubject, setChaseSubject] = useState(DEFAULT_CHASE_SUBJECT)
+  const [chaseBody, setChaseBody] = useState(DEFAULT_CHASE_BODY)
+  const [chaseSending, setChaseSending] = useState(false)
 
   const teamMap = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t])),
@@ -207,6 +239,11 @@ export default function Readiness() {
     })
   }, [playerReadiness, teamFilter, incompleteOnly])
 
+  const incompletePlayers = useMemo(
+    () => playerReadiness.filter((r) => !r.ready).map((r) => r.player),
+    [playerReadiness],
+  )
+
   const blockerStats = useMemo(() => {
     return CHECKS.map((check) => {
       const players_with_blocker = players.filter(check.detect)
@@ -217,6 +254,35 @@ export default function Readiness() {
   const totalBlockers = blockerStats.reduce((s, b) => s + b.players.length, 0)
   const readyPct = players.length > 0 ? Math.round((playersFullyReady / players.length) * 100) : 0
   const days = daysUntilTournament()
+
+  const handleChaseEmail = async () => {
+    if (!chaseSubject.trim() || !chaseBody.trim() || incompletePlayers.length === 0) return
+    setChaseSending(true)
+    try {
+      const res = await fetch("/api/players/send-bulk-email", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({
+          audienceType: "individuals",
+          playerIds: incompletePlayers.map((p) => p.id),
+          subject: chaseSubject.trim(),
+          body: chaseBody.trim(),
+        }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to send emails")
+      if (data.failed > 0) {
+        toast({ title: `Sent to ${data.sent} player${data.sent !== 1 ? "s" : ""} — ${data.failed} failed`, variant: "destructive" })
+      } else {
+        toast({ title: `Chase email sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}` })
+      }
+      setChaseModalOpen(false)
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to send emails", variant: "destructive" })
+    } finally {
+      setChaseSending(false)
+    }
+  }
 
   return (
     <PageLayout
@@ -292,6 +358,19 @@ export default function Readiness() {
                   <Filter className="w-3.5 h-3.5" />
                   Incomplete only
                 </button>
+                {incompletePlayers.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setChaseSubject(DEFAULT_CHASE_SUBJECT)
+                      setChaseBody(DEFAULT_CHASE_BODY)
+                      setChaseModalOpen(true)
+                    }}
+                    className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-sm font-medium border bg-primary text-primary-foreground border-primary hover:bg-primary/90 transition-all"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    Chase {incompletePlayers.length} player{incompletePlayers.length !== 1 ? "s" : ""}
+                  </button>
+                )}
               </div>
               <p className="text-xs text-muted-foreground w-full sm:w-auto">
                 {filteredRows.length} player{filteredRows.length !== 1 ? "s" : ""} shown
@@ -504,6 +583,82 @@ export default function Readiness() {
           )}
         </>
       )}
+
+      {/* ── Chase incomplete players modal ── */}
+      <Modal
+        isOpen={chaseModalOpen}
+        onClose={() => setChaseModalOpen(false)}
+        title={`Chase ${incompletePlayers.length} incomplete player${incompletePlayers.length !== 1 ? "s" : ""}`}
+        description="Send a reminder email to everyone who still has outstanding readiness items."
+      >
+        <div className="space-y-5">
+          {/* Recipient list */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+              Recipients ({incompletePlayers.length})
+            </p>
+            <div className="max-h-32 overflow-y-auto rounded-xl border border-border bg-muted/20 divide-y divide-border">
+              {incompletePlayers.map((p) => (
+                <div key={p.id} className="px-3 py-2 flex items-center gap-2 text-sm">
+                  <div className="w-5 h-5 rounded bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                    {p.shirtNumber ?? "—"}
+                  </div>
+                  <span className="font-medium text-foreground truncate">{p.name}</span>
+                  <span className="text-muted-foreground truncate ml-auto text-xs">{p.email}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Subject */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+              Subject
+            </label>
+            <Input
+              value={chaseSubject}
+              onChange={(e) => setChaseSubject(e.target.value)}
+              placeholder="Email subject"
+            />
+          </div>
+
+          {/* Body */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+              Message
+            </label>
+            <Textarea
+              value={chaseBody}
+              onChange={(e) => setChaseBody(e.target.value)}
+              placeholder="Email body"
+              rows={8}
+              className="resize-none text-sm"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Use <code className="bg-muted px-1 rounded">{"{firstName}"}</code> to personalise with each player's first name.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 justify-end pt-1">
+            <Button
+              variant="outline"
+              onClick={() => setChaseModalOpen(false)}
+              disabled={chaseSending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleChaseEmail}
+              disabled={chaseSending || !chaseSubject.trim() || !chaseBody.trim()}
+              className="gap-2"
+            >
+              <Send className="w-4 h-4" />
+              {chaseSending ? "Sending…" : `Send to ${incompletePlayers.length} player${incompletePlayers.length !== 1 ? "s" : ""}`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </PageLayout>
   )
 }
