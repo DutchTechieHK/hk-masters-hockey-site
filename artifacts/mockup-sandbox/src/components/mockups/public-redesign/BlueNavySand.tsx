@@ -223,16 +223,16 @@ export function BlueNavySand() {
 
           <div className="flex flex-wrap justify-center items-center gap-4 md:gap-6 mb-10">
             {[
-              { value: '76', label: 'Days',  delay: '0s'    },
-              { value: '14', label: 'Hours', delay: '0.6s'  },
-              { value: '32', label: 'Mins',  delay: '1.2s'  },
-              { value: '08', label: 'Secs',  delay: '1.8s'  },
+              { value: '76', label: 'Days',  pulse: false },
+              { value: '14', label: 'Hours', pulse: false },
+              { value: '32', label: 'Mins',  pulse: false },
+              { value: '08', label: 'Secs',  pulse: true  },
             ].map((unit, i, arr) => (
               <React.Fragment key={unit.label}>
                 <div className="bg-[#16305D] border border-[#5B9FE0]/30 rounded-2xl p-6 min-w-[110px] md:min-w-[128px] shadow-xl shadow-[#0D1E3C]/40">
                   <div
-                    className="countdown-digit text-5xl md:text-6xl font-extrabold text-white mb-1.5 tabular-nums"
-                    style={{ fontFamily: "'Barlow Condensed', sans-serif", animationDelay: unit.delay }}
+                    className={`${unit.pulse ? 'countdown-digit' : ''} text-5xl md:text-6xl font-extrabold text-white mb-1.5 tabular-nums`}
+                    style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
                   >
                     {unit.value}
                   </div>
