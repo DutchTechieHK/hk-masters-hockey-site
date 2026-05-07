@@ -11,7 +11,7 @@ export interface DocumentItem {
   fileUrl: string;
   fileName: string;
   fileSize?: number | null;
-  uploadedByEmail?: string | null;
+  uploadedBy?: string | null;
   uploadedAt?: string;
 }
 

@@ -228,6 +228,7 @@ export default function Documents() {
                           <span className="font-mono truncate max-w-[200px]">{doc.fileName}</span>
                           {doc.fileSize && <span>{formatBytes(doc.fileSize)}</span>}
                           {doc.uploadedAt && <span>Added {formatDate(doc.uploadedAt)}</span>}
+                          {doc.uploadedBy && <span>by {doc.uploadedBy}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">

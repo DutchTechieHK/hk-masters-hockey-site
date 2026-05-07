@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { documentsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { requireSession } from "../middleware/adminSession";
+import { requireSession, getSessionLabel } from "../middleware/adminSession";
 
 const router = Router();
 
@@ -19,7 +19,6 @@ function parseCreateBody(body: unknown): {
   fileUrl: string;
   fileName: string;
   fileSize: number | null;
-  uploadedByEmail: null;
 } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -35,7 +34,7 @@ function parseCreateBody(body: unknown): {
   if (!ALLOWED_EXTENSIONS.includes(ext)) return { error: `Only PDF files are allowed (got ${ext || "unknown"})` };
   const description = typeof b.description === "string" && b.description.trim() ? b.description.trim() : null;
   const fileSize = typeof b.fileSize === "number" && b.fileSize > 0 ? b.fileSize : null;
-  return { title, description, category: category as DocCategory, fileUrl, fileName, fileSize, uploadedByEmail: null };
+  return { title, description, category: category as DocCategory, fileUrl, fileName, fileSize };
 }
 
 function mapDocument(doc: typeof documentsTable.$inferSelect) {
@@ -47,7 +46,7 @@ function mapDocument(doc: typeof documentsTable.$inferSelect) {
     fileUrl: doc.fileUrl,
     fileName: doc.fileName,
     fileSize: doc.fileSize,
-    uploadedByEmail: doc.uploadedByEmail,
+    uploadedBy: doc.uploadedByEmail,
     uploadedAt: doc.uploadedAt?.toISOString(),
   };
 }
@@ -66,9 +65,13 @@ router.post("/", requireSession, async (req, res) => {
     res.status(400).json({ error: parsed.error });
     return;
   }
+  const token =
+    (req.headers["x-session-token"] as string | undefined) ||
+    req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+  const uploadedByEmail = token ? (getSessionLabel(token) ?? "Admin") : "Admin";
   const [doc] = await db
     .insert(documentsTable)
-    .values(parsed)
+    .values({ ...parsed, uploadedByEmail })
     .returning();
   res.status(201).json(mapDocument(doc));
 });
