@@ -18,6 +18,13 @@
   background-color: #0F172A;
 }
 
+/* Lighter jeans-blue hero */
+.hero-bg-light {
+  background: radial-gradient(circle at top left, rgba(91, 159, 224, 0.18) 0%, transparent 40%),
+              linear-gradient(135deg, #1E3A6E 55%, rgba(42, 82, 152, 0.9) 100%);
+  background-color: #1E3A6E;
+}
+
 /* Float animation for decorative shape */
 @keyframes float {
   0% { transform: translateY(0px) rotate(0deg); }
