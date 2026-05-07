@@ -22,6 +22,7 @@ import MySchedule from "./pages/MySchedule";
 import MyFees from "./pages/MyFees";
 import MyTravel from "./pages/MyTravel";
 import Announcements from "./pages/Announcements";
+import MyDocuments from "./pages/MyDocuments";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/fees" component={MyFees} />
         <Route path="/travel" component={MyTravel} />
         <Route path="/announcements" component={Announcements} />
+        <Route path="/documents" component={MyDocuments} />
         <Route path="/my-schedule">{() => { window.location.replace(import.meta.env.BASE_URL + "schedule"); return null; }}</Route>
         <Route path="/privacy" component={Privacy} />
         <Route>

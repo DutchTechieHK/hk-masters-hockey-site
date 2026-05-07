@@ -4,6 +4,7 @@ import { documentsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { requireSession, getSessionLabel } from "../middleware/adminSession";
+import { requirePlayerSession } from "../middleware/playerSession";
 
 const router = Router();
 
@@ -51,12 +52,32 @@ function mapDocument(doc: typeof documentsTable.$inferSelect) {
   };
 }
 
+function mapDocumentForPlayer(doc: typeof documentsTable.$inferSelect) {
+  return {
+    id: doc.id,
+    title: doc.title,
+    description: doc.description,
+    category: doc.category,
+    fileUrl: doc.fileUrl,
+    fileName: doc.fileName,
+    fileSize: doc.fileSize,
+  };
+}
+
 router.get("/", requireAdminAccess, async (_req, res) => {
   const docs = await db
     .select()
     .from(documentsTable)
     .orderBy(documentsTable.category, documentsTable.uploadedAt);
   res.json(docs.map(mapDocument));
+});
+
+router.get("/player", requirePlayerSession, async (_req, res) => {
+  const docs = await db
+    .select()
+    .from(documentsTable)
+    .orderBy(documentsTable.category, documentsTable.uploadedAt);
+  res.json(docs.map(mapDocumentForPlayer));
 });
 
 router.post("/", requireSession, async (req, res) => {

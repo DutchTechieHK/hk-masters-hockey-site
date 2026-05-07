@@ -15,6 +15,16 @@ export interface DocumentItem {
   uploadedAt?: string;
 }
 
+export interface PlayerDocumentItem {
+  id: number;
+  title: string;
+  description?: string | null;
+  category: "mandatory-form" | "regulation" | "information";
+  fileUrl: string;
+  fileName: string;
+  fileSize?: number | null;
+}
+
 export interface CreateDocumentInput {
   title: string;
   description?: string;
@@ -40,6 +50,30 @@ export function useListDocuments<TData = DocumentItem[], TError = ErrorType<unkn
   const query = useQuery({
     queryKey,
     queryFn: () => listDocuments(),
+    ...queryOptions,
+  }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+  query.queryKey = queryKey;
+  return query;
+}
+
+export const getListPlayerDocumentsQueryKey = () => ["/api/documents/player"] as const;
+
+export const listPlayerDocuments = async (token: string): Promise<PlayerDocumentItem[]> => {
+  return customFetch<PlayerDocumentItem[]>("/api/documents/player", {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+};
+
+export function useListPlayerDocuments<TData = PlayerDocumentItem[], TError = ErrorType<unknown>>(
+  token: string | null | undefined,
+  queryOptions?: Partial<UseQueryOptions<PlayerDocumentItem[], TError, TData, QueryKey>>
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryKey = queryOptions?.queryKey ?? getListPlayerDocumentsQueryKey();
+  const query = useQuery({
+    queryKey,
+    queryFn: () => listPlayerDocuments(token!),
+    enabled: !!token,
     ...queryOptions,
   }) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
   query.queryKey = queryKey;
