@@ -77,6 +77,8 @@ export default function MyDocuments() {
     items: (docs || []).filter((d) => d.category === cat.key),
   })).filter((cat) => cat.items.length > 0);
 
+  const mandatoryGroup = grouped.find((g) => g.key === "mandatory-form");
+
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
       <div className="max-w-3xl mx-auto">
@@ -85,6 +87,18 @@ export default function MyDocuments() {
           <h1 className="mt-2 text-3xl font-bold text-gray-900">Documents</h1>
           <p className="mt-1 text-sm text-gray-600">Tournament forms, regulations, and information PDFs.</p>
         </div>
+
+        {mandatoryGroup && (
+          <div className="mb-8 bg-red-50 border border-red-200 rounded-2xl px-5 py-4">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-base">📋</span>
+              <p className="font-semibold text-red-800">Action required — mandatory forms</p>
+            </div>
+            <p className="text-sm text-red-700">
+              Please download and complete all {mandatoryGroup.items.length === 1 ? "form" : `${mandatoryGroup.items.length} forms`} below before the tournament. Return them to your team manager.
+            </p>
+          </div>
+        )}
 
         {grouped.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
@@ -102,12 +116,31 @@ export default function MyDocuments() {
                   <span className={`ml-1 text-xs font-semibold px-2 py-0.5 rounded-full ${BADGE_CLASSES[cat.color]}`}>
                     {cat.items.length}
                   </span>
+                  {cat.key === "mandatory-form" && (
+                    <span className="ml-1 text-xs font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-500 text-white">
+                      Required
+                    </span>
+                  )}
                 </div>
                 <ul className="space-y-3">
                   {cat.items.map((doc) => (
-                    <li key={doc.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 sm:p-5 flex items-start justify-between gap-4">
+                    <li
+                      key={doc.id}
+                      className={`bg-white rounded-2xl shadow-sm border p-4 sm:p-5 flex items-start justify-between gap-4 ${
+                        cat.key === "mandatory-form"
+                          ? "border-red-200 border-l-4 border-l-red-500"
+                          : "border-gray-100"
+                      }`}
+                    >
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{doc.title}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-gray-900 truncate">{doc.title}</p>
+                          {cat.key === "mandatory-form" && (
+                            <span className="inline-flex items-center text-xs font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700 shrink-0">
+                              Required
+                            </span>
+                          )}
+                        </div>
                         {doc.description && (
                           <p className="mt-0.5 text-sm text-gray-500 line-clamp-2">{doc.description}</p>
                         )}
@@ -122,7 +155,11 @@ export default function MyDocuments() {
                         href={doc.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 bg-green-700 hover:bg-green-800 text-white text-sm font-medium rounded-xl transition"
+                        className={`flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-white text-sm font-medium rounded-xl transition ${
+                          cat.key === "mandatory-form"
+                            ? "bg-red-600 hover:bg-red-700"
+                            : "bg-green-700 hover:bg-green-800"
+                        }`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />

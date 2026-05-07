@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
+import { API_BASE } from "../utils/api";
 
 const CARDS = [
   { key: "fees", title: "My fees", desc: "Your tournament fee balance and payment history.", emoji: "💳", to: "fees" },
@@ -16,9 +17,11 @@ export default function Dashboard() {
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [mandatoryCount, setMandatoryCount] = useState(0);
 
   useEffect(() => {
-    if (!getPlayerToken()) {
+    const token = getPlayerToken();
+    if (!token) {
       setLocation("/login");
       return;
     }
@@ -41,6 +44,25 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, [setLocation]);
 
+  useEffect(() => {
+    const token = getPlayerToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/documents/player`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((docs) => {
+        if (cancelled) return;
+        const count = Array.isArray(docs)
+          ? docs.filter((d) => d.category === "mandatory-form").length
+          : 0;
+        setMandatoryCount(count);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const handleLogout = async () => {
     await logout();
     setLocation("/login");
@@ -55,7 +77,6 @@ export default function Dashboard() {
       setLocation(`/${card.to}`);
       return;
     }
-    // other cards: no-op for now (coming soon)
   };
 
   if (loading) {
@@ -96,20 +117,48 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {mandatoryCount > 0 && (
+          <button
+            onClick={() => setLocation("/documents")}
+            className="w-full text-left mb-6 flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 hover:bg-red-100 transition group"
+          >
+            <span className="text-xl mt-0.5">📋</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-red-800">
+                {mandatoryCount === 1
+                  ? "1 mandatory form requires your attention"
+                  : `${mandatoryCount} mandatory forms require your attention`}
+              </p>
+              <p className="text-sm text-red-700 mt-0.5">
+                Please download and complete {mandatoryCount === 1 ? "this form" : "these forms"} before the tournament.
+              </p>
+            </div>
+            <span className="text-red-400 group-hover:text-red-600 text-sm font-medium self-center shrink-0">View →</span>
+          </button>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CARDS.map((card) => {
             const enabled = card.key === "profile" || !!card.to;
+            const hasBadge = card.key === "documents" && mandatoryCount > 0;
             return (
               <button
                 key={card.key}
                 onClick={() => handleCard(card)}
                 disabled={!enabled}
-                className={`text-left bg-white rounded-2xl shadow-sm p-6 border border-gray-100 transition ${
-                  enabled
-                    ? "hover:shadow-md hover:border-green-200 cursor-pointer"
-                    : "opacity-70 cursor-not-allowed"
+                className={`relative text-left bg-white rounded-2xl shadow-sm p-6 border transition ${
+                  hasBadge
+                    ? "border-red-200 hover:shadow-md hover:border-red-300 cursor-pointer"
+                    : enabled
+                    ? "border-gray-100 hover:shadow-md hover:border-green-200 cursor-pointer"
+                    : "border-gray-100 opacity-70 cursor-not-allowed"
                 }`}
               >
+                {hasBadge && (
+                  <span className="absolute top-4 right-4 inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold">
+                    {mandatoryCount}
+                  </span>
+                )}
                 <div className="text-3xl mb-3">{card.emoji}</div>
                 <h2 className="text-lg font-semibold text-gray-900">{card.title}</h2>
                 <p className="mt-1 text-sm text-gray-600">{card.desc}</p>
