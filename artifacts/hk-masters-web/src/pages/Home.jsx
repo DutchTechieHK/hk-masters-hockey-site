@@ -10,7 +10,7 @@ import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import SponsorStrip from "../components/SponsorStrip";
 
-const ROTTERDAM_START = new Date("2026-07-22T09:00:00+02:00"); // 9 am CEST
+const ROTTERDAM_START   = new Date("2026-07-22T09:00:00+02:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 const isRotterdamMode = () => Date.now() < ROTTERDAM_MODE_END.getTime();
 
@@ -19,8 +19,8 @@ function useCountdown(target) {
     const diff = target - Date.now();
     if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, over: true };
     return {
-      days: Math.floor(diff / 86400000),
-      hours: Math.floor((diff % 86400000) / 3600000),
+      days:    Math.floor(diff / 86400000),
+      hours:   Math.floor((diff % 86400000) / 3600000),
       minutes: Math.floor((diff % 3600000) / 60000),
       seconds: Math.floor((diff % 60000) / 1000),
       over: false,
@@ -34,15 +34,15 @@ function useCountdown(target) {
   return time;
 }
 
-function CountdownUnit({ value, label }) {
+function CountdownUnit({ value, label, pulse = false }) {
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white/10 border border-white/20 rounded-xl sm:rounded-2xl px-3 py-3 sm:px-6 sm:py-4 min-w-[62px] sm:min-w-[100px] text-center shadow-inner">
+      <div className={`bg-white/10 border border-white/20 rounded-xl sm:rounded-2xl px-3 py-3 sm:px-6 sm:py-4 min-w-[62px] sm:min-w-[100px] text-center shadow-inner ${pulse ? "countdown-seconds" : ""}`}>
         <span className="text-3xl sm:text-6xl font-extrabold text-white tabular-nums leading-none tracking-tight">
           {String(value).padStart(2, "0")}
         </span>
       </div>
-      <span className="mt-2 text-[10px] sm:text-sm font-semibold text-green-300 uppercase tracking-widest">
+      <span className="mt-2 text-[10px] sm:text-sm font-semibold text-[#8FBDE8] uppercase tracking-widest">
         {label}
       </span>
     </div>
@@ -58,7 +58,7 @@ function CountdownSeparator() {
 function RotterdamCountdown() {
   const countdown = useCountdown(ROTTERDAM_START);
   return (
-    <section className="bg-[#004A2A] py-12 sm:py-16">
+    <section className="bg-[#16305D] py-12 sm:py-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <p className="text-[#DE2910] text-sm sm:text-base font-bold uppercase tracking-widest mb-2">
           Rotterdam 2026 Masters World Cup
@@ -68,27 +68,27 @@ function RotterdamCountdown() {
         </h2>
         {!countdown.over && (
           <div className="flex items-end justify-center gap-3 sm:gap-5">
-            <CountdownUnit value={countdown.days} label="Days" />
+            <CountdownUnit value={countdown.days}    label="Days" />
             <CountdownSeparator />
-            <CountdownUnit value={countdown.hours} label="Hours" />
+            <CountdownUnit value={countdown.hours}   label="Hours" />
             <CountdownSeparator />
             <CountdownUnit value={countdown.minutes} label="Minutes" />
             <CountdownSeparator />
-            <CountdownUnit value={countdown.seconds} label="Seconds" />
+            <CountdownUnit value={countdown.seconds} label="Seconds" pulse />
           </div>
         )}
-        <p className="mt-8 text-green-400 text-sm">
+        <p className="mt-8 text-[#5B9FE0] text-sm">
           22 July – 1 August 2026 &nbsp;·&nbsp; Rotterdam, Netherlands
         </p>
         <Link
           href="/rotterdam-2026"
-          className="inline-block mt-5 bg-[#DE2910] text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-red-700 transition-colors duration-150"
+          className="btn-shimmer inline-block mt-5 bg-[#DE2910] text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-red-700 transition-colors duration-150"
         >
           Tournament details &rarr;
         </Link>
-        <p className="mt-6 text-green-300 text-sm">
+        <p className="mt-6 text-[#8FBDE8] text-sm">
           Got a match report or photos?{" "}
-          <Link href="/journal" className="text-white font-semibold underline hover:text-green-200 transition-colors duration-150">
+          <Link href="/journal" className="text-white font-semibold underline hover:text-[#BFD9F5] transition-colors duration-150">
             Share it in the HK Masters Journal &rarr;
           </Link>
         </p>
@@ -99,15 +99,14 @@ function RotterdamCountdown() {
 
 function PhotoPlaceholder({ label }) {
   return (
-    <div className="w-full h-full bg-[#004A2A] flex flex-col items-center justify-center gap-2 text-green-400 rounded-xl">
+    <div className="w-full h-full bg-[#16305D] flex flex-col items-center justify-center gap-2 text-[#5B9FE0] rounded-xl">
       <svg className="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
       </svg>
-      <p className="text-xs text-green-500 opacity-60 text-center px-4">{label}</p>
+      <p className="text-xs text-[#5B9FE0] opacity-60 text-center px-4">{label}</p>
     </div>
   );
 }
-
 
 function useLatestJournalArticle() {
   const [article, setArticle] = useState(null);
@@ -131,7 +130,6 @@ function useLatestJournalArticle() {
 
 function LatestJournalCard() {
   const { article, loading } = useLatestJournalArticle();
-
   if (loading || !article) return null;
 
   const excerpt = article.articleBody
@@ -145,12 +143,12 @@ function LatestJournalCard() {
           <h2 className="text-2xl font-bold text-gray-900">Latest from the Journal</h2>
           <Link
             href="/journal"
-            className="text-[#006B3C] font-medium hover:text-green-800 transition-colors duration-150 text-sm"
+            className="text-[#1E3A6E] font-medium hover:text-[#16305D] transition-colors duration-150 text-sm"
           >
             All Journal articles &rarr;
           </Link>
         </div>
-        <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
+        <div className="tilt-card bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
           <Link href={`/journal/${article.id}`} className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden">
             {article.photoUrls && article.photoUrls.length > 0 ? (
               <img
@@ -160,18 +158,18 @@ function LatestJournalCard() {
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-full min-h-[192px] bg-[#004A2A] flex flex-col items-center justify-center gap-2">
-                <svg className="w-10 h-10 text-green-500 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-full h-full min-h-[192px] bg-[#16305D] flex flex-col items-center justify-center gap-2">
+                <svg className="w-10 h-10 text-[#5B9FE0] opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 20H5a2 2 0 01-2-2V8a2 2 0 012-2h3l2-3h4l2 3h3a2 2 0 012 2v10a2 2 0 01-2 2z" />
                   <circle cx="12" cy="13" r="3" strokeWidth={1.5} />
                 </svg>
-                <span className="text-green-600 text-xs font-semibold uppercase tracking-widest opacity-60">HK Masters</span>
+                <span className="text-[#5B9FE0] text-xs font-semibold uppercase tracking-widest opacity-60">HK Masters</span>
               </div>
             )}
           </Link>
           <div className="p-6 sm:p-8 flex flex-col justify-center">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="text-xs font-semibold bg-green-100 text-green-800 px-2.5 py-1 rounded-full">
+              <span className="text-xs font-semibold bg-[#EEF4FB] text-[#1E3A6E] px-2.5 py-1 rounded-full">
                 {article.contentType === "photo" ? "Photos" : article.contentType === "both" ? "Article + Photos" : "Article"}
               </span>
               <span className="text-xs text-gray-400">
@@ -181,7 +179,7 @@ function LatestJournalCard() {
             <h3 className="text-xl font-bold text-gray-900 mb-1 leading-snug">
               {article.title}
             </h3>
-            <p className="text-sm text-[#006B3C] font-semibold mb-3">
+            <p className="text-sm text-[#1E3A6E] font-semibold mb-3">
               By {article.authorName}
             </p>
             {excerpt && (
@@ -191,7 +189,7 @@ function LatestJournalCard() {
             )}
             <Link
               href={`/journal/${article.id}`}
-              className="self-start text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors duration-150"
+              className="self-start text-sm font-semibold text-[#1E3A6E] hover:text-[#16305D] transition-colors duration-150"
             >
               Read this article &rarr;
             </Link>
@@ -204,25 +202,22 @@ function LatestJournalCard() {
 
 export default function Home() {
   const hasHeroImage = content.hero_image && content.hero_image.trim() !== "";
-  const hasGallery = content.gallery_images && content.gallery_images.length > 0;
+  const hasGallery   = content.gallery_images && content.gallery_images.length > 0;
   const [activePhoto, setActivePhoto] = useState(hasHeroImage ? content.hero_image : null);
-  const [openSquad, setOpenSquad] = useState(null);
+  const [openSquad, setOpenSquad]     = useState(null);
   const stripRef = useRef(null);
 
   const scrollStrip = (dir) => {
-    if (stripRef.current) {
-      stripRef.current.scrollLeft += dir * 480;
-    }
+    if (stripRef.current) stripRef.current.scrollLeft += dir * 480;
   };
 
   return (
     <div>
-      {/* Hero Section — two-column on desktop */}
-      <section className="relative bg-[#006B3C] text-white">
+      {/* ── Hero Section ──────────────────────────────────────── */}
+      <section className="relative bg-[#1E3A6E] text-white">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
 
-            {/* Left: Text — Rotterdam mode until 15 Sep 2026, then standard */}
             {isRotterdamMode() ? (
               <div>
                 <span className="inline-block bg-[#DE2910] text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-5">
@@ -231,16 +226,16 @@ export default function Home() {
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
                   Two Teams Representing Hong Kong
                 </h1>
-                <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
+                <p className="text-lg sm:text-xl text-[#D6E8F7] mb-3 font-medium">
                   MO40 · MO50 &mdash; at the World Masters Hockey World Cup
                 </p>
-                <p className="text-green-200 mb-8 max-w-xl leading-relaxed">
+                <p className="text-[#BFD9F5] mb-8 max-w-xl leading-relaxed">
                   Hong Kong Masters Hockey is proud to send two squads to Rotterdam this July. Two categories, one city, one flag — competing on the world stage from 22 July to 1 August 2026.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="/rotterdam-2026#squads"
-                    className="inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                    className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
                   >
                     Meet the Squads &rarr;
                   </Link>
@@ -251,14 +246,14 @@ export default function Home() {
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
                   {content.hero_title}
                 </h1>
-                <p className="text-lg sm:text-xl text-green-100 mb-3 font-medium">
+                <p className="text-lg sm:text-xl text-[#D6E8F7] mb-3 font-medium">
                   {content.hero_tagline}
                 </p>
-                <RichText content={content.hero_intro} className="text-green-200 mb-8 max-w-xl leading-relaxed" />
+                <RichText content={content.hero_intro} className="text-[#BFD9F5] mb-8 max-w-xl leading-relaxed" />
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="/rotterdam-2026"
-                    className="inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                    className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
                   >
                     Rotterdam 2026 &rarr;
                   </Link>
@@ -272,7 +267,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* Right: Hero Photo */}
+            {/* Hero Photo */}
             <div>
               <div className="h-56 sm:h-72 lg:h-80 w-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
                 {activePhoto ? (
@@ -291,11 +286,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Photo Gallery Strip */}
-      <section className="bg-[#005030] py-4">
+      {/* ── Photo Gallery Strip ───────────────────────────────── */}
+      <section className="bg-[#16305D] py-4">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-          {/* Left Arrow */}
           {hasGallery && (
             <button
               onClick={() => scrollStrip(-1)}
@@ -308,7 +302,6 @@ export default function Home() {
             </button>
           )}
 
-          {/* Strip */}
           {hasGallery ? (
             <div
               ref={stripRef}
@@ -321,7 +314,7 @@ export default function Home() {
                   onClick={() => setActivePhoto(img.url)}
                   className={`h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none ${
                     activePhoto === img.url
-                      ? "ring-2 ring-white ring-offset-2 ring-offset-[#005030]"
+                      ? "ring-2 ring-[#5B9FE0] ring-offset-2 ring-offset-[#16305D]"
                       : "opacity-75 hover:opacity-100"
                   }`}
                 >
@@ -339,7 +332,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Right Arrow */}
           {hasGallery && (
             <button
               onClick={() => scrollStrip(1)}
@@ -355,24 +347,22 @@ export default function Home() {
         </div>
 
         {/* Stats Bar */}
-        <div className="mt-4 grid grid-cols-3 divide-x divide-green-600">
+        <div className="mt-4 grid grid-cols-3 divide-x divide-[#2A5298]">
           {content.stats.map((item) => (
             <div key={item.label} className="text-center py-3">
               <p className="text-3xl font-extrabold text-white">{item.stat}</p>
-              <p className="text-green-300 text-xs font-medium mt-0.5">{item.label}</p>
+              <p className="text-[#8FBDE8] text-xs font-medium mt-0.5">{item.label}</p>
             </div>
           ))}
         </div>
-
       </section>
 
-      {/* Rotterdam Countdown */}
+      {/* ── Rotterdam Countdown ───────────────────────────────── */}
       <RotterdamCountdown />
 
-      {/* Welcome / Rotterdam Squads Section */}
+      {/* ── Welcome / Rotterdam Squads ────────────────────────── */}
       {isRotterdamMode() ? (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          {/* Tournament context */}
           <div className="max-w-3xl mx-auto text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">About the Tournament</h2>
             <p className="text-gray-600 leading-relaxed text-lg">
@@ -380,35 +370,33 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Squad cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {teamsContent.squads.map((squad) => {
               const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
               return (
-              <div key={squad.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
-                    {squad.short_name}
-                  </span>
-                  <h3 className="font-bold text-gray-900">{squad.name}</h3>
+                <div key={squad.id} className="tilt-card reveal bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
+                      {squad.short_name}
+                    </span>
+                    <h3 className="font-bold text-gray-900">{squad.name}</h3>
+                  </div>
+                  <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
+                    {squad.description}
+                  </p>
+                  <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
+                    <span>{squad.player_count} players</span>
+                    <button
+                      onClick={() => setOpenSquad({ squad: rotterdamSquad || { name: squad.name, category: squad.short_name, player_list: [] }, teamInfo: squad })}
+                      className="text-[#1E3A6E] font-semibold text-xs hover:text-[#16305D] transition-colors"
+                    >
+                      View Squad →
+                    </button>
+                  </div>
                 </div>
-                <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
-                  {squad.description}
-                </p>
-                <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
-                  <span>{squad.player_count} players</span>
-                  <button
-                    onClick={() => setOpenSquad({ squad: rotterdamSquad || { name: squad.name, category: squad.short_name, player_list: [] }, teamInfo: squad })}
-                    className="text-[#006B3C] font-semibold text-xs hover:text-green-800 transition-colors"
-                  >
-                    View Squad →
-                  </button>
-                </div>
-              </div>
               );
             })}
           </div>
-
         </section>
       ) : (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">

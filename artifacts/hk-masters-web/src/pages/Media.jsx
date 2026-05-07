@@ -41,23 +41,22 @@ function useCommunityAlbum() {
 }
 
 export default function Media() {
-  const [lightbox, setLightbox] = useState(null);
+  const [lightbox, setLightbox]       = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
   const communityAlbum = useCommunityAlbum();
 
-  const baseAlbums = content.albums || [];
-  const albums = communityAlbum ? [...baseAlbums, communityAlbum] : baseAlbums;
-  const videos = content.videos || [];
-
+  const baseAlbums  = content.albums || [];
+  const albums      = communityAlbum ? [...baseAlbums, communityAlbum] : baseAlbums;
+  const videos      = content.videos || [];
   const displayAlbum = activeAlbum ?? (albums.length > 0 ? albums[0] : null);
 
   return (
     <div>
       {/* Page Header */}
-      <div className="bg-[#006B3C] text-white py-16">
+      <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold mb-3">Media</h1>
-          <p className="text-green-200 text-lg max-w-xl">
+          <p className="text-[#BFD9F5] text-lg max-w-xl">
             Photos, videos, and highlights from Hong Kong Masters Hockey.
           </p>
         </div>
@@ -77,7 +76,6 @@ export default function Media() {
           </div>
         ) : (
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
-            {/* Album List — horizontal scroll on mobile, sidebar on sm+ */}
             <div className="flex sm:flex-col gap-2 sm:gap-1 overflow-x-auto sm:overflow-x-visible sm:w-56 sm:shrink-0 pb-1 sm:pb-0">
               {albums.map((album, index) => (
                 <button
@@ -85,19 +83,18 @@ export default function Media() {
                   onClick={() => setActiveAlbum(album)}
                   className={`shrink-0 sm:shrink text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     displayAlbum?.name === album.name
-                      ? "bg-[#006B3C] text-white"
+                      ? "bg-[#1E3A6E] text-white"
                       : "text-gray-700 hover:bg-gray-100 bg-gray-50 sm:bg-transparent"
                   }`}
                 >
                   <span className="block leading-snug whitespace-nowrap sm:whitespace-normal">{album.name}</span>
-                  <span className={`text-xs mt-0.5 block ${displayAlbum?.name === album.name ? "text-green-200" : "text-gray-400"}`}>
+                  <span className={`text-xs mt-0.5 block ${displayAlbum?.name === album.name ? "text-[#BFD9F5]" : "text-gray-400"}`}>
                     {(album.photos || []).length} photo{(album.photos || []).length !== 1 ? "s" : ""}
                   </span>
                 </button>
               ))}
             </div>
 
-            {/* Album Photos */}
             <div className="flex-1 min-w-0">
               {displayAlbum && (
                 <>
@@ -149,7 +146,6 @@ export default function Media() {
           onClick={() => setLightbox(null)}
         >
           <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
-            {/* Close */}
             <button
               onClick={() => setLightbox(null)}
               className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
@@ -160,7 +156,6 @@ export default function Media() {
               </svg>
             </button>
 
-            {/* Prev */}
             {lightbox.index > 0 && (
               <button
                 onClick={() => setLightbox(l => ({ ...l, index: l.index - 1 }))}
@@ -181,7 +176,6 @@ export default function Media() {
                 : <img src={src} alt="" className="w-full rounded-xl shadow-2xl" />;
             })()}
 
-            {/* Next */}
             {lightbox.index < lightbox.photos.length - 1 && (
               <button
                 onClick={() => setLightbox(l => ({ ...l, index: l.index + 1 }))}
@@ -217,45 +211,45 @@ export default function Media() {
               {videos.map((video, index) => {
                 const ytId = getYouTubeId(video.youtube_id);
                 return (
-                <div key={index} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                  <a
-                    href={`https://www.youtube.com/watch?v=${ytId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block aspect-video relative group"
-                    aria-label={`Watch ${video.title} on YouTube`}
-                  >
-                    <img
-                      src={video.thumbnail || `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`}
-                      alt={video.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors duration-200">
-                      <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
-                        <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </a>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 text-sm mb-1">{video.title}</h3>
-                    {video.description && (
-                      <p className="text-xs text-gray-500 leading-relaxed mb-3">{video.description}</p>
-                    )}
+                  <div key={index} className="tilt-card bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                     <a
                       href={`https://www.youtube.com/watch?v=${ytId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-xs font-semibold text-red-600 hover:text-red-700"
+                      className="block aspect-video relative group"
+                      aria-label={`Watch ${video.title} on YouTube`}
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                      </svg>
-                      Watch on YouTube
+                      <img
+                        src={video.thumbnail || `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg`}
+                        alt={video.title}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/40 transition-colors duration-200">
+                        <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-200">
+                          <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                          </svg>
+                        </div>
+                      </div>
                     </a>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-gray-900 text-sm mb-1">{video.title}</h3>
+                      {video.description && (
+                        <p className="text-xs text-gray-500 leading-relaxed mb-3">{video.description}</p>
+                      )}
+                      <a
+                        href={`https://www.youtube.com/watch?v=${ytId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-red-600 hover:text-red-700"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                        </svg>
+                        Watch on YouTube
+                      </a>
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>

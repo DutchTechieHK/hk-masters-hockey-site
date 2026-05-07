@@ -14,7 +14,6 @@ function categoryMatches(rowCategory, shortName) {
   const r = rowCategory.toUpperCase().replace(/[^A-Z0-9]/g, "");
   const s = shortName.toUpperCase().replace(/[^A-Z0-9]/g, "");
   if (r === s) return true;
-  // Match e.g. "MEN50" / "MO50" by shared trailing digits
   const rNum = (rowCategory.match(/\d+/) || [])[0];
   const sNum = (shortName.match(/\d+/) || [])[0];
   return Boolean(rNum && sNum && rNum === sNum);
@@ -53,7 +52,7 @@ export default function Teams() {
   return (
     <div>
       {/* Page Header */}
-      <div className="bg-[#006B3C] text-white py-16">
+      <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {rotterdamMode && (
             <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
@@ -63,7 +62,7 @@ export default function Teams() {
           <h1 className="text-4xl font-extrabold mb-3">
             {rotterdamMode ? "Our Rotterdam 2026 Squads" : "Our Squads"}
           </h1>
-          <p className="text-green-200 text-lg max-w-xl">
+          <p className="text-[#BFD9F5] text-lg max-w-xl">
             {rotterdamMode
               ? "Two HK squads competing at the World Masters Hockey Cup — Rotterdam, Netherlands."
               : content.page_subtitle}
@@ -88,7 +87,7 @@ export default function Teams() {
             return (
               <div
                 key={squad.id}
-                className={`flex flex-col ${index % 2 === 1 ? "lg:flex-row-reverse" : "lg:flex-row"} gap-10 items-center`}
+                className={`reveal flex flex-col ${index % 2 === 1 ? "lg:flex-row-reverse" : "lg:flex-row"} gap-10 items-center`}
               >
                 {/* Squad Photo */}
                 <div className="w-full lg:w-1/2 shrink-0">
@@ -99,7 +98,7 @@ export default function Teams() {
                       className="rounded-2xl w-full h-72 object-cover shadow-md"
                     />
                   ) : (
-                    <div className="rounded-2xl w-full h-72 bg-[#006B3C]/10 border-2 border-dashed border-[#006B3C]/30 flex flex-col items-center justify-center text-[#006B3C]">
+                    <div className="rounded-2xl w-full h-72 bg-[#1E3A6E]/10 border-2 border-dashed border-[#1E3A6E]/30 flex flex-col items-center justify-center text-[#1E3A6E]">
                       <div className="text-4xl font-extrabold opacity-30">{squad.short_name}</div>
                       <p className="text-sm opacity-40 mt-1">Squad photo coming soon</p>
                     </div>
@@ -116,7 +115,7 @@ export default function Teams() {
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-2xl font-bold text-[#006B3C]">{squad.player_count}</p>
+                      <p className="text-2xl font-bold text-[#1E3A6E]">{squad.player_count}</p>
                       <p className="text-xs text-gray-500 mt-0.5">Players</p>
                     </div>
                     <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -136,7 +135,7 @@ export default function Teams() {
                   {rotterdamMode && rotterdamSquad && (
                     <button
                       onClick={() => setOpenSquad(rotterdamSquad)}
-                      className="inline-flex items-center gap-2 bg-[#006B3C] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-green-800 transition-colors duration-150 text-sm"
+                      className="btn-shimmer inline-flex items-center gap-2 bg-[#1E3A6E] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-[#16305D] transition-colors duration-150 text-sm"
                     >
                       View Squad List →
                     </button>
@@ -149,17 +148,17 @@ export default function Teams() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#006B3C] py-16">
+      <section className="bg-[#1E3A6E] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {rotterdamMode ? (
             <>
               <h2 className="text-3xl font-extrabold text-white mb-4">Rotterdam 2026</h2>
-              <p className="text-green-100 max-w-xl mx-auto mb-6 leading-relaxed">
+              <p className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed">
                 Tournament schedule, key dates, accommodation and more — everything you need for Rotterdam 2026.
               </p>
               <Link
                 href="/rotterdam-2026"
-                className="inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
               >
                 Full tournament details →
               </Link>
@@ -167,10 +166,10 @@ export default function Teams() {
           ) : (
             <>
               <h2 className="text-3xl font-extrabold text-white mb-4">{content.join_heading}</h2>
-              <RichText content={content.join_text} className="text-green-100 max-w-xl mx-auto mb-6 leading-relaxed" />
+              <RichText content={content.join_text} className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed" />
               <Link
                 href="/contact"
-                className="inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
               >
                 Contact Us to Join
               </Link>
@@ -179,7 +178,6 @@ export default function Teams() {
         </div>
       </section>
 
-      {/* Squad Modal */}
       {openSquad && (
         <SquadModal
           squad={openSquad}

@@ -19,17 +19,16 @@ function formatTime(iso) {
   });
 }
 
-// yyyy-mm-dd as observed in Rotterdam
 function rotterdamDateKey(iso) {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
 }
 
 function getCountdown(iso) {
-  const now = Date.now();
-  const t = new Date(iso).getTime();
+  const now  = Date.now();
+  const t    = new Date(iso).getTime();
   const diff = t - now;
   if (diff <= 0) return null;
-  const days = Math.floor(diff / 86_400_000);
+  const days  = Math.floor(diff / 86_400_000);
   const hours = Math.floor((diff % 86_400_000) / 3_600_000);
   if (days > 1) return `In ${days} days`;
   if (days === 1) return "Tomorrow";
@@ -39,8 +38,8 @@ function getCountdown(iso) {
 }
 
 function MatchCard({ match }) {
-  const isPast = match.status === "final" || match.status === "cancelled";
-  const isLive = match.status === "in_progress";
+  const isPast    = match.status === "final" || match.status === "cancelled";
+  const isLive    = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getCountdown(match.kickoffAt) : null;
   const showCalendarButton = match.status !== "cancelled" && match.status !== "final";
 
@@ -66,7 +65,7 @@ function MatchCard({ match }) {
             <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-0.5 rounded">Final</span>
           )}
           {countdown && (
-            <span className="bg-green-50 text-[#006B3C] text-xs font-semibold px-2 py-0.5 rounded">
+            <span className="bg-[#EEF4FB] text-[#1E3A6E] text-xs font-semibold px-2 py-0.5 rounded">
               {countdown}
             </span>
           )}
@@ -91,7 +90,7 @@ function MatchCard({ match }) {
         {isPast && match.ourScore !== null && match.theirScore !== null && (
           <div className="shrink-0 text-right">
             <div className={`text-2xl font-extrabold tabular-nums ${
-              match.ourScore > match.theirScore ? "text-[#006B3C]" :
+              match.ourScore > match.theirScore ? "text-[#1E3A6E]" :
               match.ourScore < match.theirScore ? "text-rose-600" : "text-gray-700"
             }`}>
               {match.ourScore} – {match.theirScore}
@@ -114,7 +113,7 @@ function MatchCard({ match }) {
         <div className="mt-4 pt-3 border-t border-gray-100">
           <a
             href={`${API_BASE}/api/matches/${match.id}/calendar.ics`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A6E] hover:text-[#16305D] transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -146,7 +145,7 @@ function SubscribeButton() {
     <div className="inline-flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
       <a
         href={webcalUrl}
-        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[#006B3C] hover:bg-green-50 transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-[#1E3A6E] hover:bg-[#EEF4FB] transition-colors"
         title="Open in your default calendar app"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +168,7 @@ function SubscribeButton() {
 export default function Schedule() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError]     = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/matches`)
@@ -187,11 +186,10 @@ export default function Schedule() {
       });
   }, []);
 
-  // Group by date (yyyy-mm-dd Rotterdam) preserving sort
-  const sorted = [...matches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
-  const now = Date.now();
+  const sorted   = [...matches].sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
+  const now      = Date.now();
   const upcoming = sorted.filter((m) => new Date(m.kickoffAt).getTime() >= now - 3 * 60 * 60 * 1000 && m.status !== "cancelled");
-  const past = sorted.filter((m) => !upcoming.includes(m)).reverse();
+  const past     = sorted.filter((m) => !upcoming.includes(m)).reverse();
 
   function groupByDateAndTeam(list) {
     const groups = new Map();
@@ -210,18 +208,18 @@ export default function Schedule() {
   }
 
   const upcomingGroups = groupByDateAndTeam(upcoming);
-  const pastGroups = groupByDateAndTeam(past);
+  const pastGroups     = groupByDateAndTeam(past);
 
   return (
     <div>
       {/* Page Header */}
-      <div className="bg-[#006B3C] text-white py-16">
+      <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
             Rotterdam 2026
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Match Schedule</h1>
-          <p className="text-green-200 text-lg max-w-2xl">
+          <p className="text-[#BFD9F5] text-lg max-w-2xl">
             Fixtures and results for Hong Kong Masters MO40 and MO50 at the World Masters Hockey Cup.
           </p>
         </div>
@@ -249,7 +247,7 @@ export default function Schedule() {
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                   <div className="flex items-center gap-3">
                     <h2 className="text-2xl font-bold text-gray-900">Upcoming Fixtures</h2>
-                    <span className="bg-[#006B3C] text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                    <span className="bg-[#1E3A6E] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                       {upcoming.length}
                     </span>
                   </div>
@@ -261,7 +259,7 @@ export default function Schedule() {
                 <div className="space-y-10">
                   {upcomingGroups.map((g) => (
                     <div key={g.date}>
-                      <h3 className="text-sm font-bold text-[#006B3C] uppercase tracking-wide mb-4">
+                      <h3 className="text-sm font-bold text-[#1E3A6E] uppercase tracking-wide mb-4">
                         {formatDateHeading(g.date)}
                       </h3>
                       <div className="space-y-6">

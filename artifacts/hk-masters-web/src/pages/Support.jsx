@@ -76,7 +76,7 @@ export default function Support() {
   return (
     <div>
       {/* Page Header */}
-      <div className="bg-[#006B3C] text-white py-16">
+      <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
             Rotterdam 2026
@@ -84,7 +84,7 @@ export default function Support() {
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">
             Support the Team
           </h1>
-          <p className="text-green-200 text-lg max-w-2xl leading-relaxed">
+          <p className="text-[#BFD9F5] text-lg max-w-2xl leading-relaxed">
             Help send Hong Kong's MO40 and MO50 squads to the World Masters Hockey Cup —
             22 July to 1 August 2026, Rotterdam.
           </p>
@@ -106,7 +106,7 @@ export default function Support() {
               <ul className="space-y-3">
                 {REASONS.map((r) => (
                   <li key={r.title} className="flex gap-3">
-                    <div className="w-2 h-2 bg-[#006B3C] rounded-full mt-2 shrink-0" />
+                    <div className="w-2 h-2 bg-[#1E3A6E] rounded-full mt-2 shrink-0" />
                     <div>
                       <p className="font-semibold text-gray-900 text-sm">{r.title}</p>
                       <p className="text-sm text-gray-600 leading-relaxed">{r.body}</p>
@@ -129,7 +129,7 @@ export default function Support() {
       </section>
 
       {/* Tiers */}
-      <section className="bg-[#006B3C]/5 border-y border-[#006B3C]/10 py-16">
+      <section className="bg-[#1E3A6E]/5 border-y border-[#1E3A6E]/10 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Supporter Tiers</h2>
@@ -143,9 +143,9 @@ export default function Support() {
             {TIERS.map((tier) => (
               <div
                 key={tier.name}
-                className="bg-white rounded-2xl p-6 border border-[#006B3C]/10 shadow-sm flex flex-col"
+                className="tilt-card reveal bg-white rounded-2xl p-6 border border-[#1E3A6E]/10 shadow-sm flex flex-col"
               >
-                <p className="text-xs font-bold uppercase tracking-wider text-[#006B3C] mb-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#1E3A6E] mb-2">
                   {tier.name}
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900 mb-3">{tier.amount}</p>
@@ -171,12 +171,12 @@ export default function Support() {
               return (
                 <span
                   key={i}
-                  className="inline-flex items-center gap-1.5 bg-[#006B3C]/8 border border-[#006B3C]/15 text-[#006B3C] font-semibold text-sm px-4 py-2 rounded-full"
+                  className="inline-flex items-center gap-1.5 bg-[#1E3A6E]/8 border border-[#1E3A6E]/15 text-[#1E3A6E] font-semibold text-sm px-4 py-2 rounded-full"
                 >
                   <span className="text-base leading-none">🏑</span>
                   {s.name}
                   {tier && (
-                    <span className="text-[#006B3C]/60 font-normal">· {tier}</span>
+                    <span className="text-[#1E3A6E]/60 font-normal">· {tier}</span>
                   )}
                 </span>
               );
@@ -193,7 +193,7 @@ export default function Support() {
           </p>
           <a
             href="/sponsors"
-            className="inline-block text-[#006B3C] font-semibold text-sm hover:underline"
+            className="inline-block text-[#1E3A6E] font-semibold text-sm hover:underline"
           >
             View our sponsorship packages →
           </a>

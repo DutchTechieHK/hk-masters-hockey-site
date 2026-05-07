@@ -51,7 +51,7 @@ function ArticleCard({ contribution }) {
       )}
       <div className="p-6 sm:p-8">
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-green-100 text-green-800 px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#EEF4FB] text-[#1E3A6E] px-2.5 py-1 rounded-full">
             {contribution.contentType === "article" && "Article"}
             {contribution.contentType === "photo" && "Photos"}
             {contribution.contentType === "both" && "Article + Photos"}
@@ -62,11 +62,11 @@ function ArticleCard({ contribution }) {
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1 leading-snug">
-          <Link href={`/journal/${contribution.slug || contribution.id}`} className="hover:text-[#006B3C] transition-colors">
+          <Link href={`/journal/${contribution.slug || contribution.id}`} className="hover:text-[#1E3A6E] transition-colors">
             {contribution.title}
           </Link>
         </h2>
-        <p className="text-sm text-[#006B3C] font-semibold mb-4">
+        <p className="text-sm text-[#1E3A6E] font-semibold mb-4">
           By {contribution.authorName}
         </p>
 
@@ -76,7 +76,7 @@ function ArticleCard({ contribution }) {
             {isLong && (
               <button
                 onClick={() => setExpanded(!expanded)}
-                className="ml-2 text-[#006B3C] font-semibold hover:text-green-800 transition-colors"
+                className="ml-2 text-[#1E3A6E] font-semibold hover:text-[#16305D] transition-colors"
               >
                 {expanded ? "Show less" : "Read more"}
               </button>
@@ -107,7 +107,7 @@ function ArticleCard({ contribution }) {
         <div className="mt-5 pt-4 border-t border-gray-50 flex items-center justify-between gap-3">
           <Link
             href={`/journal/${contribution.slug || contribution.id}`}
-            className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+            className="text-sm font-semibold text-[#1E3A6E] hover:text-[#16305D] transition-colors"
           >
             Read full article &rarr;
           </Link>
@@ -245,13 +245,13 @@ function ContributeForm() {
             window: "#FFFFFF",
             sourceBg: "#F9FAFB",
             windowBorder: "#E5E7EB",
-            tabIcon: "#006B3C",
+            tabIcon: "#1E3A6E",
             inactiveTabIcon: "#6B7280",
-            menuIcons: "#006B3C",
-            link: "#006B3C",
+            menuIcons: "#1E3A6E",
+            link: "#1E3A6E",
             action: "#DE2910",
-            inProgress: "#006B3C",
-            complete: "#006B3C",
+            inProgress: "#1E3A6E",
+            complete: "#1E3A6E",
             error: "#EF4444",
             textDark: "#111827",
             textLight: "#FFFFFF",
@@ -420,9 +420,9 @@ function ContributeForm() {
 
   if (status === "success") {
     return (
-      <div className="bg-green-50 border border-green-200 rounded-2xl p-10 text-center max-w-xl mx-auto">
-        <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="bg-[#EEF4FB] border border-[#BFD9F5] rounded-2xl p-10 text-center max-w-xl mx-auto">
+        <div className="w-14 h-14 bg-[#D6E8F7] rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-[#1E3A6E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -438,7 +438,7 @@ function ContributeForm() {
               setPhotoUrls([]);
               setUploadingPhotos([]);
             }}
-            className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+            className="text-sm font-semibold text-[#1E3A6E] hover:text-[#16305D] transition-colors"
           >
             Submit another contribution →
           </button>
@@ -464,7 +464,7 @@ function ContributeForm() {
             onChange={handleChange}
             placeholder="Your name"
             required
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C] transition-colors"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E] transition-colors"
           />
         </div>
         <div>
@@ -478,7 +478,7 @@ function ContributeForm() {
             onChange={handleChange}
             placeholder="your@email.com"
             required
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C] transition-colors"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E] transition-colors"
           />
         </div>
       </div>
@@ -497,7 +497,7 @@ function ContributeForm() {
               key={opt.value}
               className={`relative flex flex-col items-center p-4 rounded-xl border-2 cursor-pointer transition-all duration-150 ${
                 form.contentType === opt.value
-                  ? "border-[#006B3C] bg-green-50"
+                  ? "border-[#1E3A6E] bg-[#EEF4FB]"
                   : "border-gray-200 hover:border-gray-300 bg-white"
               }`}
             >
@@ -509,7 +509,7 @@ function ContributeForm() {
                 onChange={handleChange}
                 className="sr-only"
               />
-              <span className={`font-semibold text-sm ${form.contentType === opt.value ? "text-[#006B3C]" : "text-gray-800"}`}>
+              <span className={`font-semibold text-sm ${form.contentType === opt.value ? "text-[#1E3A6E]" : "text-gray-800"}`}>
                 {opt.label}
               </span>
               <span className="text-xs text-gray-500 text-center mt-1 leading-tight">{opt.desc}</span>
@@ -529,7 +529,7 @@ function ContributeForm() {
           onChange={handleChange}
           placeholder="Give your contribution a title…"
           required
-          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C] transition-colors"
+          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E] transition-colors"
         />
       </div>
 
@@ -545,7 +545,7 @@ function ContributeForm() {
             placeholder="Write your article, match report, or story here…"
             rows={8}
             required={needsArticle}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C] transition-colors"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-y focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E] transition-colors"
           />
         </div>
       )}
@@ -599,7 +599,7 @@ function ContributeForm() {
                       onTouchStart={handleTileTouchStart(i)}
                       className={[
                         "relative aspect-square rounded-lg overflow-hidden bg-gray-100 group cursor-grab active:cursor-grabbing transition-all duration-150",
-                        isBeingDragged ? "opacity-40 scale-95 ring-2 ring-[#006B3C]" : "",
+                        isBeingDragged ? "opacity-40 scale-95 ring-2 ring-[#1E3A6E]" : "",
                         isDropTarget ? "ring-2 ring-[#DE2910] scale-105" : "",
                       ].join(" ")}
                     >
@@ -745,7 +745,7 @@ function ContributeForm() {
                 onClick={() => openUploadWidget(photoUrls, uploadingPhotos)}
                 disabled={!widgetLoaded || widgetOpen || uploadingPhotos.some((p) => !p.error) || atPhotoLimit}
                 title={atPhotoLimit ? `Maximum of ${MAX_PHOTOS} photos reached` : undefined}
-                className="inline-flex items-center gap-2 bg-[#006B3C] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-2 bg-[#1E3A6E] text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-[#16305D] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -785,7 +785,7 @@ function ContributeForm() {
               <p className="text-sm font-medium">Photo upload coming soon</p>
               <p className="text-xs mt-1">
                 Choose "Article" for now to submit a text contribution, or{" "}
-                <a href="/contact" className="text-[#006B3C] hover:underline">contact us</a> to share photos directly.
+                <a href="/contact" className="text-[#1E3A6E] hover:underline">contact us</a> to share photos directly.
               </p>
             </div>
           )}
@@ -864,7 +864,7 @@ export default function Journal() {
   return (
     <div>
       {/* Hero */}
-      <div className="bg-[#006B3C] text-white py-16">
+      <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <span className="inline-block bg-[#DE2910] text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-4">
@@ -873,7 +873,7 @@ export default function Journal() {
             <h1 className="text-4xl sm:text-5xl font-extrabold mb-4 leading-tight">
               Stories from the Field
             </h1>
-            <p className="text-green-200 text-lg leading-relaxed mb-8 max-w-xl">
+            <p className="text-[#BFD9F5] text-lg leading-relaxed mb-8 max-w-xl">
               Match reports, travel diaries, and moments shared by the HK Masters Hockey community. Read what your teammates have written — and add your own story.
             </p>
             <button
@@ -903,8 +903,8 @@ export default function Journal() {
           </div>
         ) : articles.length === 0 ? (
           <div className="text-center py-16">
-            <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-[#006B3C]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 bg-[#EEF4FB] rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[#1E3A6E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
@@ -938,7 +938,7 @@ export default function Journal() {
             <p className="text-gray-500 max-w-xl mx-auto leading-relaxed">
               Got a match report, travel diary, or photos from a recent game or tournament? We'd love to feature it in the Journal.
             </p>
-            <Link href="/my-submission" className="inline-block mt-3 text-sm text-[#006B3C] hover:text-green-800 transition-colors font-medium">
+            <Link href="/my-submission" className="inline-block mt-3 text-sm text-[#1E3A6E] hover:text-[#16305D] transition-colors font-medium">
               Already submitted? Check your submission status &rarr;
             </Link>
           </div>

@@ -66,19 +66,14 @@ function PhotoLightbox({ urls, startIndex, onClose }) {
   );
 }
 
-
 function useArticleOpenGraph(article) {
   const ogTitle = article ? `${article.title} — HK Masters Hockey` : null;
   const rawDescription = article?.articleBody || "";
   const ogDescription = rawDescription.trim().slice(0, 160).replace(/\s+/g, " ") || null;
   const hasPhoto = article?.photoUrls?.length > 0;
-  const ogImage = hasPhoto
-    ? cloudinaryResize(article.photoUrls[0], 1200, 630)
-    : null;
+  const ogImage = hasPhoto ? cloudinaryResize(article.photoUrls[0], 1200, 630) : null;
   const identifier = article?.slug || article?.id;
-  const ogUrl = identifier
-    ? `${window.location.origin}/journal/${identifier}`
-    : null;
+  const ogUrl = identifier ? `${window.location.origin}/journal/${identifier}` : null;
 
   useOpenGraph({
     title: ogTitle,
@@ -92,9 +87,9 @@ function useArticleOpenGraph(article) {
 export default function JournalArticle() {
   const { slug } = useParams();
   const [, navigate] = useLocation();
-  const [article, setArticle] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [article, setArticle]           = useState(null);
+  const [loading, setLoading]           = useState(true);
+  const [notFound, setNotFound]         = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useArticleOpenGraph(article);
@@ -138,24 +133,24 @@ export default function JournalArticle() {
         <div className="text-5xl mb-6">📄</div>
         <h1 className="text-3xl font-bold text-gray-900 mb-4">This article is no longer available</h1>
         <p className="text-gray-500 mb-8">It may have been removed. Head back to the Journal to browse other stories.</p>
-        <Link href="/journal" className="inline-flex items-center gap-1.5 text-[#006B3C] font-semibold hover:text-green-800 transition-colors">
+        <Link href="/journal" className="inline-flex items-center gap-1.5 text-[#1E3A6E] font-semibold hover:text-[#16305D] transition-colors">
           &larr; Back to Journal
         </Link>
       </div>
     );
   }
 
-  const hasPhotos = article.photoUrls && article.photoUrls.length > 0;
+  const hasPhotos  = article.photoUrls && article.photoUrls.length > 0;
   const hasArticle = !!article.articleBody;
 
   return (
     <div>
       {/* Hero */}
-      <div className="bg-[#006B3C] text-white py-10 sm:py-14">
+      <div className="bg-[#1E3A6E] text-white py-10 sm:py-14">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <Link
             href="/journal"
-            className="inline-flex items-center gap-1.5 text-green-300 hover:text-white text-sm font-medium mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[#8FBDE8] hover:text-white text-sm font-medium mb-6 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -163,12 +158,12 @@ export default function JournalArticle() {
             Back to Journal
           </Link>
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            <span className="text-xs font-semibold bg-green-700 text-green-100 px-2.5 py-1 rounded-full">
+            <span className="text-xs font-semibold bg-[#16305D] text-[#BFD9F5] px-2.5 py-1 rounded-full">
               {article.contentType === "article" && "Article"}
               {article.contentType === "photo" && "Photos"}
               {article.contentType === "both" && "Article + Photos"}
             </span>
-            <span className="text-xs text-green-300">
+            <span className="text-xs text-[#8FBDE8]">
               {format(parseISO(article.createdAt), "d MMM yyyy")}
             </span>
           </div>
@@ -176,7 +171,7 @@ export default function JournalArticle() {
             {article.title}
           </h1>
           <div className="flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-green-200 font-semibold text-base">
+            <p className="text-[#BFD9F5] font-semibold text-base">
               By {article.authorName}
             </p>
             <ShareMenu title={article.title} variant="hero" />
@@ -203,12 +198,11 @@ export default function JournalArticle() {
       {/* Body */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {hasArticle && (
-          <div className="prose prose-sm sm:prose-base prose-green max-w-none text-gray-700 leading-relaxed whitespace-pre-line mb-10">
+          <div className="prose prose-sm sm:prose-base max-w-none text-gray-700 leading-relaxed whitespace-pre-line mb-10">
             {article.articleBody}
           </div>
         )}
 
-        {/* Photo grid */}
         {hasPhotos && article.photoUrls.length > 1 && (
           <div>
             <h2 className="text-lg font-bold text-gray-900 mb-4">
@@ -219,7 +213,7 @@ export default function JournalArticle() {
                 <button
                   key={i}
                   onClick={() => setLightboxIndex(i)}
-                  className="aspect-square rounded-xl overflow-hidden bg-gray-100 group focus:outline-none focus:ring-2 focus:ring-[#006B3C]"
+                  className="aspect-square rounded-xl overflow-hidden bg-gray-100 group focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]"
                 >
                   <img
                     src={cloudinaryResize(url, 400, 400)}
@@ -236,7 +230,7 @@ export default function JournalArticle() {
         <div className="mt-12 pt-8 border-t border-gray-100 flex items-center justify-between gap-3">
           <Link
             href="/journal"
-            className="text-sm font-semibold text-[#006B3C] hover:text-green-800 transition-colors"
+            className="text-sm font-semibold text-[#1E3A6E] hover:text-[#16305D] transition-colors"
           >
             &larr; Back to Journal
           </Link>

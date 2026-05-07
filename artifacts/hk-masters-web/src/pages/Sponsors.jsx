@@ -46,12 +46,10 @@ function SponsorCard({ sponsor }) {
 
   const card = (
     <div className="group relative">
-      {/* Hover glow halo */}
       <div
         className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
         style={{ boxShadow: `0 0 60px 10px rgba(${glow},0.3)` }}
       />
-      {/* Glass card */}
       <div
         className="relative rounded-2xl flex flex-col items-center justify-center py-10 px-8 gap-5 overflow-hidden min-h-[180px]"
         style={{
@@ -60,7 +58,6 @@ function SponsorCard({ sponsor }) {
           boxShadow: `0 0 30px rgba(${glow},0.08), inset 0 1px 0 rgba(255,255,255,0.07)`,
         }}
       >
-        {/* Radial glow behind logo */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{ background: `radial-gradient(ellipse at 50% 50%, rgba(${glow},0.13) 0%, transparent 68%)` }}
@@ -89,7 +86,7 @@ function SponsorCard({ sponsor }) {
 
 export default function Sponsors() {
   const [sponsors, setSponsors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/sponsors`)
@@ -108,17 +105,17 @@ export default function Sponsors() {
 
   return (
     <div>
-      {/* ── Page header ─────────────────────────────────────────── */}
-      <div className="bg-[#006B3C] text-white py-16">
+      {/* Page Header */}
+      <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold mb-3">Our Sponsors</h1>
-          <p className="text-green-200 text-lg max-w-xl">
+          <p className="text-[#BFD9F5] text-lg max-w-xl">
             We are grateful to our sponsors for making Hong Kong Masters Hockey possible.
           </p>
         </div>
       </div>
 
-      {/* ── Sponsor showcase ────────────────────────────────────── */}
+      {/* Sponsor showcase */}
       {loading ? (
         <section
           className="py-24 text-center"
@@ -138,7 +135,6 @@ export default function Sponsors() {
               const cols = TIER_COLS[name]  || TIER_COLS.Bronze;
               return (
                 <div key={name}>
-                  {/* Tier divider */}
                   <div className="flex items-center gap-4 mb-10">
                     <div className="h-px flex-1" style={{ background: `rgba(${glow},0.3)` }} />
                     <span
@@ -154,7 +150,6 @@ export default function Sponsors() {
                     <div className="h-px flex-1" style={{ background: `rgba(${glow},0.3)` }} />
                   </div>
 
-                  {/* Logo grid */}
                   <div className={`grid gap-6 ${sponsors.length === 1 ? cols.one : cols.multi}`}>
                     {sponsors.map((sponsor) => (
                       <SponsorCard key={sponsor.id} sponsor={sponsor} />
@@ -177,28 +172,28 @@ export default function Sponsors() {
         </section>
       )}
 
-      {/* ── Become a Sponsor CTA ────────────────────────────────── */}
-      <section className="bg-[#006B3C] py-16">
+      {/* Become a Sponsor CTA */}
+      <section className="bg-[#1E3A6E] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-extrabold text-white mb-4">Become a Sponsor</h2>
-            <p className="text-green-100 leading-relaxed mb-4">
+            <p className="text-[#D6E8F7] leading-relaxed mb-4">
               Partnering with Hong Kong Masters Hockey gives your brand access to a community of
               active, affluent, and engaged professionals aged 35 and above. We compete at the
               highest levels of international masters hockey and carry your brand with us.
             </p>
-            <p className="text-green-100 leading-relaxed mb-8">
+            <p className="text-[#D6E8F7] leading-relaxed mb-8">
               Whether you're looking for kit branding, event sponsorship, social media exposure, or
               hospitality opportunities, we have a sponsorship package to match your goals.
               Get in touch and let's build something great together.
             </p>
             <a
               href={`mailto:${sponsorshipEmail}`}
-              className="inline-block bg-[#DE2910] text-white font-bold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+              className="btn-shimmer inline-block bg-[#DE2910] text-white font-bold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
             >
               Contact Us About Sponsorship
             </a>
-            <p className="text-green-300 text-sm mt-3">{sponsorshipEmail}</p>
+            <p className="text-[#8FBDE8] text-sm mt-3">{sponsorshipEmail}</p>
           </div>
         </div>
       </section>
