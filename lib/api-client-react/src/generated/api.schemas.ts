@@ -58,12 +58,20 @@ export type DashboardStatsUpcomingDeadlinesItem = {
   category: string;
 };
 
+export type DashboardStatsDocumentCounts = {
+  total: number;
+  mandatory: number;
+  regulation: number;
+  information: number;
+};
+
 export interface DashboardStats {
   totalPlayers: number;
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
+  documentCounts: DashboardStatsDocumentCounts;
 }
 
 export interface Team {

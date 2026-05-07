@@ -1,6 +1,6 @@
 import { useGetDashboard, useListPlayers, useListKits } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -182,6 +182,43 @@ export default function Dashboard() {
         {/* Right Column (1/3 width) */}
         <div className="space-y-8">
           
+          {/* Documents card */}
+          <button
+            className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+            onClick={() => navigate("/documents")}
+          >
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <h2 className="text-xl font-display font-bold">Documents</h2>
+              <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                <FileText className="w-5 h-5" />
+                <ArrowRight className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="flex items-end gap-2 mb-4">
+                <p className="text-4xl font-bold text-foreground">{stats.documentCounts.total}</p>
+                <p className="text-lg text-muted-foreground font-medium mb-1">total</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Mandatory</span>
+                  <span className="text-sm font-semibold text-foreground">{stats.documentCounts.mandatory}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Regulation</span>
+                  <span className="text-sm font-semibold text-foreground">{stats.documentCounts.regulation}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Information</span>
+                  <span className="text-sm font-semibold text-foreground">{stats.documentCounts.information}</span>
+                </div>
+              </div>
+              <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
+                View all documents <ArrowRight className="w-3 h-3" />
+              </p>
+            </div>
+          </button>
+
           {/* Kit Procurement card */}
           {kitStats.orderCount > 0 && (
             <button
