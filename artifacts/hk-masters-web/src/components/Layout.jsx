@@ -82,8 +82,8 @@ export default function Layout({ children }) {
     main.classList.add("page-enter");
   }, [location]);
 
-  /* Scroll-reveal for all .reveal elements on every page */
-  useReveal();
+  /* Scroll-reveal — re-observes on every route change so SPA navigation works */
+  useReveal([location]);
 
   return (
     <div className="min-h-screen flex flex-col">

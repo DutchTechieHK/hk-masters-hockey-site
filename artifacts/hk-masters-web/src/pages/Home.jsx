@@ -60,14 +60,14 @@ function RotterdamCountdown() {
   return (
     <section className="bg-[#16305D] py-12 sm:py-16">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p className="text-[#DE2910] text-sm sm:text-base font-bold uppercase tracking-widest mb-2">
+        <p className="reveal text-[#DE2910] text-sm sm:text-base font-bold uppercase tracking-widest mb-2">
           Rotterdam 2026 Masters World Cup
         </p>
-        <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-8">
+        <h2 className="reveal text-2xl sm:text-3xl font-extrabold text-white mb-8">
           {countdown.over ? "The tournament has begun!" : "The clock is ticking…"}
         </h2>
         {!countdown.over && (
-          <div className="flex items-end justify-center gap-3 sm:gap-5">
+          <div className="reveal flex items-end justify-center gap-3 sm:gap-5">
             <CountdownUnit value={countdown.days}    label="Days" />
             <CountdownSeparator />
             <CountdownUnit value={countdown.hours}   label="Hours" />
@@ -139,7 +139,7 @@ function LatestJournalCard() {
   return (
     <section className="bg-white border-t border-gray-100 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="reveal flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Latest from the Journal</h2>
           <Link
             href="/journal"
@@ -148,7 +148,7 @@ function LatestJournalCard() {
             All Journal articles &rarr;
           </Link>
         </div>
-        <div className="tilt-card bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
+        <div className="reveal tilt-card bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
           <Link href={`/journal/${article.id}`} className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden">
             {article.photoUrls && article.photoUrls.length > 0 ? (
               <img
@@ -348,8 +348,8 @@ export default function Home() {
 
         {/* Stats Bar */}
         <div className="mt-4 grid grid-cols-3 divide-x divide-[#2A5298]">
-          {content.stats.map((item) => (
-            <div key={item.label} className="text-center py-3">
+          {content.stats.map((item, i) => (
+            <div key={item.label} className="reveal text-center py-3" style={{ animationDelay: `${i * 0.12}s` }}>
               <p className="text-3xl font-extrabold text-white">{item.stat}</p>
               <p className="text-[#8FBDE8] text-xs font-medium mt-0.5">{item.label}</p>
             </div>
@@ -364,17 +364,17 @@ export default function Home() {
       {isRotterdamMode() ? (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">About the Tournament</h2>
-            <p className="text-gray-600 leading-relaxed text-lg">
+            <h2 className="reveal text-3xl font-bold text-gray-900 mb-4">About the Tournament</h2>
+            <p className="reveal text-gray-600 leading-relaxed text-lg">
               The FIH Masters Hockey World Cup is the world's premier tournament for masters-age field hockey players. Rotterdam 2026 will bring together nations from across the globe, competing across multiple age categories. For HK Masters, this is our biggest tournament in years — with two squads making the trip to the Netherlands to fly the Hong Kong flag on the world stage.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {teamsContent.squads.map((squad) => {
+            {teamsContent.squads.map((squad, i) => {
               const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
               return (
-                <div key={squad.id} className="tilt-card reveal bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col">
+                <div key={squad.id} className="tilt-card reveal scale-in bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col" style={{ animationDelay: `${i * 0.15}s` }}>
                   <div className="flex items-center gap-3 mb-4">
                     <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
                       {squad.short_name}
@@ -401,7 +401,7 @@ export default function Home() {
       ) : (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
+            <h2 className="reveal text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
             <RichText content={content.welcome_text} className="text-gray-600 leading-relaxed text-lg" />
           </div>
         </section>

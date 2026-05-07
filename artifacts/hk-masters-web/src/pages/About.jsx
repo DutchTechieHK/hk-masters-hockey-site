@@ -18,7 +18,7 @@ export default function About() {
       {/* Mission Statement */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
         <div className="max-w-3xl">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
+          <h2 className="reveal text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
           <RichText content={content.mission_p1} className="text-gray-600 leading-relaxed text-lg mb-4" />
           <RichText content={content.mission_p2} className="text-gray-600 leading-relaxed text-lg" />
         </div>
@@ -26,7 +26,7 @@ export default function About() {
 
       {/* History Timeline */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Club History</h2>
+        <h2 className="reveal text-2xl font-bold text-gray-900 mb-4">Club History</h2>
         {content.history_intro && (
           <RichText content={content.history_intro} className="text-gray-600 leading-relaxed text-lg mb-10 max-w-3xl" />
         )}
@@ -56,7 +56,7 @@ export default function About() {
       {/* Committee Grid */}
       <section className="bg-gray-50 py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Committee Members</h2>
+          <h2 className="reveal text-2xl font-bold text-gray-900 mb-8">Committee Members</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {content.committee.map((person) => (
               <div key={person.name} className="reveal text-center">

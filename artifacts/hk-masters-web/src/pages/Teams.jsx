@@ -152,7 +152,7 @@ export default function Teams() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {rotterdamMode ? (
             <>
-              <h2 className="text-3xl font-extrabold text-white mb-4">Rotterdam 2026</h2>
+              <h2 className="reveal text-3xl font-extrabold text-white mb-4">Rotterdam 2026</h2>
               <p className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed">
                 Tournament schedule, key dates, accommodation and more — everything you need for Rotterdam 2026.
               </p>
@@ -165,7 +165,7 @@ export default function Teams() {
             </>
           ) : (
             <>
-              <h2 className="text-3xl font-extrabold text-white mb-4">{content.join_heading}</h2>
+              <h2 className="reveal text-3xl font-extrabold text-white mb-4">{content.join_heading}</h2>
               <RichText content={content.join_text} className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed" />
               <Link
                 href="/contact"

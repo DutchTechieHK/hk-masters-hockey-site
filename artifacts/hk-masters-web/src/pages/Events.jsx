@@ -87,7 +87,7 @@ function EventCard({ event, muted = false }) {
   const photo = event.photoUrl || meta.photo;
   const tz    = eventTz(event);
   return (
-    <div className={`tilt-card bg-white rounded-2xl overflow-hidden border shadow-sm transition-all duration-200 group ${
+    <div className={`reveal tilt-card bg-white rounded-2xl overflow-hidden border shadow-sm transition-all duration-200 group ${
       muted ? "border-gray-100 opacity-70 hover:opacity-90" : "border-gray-100 hover:shadow-xl hover:-translate-y-0.5"
     }`}>
       <div className="relative h-40 overflow-hidden">
