@@ -22,7 +22,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
         onClick={onClose}
       />
 
-      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl max-h-[88vh] flex flex-col shadow-2xl">
+      <div className="relative bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-3xl max-h-[88vh] sm:max-h-[80vh] sm:my-4 flex flex-col shadow-2xl">
         <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mt-3 mb-1 sm:hidden" />
 
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -43,7 +43,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-5 py-4">
+        <div className="overflow-y-auto flex-1 min-h-0 px-5 py-4">
           {players.length === 0 ? (
             <p className="text-gray-400 text-sm text-center py-10">
               Squad list coming soon — add players via CMS → Rotterdam 2026 → Squads
