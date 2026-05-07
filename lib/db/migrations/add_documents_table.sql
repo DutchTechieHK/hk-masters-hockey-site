@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS documents (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
   description TEXT,
-  category TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('mandatory-form', 'regulation', 'information')),
   file_url TEXT NOT NULL,
   file_name TEXT NOT NULL,
   file_size INTEGER,

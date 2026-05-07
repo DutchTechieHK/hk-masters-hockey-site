@@ -9,7 +9,9 @@ export const documentsTable = pgTable("documents", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  category: text("category").notNull(),
+  category: text("category")
+    .notNull()
+    .$type<DocumentCategory>(),
   fileUrl: text("file_url").notNull(),
   fileName: text("file_name").notNull(),
   fileSize: integer("file_size"),
