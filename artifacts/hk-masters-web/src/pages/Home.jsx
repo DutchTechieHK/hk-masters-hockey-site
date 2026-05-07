@@ -224,7 +224,7 @@ export default function Home() {
                   Rotterdam 2026 Masters World Cup
                 </span>
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-                  Two Teams Representing Hong Kong
+                  Two Teams Representing<br />Hong Kong
                 </h1>
                 <p className="text-lg sm:text-xl text-[#D6E8F7] mb-3 font-medium">
                   MO40 · MO50 &mdash; at the World Masters Hockey World Cup

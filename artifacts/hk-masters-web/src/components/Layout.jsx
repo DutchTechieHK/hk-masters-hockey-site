@@ -211,7 +211,7 @@ export default function Layout({ children }) {
                 </div>
                 <div>
                   <span className="font-bold text-white block leading-tight">Hong Kong Masters Hockey</span>
-                  <p className="text-[#5B9FE0] text-[9px] font-bold uppercase tracking-[0.18em] mt-1">Hockey · Rotterdam 2026</p>
+                  <p className="text-[#DE2910] text-xs font-semibold italic tracking-widest mt-1">— Hockey For Life —</p>
                 </div>
               </div>
               <p className="text-[#8FBDE8] text-sm leading-relaxed">
