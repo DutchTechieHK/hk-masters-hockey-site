@@ -1,6 +1,7 @@
 import { pgTable, serial, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { playersTable } from "./players";
 
 export const kitOrdersTable = pgTable("kit_orders", {
   id: serial("id").primaryKey(),
@@ -25,3 +26,12 @@ export const kitOrdersTable = pgTable("kit_orders", {
 export const insertKitOrderSchema = createInsertSchema(kitOrdersTable).omit({ id: true, createdAt: true });
 export type InsertKitOrder = z.infer<typeof insertKitOrderSchema>;
 export type KitOrderRow = typeof kitOrdersTable.$inferSelect;
+
+export const kitDistributionsTable = pgTable("kit_distributions", {
+  id: serial("id").primaryKey(),
+  playerId: integer("player_id").notNull().references(() => playersTable.id, { onDelete: "cascade" }),
+  itemType: text("item_type").notNull(),
+  collectedAt: text("collected_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

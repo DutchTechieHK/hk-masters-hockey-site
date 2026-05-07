@@ -1,6 +1,6 @@
-import { useGetDashboard, useListPlayers } from "@workspace/api-client-react"
+import { useGetDashboard, useListPlayers, useListKits } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -17,12 +17,25 @@ import { useLocation } from "wouter"
 export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboard()
   const { data: players = [] } = useListPlayers()
+  const { data: kitOrders = [] } = useListKits()
   const [, navigate] = useLocation()
 
   const readinessStats = useMemo(() => {
     const ready = players.filter(isFullyReady).length
     return { ready, total: players.length }
   }, [players])
+
+  const kitStats = useMemo(() => {
+    const totalValue = kitOrders.reduce((s, o) => s + (o.totalCostHKD || 0), 0)
+    const totalDeposited = kitOrders.reduce((s, o) => s + (o.depositAmountHKD || 0), 0)
+    const balanceOutstanding = kitOrders.reduce((s, o) => {
+      if (o.balancePaidDate) return s
+      return s + Math.max(0, (o.totalCostHKD || 0) - (o.depositAmountHKD || 0))
+    }, 0)
+    const receivedCount = kitOrders.filter(o => o.orderStatus === "received").length
+    const progress = totalValue > 0 ? Math.min(100, (totalDeposited / totalValue) * 100) : 0
+    return { totalValue, totalDeposited, balanceOutstanding, receivedCount, orderCount: kitOrders.length, progress }
+  }, [kitOrders])
 
   if (isLoading) {
     return (
@@ -169,6 +182,43 @@ export default function Dashboard() {
         {/* Right Column (1/3 width) */}
         <div className="space-y-8">
           
+          {/* Kit Procurement card */}
+          {kitStats.orderCount > 0 && (
+            <button
+              className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+              onClick={() => navigate("/kits")}
+            >
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h2 className="text-xl font-display font-bold">Kit Procurement</h2>
+                <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                  <Package className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="flex items-end gap-2 mb-1">
+                  <p className="text-3xl font-bold text-foreground">{formatCurrency(kitStats.totalValue)}</p>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">total order value across {kitStats.orderCount} item{kitStats.orderCount !== 1 ? "s" : ""}</p>
+                <div className="h-2 w-full bg-muted rounded-full overflow-hidden mb-3">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-700"
+                    style={{ width: `${kitStats.progress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground mb-3">
+                  <span className="text-emerald-600 font-medium">{formatCurrency(kitStats.totalDeposited)} deposited</span>
+                  <span className="text-rose-600 font-medium">{formatCurrency(kitStats.balanceOutstanding)} outstanding</span>
+                </div>
+                {kitStats.receivedCount > 0 && (
+                  <p className="text-xs text-primary font-medium flex items-center gap-1">
+                    {kitStats.receivedCount} order{kitStats.receivedCount !== 1 ? "s" : ""} received — track distribution <ArrowRight className="w-3 h-3" />
+                  </p>
+                )}
+              </div>
+            </button>
+          )}
+
           {/* Readiness summary card */}
           <button
             className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"

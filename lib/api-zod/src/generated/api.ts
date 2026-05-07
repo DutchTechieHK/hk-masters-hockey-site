@@ -657,6 +657,42 @@ export const DeleteKitParams = zod.object({
 });
 
 /**
+ * @summary List kit distributions (collected status per player per item type)
+ */
+export const ListKitDistributionsResponse = zod.array(
+  zod.object({
+    id: zod.number(),
+    playerId: zod.number(),
+    itemType: zod.string(),
+    collectedAt: zod.string().nullable().optional(),
+    notes: zod.string().nullable().optional(),
+  }),
+);
+
+export const UpsertKitDistributionParams = zod.object({
+  playerId: zod.coerce.number(),
+  itemType: zod.string(),
+});
+
+export const UpsertKitDistributionBody = zod.object({
+  collectedAt: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+export const KitDistributionResponse = zod.object({
+  id: zod.number(),
+  playerId: zod.number(),
+  itemType: zod.string(),
+  collectedAt: zod.string().nullable().optional(),
+  notes: zod.string().nullable().optional(),
+});
+
+export const DeleteKitDistributionParams = zod.object({
+  playerId: zod.coerce.number(),
+  itemType: zod.string(),
+});
+
+/**
  * @summary List all fundraising entries
  */
 export const ListFundraisingResponseItem = zod.object({

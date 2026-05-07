@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react"
 import * as XLSX from "xlsx"
-import { useListKits, useCreateKit, useUpdateKit, useDeleteKit, getListKitsQueryKey, useListPlayers } from "@workspace/api-client-react"
+import {
+  useListKits, useCreateKit, useUpdateKit, useDeleteKit, getListKitsQueryKey,
+  useListPlayers,
+  useListKitDistributions, useUpsertKitDistribution, useDeleteKitDistribution,
+  getListKitDistributionsQueryKey,
+} from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -8,7 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Download, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, Edit2, Download, AlertTriangle, CheckCircle2, Package } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -84,7 +89,7 @@ const kitSchema = z.object({
 
 type KitFormValues = z.infer<typeof kitSchema>
 
-type ActiveTab = "orders" | "sizing" | "summary"
+type ActiveTab = "orders" | "sizing" | "summary" | "distribution"
 
 export default function Kits() {
   const queryClient = useQueryClient()
@@ -95,10 +100,13 @@ export default function Kits() {
 
   const { data: players = [] } = useListPlayers()
   const { data: orders = [], isLoading } = useListKits()
+  const { data: distributions = [] } = useListKitDistributions()
 
   const createMutation = useCreateKit()
   const updateMutation = useUpdateKit()
   const deleteMutation = useDeleteKit()
+  const upsertDistMutation = useUpsertKitDistribution()
+  const deleteDistMutation = useDeleteKitDistribution()
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<KitFormValues>({
     resolver: zodResolver(kitSchema),
@@ -199,6 +207,72 @@ export default function Kits() {
     }
   }
 
+  // Distribution helpers
+  const receivedItemTypes = [...new Set(
+    orders.filter(o => o.orderStatus === "received").map(o => o.itemType)
+  )]
+
+  const isCollected = (playerId: number, itemType: string) =>
+    distributions.some(d => d.playerId === playerId && d.itemType === itemType)
+
+  const toggleCollection = async (playerId: number, itemType: string) => {
+    try {
+      if (isCollected(playerId, itemType)) {
+        await deleteDistMutation.mutateAsync({ playerId, itemType })
+      } else {
+        await upsertDistMutation.mutateAsync({ playerId, itemType, data: {} })
+      }
+      queryClient.invalidateQueries({ queryKey: getListKitDistributionsQueryKey() })
+    } catch {
+      toast({ title: "Failed to update collection status", variant: "destructive" })
+    }
+  }
+
+  // Export Orders to Excel
+  const exportOrders = () => {
+    const header = ["Item", "Category", "Supplier", "Qty", "Unit Cost (HKD)", "Total (HKD)",
+      "Deposit (HKD)", "Deposit Paid", "Balance Due Date", "Balance Paid", "Order Placed",
+      "Artwork Approved", "Expected Delivery", "Actual Delivery", "Order Status", "Payment Status", "Notes"]
+    const rows = orders.map(o => {
+      const catInfo = ITEM_TYPES.find(c => c.value === o.itemType)
+      const payStatus = derivePaymentStatus(o)
+      const statusInfo = ORDER_STATUSES.find(s => s.value === o.orderStatus)
+      return [
+        o.itemName,
+        catInfo?.label || o.itemType,
+        o.supplier || "",
+        o.quantity,
+        o.unitCostHKD,
+        o.totalCostHKD,
+        o.depositAmountHKD || "",
+        o.depositPaidDate || "",
+        o.balanceDueDate || "",
+        o.balancePaidDate || "",
+        o.orderPlacedDate || "",
+        o.artworkApprovedDate || "",
+        o.expectedDeliveryDate || "",
+        o.actualDeliveryDate || "",
+        statusInfo?.label || o.orderStatus,
+        payStatus.label,
+        o.notes || "",
+      ]
+    })
+    const totalValue2 = orders.reduce((s, o) => s + (o.totalCostHKD || 0), 0)
+    const totalDeposited2 = orders.reduce((s, o) => s + (o.depositAmountHKD || 0), 0)
+    const balanceOutstanding2 = orders.reduce((s, o) => {
+      if (o.balancePaidDate) return s
+      return s + Math.max(0, (o.totalCostHKD || 0) - (o.depositAmountHKD || 0))
+    }, 0)
+    const summaryRow = ["TOTALS", "", "", "", "", totalValue2, totalDeposited2, "", "", "", "", "", "", "", "", "", ""]
+    const outstandingRow = ["Balance Outstanding", "", "", "", "", balanceOutstanding2, "", "", "", "", "", "", "", "", "", "", ""]
+    const ws = XLSX.utils.aoa_to_sheet([header, ...rows, [], summaryRow, outstandingRow])
+    ws["!cols"] = [{ wch: 24 }, { wch: 18 }, { wch: 14 }, { wch: 6 }, { wch: 14 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 30 }]
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, "Kit Orders")
+    XLSX.writeFile(wb, "HK-Masters-Kit-Orders.xlsx")
+  }
+
   // Campaign totals
   const totalValue = orders.reduce((s, o) => s + (o.totalCostHKD || 0), 0)
   const totalDeposited = orders.reduce((s, o) => s + (o.depositAmountHKD || 0), 0)
@@ -278,10 +352,11 @@ export default function Kits() {
     XLSX.writeFile(wb, "HK-Masters-Size-Summary.xlsx")
   }
 
-  const tabs: { id: ActiveTab; label: string }[] = [
+  const tabs: { id: ActiveTab; label: string; badge?: number }[] = [
     { id: "orders", label: "Orders" },
     { id: "sizing", label: "Sizing Sheet" },
     { id: "summary", label: "Size Summary" },
+    ...(receivedItemTypes.length > 0 ? [{ id: "distribution" as ActiveTab, label: "Distribution" }] : []),
   ]
 
   return (
@@ -290,10 +365,15 @@ export default function Kits() {
       description="Campaign procurement tracker — bulk orders, payments, delivery, and sizing."
       action={
         activeTab === "orders" ? (
-          <Button onClick={openAddModal}>
-            <Plus className="w-5 h-5 mr-2" /> Add Order
-          </Button>
-        ) : (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={exportOrders} disabled={orders.length === 0}>
+              <Download className="w-4 h-4 mr-2" /> Export Excel
+            </Button>
+            <Button onClick={openAddModal}>
+              <Plus className="w-5 h-5 mr-2" /> Add Order
+            </Button>
+          </div>
+        ) : activeTab === "distribution" ? null : (
           <Button variant="outline" onClick={activeTab === "sizing" ? exportSizingSheet : exportSizeSummary}>
             <Download className="w-4 h-4 mr-2" /> Export Excel
           </Button>
@@ -554,6 +634,93 @@ export default function Kits() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ─────────── DISTRIBUTION TAB ─────────── */}
+      {activeTab === "distribution" && (
+        <div className="space-y-6">
+          {receivedItemTypes.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-border p-12 text-center">
+              <Package className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="font-medium text-muted-foreground">No orders have been received yet.</p>
+              <p className="text-sm text-muted-foreground mt-1">Once an order status is set to "Received", players will appear here to track kit collection.</p>
+            </div>
+          ) : (
+            receivedItemTypes.map(itemType => {
+              const typeInfo = ITEM_TYPES.find(t => t.value === itemType)
+              const collectedCount = players.filter(p => isCollected(p.id, itemType)).length
+              return (
+                <div key={itemType} className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
+                  <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-foreground">{typeInfo?.label || itemType}</h3>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        <span className={collectedCount === players.length ? "text-emerald-600 font-semibold" : "text-amber-600 font-semibold"}>
+                          {collectedCount} of {players.length}
+                        </span> players collected
+                      </p>
+                    </div>
+                    <div className="h-9 w-9 rounded-full flex items-center justify-center"
+                      style={{ background: collectedCount === players.length ? "rgb(209 250 229)" : "rgb(254 243 199)" }}>
+                      {collectedCount === players.length
+                        ? <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        : <Package className="w-5 h-5 text-amber-600" />
+                      }
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div className="h-1.5 w-full bg-muted">
+                    <div
+                      className="h-full bg-emerald-500 transition-all duration-500"
+                      style={{ width: players.length > 0 ? `${Math.round((collectedCount / players.length) * 100)}%` : "0%" }}
+                    />
+                  </div>
+                  <div className="divide-y divide-border">
+                    {Object.entries(teamGroups).map(([teamId, { teamName, players: teamPlayers }]) => (
+                      <div key={teamId}>
+                        <div className="px-6 py-2 bg-muted/20 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          {teamName}
+                        </div>
+                        {teamPlayers
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(player => {
+                            const collected = isCollected(player.id, itemType)
+                            return (
+                              <div key={player.id} className="flex items-center justify-between px-6 py-3 hover:bg-muted/10 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-2 h-2 rounded-full ${collected ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+                                  <span className={`text-sm font-medium ${collected ? "text-foreground" : "text-muted-foreground"}`}>
+                                    {player.name}
+                                  </span>
+                                  {player.shirtNumber && (
+                                    <span className="text-xs text-muted-foreground">#{player.shirtNumber}</span>
+                                  )}
+                                </div>
+                                <button
+                                  onClick={() => toggleCollection(player.id, itemType)}
+                                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                                    collected
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                      : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+                                  }`}
+                                >
+                                  {collected ? (
+                                    <><CheckCircle2 className="w-3.5 h-3.5" /> Collected</>
+                                  ) : (
+                                    <><Package className="w-3.5 h-3.5" /> Mark Collected</>
+                                  )}
+                                </button>
+                              </div>
+                            )
+                          })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
         </div>
       )}
 

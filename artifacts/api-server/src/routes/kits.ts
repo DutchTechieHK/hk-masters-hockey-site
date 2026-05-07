@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { kitOrdersTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { kitOrdersTable, kitDistributionsTable } from "@workspace/db/schema";
+import { eq, and } from "drizzle-orm";
 import {
   CreateKitBody,
   UpdateKitBody,
@@ -96,6 +96,59 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   const { id } = DeleteKitParams.parse(req.params);
   await db.delete(kitOrdersTable).where(eq(kitOrdersTable.id, id));
+  res.status(204).send();
+});
+
+// ── Kit Distributions ──
+
+router.get("/distributions", async (_req, res) => {
+  const rows = await db.select().from(kitDistributionsTable);
+  res.json(rows.map(r => ({
+    id: r.id,
+    playerId: r.playerId,
+    itemType: r.itemType,
+    collectedAt: r.collectedAt ?? null,
+    notes: r.notes ?? null,
+  })));
+});
+
+router.put("/distributions/:playerId/:itemType", async (req, res) => {
+  const playerId = parseInt(req.params.playerId);
+  const itemType = req.params.itemType;
+  const collectedAt = (req.body as { collectedAt?: string }).collectedAt
+    || new Date().toISOString().split("T")[0];
+  const notes = (req.body as { notes?: string }).notes;
+
+  await db.delete(kitDistributionsTable).where(
+    and(
+      eq(kitDistributionsTable.playerId, playerId),
+      eq(kitDistributionsTable.itemType, itemType),
+    ),
+  );
+  const [row] = await db.insert(kitDistributionsTable).values({
+    playerId,
+    itemType,
+    collectedAt,
+    notes,
+  }).returning();
+  res.json({
+    id: row.id,
+    playerId: row.playerId,
+    itemType: row.itemType,
+    collectedAt: row.collectedAt ?? null,
+    notes: row.notes ?? null,
+  });
+});
+
+router.delete("/distributions/:playerId/:itemType", async (req, res) => {
+  const playerId = parseInt(req.params.playerId);
+  const itemType = req.params.itemType;
+  await db.delete(kitDistributionsTable).where(
+    and(
+      eq(kitDistributionsTable.playerId, playerId),
+      eq(kitDistributionsTable.itemType, itemType),
+    ),
+  );
   res.status(204).send();
 });
 

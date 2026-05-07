@@ -344,6 +344,14 @@ export interface CreateKitOrder {
   notes?: string;
 }
 
+export interface KitDistribution {
+  id: number;
+  playerId: number;
+  itemType: string;
+  collectedAt?: string | null;
+  notes?: string | null;
+}
+
 export type FundraisingEntryStatus =
   (typeof FundraisingEntryStatus)[keyof typeof FundraisingEntryStatus];
 
