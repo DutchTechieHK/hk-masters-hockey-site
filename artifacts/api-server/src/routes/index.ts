@@ -16,6 +16,7 @@ import playerAuthRouter from "./playerAuth";
 import eventsRouter from "./events";
 import announcementsRouter from "./announcements";
 import emailTemplatesRouter from "./email-templates";
+import documentsRouter from "./documents";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use("/player-auth", playerAuthRouter);
 router.use("/events", eventsRouter);
 router.use("/announcements", announcementsRouter);
 router.use("/email-templates", emailTemplatesRouter);
+router.use("/documents", documentsRouter);
 
 export default router;
