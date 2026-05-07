@@ -33,24 +33,33 @@ export function BlueNavySand() {
   return (
     <div className="min-h-screen bg-[#1E3A6E] font-sans selection:bg-[#5B9FE0] selection:text-white overflow-x-hidden">
       {/* Navigation */}
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-[#1E3A6E]/85 backdrop-blur-md border-b border-white/10 py-4' : 'bg-transparent py-6'}`}>
-        <div className="container mx-auto px-6 flex justify-between items-center">
+      <nav className="fixed top-0 w-full z-50 bg-white shadow-md border-b-4 border-[#1E3A6E]">
+        {/* Top accent stripe */}
+        <div className="h-1 w-full bg-gradient-to-r from-[#1E3A6E] via-[#5B9FE0] to-[#DE2910]"></div>
+        <div className="container mx-auto px-6 flex justify-between items-center py-4">
           <div className="flex items-center gap-3">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2L2 12L12 22L22 12L12 2Z" fill="#5B9FE0" />
-              <path d="M12 6L6 12L12 18L18 12L12 6Z" fill="white" />
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 12L12 22L22 12L12 2Z" fill="#1E3A6E" />
+              <path d="M12 6L6 12L12 18L18 12L12 6Z" fill="#5B9FE0" />
             </svg>
-            <span className="text-white font-bold text-xl tracking-tight">HK Masters</span>
+            <div className="flex flex-col leading-tight">
+              <span className="text-[#1E3A6E] font-black text-lg tracking-tight">HK Masters</span>
+              <span className="text-[#5B9FE0] text-[10px] font-bold uppercase tracking-widest">Hockey</span>
+            </div>
           </div>
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-1">
             {['Home', 'Squads', 'Tournament', 'Sponsors'].map((item) => (
-              <a key={item} href="#" className="text-[#BFD9F5] hover:text-white transition-colors duration-200 text-sm font-medium relative group">
+              <a key={item} href="#" className="px-4 py-2 text-[#1E3A6E] hover:bg-[#EEF4FB] hover:text-[#2A5298] transition-colors duration-200 text-sm font-semibold rounded-md relative group">
                 {item}
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#F2E8D5] transition-all duration-300 group-hover:w-full"></span>
+                <span className="absolute bottom-0 left-4 right-4 h-0.5 bg-[#5B9FE0] scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left rounded-full"></span>
               </a>
             ))}
+            <div className="w-px h-6 bg-slate-200 mx-2"></div>
+            <button className="ml-1 px-5 py-2 bg-[#DE2910] hover:bg-[#b91e0a] text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
+              Register
+            </button>
           </div>
-          <button className="md:hidden text-white">
+          <button className="md:hidden text-[#1E3A6E]">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 6H20M4 12H20M4 18H20" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
