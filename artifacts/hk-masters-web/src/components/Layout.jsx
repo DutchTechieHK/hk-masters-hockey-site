@@ -138,7 +138,7 @@ export default function Layout({ children }) {
         {/* Row 2 — Navigation strip (dark denim, desktop) */}
         <div className="hidden lg:block bg-[#16305D]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center gap-5 h-10">
+            <div className="flex items-center justify-between h-11">
               {NAV_LINKS.map((link) => (
                 <NavLink key={link.href} href={link.href} label={link.label} cta={link.cta} />
               ))}
