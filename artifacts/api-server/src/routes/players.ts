@@ -2,7 +2,7 @@ import { Router } from "express";
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable } from "@workspace/db/schema";
-import { eq, isNull, or, and, inArray, desc } from "drizzle-orm";
+import { eq, isNull, isNotNull, or, and, inArray, desc } from "drizzle-orm";
 import {
   CreatePlayerBody,
   UpdatePlayerBody,
@@ -410,6 +410,7 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
   let sent = 0;
   let failed = 0;
   let skippedNoEmail = 0;
+  const sentPlayerIds: number[] = [];
 
   for (const { player, teamName } of players) {
     if (!player.email) {
@@ -429,8 +430,24 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
     });
     if (success) {
       sent++;
+      sentPlayerIds.push(player.id);
       await db.update(playersTable).set({ onboardingInviteSentAt: new Date() }).where(eq(playersTable.id, player.id));
     } else failed++;
+  }
+
+  // Log to email_blasts for audit trail
+  if (sent > 0 || failed > 0) {
+    const recipientCount = players.filter(p => !!p.player.email).length;
+    await db.insert(emailBlastsTable).values({
+      subject: "Onboarding Invitation",
+      body: `Player portal access link${sent !== 1 ? "s" : ""} sent to ${sent} player${sent !== 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed to deliver)` : ""}.`,
+      audienceType: "onboarding",
+      playerIds: JSON.stringify(sentPlayerIds),
+      recipientCount,
+      sentCount: sent,
+      failedCount: failed,
+      sentByEmail: null,
+    });
   }
 
   console.log(`[onboarding-invites] Sent ${sent}, failed ${failed}, skipped-no-email ${skippedNoEmail} out of ${players.length} targeted players`);
@@ -572,6 +589,29 @@ router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
 
   console.log(`[bulk-email] audienceType=${audienceType} sent=${sent} failed=${failed} skipped=${skipped} blastId=${blast.id}`);
   res.json({ sent, failed, skipped, total: recipientCount, blastId: blast.id });
+});
+
+router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
+  const rows = await db
+    .select({
+      id: playersTable.id,
+      name: playersTable.name,
+      email: playersTable.email,
+      teamName: teamsTable.name,
+      invitedAt: playersTable.onboardingInviteSentAt,
+    })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(isNotNull(playersTable.onboardingInviteSentAt))
+    .orderBy(desc(playersTable.onboardingInviteSentAt));
+
+  res.json(rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    email: r.email,
+    teamName: r.teamName ?? null,
+    invitedAt: r.invitedAt!.toISOString(),
+  })));
 });
 
 router.get("/email-blasts", requireAdminAccess, async (req, res) => {
