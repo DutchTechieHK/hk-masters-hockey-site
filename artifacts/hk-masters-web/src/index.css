@@ -32,6 +32,12 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  h1, h2, h3, h4 {
+    font-family: 'Barlow Condensed', 'Inter', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 900;
+    letter-spacing: -0.01em;
+  }
+
   a { transition: color 0.15s ease, opacity 0.15s ease; }
 }
 

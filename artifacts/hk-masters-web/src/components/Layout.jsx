@@ -100,7 +100,7 @@ export default function Layout({ children }) {
 
               {/* Logo */}
               <Link href="/" className="flex items-center gap-3 group shrink-0">
-                <div className="h-12 w-12 rounded-lg bg-[#1E3A6E] shrink-0 overflow-hidden flex items-center justify-center shadow-sm">
+                <div className="h-14 w-14 rounded-lg bg-white shrink-0 overflow-hidden flex items-center justify-center shadow-sm">
                   <img
                     src={`${import.meta.env.BASE_URL}logo.png`}
                     alt="HK Masters Hockey logo"
@@ -108,11 +108,11 @@ export default function Layout({ children }) {
                   />
                 </div>
                 <div className="leading-tight">
-                  <p className="text-[#1E3A6E] font-extrabold text-[17px] leading-tight tracking-tight">
+                  <p className="text-[#1E3A6E] font-extrabold text-lg leading-tight tracking-tight">
                     Hong Kong<br />Masters Hockey
                   </p>
-                  <p className="text-[#5B9FE0] text-[9px] font-bold uppercase tracking-[0.18em] mt-0.5">
-                    Hockey · Rotterdam 2026
+                  <p className="text-[#DE2910] text-xs font-semibold italic tracking-widest mt-0.5">
+                    — Hockey For Life —
                   </p>
                 </div>
               </Link>
