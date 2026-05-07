@@ -248,6 +248,7 @@ export default function Players() {
 
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
+    if (player.passportCopyUploadedAt) acknowledgePassport(player.id)
     reset({
       teamId: player.teamId,
       name: player.name,
