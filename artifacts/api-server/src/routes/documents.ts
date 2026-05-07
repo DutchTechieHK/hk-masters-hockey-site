@@ -10,6 +10,8 @@ const router = Router();
 const VALID_CATEGORIES = ["mandatory-form", "regulation", "information"] as const;
 type DocCategory = typeof VALID_CATEGORIES[number];
 
+const ALLOWED_EXTENSIONS = [".pdf"];
+
 function parseCreateBody(body: unknown): {
   title: string;
   description: string | null;
@@ -17,7 +19,7 @@ function parseCreateBody(body: unknown): {
   fileUrl: string;
   fileName: string;
   fileSize: number | null;
-  uploadedByEmail: string | null;
+  uploadedByEmail: null;
 } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -29,10 +31,11 @@ function parseCreateBody(body: unknown): {
   if (!fileUrl) return { error: "fileUrl required" };
   const fileName = typeof b.fileName === "string" ? b.fileName.trim() : "";
   if (!fileName) return { error: "fileName required" };
+  const ext = fileName.toLowerCase().slice(fileName.lastIndexOf("."));
+  if (!ALLOWED_EXTENSIONS.includes(ext)) return { error: `Only PDF files are allowed (got ${ext || "unknown"})` };
   const description = typeof b.description === "string" && b.description.trim() ? b.description.trim() : null;
   const fileSize = typeof b.fileSize === "number" && b.fileSize > 0 ? b.fileSize : null;
-  const uploadedByEmail = typeof b.uploadedByEmail === "string" && b.uploadedByEmail.trim() ? b.uploadedByEmail.trim() : null;
-  return { title, description, category: category as DocCategory, fileUrl, fileName, fileSize, uploadedByEmail };
+  return { title, description, category: category as DocCategory, fileUrl, fileName, fileSize, uploadedByEmail: null };
 }
 
 function mapDocument(doc: typeof documentsTable.$inferSelect) {

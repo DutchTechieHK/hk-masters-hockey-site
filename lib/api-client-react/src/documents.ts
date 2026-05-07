@@ -22,7 +22,6 @@ export interface CreateDocumentInput {
   fileUrl: string;
   fileName: string;
   fileSize?: number;
-  uploadedByEmail?: string;
 }
 
 export const getListDocumentsQueryKey = () => ["/api/documents"] as const;

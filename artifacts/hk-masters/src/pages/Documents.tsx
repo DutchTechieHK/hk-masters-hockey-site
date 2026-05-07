@@ -104,7 +104,7 @@ export default function Documents() {
         maxFiles: 1,
         resourceType: "auto",
         sources: ["local"],
-        clientAllowedFormats: ["pdf", "doc", "docx", "xls", "xlsx"],
+        clientAllowedFormats: ["pdf"],
         maxFileSize: 20000000,
       },
       (err, result) => {
@@ -228,7 +228,6 @@ export default function Documents() {
                           <span className="font-mono truncate max-w-[200px]">{doc.fileName}</span>
                           {doc.fileSize && <span>{formatBytes(doc.fileSize)}</span>}
                           {doc.uploadedAt && <span>Added {formatDate(doc.uploadedAt)}</span>}
-                          {doc.uploadedByEmail && <span>{doc.uploadedByEmail}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -315,7 +314,7 @@ export default function Documents() {
                 <span className="text-sm text-muted-foreground">
                   {uploading ? "Uploading…" : !widgetLoaded ? "Loading uploader…" : "Click to upload PDF or document"}
                 </span>
-                <span className="text-xs text-muted-foreground/60">PDF, Word, Excel — up to 20 MB</span>
+                <span className="text-xs text-muted-foreground/60">PDF only — up to 20 MB</span>
               </button>
             )}
           </div>
