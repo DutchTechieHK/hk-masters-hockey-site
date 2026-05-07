@@ -76,14 +76,14 @@ export default function SponsorStrip() {
           </div>
         ) : (
           <div
-            className={`reveal grid gap-4 ${
+            className={`grid gap-4 ${
               sorted.length === 1
                 ? "grid-cols-1 max-w-xs mx-auto"
                 : sorted.length === 2
                 ? "grid-cols-1 sm:grid-cols-2 max-w-lg mx-auto"
                 : "grid-cols-2 sm:grid-cols-3"
             }`}
-            style={{ animationDelay: "0.12s" }}
+            style={{ animation: "fadeSlideUp 0.65s cubic-bezier(0.22,1,0.36,1) forwards" }}
           >
             {sorted.map((s) => (
               <SponsorCard key={s.id} sponsor={s} />
