@@ -21,7 +21,7 @@ export const GRID_CRITERIA: GridCriterion[] = [
   {
     key: "passport-valid",
     label: "Passport not expired",
-    short: "Passport",
+    short: "Expiry",
     severity: "red",
     pass: (p) => {
       if (!p.passportExpiry) return false
