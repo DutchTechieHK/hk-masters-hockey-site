@@ -110,25 +110,25 @@ export default function Teams() {
                   <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wide">
                     {squad.short_name}
                   </span>
-                  <h2 className="text-3xl font-extrabold text-gray-900 mb-3">{squad.name}</h2>
-                  <RichText content={squad.description} className="text-gray-600 leading-relaxed mb-5" />
+                  <h2 className="text-3xl font-extrabold text-[#1E3A6E] mb-3">{squad.name}</h2>
+                  <RichText content={squad.description} className="text-[#5A4F45] leading-relaxed mb-5" />
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
+                    <div className="bg-[#F2E8D5] rounded-lg p-3 text-center border border-[#E5D5BC]">
                       <p className="text-2xl font-bold text-[#1E3A6E]">{squad.player_count}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Players</p>
+                      <p className="text-xs text-[#8A7A6A] mt-0.5">Players</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-sm font-semibold text-gray-800">{squad.manager || "TBC"}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Manager</p>
+                    <div className="bg-[#F2E8D5] rounded-lg p-3 text-center border border-[#E5D5BC]">
+                      <p className="text-sm font-semibold text-[#4A3F35]">{squad.manager || "TBC"}</p>
+                      <p className="text-xs text-[#8A7A6A] mt-0.5">Manager</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-sm font-semibold text-gray-800">{squad.coach || "TBC"}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Coach</p>
+                    <div className="bg-[#F2E8D5] rounded-lg p-3 text-center border border-[#E5D5BC]">
+                      <p className="text-sm font-semibold text-[#4A3F35]">{squad.coach || "TBC"}</p>
+                      <p className="text-xs text-[#8A7A6A] mt-0.5">Coach</p>
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-3 text-center">
-                      <p className="text-sm font-semibold text-gray-800">{squad.captain || "TBC"}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Captain</p>
+                    <div className="bg-[#F2E8D5] rounded-lg p-3 text-center border border-[#E5D5BC]">
+                      <p className="text-sm font-semibold text-[#4A3F35]">{squad.captain || "TBC"}</p>
+                      <p className="text-xs text-[#8A7A6A] mt-0.5">Captain</p>
                     </div>
                   </div>
 

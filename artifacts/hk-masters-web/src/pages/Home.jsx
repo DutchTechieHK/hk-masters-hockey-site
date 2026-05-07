@@ -137,18 +137,18 @@ function LatestJournalCard() {
     : null;
 
   return (
-    <section className="bg-white border-t border-gray-100 py-12">
+    <section className="bg-[#F2E8D5] border-t border-[#E5D5BC] py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="reveal flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Latest from the Journal</h2>
+          <h2 className="text-2xl font-bold text-[#1E3A6E]">Latest from the Journal</h2>
           <Link
             href="/journal"
-            className="text-[#1E3A6E] font-medium hover:text-[#16305D] transition-colors duration-150 text-sm"
+            className="text-[#2A5298] font-medium hover:text-[#1E3A6E] transition-colors duration-150 text-sm"
           >
             All Journal articles &rarr;
           </Link>
         </div>
-        <div className="reveal tilt-card bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden flex flex-col sm:flex-row gap-0">
+        <div className="reveal tilt-card bg-white rounded-2xl border border-[#E5D5BC] overflow-hidden flex flex-col sm:flex-row gap-0">
           <Link href={`/journal/${article.id}`} className="sm:w-64 sm:flex-shrink-0 h-48 sm:h-auto overflow-hidden">
             {article.photoUrls && article.photoUrls.length > 0 ? (
               <img
@@ -169,27 +169,27 @@ function LatestJournalCard() {
           </Link>
           <div className="p-6 sm:p-8 flex flex-col justify-center">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="text-xs font-semibold bg-[#EEF4FB] text-[#1E3A6E] px-2.5 py-1 rounded-full">
+              <span className="text-xs font-semibold bg-[#F2E8D5] text-[#2A5298] px-2.5 py-1 rounded-full border border-[#E5D5BC]">
                 {article.contentType === "photo" ? "Photos" : article.contentType === "both" ? "Article + Photos" : "Article"}
               </span>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-[#8A7A6A]">
                 {format(parseISO(article.createdAt), "d MMM yyyy")}
               </span>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-1 leading-snug">
+            <h3 className="text-xl font-bold text-[#1E3A6E] mb-1 leading-snug">
               {article.title}
             </h3>
-            <p className="text-sm text-[#1E3A6E] font-semibold mb-3">
+            <p className="text-sm text-[#2A5298] font-semibold mb-3">
               By {article.authorName}
             </p>
             {excerpt && (
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+              <p className="text-sm text-[#5A4F45] leading-relaxed mb-4">
                 {excerpt}
               </p>
             )}
             <Link
               href={`/journal/${article.id}`}
-              className="self-start text-sm font-semibold text-[#1E3A6E] hover:text-[#16305D] transition-colors duration-150"
+              className="self-start text-sm font-semibold text-[#2A5298] hover:text-[#1E3A6E] transition-colors duration-150"
             >
               Read this article &rarr;
             </Link>
@@ -347,7 +347,7 @@ export default function Home() {
         </div>
 
         {/* Stats Bar */}
-        <div className="mt-4 grid grid-cols-3 divide-x divide-[#2A5298]">
+        <div className="mt-4 grid grid-cols-3 divide-x divide-[#5B9FE0]/20">
           {content.stats.map((item, i) => (
             <div key={item.label} className="reveal text-center py-3" style={{ animationDelay: `${i * 0.12}s` }}>
               <p className="text-3xl font-extrabold text-white">{item.stat}</p>
@@ -362,47 +362,54 @@ export default function Home() {
 
       {/* ── Welcome / Rotterdam Squads ────────────────────────── */}
       {isRotterdamMode() ? (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="reveal text-3xl font-bold text-gray-900 mb-4">About the Tournament</h2>
-            <p className="reveal text-gray-600 leading-relaxed text-lg">
-              The FIH Masters Hockey World Cup is the world's premier tournament for masters-age field hockey players. Rotterdam 2026 will bring together nations from across the globe, competing across multiple age categories. For HK Masters, this is our biggest tournament in years — with two squads making the trip to the Netherlands to fly the Hong Kong flag on the world stage.
-            </p>
-          </div>
+        <section className="bg-[#F2E8D5] py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mx-auto text-center mb-12">
+              <p className="reveal text-xs font-bold uppercase tracking-[0.18em] text-[#5B9FE0] mb-3">
+                Rotterdam 2026 Masters World Cup
+              </p>
+              <h2 className="reveal text-3xl font-bold text-[#1E3A6E] mb-4">About the Tournament</h2>
+              <p className="reveal text-[#5A4F45] leading-relaxed text-lg">
+                The FIH Masters Hockey World Cup is the world's premier tournament for masters-age field hockey players. Rotterdam 2026 will bring together nations from across the globe, competing across multiple age categories. For HK Masters, this is our biggest tournament in years — with two squads making the trip to the Netherlands to fly the Hong Kong flag on the world stage.
+              </p>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            {teamsContent.squads.map((squad, i) => {
-              const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
-              return (
-                <div key={squad.id} className="tilt-card reveal scale-in bg-white rounded-xl border border-gray-100 shadow-sm p-6 flex flex-col" style={{ animationDelay: `${i * 0.15}s` }}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
-                      {squad.short_name}
-                    </span>
-                    <h3 className="font-bold text-gray-900">{squad.name}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+              {teamsContent.squads.map((squad, i) => {
+                const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
+                return (
+                  <div key={squad.id} className="tilt-card reveal scale-in bg-white rounded-xl border border-[#E5D5BC] shadow-sm p-6 flex flex-col" style={{ animationDelay: `${i * 0.15}s` }}>
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="bg-[#DE2910] text-white text-sm font-bold px-3 py-1 rounded-full">
+                        {squad.short_name}
+                      </span>
+                      <h3 className="font-bold text-[#1E3A6E]">{squad.name}</h3>
+                    </div>
+                    <p className="text-[#5A4F45] text-sm leading-relaxed flex-1 mb-5">
+                      {squad.description}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-[#8A7A6A] border-t border-[#E5D5BC] pt-4">
+                      <span>{squad.player_count} players</span>
+                      <button
+                        onClick={() => setOpenSquad({ squad: rotterdamSquad || { name: squad.name, category: squad.short_name, player_list: [] }, teamInfo: squad })}
+                        className="text-[#2A5298] font-semibold text-xs hover:text-[#1E3A6E] transition-colors"
+                      >
+                        View Squad →
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-gray-600 text-sm leading-relaxed flex-1 mb-5">
-                    {squad.description}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-gray-400 border-t border-gray-100 pt-4">
-                    <span>{squad.player_count} players</span>
-                    <button
-                      onClick={() => setOpenSquad({ squad: rotterdamSquad || { name: squad.name, category: squad.short_name, player_list: [] }, teamInfo: squad })}
-                      className="text-[#1E3A6E] font-semibold text-xs hover:text-[#16305D] transition-colors"
-                    >
-                      View Squad →
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
       ) : (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="reveal text-3xl font-bold text-gray-900 mb-4">{content.welcome_heading}</h2>
-            <RichText content={content.welcome_text} className="text-gray-600 leading-relaxed text-lg" />
+        <section className="bg-[#F2E8D5] py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-3xl mx-auto text-center">
+              <h2 className="reveal text-3xl font-bold text-[#1E3A6E] mb-4">{content.welcome_heading}</h2>
+              <RichText content={content.welcome_text} className="text-[#5A4F45] leading-relaxed text-lg" />
+            </div>
           </div>
         </section>
       )}

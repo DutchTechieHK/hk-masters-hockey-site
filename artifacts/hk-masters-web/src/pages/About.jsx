@@ -18,17 +18,17 @@ export default function About() {
       {/* Mission Statement */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-8">
         <div className="max-w-3xl">
-          <h2 className="reveal text-2xl font-bold text-gray-900 mb-4">Our Mission</h2>
-          <RichText content={content.mission_p1} className="text-gray-600 leading-relaxed text-lg mb-4" />
-          <RichText content={content.mission_p2} className="text-gray-600 leading-relaxed text-lg" />
+          <h2 className="reveal text-2xl font-bold text-[#1E3A6E] mb-4">Our Mission</h2>
+          <RichText content={content.mission_p1} className="text-[#4A3F35] leading-relaxed text-lg mb-4" />
+          <RichText content={content.mission_p2} className="text-[#4A3F35] leading-relaxed text-lg" />
         </div>
       </section>
 
       {/* History Timeline */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-        <h2 className="reveal text-2xl font-bold text-gray-900 mb-4">Club History</h2>
+        <h2 className="reveal text-2xl font-bold text-[#1E3A6E] mb-4">Club History</h2>
         {content.history_intro && (
-          <RichText content={content.history_intro} className="text-gray-600 leading-relaxed text-lg mb-10 max-w-3xl" />
+          <RichText content={content.history_intro} className="text-[#4A3F35] leading-relaxed text-lg mb-10 max-w-3xl" />
         )}
         <div className="relative">
           <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-[#BFD9F5] hidden sm:block" />
@@ -38,14 +38,14 @@ export default function About() {
                 <div className="hidden sm:flex absolute left-0 top-1 w-8 h-8 rounded-full bg-[#1E3A6E] items-center justify-center">
                   <div className="w-3 h-3 rounded-full bg-white" />
                 </div>
-                <div className="reveal bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+                <div className="reveal bg-white rounded-xl border border-[#E5D5BC] shadow-sm p-5">
                   <div className="flex items-center gap-3 mb-2">
                     <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">
                       {item.year}
                     </span>
-                    <h3 className="font-bold text-gray-900">{item.event}</h3>
+                    <h3 className="font-bold text-[#1E3A6E]">{item.event}</h3>
                   </div>
-                  <RichText content={item.detail} className="text-sm text-gray-600 leading-relaxed" />
+                  <RichText content={item.detail} className="text-sm text-[#5A4F45] leading-relaxed" />
                 </div>
               </div>
             ))}
@@ -54,17 +54,17 @@ export default function About() {
       </section>
 
       {/* Committee Grid */}
-      <section className="bg-gray-50 py-16">
+      <section className="bg-[#F2E8D5] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="reveal text-2xl font-bold text-gray-900 mb-8">Committee Members</h2>
+          <h2 className="reveal text-2xl font-bold text-[#1E3A6E] mb-8">Committee Members</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6">
             {content.committee.map((person) => (
               <div key={person.name} className="reveal text-center">
                 <div className="w-20 h-20 rounded-full bg-[#1E3A6E]/10 border-2 border-[#1E3A6E]/20 mx-auto mb-3 flex items-center justify-center text-[#1E3A6E] font-bold text-lg">
                   {person.name.split(" ").map(n => n[0]).join("")}
                 </div>
-                <p className="font-semibold text-gray-900 text-sm">{person.name}</p>
-                <p className="text-xs text-gray-500 mt-0.5">{person.role}</p>
+                <p className="font-semibold text-[#1E3A6E] text-sm">{person.name}</p>
+                <p className="text-xs text-[#8A7A6A] mt-0.5">{person.role}</p>
               </div>
             ))}
           </div>

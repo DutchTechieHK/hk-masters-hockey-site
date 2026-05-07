@@ -4,16 +4,10 @@ import { API_BASE } from "../utils/api";
 
 const TIER_ORDER = ["Gold", "Silver", "Bronze"];
 
-const TIER_GLOW = {
-  Gold:   "255,200,50",
-  Silver: "180,180,200",
-  Bronze: "220,130,40",
-};
-
-const TIER_LABEL = {
-  Gold:   { text: "#f59e0b", border: "rgba(245,158,11,0.4)"  },
-  Silver: { text: "#9ca3af", border: "rgba(156,163,175,0.4)" },
-  Bronze: { text: "#f97316", border: "rgba(249,115,22,0.4)"  },
+const TIER_BADGE = {
+  Gold:   { bg: "#FFF3CD", text: "#92650A", border: "#F0C040" },
+  Silver: { bg: "#F2F2F5", text: "#5A5A70", border: "#BCBCCC" },
+  Bronze: { bg: "#FDF0E6", text: "#8B4513", border: "#D9996A" },
 };
 
 const TIER_COLS = {
@@ -27,50 +21,30 @@ const sponsorshipEmail = "sponsorship@hkmastershockey.com";
 function SponsorCard({ sponsor }) {
   const [imgFailed, setImgFailed] = useState(false);
   const displayUrl = cloudinaryResize(sponsor.logoUrl, 600);
-  const glow  = TIER_GLOW[sponsor.tier]  || TIER_GLOW.Bronze;
-  const label = TIER_LABEL[sponsor.tier] || TIER_LABEL.Bronze;
-
-  const logoArea = displayUrl && !imgFailed ? (
-    <img
-      src={displayUrl}
-      alt={sponsor.name}
-      className="max-h-28 max-w-xs object-contain"
-      onError={() => setImgFailed(true)}
-    />
-  ) : (
-    <div className="text-center px-4">
-      <p className="text-white font-bold text-xl tracking-wide">{sponsor.name}</p>
-      <p style={{ color: label.text }} className="text-xs mt-1 tracking-widest uppercase">Logo coming soon</p>
-    </div>
-  );
+  const badge = TIER_BADGE[sponsor.tier] || TIER_BADGE.Bronze;
 
   const card = (
-    <div className="group relative">
-      <div
-        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ boxShadow: `0 0 60px 10px rgba(${glow},0.3)` }}
-      />
-      <div
-        className="relative rounded-2xl flex flex-col items-center justify-center py-10 px-8 gap-5 overflow-hidden min-h-[180px]"
-        style={{
-          background: "linear-gradient(145deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.03) 100%)",
-          border: `1px solid rgba(${glow},0.25)`,
-          boxShadow: `0 0 30px rgba(${glow},0.08), inset 0 1px 0 rgba(255,255,255,0.07)`,
-        }}
-      >
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{ background: `radial-gradient(ellipse at 50% 50%, rgba(${glow},0.13) 0%, transparent 68%)` }}
-        />
-        <div className="relative z-10 flex items-center justify-center">
-          {logoArea}
-        </div>
-        {sponsor.websiteUrl && (
-          <p className="relative z-10 text-white/35 text-xs tracking-widest uppercase">
-            {sponsor.websiteUrl.replace(/^https?:\/\//, "")}
-          </p>
+    <div className="group bg-white border border-[#D9C9A8] rounded-2xl flex flex-col items-center justify-center py-10 px-8 gap-4 min-h-[180px] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+      <div className="flex items-center justify-center">
+        {displayUrl && !imgFailed ? (
+          <img
+            src={displayUrl}
+            alt={sponsor.name}
+            className="max-h-28 max-w-xs object-contain"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div className="text-center px-4">
+            <p className="text-[#1E3A6E] font-bold text-xl tracking-wide">{sponsor.name}</p>
+            <p className="text-[#8A7A6A] text-xs mt-1 tracking-widest uppercase">Logo coming soon</p>
+          </div>
         )}
       </div>
+      {sponsor.websiteUrl && (
+        <p className="text-[#8A7A6A] text-xs tracking-widest uppercase">
+          {sponsor.websiteUrl.replace(/^https?:\/\//, "")}
+        </p>
+      )}
     </div>
   );
 
@@ -117,40 +91,29 @@ export default function Sponsors() {
 
       {/* Sponsor showcase */}
       {loading ? (
-        <section
-          className="py-24 text-center"
-          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
-        >
-          <p className="text-white/30 text-sm tracking-widest uppercase">Loading…</p>
+        <section className="bg-[#EDE0C4] py-24 text-center">
+          <p className="text-[#8A7A6A] text-sm tracking-widest uppercase">Loading…</p>
         </section>
       ) : hasSponsors ? (
-        <section
-          className="py-20 px-4 sm:px-6 lg:px-8"
-          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
-        >
-          <div className="max-w-5xl mx-auto space-y-20">
+        <section className="bg-[#EDE0C4] py-20 px-4 sm:px-6 lg:px-8 border-b border-[#D9C9A8]">
+          <div className="max-w-5xl mx-auto space-y-16">
             {tierGroups.map(({ name, sponsors }) => {
-              const glow = TIER_GLOW[name] || TIER_GLOW.Bronze;
-              const lbl  = TIER_LABEL[name] || TIER_LABEL.Bronze;
-              const cols = TIER_COLS[name]  || TIER_COLS.Bronze;
+              const badge = TIER_BADGE[name] || TIER_BADGE.Bronze;
+              const cols  = TIER_COLS[name]  || TIER_COLS.Bronze;
               return (
-                <div key={name}>
+                <div key={name} className="reveal">
                   <div className="flex items-center gap-4 mb-10">
-                    <div className="h-px flex-1" style={{ background: `rgba(${glow},0.3)` }} />
+                    <div className="h-px flex-1 bg-[#D9C9A8]" />
                     <span
                       className="text-xs font-bold tracking-widest uppercase px-5 py-2 rounded-full border"
-                      style={{
-                        color: lbl.text,
-                        borderColor: lbl.border,
-                        background: `rgba(${glow},0.08)`,
-                      }}
+                      style={{ color: badge.text, borderColor: badge.border, backgroundColor: badge.bg }}
                     >
                       {name} Sponsors
                     </span>
-                    <div className="h-px flex-1" style={{ background: `rgba(${glow},0.3)` }} />
+                    <div className="h-px flex-1 bg-[#D9C9A8]" />
                   </div>
 
-                  <div className={`grid gap-6 ${sponsors.length === 1 ? cols.one : cols.multi}`}>
+                  <div className={`grid gap-5 ${sponsors.length === 1 ? cols.one : cols.multi}`}>
                     {sponsors.map((sponsor) => (
                       <SponsorCard key={sponsor.id} sponsor={sponsor} />
                     ))}
@@ -161,12 +124,9 @@ export default function Sponsors() {
           </div>
         </section>
       ) : (
-        <section
-          className="py-24 text-center px-4"
-          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" }}
-        >
-          <p className="text-white/50 text-lg font-medium mb-2">Sponsor announcements coming soon</p>
-          <p className="text-white/25 text-sm">
+        <section className="bg-[#EDE0C4] py-24 text-center px-4">
+          <p className="text-[#5A4F45] text-lg font-medium mb-2">Sponsor announcements coming soon</p>
+          <p className="text-[#8A7A6A] text-sm">
             We're finalising our sponsorship packages for the 2026 season. Check back shortly.
           </p>
         </section>
