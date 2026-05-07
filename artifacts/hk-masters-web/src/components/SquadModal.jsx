@@ -58,12 +58,12 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
                   <div className="space-y-1">
                     {squad_players.map((player, i) => (
                       <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-                        <span className="w-8 h-8 bg-[#006B3C]/10 rounded-full flex items-center justify-center text-xs font-bold text-[#006B3C] shrink-0">
+                        <span className="w-8 h-8 bg-[#1E3A6E]/10 rounded-full flex items-center justify-center text-xs font-bold text-[#1E3A6E] shrink-0">
                           {player.shirt_number || "—"}
                         </span>
                         <span className="flex-1 font-medium text-gray-900">{player.name}</span>
                         {player.role && (
-                          <span className="text-xs bg-[#006B3C]/10 text-[#006B3C] px-2 py-0.5 rounded-full font-medium shrink-0">
+                          <span className="text-xs bg-[#1E3A6E]/10 text-[#1E3A6E] px-2 py-0.5 rounded-full font-medium shrink-0">
                             {player.role}
                           </span>
                         )}

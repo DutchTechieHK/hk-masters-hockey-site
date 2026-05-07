@@ -33,32 +33,49 @@
     {
       "name": "MO40",
       "category": "MO40",
-      "player_list": []
+      "player_list": [
+        { "name": "Martin Wong",              "shirt_number": 1,  "role": "Goal Keeper" },
+        { "name": "Brendan Dunstan-Smith",    "shirt_number": 2,  "role": "Goal Keeper" },
+        { "name": "Anthony Ford",             "shirt_number": 3,  "role": "" },
+        { "name": "Harry Jarman",             "shirt_number": 4,  "role": "" },
+        { "name": "Doug Corbel",              "shirt_number": 5,  "role": "" },
+        { "name": "Chris Marshall",           "shirt_number": 6,  "role": "" },
+        { "name": "Arif Ali",                 "shirt_number": 7,  "role": "" },
+        { "name": "Mendel Wong",              "shirt_number": 8,  "role": "" },
+        { "name": "Belan Aiyadorai",          "shirt_number": 9,  "role": "" },
+        { "name": "Arshad Muhammad",          "shirt_number": 10, "role": "" },
+        { "name": "David Benskin",            "shirt_number": 11, "role": "" },
+        { "name": "Jiten Melwani",            "shirt_number": 12, "role": "" },
+        { "name": "Tristan Thomas",           "shirt_number": 13, "role": "" },
+        { "name": "Ishtiaq",                  "shirt_number": 14, "role": "" },
+        { "name": "Robin Martin",             "shirt_number": 15, "role": "" },
+        { "name": "Thomas Cousins",           "shirt_number": 16, "role": "" },
+        { "name": "Gavin Guest",              "shirt_number": 17, "role": "" },
+        { "name": "Jesse Tam",                "shirt_number": 18, "role": "" }
+      ]
     },
     {
       "name": "MO50",
       "category": "MO50",
       "player_list": [
-        {
-          "name": "René Theil",
-          "shirt_number": 17,
-          "role": "Foreward/Midfield"
-        },
-        {
-          "name": "Justin Davidson",
-          "role": "Defender",
-          "shirt_number": 4
-        },
-        {
-          "name": "Andy Boulton",
-          "role": "Goal Keeper",
-          "shirt_number": 2
-        },
-        {
-          "name": "Bernd Sauer",
-          "role": "Midfield ",
-          "shirt_number": 10
-        }
+        { "name": "Andrew Boulton",           "shirt_number": null, "role": "Goal Keeper" },
+        { "name": "Chris Page",               "shirt_number": null, "role": "Goal Keeper" },
+        { "name": "Justin Davidson",          "shirt_number": null, "role": "Defender" },
+        { "name": "Patrick Perry",            "shirt_number": null, "role": "Defender" },
+        { "name": "Asghar Ali (Senachi)",     "shirt_number": 11,   "role": "Centre Midfielder" },
+        { "name": "Rene Theil",              "shirt_number": 17,   "role": "Forward" },
+        { "name": "Bernd Sauer",              "shirt_number": null, "role": "" },
+        { "name": "Mike Tyrell",              "shirt_number": null, "role": "" },
+        { "name": "Farooq Saeed",             "shirt_number": null, "role": "" },
+        { "name": "Feroz Khan",               "shirt_number": null, "role": "" },
+        { "name": "Brian Thomas",             "shirt_number": null, "role": "" },
+        { "name": "Dickson Chin",             "shirt_number": null, "role": "" },
+        { "name": "Wajid Mahmood",            "shirt_number": null, "role": "" },
+        { "name": "Nadeem Mohammad",          "shirt_number": null, "role": "" },
+        { "name": "Pannu Malkit Singh",       "shirt_number": null, "role": "" },
+        { "name": "Alfonso Bibi Cordero",     "shirt_number": null, "role": "" },
+        { "name": "Ian MacIntosh",            "shirt_number": null, "role": "" },
+        { "name": "Bala Harbindar Singh",     "shirt_number": null, "role": "" }
       ]
     }
   ],
