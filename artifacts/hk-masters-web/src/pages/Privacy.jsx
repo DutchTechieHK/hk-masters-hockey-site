@@ -1,20 +1,20 @@
 export default function Privacy() {
   return (
     <div className="bg-white">
-      <section className="bg-gradient-to-br from-[#006B3C] to-[#004A2A] text-white">
+      <section className="bg-[#1E3A6E] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-            Privacy & Data Handling
+            Privacy &amp; Data Handling
           </h1>
-          <p className="text-green-100 text-lg">
+          <p className="text-[#BFD9F5] text-lg">
             How Hong Kong Masters Hockey collects, stores and protects information for the
             Rotterdam 2026 Masters World Cup.
           </p>
-          <p className="text-green-200 text-sm mt-4">Last updated: May 2026</p>
+          <p className="text-[#8FBDE8] text-sm mt-4">Last updated: May 2026</p>
         </div>
       </section>
 
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-gray-700 leading-relaxed [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-10 [&_h2]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-2 [&_li]:leading-relaxed [&_a]:text-[#006B3C] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-green-800 [&_strong]:text-gray-900">
+      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-gray-700 leading-relaxed [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mt-10 [&_h2]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-2 [&_li]:leading-relaxed [&_a]:text-[#1E3A6E] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-[#16305D] [&_strong]:text-gray-900">
         <h2>Who we are</h2>
         <p>
           Hong Kong Masters Hockey ("we", "us") is an unincorporated team association
