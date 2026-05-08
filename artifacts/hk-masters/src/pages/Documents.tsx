@@ -81,32 +81,34 @@ export default function Documents() {
 
     try {
       const token = typeof localStorage !== "undefined" ? localStorage.getItem(ADMIN_SESSION_KEY) : null
-      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      const headers: Record<string, string> = {}
       if (token) headers["x-session-token"] = token
 
-      const res = await fetch("/api/documents/upload-url", { method: "POST", headers })
-      if (!res.ok) throw new Error("Failed to get upload URL")
-      const { uploadUrl, objectPath } = (await res.json()) as { uploadUrl: string; objectPath: string }
+      const formData = new FormData()
+      formData.append("file", file)
 
-      await new Promise<void>((resolve, reject) => {
+      const res = await new Promise<XMLHttpRequest>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
-        xhr.open("PUT", uploadUrl)
-        xhr.setRequestHeader("Content-Type", file.type || "application/pdf")
+        xhr.open("POST", "/api/documents/upload")
+        if (token) xhr.setRequestHeader("x-session-token", token)
         xhr.upload.onprogress = (ev) => {
           if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
         }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve()
-          else reject(new Error(`Upload failed: ${xhr.status}`))
-        }
+        xhr.onload = () => resolve(xhr)
         xhr.onerror = () => reject(new Error("Network error during upload"))
-        xhr.send(file)
+        xhr.send(formData)
       })
 
+      if (res.status < 200 || res.status >= 300) {
+        const msg = (() => { try { return JSON.parse(res.responseText)?.error } catch { return null } })()
+        throw new Error(msg || `Upload failed: ${res.status}`)
+      }
+
+      const { objectPath } = JSON.parse(res.responseText) as { objectPath: string }
       setUploadedFile({ url: `/api/documents/file${objectPath}`, name: file.name, size: file.size })
       if (!title) setTitle(file.name.replace(/\.pdf$/i, ""))
-    } catch {
-      toast({ title: "Upload failed", variant: "destructive" })
+    } catch (err) {
+      toast({ title: "Upload failed", description: err instanceof Error ? err.message : undefined, variant: "destructive" })
     } finally {
       setUploading(false)
       setUploadProgress(0)

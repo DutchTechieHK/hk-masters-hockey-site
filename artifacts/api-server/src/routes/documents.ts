@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import { db } from "@workspace/db";
 import { documentsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,6 +9,7 @@ import { requirePlayerSession } from "../middleware/playerSession";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 const VALID_CATEGORIES = ["mandatory-form", "regulation", "information"] as const;
 type DocCategory = typeof VALID_CATEGORIES[number];
@@ -65,11 +67,19 @@ function mapDocumentForPlayer(doc: typeof documentsTable.$inferSelect) {
   };
 }
 
-router.post("/upload-url", requireSession, async (_req, res) => {
+router.post("/upload", requireSession, upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    res.status(400).json({ error: "No file provided" });
+    return;
+  }
+  const ext = req.file.originalname.toLowerCase().slice(req.file.originalname.lastIndexOf("."));
+  if (ext !== ".pdf") {
+    res.status(400).json({ error: "Only PDF files are allowed" });
+    return;
+  }
   const storage = new ObjectStorageService();
-  const uploadUrl = await storage.getObjectEntityUploadURL();
-  const objectPath = storage.normalizeObjectEntityPath(uploadUrl);
-  res.json({ uploadUrl, objectPath });
+  const objectPath = await storage.uploadObjectEntity(req.file.buffer, "application/pdf");
+  res.json({ objectPath });
 });
 
 router.use("/file", async (req, res, next) => {
