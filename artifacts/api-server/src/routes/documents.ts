@@ -76,13 +76,8 @@ router.use("/file", async (req, res, next) => {
   const objectPath = req.path;
   const storage = new ObjectStorageService();
   try {
-    const file = await storage.getObjectEntityFile(objectPath);
-    const [metadata] = await file.getMetadata();
-    res.set("Content-Type", (metadata.contentType as string) || "application/pdf");
-    res.set("Content-Disposition", `inline; filename="${file.name.split("/").pop()}"`);
-    res.set("Cache-Control", "private, max-age=3600");
-    if (metadata.size) res.set("Content-Length", String(metadata.size));
-    file.createReadStream().pipe(res);
+    const signedUrl = await storage.getObjectEntityDownloadURL(objectPath);
+    res.redirect(302, signedUrl);
   } catch (e) {
     if (e instanceof ObjectNotFoundError) {
       res.status(404).json({ error: "Not found" });
