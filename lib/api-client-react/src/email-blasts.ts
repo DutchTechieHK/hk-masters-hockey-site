@@ -32,6 +32,7 @@ export interface OnboardingInviteLogItem {
   email: string;
   teamName: string | null;
   invitedAt: string;
+  lastLoginAt: string | null;
 }
 
 export const getListOnboardingInviteLogQueryKey = () => ["/api/players/onboarding-invite-log"] as const;

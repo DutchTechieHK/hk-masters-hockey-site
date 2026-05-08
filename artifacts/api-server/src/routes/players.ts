@@ -605,6 +605,15 @@ router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
 });
 
 router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
+  const lastLoginSq = db
+    .select({
+      playerId: playerSessionsTable.playerId,
+      lastLoginAt: sql<string>`max(${playerSessionsTable.createdAt})`.as("last_login_at"),
+    })
+    .from(playerSessionsTable)
+    .groupBy(playerSessionsTable.playerId)
+    .as("last_logins");
+
   const rows = await db
     .select({
       id: playersTable.id,
@@ -612,9 +621,11 @@ router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
       email: playersTable.email,
       teamName: teamsTable.name,
       invitedAt: playersTable.onboardingInviteSentAt,
+      lastLoginAt: lastLoginSq.lastLoginAt,
     })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
     .where(isNotNull(playersTable.onboardingInviteSentAt))
     .orderBy(desc(playersTable.onboardingInviteSentAt));
 
@@ -624,6 +635,7 @@ router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
     email: r.email,
     teamName: r.teamName ?? null,
     invitedAt: r.invitedAt!.toISOString(),
+    lastLoginAt: r.lastLoginAt ?? null,
   })));
 });
 

@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { useListEmailBlasts, useListOnboardingInviteLog } from "@workspace/api-client-react"
 import type { OnboardingInviteLogItem } from "@workspace/api-client-react"
 import { format } from "date-fns"
-import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send } from "lucide-react"
+import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send, CheckCircle, LogIn } from "lucide-react"
 import type { EmailBlastItem } from "@workspace/api-client-react"
 
 function audienceLabel(blast: EmailBlastItem): string {
@@ -64,6 +64,7 @@ function OnboardingLogSection({ items }: { items: OnboardingInviteLogItem[] }) {
               <th className="px-4 py-3 text-left font-semibold">Player</th>
               <th className="px-4 py-3 text-left font-semibold hidden sm:table-cell">Team</th>
               <th className="px-4 py-3 text-left font-semibold hidden md:table-cell">Email</th>
+              <th className="px-4 py-3 text-left font-semibold">Portal</th>
               <th className="px-4 py-3 text-right font-semibold">Invited</th>
             </tr>
           </thead>
@@ -75,6 +76,22 @@ function OnboardingLogSection({ items }: { items: OnboardingInviteLogItem[] }) {
                   {item.teamName ?? <span className="text-xs">—</span>}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground hidden md:table-cell text-xs">{item.email}</td>
+                <td className="px-4 py-3">
+                  {item.lastLoginAt ? (
+                    <div className="flex flex-col gap-0.5">
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                        <CheckCircle className="w-3 h-3" /> Logged in
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {format(new Date(item.lastLoginAt), "d MMM yyyy")}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
+                      <LogIn className="w-3 h-3" /> Not yet
+                    </span>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-right text-xs text-muted-foreground whitespace-nowrap">
                   <span className="flex items-center justify-end gap-1">
                     <Clock className="w-3 h-3" />
