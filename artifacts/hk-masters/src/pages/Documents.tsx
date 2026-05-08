@@ -141,8 +141,9 @@ export default function Documents() {
       toast({ title: "Document saved" })
       setIsModalOpen(false)
       resetForm()
-    } catch {
-      toast({ title: "Failed to save document", variant: "destructive" })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error"
+      toast({ title: "Failed to save document", description: msg, variant: "destructive" })
     }
   }
 
