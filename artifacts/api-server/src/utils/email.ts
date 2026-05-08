@@ -93,11 +93,11 @@ function emailShell(headerBg: string, title: string, body: string): string {
           <td style="padding:20px 32px 28px 32px;border-top:1px solid #e5e7eb;">
             <table width="100%" cellpadding="0" cellspacing="0"><tr>
               <td>
-                <p style="margin:0;font-size:13px;font-weight:600;color:#006B3C;">The HK Masters Hockey Team</p>
+                <p style="margin:0;font-size:13px;font-weight:600;color:#1E3A6E;">The HK Masters Hockey Team</p>
                 <p style="margin:4px 0 0 0;font-size:12px;color:#9ca3af;">HK 2026 Masters World Cup</p>
               </td>
               <td align="right">
-                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#006B3C;margin-right:2px;"></span>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#1E3A6E;margin-right:2px;"></span>
                 <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#DE2910;"></span>
               </td>
             </tr></table>
@@ -531,7 +531,7 @@ export async function sendOnboardingInviteEmail(opts: {
   const link = `${PUBLIC_URL}/my-details/${encodeURIComponent(opts.accessToken)}`;
 
   const html = emailShell(
-    "#006B3C",
+    "#1E3A6E",
     "Complete your tournament profile",
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
@@ -541,17 +541,17 @@ export async function sendOnboardingInviteEmail(opts: {
       To finalise your spot, we need a few personal details — passport info, flight plans, kit sizes, dietary requirements and emergency contact. You can fill it all in via your private link below. No password needed; just click and go.
     </p>
     <p style="margin:0 0 24px 0;text-align:center;">
-      <a href="${link}" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:6px;">Complete my details</a>
+      <a href="${link}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:6px;">Complete my details</a>
     </p>
     <p style="margin:0 0 16px 0;font-size:13px;color:#6b7280;line-height:1.6;">
       Or paste this link into your browser:<br>
-      <a href="${link}" style="color:#006B3C;text-decoration:none;word-break:break-all;">${link}</a>
+      <a href="${link}" style="color:#1E3A6E;text-decoration:none;word-break:break-all;">${link}</a>
     </p>
     <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
       You can come back to update your details any time before the tournament.
     </p>
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
-      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
     </p>`
   );
 
@@ -1016,7 +1016,7 @@ export async function sendPlayerLoginCodeEmail(opts: {
   const safeCode = escapeHtml(opts.code);
 
   const html = emailShell(
-    "#006B3C",
+    "#1E3A6E",
     "Your sign-in code",
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
@@ -1029,7 +1029,7 @@ export async function sendPlayerLoginCodeEmail(opts: {
       This code expires in ${opts.expiresInMinutes} minutes. If you didn't ask to sign in, you can ignore this email.
     </p>
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
-      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
     </p>`
   );
 
@@ -1139,13 +1139,13 @@ export async function sendBulkAnnouncementEmail(opts: {
   const safeBody = escapeHtml(opts.body).replace(/\n/g, "<br>");
 
   const html = emailShell(
-    "#006B3C",
+    "#1E3A6E",
     opts.subject,
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
     <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${safeBody}</div>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
     <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
-      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
     </p>`
   );
 
