@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { requireSession, getSessionLabel } from "../middleware/adminSession";
 import { requirePlayerSession } from "../middleware/playerSession";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router = Router();
 
@@ -63,6 +64,33 @@ function mapDocumentForPlayer(doc: typeof documentsTable.$inferSelect) {
     fileSize: doc.fileSize,
   };
 }
+
+router.post("/upload-url", requireSession, async (_req, res) => {
+  const storage = new ObjectStorageService();
+  const uploadUrl = await storage.getObjectEntityUploadURL();
+  const objectPath = storage.normalizeObjectEntityPath(uploadUrl);
+  res.json({ uploadUrl, objectPath });
+});
+
+router.use("/file", async (req, res, next) => {
+  const objectPath = req.path;
+  const storage = new ObjectStorageService();
+  try {
+    const file = await storage.getObjectEntityFile(objectPath);
+    const [metadata] = await file.getMetadata();
+    res.set("Content-Type", (metadata.contentType as string) || "application/pdf");
+    res.set("Content-Disposition", `inline; filename="${file.name.split("/").pop()}"`);
+    res.set("Cache-Control", "private, max-age=3600");
+    if (metadata.size) res.set("Content-Length", String(metadata.size));
+    file.createReadStream().pipe(res);
+  } catch (e) {
+    if (e instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    next(e);
+  }
+});
 
 router.get("/", requireAdminAccess, async (_req, res) => {
   const docs = await db

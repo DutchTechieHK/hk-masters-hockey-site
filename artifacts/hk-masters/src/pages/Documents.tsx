@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useRef } from "react"
 import { useListDocuments, useCreateDocument, useDeleteDocument } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -9,8 +9,7 @@ import { Plus, Trash2, Download, FolderOpen, FileText, AlertTriangle, Upload, X 
 import { useToast } from "@/hooks/use-toast"
 import type { DocumentItem } from "@workspace/api-client-react"
 
-const CLOUD_NAME = "djyvdrhal"
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "hk_masters_unsigned"
+const ADMIN_SESSION_KEY = "hkm_admin_session"
 
 type DocCategory = "mandatory-form" | "regulation" | "information"
 
@@ -51,20 +50,6 @@ function formatDate(iso?: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-interface CloudinaryWidget {
-  open: () => void
-}
-declare global {
-  interface Window {
-    cloudinary: {
-      createUploadWidget: (
-        opts: Record<string, unknown>,
-        cb: (err: unknown, result: { event: string; info: { secure_url: string; original_filename: string; bytes: number; format: string } }) => void
-      ) => CloudinaryWidget
-    }
-  }
-}
-
 export default function Documents() {
   const { toast } = useToast()
   const { data: documents = [], isLoading } = useListDocuments()
@@ -73,62 +58,64 @@ export default function Documents() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
-  const [widgetLoaded, setWidgetLoaded] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState<DocCategory>("mandatory-form")
   const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string; size: number } | null>(null)
 
-  useEffect(() => {
-    if (document.getElementById("cloudinary-widget-script")) {
-      setWidgetLoaded(true)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast({ title: "Only PDF files are allowed", variant: "destructive" })
       return
     }
-    const script = document.createElement("script")
-    script.id = "cloudinary-widget-script"
-    script.src = "https://upload-widget.cloudinary.com/global/all.js"
-    script.onload = () => setWidgetLoaded(true)
-    document.head.appendChild(script)
-  }, [])
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large — max 20 MB", variant: "destructive" })
+      return
+    }
 
-  const openUploadWidget = () => {
-    if (!widgetLoaded || !window.cloudinary) return
     setUploading(true)
-    const w = window.cloudinary.createUploadWidget(
-      {
-        cloudName: CLOUD_NAME,
-        uploadPreset: UPLOAD_PRESET,
-        multiple: false,
-        maxFiles: 1,
-        resourceType: "auto",
-        sources: ["local"],
-        clientAllowedFormats: ["pdf"],
-        maxFileSize: 20000000,
-      },
-      (err, result) => {
-        if (err) {
-          setUploading(false)
-          toast({ title: "Upload failed", variant: "destructive" })
-          return
+    setUploadProgress(0)
+
+    try {
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem(ADMIN_SESSION_KEY) : null
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (token) headers["x-session-token"] = token
+
+      const res = await fetch("/api/documents/upload-url", { method: "POST", headers })
+      if (!res.ok) throw new Error("Failed to get upload URL")
+      const { uploadUrl, objectPath } = (await res.json()) as { uploadUrl: string; objectPath: string }
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open("PUT", uploadUrl)
+        xhr.setRequestHeader("Content-Type", file.type || "application/pdf")
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
         }
-        if (result.event === "success") {
-          const info = result.info
-          const ext = info.format ? `.${info.format}` : ""
-          const name = info.original_filename
-            ? `${info.original_filename}${ext}`
-            : info.secure_url.split("/").pop() ?? "document"
-          setUploadedFile({ url: info.secure_url, name, size: info.bytes })
-          if (!title) setTitle(info.original_filename ?? "")
-          setUploading(false)
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve()
+          else reject(new Error(`GCS upload failed: ${xhr.status}`))
         }
-        if (result.event === "close") {
-          setUploading(false)
-        }
-      }
-    )
-    w.open()
+        xhr.onerror = () => reject(new Error("Network error during upload"))
+        xhr.send(file)
+      })
+
+      setUploadedFile({ url: `/api/documents/file${objectPath}`, name: file.name, size: file.size })
+      if (!title) setTitle(file.name.replace(/\.pdf$/i, ""))
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" })
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   const resetForm = () => {
@@ -305,18 +292,30 @@ export default function Documents() {
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={openUploadWidget}
-                disabled={!widgetLoaded || uploading}
-                className="w-full flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/10 transition-all disabled:opacity-50"
-              >
+              <label className={`w-full flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-dashed transition-all ${uploading ? "opacity-60 cursor-not-allowed border-border" : "cursor-pointer border-border hover:border-primary/50 hover:bg-muted/10"}`}>
                 <Upload className="w-6 h-6 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {uploading ? "Uploading…" : !widgetLoaded ? "Loading uploader…" : "Click to upload PDF or document"}
-                </span>
-                <span className="text-xs text-muted-foreground/60">PDF only — up to 20 MB</span>
-              </button>
+                {uploading ? (
+                  <div className="w-full max-w-[180px]">
+                    <div className="text-sm text-muted-foreground text-center mb-1.5">Uploading… {uploadProgress}%</div>
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span className="text-sm text-muted-foreground">Click to upload PDF</span>
+                    <span className="text-xs text-muted-foreground/60">PDF only — up to 20 MB</span>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="sr-only"
+                  disabled={uploading}
+                  onChange={handleFileChange}
+                />
+              </label>
             )}
           </div>
 
@@ -356,7 +355,7 @@ export default function Documents() {
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
             <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">This will permanently delete the document record. The file on Cloudinary will remain but will no longer be accessible from here.</p>
+            <p className="text-sm text-red-700">This will permanently delete the document record. Players will no longer be able to access this file.</p>
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
