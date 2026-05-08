@@ -347,7 +347,7 @@ export default function Home() {
         </div>
 
         {/* Stats Bar */}
-        <div className="mt-4 grid grid-cols-3 divide-x divide-[#5B9FE0]/20">
+        <div className="mt-4 grid grid-cols-3 divide-x divide-[#5B9FE0]/20 max-w-sm mx-auto">
           {content.stats.map((item, i) => (
             <div key={item.label} className="reveal text-center py-3" style={{ animationDelay: `${i * 0.12}s` }}>
               <p className="text-3xl font-extrabold text-white">{item.stat}</p>
