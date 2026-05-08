@@ -577,7 +577,7 @@ export default function Players() {
                               <CheckCircle className="w-3 h-3" /> Active
                             </span>
                             <span className="text-[10px] text-muted-foreground">
-                              {new Date(player.lastLoginAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                              {new Date(player.lastLoginAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })}
                             </span>
                           </div>
                         ) : player.onboardingInviteSentAt ? (

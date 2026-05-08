@@ -83,7 +83,7 @@ function OnboardingLogSection({ items }: { items: OnboardingInviteLogItem[] }) {
                         <CheckCircle className="w-3 h-3" /> Logged in
                       </span>
                       <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(item.lastLoginAt), "d MMM yyyy")}
+                        {format(new Date(item.lastLoginAt), "d MMM yyyy HH:mm")}
                       </span>
                     </div>
                   ) : (
