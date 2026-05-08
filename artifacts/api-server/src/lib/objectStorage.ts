@@ -116,10 +116,23 @@ export class ObjectStorageService {
     const fullPath = `${privateObjectDir}/uploads/${objectId}`;
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
-    const bucket = objectStorageClient.bucket(bucketName);
-    const file = bucket.file(objectName);
+    const signedUrl = await signObjectURL({
+      bucketName,
+      objectName,
+      method: "PUT",
+      ttlSec: 900,
+    });
 
-    await file.save(buffer, { contentType, resumable: false });
+    const response = await fetch(signedUrl, {
+      method: "PUT",
+      headers: { "Content-Type": contentType },
+      body: buffer,
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      throw new Error(`GCS upload failed: ${response.status} ${errText}`);
+    }
 
     return `/objects/uploads/${objectId}`;
   }
