@@ -89,7 +89,20 @@ router.use("/file", async (req, res, next) => {
   const storage = new ObjectStorageService();
   try {
     const signedUrl = await storage.getObjectEntityDownloadURL(objectPath);
-    res.redirect(302, signedUrl);
+    const gcsRes = await fetch(signedUrl);
+    console.log(`[download] GCS status=${gcsRes.status} content-length=${gcsRes.headers.get("content-length")} content-type=${gcsRes.headers.get("content-type")}`);
+    if (!gcsRes.ok) {
+      res.status(502).json({ error: "Failed to fetch file from storage" });
+      return;
+    }
+    const buffer = Buffer.from(await gcsRes.arrayBuffer());
+    console.log(`[download] buffer.length=${buffer.length}`);
+    const fileName = objectPath.split("/").pop() || "document.pdf";
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="${fileName}.pdf"`);
+    res.set("Content-Length", String(buffer.length));
+    res.set("Cache-Control", "private, no-cache");
+    res.send(buffer);
   } catch (e) {
     if (e instanceof ObjectNotFoundError) {
       res.status(404).json({ error: "Not found" });
