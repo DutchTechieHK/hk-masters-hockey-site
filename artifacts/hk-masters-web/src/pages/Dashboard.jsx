@@ -12,27 +12,66 @@ const CARDS = [
   { key: "profile", title: "My profile", desc: "Passport, kit sizes, dietary needs, emergency contact.", emoji: "👤", to: "profile" },
 ];
 
+const KIND_EMOJI = { training: "🏑", meeting: "💬", social: "🍻" };
+
+function formatNextSession(ev) {
+  const d = new Date(ev.startsAt);
+  const date = d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+  const start = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (!ev.endsAt) return `${date} · ${start}`;
+  const end = new Date(ev.endsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${date} · ${start}–${end}`;
+}
+
+function toIcsDate(iso) {
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) +
+    "T" + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z"
+  );
+}
+
+function downloadSingleIcs(ev) {
+  const end = ev.endsAt || new Date(new Date(ev.startsAt).getTime() + 3600000).toISOString();
+  const lines = [
+    "BEGIN:VCALENDAR", "VERSION:2.0",
+    "PRODID:-//HK Masters Hockey//Schedule//EN",
+    "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:hkm-event-${ev.id}@hkmastershockey.com`,
+    `DTSTAMP:${toIcsDate(new Date().toISOString())}`,
+    `DTSTART:${toIcsDate(ev.startsAt)}`,
+    `DTEND:${toIcsDate(end)}`,
+    `SUMMARY:${ev.title}`,
+    ev.location ? `LOCATION:${ev.location}` : "",
+    "END:VEVENT", "END:VCALENDAR",
+  ].filter(Boolean);
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `hkm-session-${ev.id}.ics`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [mandatoryCount, setMandatoryCount] = useState(0);
+  const [nextSession, setNextSession] = useState(null);
 
   useEffect(() => {
     const token = getPlayerToken();
-    if (!token) {
-      setLocation("/login");
-      return;
-    }
+    if (!token) { setLocation("/login"); return; }
     let cancelled = false;
     fetchMe()
       .then((data) => {
         if (cancelled) return;
-        if (!data) {
-          setLocation("/login");
-          return;
-        }
+        if (!data) { setLocation("/login"); return; }
         setPlayer(data);
         setLoading(false);
       })
@@ -63,6 +102,24 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    const token = getPlayerToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/player-auth/my-schedule`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : { events: [] })
+      .then(({ events }) => {
+        if (cancelled || !Array.isArray(events)) return;
+        const now = Date.now();
+        const next = events.find((ev) => new Date(ev.startsAt).getTime() > now);
+        setNextSession(next ?? null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const handleLogout = async () => {
     await logout();
     setLocation("/login");
@@ -73,10 +130,7 @@ export default function Dashboard() {
       setLocation(`/my-details/${encodeURIComponent(player.accessToken)}`);
       return;
     }
-    if (card.to) {
-      setLocation(`/${card.to}`);
-      return;
-    }
+    if (card.to) { setLocation(`/${card.to}`); return; }
   };
 
   if (loading) {
@@ -101,7 +155,9 @@ export default function Dashboard() {
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-start justify-between mb-8">
+
+        {/* Welcome header */}
+        <div className="flex items-start justify-between mb-6">
           <div>
             <p className="text-sm text-gray-600">Welcome back,</p>
             <h1 className="text-3xl font-bold text-gray-900">{player?.name}</h1>
@@ -117,6 +173,38 @@ export default function Dashboard() {
           </button>
         </div>
 
+        {/* Next session widget */}
+        {nextSession && (
+          <div className="mb-4 bg-[#1E3A6E] text-white rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-2xl shrink-0">{KIND_EMOJI[nextSession.kind] ?? "📌"}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-blue-200 mb-0.5">Next session</p>
+                <p className="font-semibold text-white leading-snug truncate">{nextSession.title}</p>
+                <p className="text-sm text-blue-100 mt-0.5">{formatNextSession(nextSession)}</p>
+                {nextSession.location && (
+                  <p className="text-xs text-blue-200 mt-0.5">📍 {nextSession.location}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => downloadSingleIcs(nextSession)}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition text-white whitespace-nowrap"
+              >
+                + Calendar
+              </button>
+              <button
+                onClick={() => setLocation("/schedule")}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white text-[#1E3A6E] hover:bg-blue-50 transition whitespace-nowrap"
+              >
+                Full schedule →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Mandatory forms alert */}
         {mandatoryCount > 0 && (
           <button
             onClick={() => setLocation("/documents")}
@@ -137,6 +225,7 @@ export default function Dashboard() {
           </button>
         )}
 
+        {/* Card grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CARDS.map((card) => {
             const enabled = card.key === "profile" || !!card.to;
