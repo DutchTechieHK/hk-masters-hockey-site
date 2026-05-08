@@ -257,9 +257,8 @@ router.patch("/self/:token", async (req, res) => {
     updates.passportCopyUploadedIsUpdate = isUpdate;
   }
 
-  const [updated] = Object.keys(updates).length > 0
-    ? await db.update(playersTable).set(updates).where(eq(playersTable.id, existing.id)).returning()
-    : [existing];
+  const allUpdates = { ...updates, lastPortalAccessAt: new Date() };
+  const [updated] = await db.update(playersTable).set(allUpdates).where(eq(playersTable.id, existing.id)).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
   res.json(mapSelfPlayer(updated, team?.name));
 
