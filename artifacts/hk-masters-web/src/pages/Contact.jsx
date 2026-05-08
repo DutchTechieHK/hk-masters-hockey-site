@@ -60,9 +60,9 @@ export default function Contact() {
 
           {/* Contact Form */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Send Us a Message</h2>
+            <h2 className="text-2xl font-bold text-[#1E3A6E] mb-6">Send Us a Message</h2>
             {submitted ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 text-center">
+              <div className="bg-[#EEF4FB] border border-[#BFD9F5] rounded-xl p-6 text-center">
                 <div className="w-12 h-12 bg-[#1E3A6E] rounded-full flex items-center justify-center mx-auto mb-3">
                   <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -163,7 +163,7 @@ export default function Contact() {
 
           {/* Contact Details + Map */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Club Details</h2>
+            <h2 className="text-2xl font-bold text-[#1E3A6E] mb-6">Club Details</h2>
             <div className="space-y-4 mb-8">
               <div className="flex items-start gap-3">
                 <div className="w-9 h-9 bg-[#1E3A6E]/10 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
@@ -247,7 +247,7 @@ export default function Contact() {
             </div>
 
             {/* Google Maps Embed */}
-            <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+            <div className="rounded-xl overflow-hidden border border-[#D9C9A8] shadow-sm">
               {content.maps_embed_src ? (
                 <iframe
                   src={content.maps_embed_src}
@@ -260,7 +260,7 @@ export default function Contact() {
                   title="Club location map"
                 />
               ) : (
-                <div className="h-52 bg-gray-100 flex flex-col items-center justify-center text-gray-400 gap-2">
+                <div className="h-52 bg-[#EDE0C4] flex flex-col items-center justify-center text-[#8A7A6A] gap-2">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>

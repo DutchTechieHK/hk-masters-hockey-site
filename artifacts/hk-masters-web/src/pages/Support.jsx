@@ -95,7 +95,7 @@ export default function Support() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Where We Are</h2>
+            <h2 className="text-2xl font-bold text-[#1E3A6E] mb-2">Where We Are</h2>
             <p className="text-gray-600 text-sm mb-6">
               Real-time fundraising progress for the Rotterdam 2026 campaign.
             </p>
@@ -118,7 +118,7 @@ export default function Support() {
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Pledge Your Support</h2>
+            <h2 className="text-2xl font-bold text-[#1E3A6E] mb-2">Pledge Your Support</h2>
             <p className="text-gray-600 text-sm mb-6">
               No payment is taken now — a team member will follow up with you directly with
               bank transfer details.
@@ -129,7 +129,7 @@ export default function Support() {
       </section>
 
       {/* Tiers */}
-      <section className="bg-[#1E3A6E]/5 border-y border-[#1E3A6E]/10 py-16">
+      <section className="bg-[#EDE0C4] border-y border-[#D9C9A8] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Supporter Tiers</h2>
@@ -187,7 +187,7 @@ export default function Support() {
 
       {/* Corporate sponsorship link */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-gray-50 rounded-2xl p-6 sm:p-8 border border-gray-100 text-center">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 border border-[#D9C9A8] text-center">
           <p className="text-gray-600 text-sm mb-3">
             Looking to partner with us as a corporate sponsor?
           </p>

@@ -45,14 +45,14 @@ export default function Rotterdam2026() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">About the Tournament</h2>
+            <h2 className="text-2xl font-bold text-[#1E3A6E] mb-4">About the Tournament</h2>
             <RichText content={content.overview_p1} className="text-gray-600 leading-relaxed mb-4" />
             <RichText content={content.overview_p2} className="text-gray-600 leading-relaxed mb-4" />
             <RichText content={content.overview_p3} className="text-gray-600 leading-relaxed" />
           </div>
 
-          <div className="bg-gray-50 rounded-2xl p-6">
-            <h3 className="font-bold text-gray-900 mb-4">Quick Facts</h3>
+          <div className="bg-white rounded-2xl p-6 border border-[#D9C9A8] shadow-sm">
+            <h3 className="font-bold text-[#1E3A6E] mb-4">Quick Facts</h3>
             <dl className="space-y-3">
               {content.quick_facts.map(({ label, value }) => (
                 <div key={label} className="flex justify-between gap-2">
@@ -66,9 +66,9 @@ export default function Rotterdam2026() {
       </section>
 
       {/* HK Squads */}
-      <section id="squads" className="bg-gray-50 py-16">
+      <section id="squads" className="bg-[#EDE0C4] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-8">Hong Kong Squads</h2>
+          <h2 className="text-2xl font-bold text-[#1E3A6E] mb-8">Hong Kong Squads</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {content.squads.map((squad) => {
               const teamData = teamsContent.squads.find(t => t.short_name === squad.category);
@@ -169,12 +169,12 @@ export default function Rotterdam2026() {
 
       {/* Key Dates */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-8">Key Dates</h2>
+        <h2 className="text-2xl font-bold text-[#1E3A6E] mb-8">Key Dates</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
               {content.key_dates.map((item, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                <tr key={i} className={i % 2 === 0 ? "bg-[#EDE0C4]" : "bg-white"}>
                   <td className="py-3 px-4 font-medium text-[#1E3A6E] whitespace-nowrap rounded-l-lg w-48">
                     {item.date}
                   </td>

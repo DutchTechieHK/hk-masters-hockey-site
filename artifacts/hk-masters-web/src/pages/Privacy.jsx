@@ -1,6 +1,6 @@
 export default function Privacy() {
   return (
-    <div className="bg-white">
+    <div>
       <section className="bg-[#1E3A6E] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">

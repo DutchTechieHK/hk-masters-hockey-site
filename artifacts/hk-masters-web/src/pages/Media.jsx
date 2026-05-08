@@ -64,10 +64,10 @@ export default function Media() {
 
       {/* Photo Albums */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Photo Gallery</h2>
+        <h2 className="text-2xl font-bold text-[#1E3A6E] mb-6">Photo Gallery</h2>
 
         {albums.length === 0 ? (
-          <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center text-gray-400">
+          <div className="rounded-xl border-2 border-dashed border-[#D9C9A8] py-16 text-center text-[#8A7A6A]">
             <svg className="w-10 h-10 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -84,7 +84,7 @@ export default function Media() {
                   className={`shrink-0 sm:shrink text-left px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
                     displayAlbum?.name === album.name
                       ? "bg-[#1E3A6E] text-white"
-                      : "text-gray-700 hover:bg-gray-100 bg-gray-50 sm:bg-transparent"
+                      : "text-[#1E3A6E] hover:bg-[#EDE0C4] bg-[#EDE0C4]/60 sm:bg-transparent"
                   }`}
                 >
                   <span className="block leading-snug whitespace-nowrap sm:whitespace-normal">{album.name}</span>
@@ -100,7 +100,7 @@ export default function Media() {
                 <>
                   <h3 className="text-lg font-bold text-gray-900 mb-4">{displayAlbum.name}</h3>
                   {(displayAlbum.photos || []).length === 0 ? (
-                    <div className="rounded-xl border-2 border-dashed border-gray-200 py-12 text-center text-gray-400">
+                    <div className="rounded-xl border-2 border-dashed border-[#D9C9A8] py-12 text-center text-[#8A7A6A]">
                       <p className="text-sm">No photos in this album yet</p>
                     </div>
                   ) : (
@@ -195,11 +195,11 @@ export default function Media() {
       )}
 
       {/* Videos Section */}
-      <section className="bg-gray-50 py-16">
+      <section className="bg-[#EDE0C4] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Videos</h2>
+          <h2 className="text-2xl font-bold text-[#1E3A6E] mb-6">Videos</h2>
           {videos.length === 0 ? (
-            <div className="rounded-xl border-2 border-dashed border-gray-200 py-16 text-center text-gray-400">
+            <div className="rounded-xl border-2 border-dashed border-[#D9C9A8] py-16 text-center text-[#8A7A6A]">
               <svg className="w-10 h-10 mx-auto mb-3 opacity-30" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
               </svg>

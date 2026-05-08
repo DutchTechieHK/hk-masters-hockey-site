@@ -233,7 +233,7 @@ export default function Schedule() {
             Could not load match schedule. Please try again later.
           </div>
         ) : matches.length === 0 ? (
-          <div className="bg-gray-50 rounded-2xl p-12 text-center">
+          <div className="bg-white rounded-2xl p-12 text-center border border-[#D9C9A8]">
             <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -246,7 +246,7 @@ export default function Schedule() {
               <section className="mb-16">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                   <div className="flex items-center gap-3">
-                    <h2 className="text-2xl font-bold text-gray-900">Upcoming Fixtures</h2>
+                    <h2 className="text-2xl font-bold text-[#1E3A6E]">Upcoming Fixtures</h2>
                     <span className="bg-[#1E3A6E] text-white text-xs font-bold px-2.5 py-1 rounded-full">
                       {upcoming.length}
                     </span>
@@ -286,7 +286,7 @@ export default function Schedule() {
 
             {pastGroups.length > 0 && (
               <section>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Results</h2>
+                <h2 className="text-2xl font-bold text-[#1E3A6E] mb-6">Results</h2>
                 <div className="space-y-10">
                   {pastGroups.map((g) => (
                     <div key={g.date}>
