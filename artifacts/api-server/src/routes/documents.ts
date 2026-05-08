@@ -77,10 +77,8 @@ router.post("/upload", requireSession, upload.single("file"), async (req, res) =
     res.status(400).json({ error: "Only PDF files are allowed" });
     return;
   }
-  console.log(`[upload] multer buffer length: ${req.file.buffer.length}, originalname: ${req.file.originalname}`);
   const storage = new ObjectStorageService();
   const objectPath = await storage.uploadObjectEntity(req.file.buffer, "application/pdf");
-  console.log(`[upload] objectPath returned: ${objectPath}`);
   res.json({ objectPath });
 });
 
@@ -90,13 +88,11 @@ router.use("/file", async (req, res, next) => {
   try {
     const signedUrl = await storage.getObjectEntityDownloadURL(objectPath);
     const gcsRes = await fetch(signedUrl);
-    console.log(`[download] GCS status=${gcsRes.status} content-length=${gcsRes.headers.get("content-length")} content-type=${gcsRes.headers.get("content-type")}`);
     if (!gcsRes.ok) {
       res.status(502).json({ error: "Failed to fetch file from storage" });
       return;
     }
     const buffer = Buffer.from(await gcsRes.arrayBuffer());
-    console.log(`[download] buffer.length=${buffer.length}`);
     const fileName = objectPath.split("/").pop() || "document.pdf";
     res.set("Content-Type", "application/pdf");
     res.set("Content-Disposition", `attachment; filename="${fileName}.pdf"`);
