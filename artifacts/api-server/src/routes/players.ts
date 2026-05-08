@@ -133,6 +133,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
 });
 
 const SELF_EDITABLE_FIELDS = [
+  "name",
   "phone",
   "dateOfBirth",
   "nationality",

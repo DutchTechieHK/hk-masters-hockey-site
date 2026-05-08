@@ -319,6 +319,7 @@ export const UpdateSelfPlayerParams = zod.object({
 });
 
 export const UpdateSelfPlayerBody = zod.object({
+  name: zod.string().optional(),
   phone: zod.string().optional(),
   dateOfBirth: zod.string().optional(),
   nationality: zod.string().optional(),

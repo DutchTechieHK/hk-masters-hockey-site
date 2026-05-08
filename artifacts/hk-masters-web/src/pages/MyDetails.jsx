@@ -26,6 +26,7 @@ const SECTIONS = [
   {
     title: "Passport & personal",
     fields: [
+      { key: "name", label: "Full name", type: "text", placeholder: "Your full name" },
       { key: "passportNumber", label: "Passport number", type: "text", placeholder: "A1234567" },
       { key: "passportExpiry", label: "Passport expiry", type: "date", placeholder: "" },
       { key: "nationality", label: "Nationality", type: "text", placeholder: "e.g. Hong Kong" },
@@ -484,7 +485,7 @@ export default function MyDetails() {
             Hi {player.name.split(" ")[0]}, please review your details
           </h1>
           <p className="text-gray-600">
-            Update your travel, passport, emergency contact and kit sizes. Your name, team, shirt number and email are
+            Update your travel, passport, emergency contact and kit sizes. Your team, shirt number and email are
             managed by the admin — contact them if anything's wrong there.
           </p>
         </div>
@@ -492,11 +493,7 @@ export default function MyDetails() {
         {/* Locked summary */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-6">
           <p className="text-xs uppercase tracking-wide font-semibold text-gray-500 mb-3">Confirmed by the admin</p>
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <div>
-              <dt className="text-gray-500 text-xs mb-0.5">Name</dt>
-              <dd className="font-semibold text-gray-900 truncate">{player.name}</dd>
-            </div>
+          <dl className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
               <dt className="text-gray-500 text-xs mb-0.5">Team</dt>
               <dd className="font-semibold text-gray-900 truncate">{player.teamName || "—"}</dd>

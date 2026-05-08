@@ -7,6 +7,7 @@
  */
 
 export interface UpdateSelfPlayer {
+  name?: string;
   phone?: string;
   dateOfBirth?: string;
   nationality?: string;
