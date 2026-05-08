@@ -48,7 +48,7 @@ router.get("/", async (req, res) => {
   const rows = query.teamId
     ? await baseQuery.where(eq(matchesTable.teamId, query.teamId))
     : await baseQuery;
-  const isAdmin = hasAdminAccess(req);
+  const isAdmin = await hasAdminAccess(req);
   res.json(rows.map(({ match, teamName, teamCategory }) => serialize(match, teamName, teamCategory, isAdmin)));
 });
 

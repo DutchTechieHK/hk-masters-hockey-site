@@ -6,8 +6,8 @@ import { requirePlayerSession } from "../middleware/playerSession";
 
 const router: IRouter = Router();
 
-function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
-  if (hasAdminAccess(req)) {
+async function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
+  if (await hasAdminAccess(req)) {
     (req as Request & { isAdmin?: boolean }).isAdmin = true;
     return next();
   }

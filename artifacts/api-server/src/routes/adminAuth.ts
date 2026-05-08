@@ -3,7 +3,7 @@ import { createSession, destroySession, validateSession } from "../middleware/ad
 
 const router = Router();
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { password } = req.body ?? {};
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
@@ -14,23 +14,23 @@ router.post("/", (req, res) => {
     res.status(401).json({ error: "Invalid password" });
     return;
   }
-  const token = createSession();
+  const token = await createSession();
   res.json({ token });
 });
 
-router.delete("/", (req, res) => {
+router.delete("/", async (req, res) => {
   const token =
     (req.headers["x-session-token"] as string | undefined) ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  if (token) destroySession(token);
+  if (token) await destroySession(token);
   res.status(204).send();
 });
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const token =
     (req.headers["x-session-token"] as string | undefined) ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  if (token && validateSession(token)) {
+  if (token && (await validateSession(token))) {
     res.json({ authenticated: true });
   } else {
     res.json({ authenticated: false });

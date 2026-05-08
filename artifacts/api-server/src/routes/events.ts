@@ -9,8 +9,8 @@ const router: IRouter = Router();
 // GET /api/events accepts either an admin session OR a player session.
 // - Admin callers see every event (used by the admin Events page).
 // - Player callers see only events visible to them (team-scoped or all-squad).
-function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
-  if (hasAdminAccess(req)) {
+async function requireAdminOrPlayer(req: Request, res: Response, next: NextFunction) {
+  if (await hasAdminAccess(req)) {
     (req as Request & { isAdmin?: boolean }).isAdmin = true;
     return next();
   }

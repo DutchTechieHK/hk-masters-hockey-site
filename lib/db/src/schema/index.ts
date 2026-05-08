@@ -15,3 +15,4 @@ export * from "./announcements";
 export * from "./email-blasts";
 export * from "./email-templates";
 export * from "./documents";
+export * from "./admin-sessions";

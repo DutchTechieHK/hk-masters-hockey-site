@@ -1,7 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { validateSession } from "./adminSession.js";
 
-export function requireAdminKey(req: Request, res: Response, next: NextFunction) {
+export async function requireAdminKey(req: Request, res: Response, next: NextFunction): Promise<void> {
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) {
     console.error("[adminAuth] ADMIN_API_KEY is not set — blocking all admin requests");
@@ -18,19 +18,20 @@ export function requireAdminKey(req: Request, res: Response, next: NextFunction)
   next();
 }
 
-export function requireAdminAccess(req: Request, res: Response, next: NextFunction) {
+export async function requireAdminAccess(req: Request, res: Response, next: NextFunction): Promise<void> {
   const sessionToken =
     (req.headers["x-session-token"] as string | undefined) ||
     undefined;
-  if (sessionToken && validateSession(sessionToken)) {
-    return next();
+  if (sessionToken && (await validateSession(sessionToken))) {
+    next();
+    return;
   }
   return requireAdminKey(req, res, next);
 }
 
-export function hasAdminAccess(req: Request): boolean {
+export async function hasAdminAccess(req: Request): Promise<boolean> {
   const sessionToken = req.headers["x-session-token"] as string | undefined;
-  if (sessionToken && validateSession(sessionToken)) return true;
+  if (sessionToken && (await validateSession(sessionToken))) return true;
   const adminKey = process.env.ADMIN_API_KEY;
   if (!adminKey) return false;
   const provided =

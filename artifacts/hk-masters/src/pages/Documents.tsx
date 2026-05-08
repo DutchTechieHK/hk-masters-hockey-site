@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useRef } from "react"
 import { useListDocuments, useCreateDocument, useDeleteDocument } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -8,19 +8,7 @@ import { Plus, Trash2, Download, FolderOpen, FileText, AlertTriangle, Upload, X 
 import { useToast } from "@/hooks/use-toast"
 import type { DocumentItem } from "@workspace/api-client-react"
 
-const CLOUD_NAME = "djyvdrhal"
-const DOCS_UPLOAD_PRESET = "hk_masters_docs_unsigned"
-
-type CloudinaryWidget = {
-  createUploadWidget: (
-    opts: Record<string, unknown>,
-    cb: (err: unknown, result: CloudinaryResult) => void
-  ) => { open: () => void }
-}
-type CloudinaryResult = {
-  event: string
-  info: { secure_url: string; original_filename: string; format: string; bytes: number }
-}
+const ADMIN_SESSION_KEY = "hkm_admin_session"
 
 type DocCategory = "mandatory-form" | "regulation" | "information"
 
@@ -63,66 +51,66 @@ export default function Documents() {
   const createMutation = useCreateDocument()
   const deleteMutation = useDeleteDocument()
 
-  const [widgetLoaded, setWidgetLoaded] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState<DocCategory>("mandatory-form")
   const [uploadedFile, setUploadedFile] = useState<{ url: string; name: string; size: number } | null>(null)
 
-  useEffect(() => {
-    if (document.getElementById("cloudinary-widget-script")) {
-      setWidgetLoaded(true)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      toast({ title: "Only PDF files are allowed", variant: "destructive" })
       return
     }
-    const script = document.createElement("script")
-    script.id = "cloudinary-widget-script"
-    script.src = "https://upload-widget.cloudinary.com/global/all.js"
-    script.onload = () => setWidgetLoaded(true)
-    document.head.appendChild(script)
-  }, [])
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large — max 20 MB", variant: "destructive" })
+      return
+    }
 
-  const openUploadWidget = () => {
-    const cld = (window as unknown as { cloudinary?: CloudinaryWidget }).cloudinary
-    if (!widgetLoaded || !cld) return
     setUploading(true)
-    const w = cld.createUploadWidget(
-      {
-        cloudName: CLOUD_NAME,
-        uploadPreset: DOCS_UPLOAD_PRESET,
-        resourceType: "raw",
-        multiple: false,
-        maxFiles: 1,
-        clientAllowedFormats: ["pdf"],
-        maxFileSize: 20971520,
-        sources: ["local"],
-        showAdvancedOptions: false,
-        cropping: false,
-        showSkipCropButton: false,
-        showPoweredBy: false,
-      },
-      (_err: unknown, result: CloudinaryResult) => {
-        if (_err) {
-          setUploading(false)
-          toast({ title: "Upload failed", variant: "destructive" })
-          return
+    setUploadProgress(0)
+
+    try {
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem(ADMIN_SESSION_KEY) : null
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (token) headers["x-session-token"] = token
+
+      const res = await fetch("/api/documents/upload-url", { method: "POST", headers })
+      if (!res.ok) throw new Error("Failed to get upload URL")
+      const { uploadUrl, objectPath } = (await res.json()) as { uploadUrl: string; objectPath: string }
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest()
+        xhr.open("PUT", uploadUrl)
+        xhr.setRequestHeader("Content-Type", file.type || "application/pdf")
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 100))
         }
-        if (result.event === "success") {
-          const { secure_url, original_filename, format, bytes } = result.info
-          const fileName = `${original_filename}.${format}`
-          setUploadedFile({ url: secure_url, name: fileName, size: bytes })
-          if (!title) setTitle(original_filename.replace(/_/g, " "))
-          setUploading(false)
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve()
+          else reject(new Error(`Upload failed: ${xhr.status}`))
         }
-        if (result.event === "close") {
-          setUploading(false)
-        }
-      }
-    )
-    w.open()
+        xhr.onerror = () => reject(new Error("Network error during upload"))
+        xhr.send(file)
+      })
+
+      setUploadedFile({ url: `/api/documents/file${objectPath}`, name: file.name, size: file.size })
+      if (!title) setTitle(file.name.replace(/\.pdf$/i, ""))
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" })
+    } finally {
+      setUploading(false)
+      setUploadProgress(0)
+    }
   }
 
   const resetForm = () => {
@@ -255,7 +243,6 @@ export default function Documents() {
       {/* Upload modal */}
       <Modal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); resetForm() }} title="Upload Document">
         <div className="space-y-4 p-4">
-          {/* Category */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">Category</label>
             <div className="grid grid-cols-1 gap-2">
@@ -280,7 +267,6 @@ export default function Documents() {
             </div>
           </div>
 
-          {/* File upload */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-2">File</label>
             {uploadedFile ? (
@@ -290,49 +276,36 @@ export default function Documents() {
                   <div className="text-sm font-medium text-green-800 truncate">{uploadedFile.name}</div>
                   <div className="text-xs text-green-600">{formatBytes(uploadedFile.size)}</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setUploadedFile(null)}
-                  className="p-1 text-green-600 hover:text-green-800 rounded"
-                >
+                <button type="button" onClick={() => setUploadedFile(null)} className="p-1 text-green-600 hover:text-green-800 rounded">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={openUploadWidget}
-                disabled={uploading || !widgetLoaded}
-                className={`w-full flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-dashed transition-all ${
-                  uploading || !widgetLoaded
-                    ? "opacity-60 cursor-not-allowed border-border"
-                    : "cursor-pointer border-border hover:border-primary/50 hover:bg-muted/10"
-                }`}
-              >
+              <label className={`w-full flex flex-col items-center gap-2 p-6 rounded-lg border-2 border-dashed transition-all ${uploading ? "opacity-60 cursor-not-allowed border-border" : "cursor-pointer border-border hover:border-primary/50 hover:bg-muted/10"}`}>
                 <Upload className="w-6 h-6 text-muted-foreground" />
                 {uploading ? (
-                  <span className="text-sm text-muted-foreground">Uploading…</span>
+                  <div className="w-full max-w-[180px]">
+                    <div className="text-sm text-muted-foreground text-center mb-1.5">Uploading… {uploadProgress}%</div>
+                    <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                    </div>
+                  </div>
                 ) : (
                   <>
-                    <span className="text-sm text-muted-foreground">Click to choose a PDF</span>
+                    <span className="text-sm text-muted-foreground">Click to upload PDF</span>
                     <span className="text-xs text-muted-foreground/60">PDF only — up to 20 MB</span>
                   </>
                 )}
-              </button>
+                <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" className="sr-only" disabled={uploading} onChange={handleFileChange} />
+              </label>
             )}
           </div>
 
-          {/* Title */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">Title</label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Medical Declaration Form"
-            />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Medical Declaration Form" />
           </div>
 
-          {/* Description */}
           <div>
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">
               Description <span className="font-normal">(optional)</span>
@@ -355,14 +328,11 @@ export default function Documents() {
         </div>
       </Modal>
 
-      {/* Delete confirmation modal */}
       <Modal isOpen={confirmDeleteId !== null} onClose={() => setConfirmDeleteId(null)} title="Delete Document">
         <div className="p-4 space-y-4">
           <div className="flex items-start gap-3 p-3 rounded-lg bg-red-50 border border-red-100">
             <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-red-700">
-              This will permanently delete the document record. The file will remain in Cloudinary but players will no longer be able to access it through the portal.
-            </p>
+            <p className="text-sm text-red-700">This will permanently delete the document record. Players will no longer be able to access this file.</p>
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>

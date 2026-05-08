@@ -117,7 +117,7 @@ router.post("/", requireSession, async (req, res) => {
   const token =
     (req.headers["x-session-token"] as string | undefined) ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  const uploadedByEmail = token ? (getSessionLabel(token) ?? "Admin") : "Admin";
+  const uploadedByEmail = token ? ((await getSessionLabel(token)) ?? "Admin") : "Admin";
   const [doc] = await db
     .insert(documentsTable)
     .values({ ...parsed, uploadedByEmail })
