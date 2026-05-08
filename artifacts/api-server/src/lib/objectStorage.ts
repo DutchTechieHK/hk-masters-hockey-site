@@ -123,15 +123,22 @@ export class ObjectStorageService {
       ttlSec: 900,
     });
 
+    console.log(`[gcs-upload] buffer.length=${buffer.length} contentType=${contentType} objectName=${objectName}`);
+
     const response = await fetch(signedUrl, {
       method: "PUT",
-      headers: { "Content-Type": contentType },
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": buffer.length.toString(),
+      },
       body: buffer,
     });
 
+    const responseText = await response.text().catch(() => "");
+    console.log(`[gcs-upload] GCS response status=${response.status} body=${responseText.slice(0, 300)}`);
+
     if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      throw new Error(`GCS upload failed: ${response.status} ${errText}`);
+      throw new Error(`GCS upload failed: ${response.status} ${responseText}`);
     }
 
     return `/objects/uploads/${objectId}`;
