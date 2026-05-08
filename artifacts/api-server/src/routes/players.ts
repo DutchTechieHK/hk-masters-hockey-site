@@ -1,8 +1,8 @@
 import { Router } from "express";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable } from "@workspace/db/schema";
-import { eq, isNull, isNotNull, or, and, inArray, desc } from "drizzle-orm";
+import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable, playerSessionsTable } from "@workspace/db/schema";
+import { eq, isNull, isNotNull, or, and, inArray, desc, sql } from "drizzle-orm";
 import {
   CreatePlayerBody,
   UpdatePlayerBody,
@@ -25,7 +25,7 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
-export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
+export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null, lastLoginAt?: string | null) {
   return {
     id: player.id,
     teamId: player.teamId,
@@ -67,28 +67,41 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
     feeReminderSentAt: player.feeReminderSentAt?.toISOString() ?? null,
     onboardingInviteSentAt: player.onboardingInviteSentAt?.toISOString() ?? null,
+    lastLoginAt: lastLoginAt ?? null,
     createdAt: player.createdAt?.toISOString(),
   };
 }
 
 router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListPlayersQueryParams.parse(req.query);
+
+  const lastLoginSq = db
+    .select({
+      playerId: playerSessionsTable.playerId,
+      lastLoginAt: sql<string>`max(${playerSessionsTable.createdAt})`.as("last_login_at"),
+    })
+    .from(playerSessionsTable)
+    .groupBy(playerSessionsTable.playerId)
+    .as("last_logins");
+
   let players;
   if (query.teamId) {
     players = await db
-      .select({ player: playersTable, teamName: teamsTable.name })
+      .select({ player: playersTable, teamName: teamsTable.name, lastLoginAt: lastLoginSq.lastLoginAt })
       .from(playersTable)
       .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+      .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
       .where(eq(playersTable.teamId, query.teamId))
       .orderBy(playersTable.id);
   } else {
     players = await db
-      .select({ player: playersTable, teamName: teamsTable.name })
+      .select({ player: playersTable, teamName: teamsTable.name, lastLoginAt: lastLoginSq.lastLoginAt })
       .from(playersTable)
       .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+      .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
       .orderBy(playersTable.id);
   }
-  res.json(players.map(({ player, teamName }) => mapPlayer(player, teamName)));
+  res.json(players.map(({ player, teamName, lastLoginAt }) => mapPlayer(player, teamName, lastLoginAt)));
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {

@@ -145,6 +145,7 @@ export interface Player {
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
   onboardingInviteSentAt?: string | null;
+  lastLoginAt?: string | null;
   createdAt?: string;
 }
 

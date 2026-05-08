@@ -504,6 +504,7 @@ export default function Players() {
                 <th className="px-4 py-4 font-semibold hidden sm:table-cell">Team</th>
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
                 <th className="px-4 py-4 font-semibold hidden lg:table-cell">Nationality</th>
+                <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
                 <th className="px-4 py-4 font-semibold">Fee</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Passport Expiry</th>
                 <th className="px-4 py-4 font-semibold text-right">Actions</th>
@@ -567,6 +568,25 @@ export default function Players() {
                       {/* Nationality */}
                       <td className="px-4 py-4 hidden lg:table-cell text-foreground">
                         {player.nationality || <span className="text-muted-foreground text-xs">—</span>}
+                      </td>
+                      {/* Portal login status */}
+                      <td className="px-4 py-4 hidden xl:table-cell">
+                        {player.lastLoginAt ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                              <CheckCircle className="w-3 h-3" /> Active
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(player.lastLoginAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                            </span>
+                          </div>
+                        ) : player.onboardingInviteSentAt ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600">
+                            <Clock className="w-3 h-3" /> Invited
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </td>
                       {/* Fee */}
                       <td className="px-4 py-4">
