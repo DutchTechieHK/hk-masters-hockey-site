@@ -25,7 +25,10 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
-export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null, lastLoginAt?: string | null) {
+export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null, lastSessionAt?: string | null) {
+  const t1 = player.lastPortalAccessAt?.toISOString() ?? null;
+  const t2 = lastSessionAt ?? null;
+  const lastLoginAt = t1 && t2 ? (t1 > t2 ? t1 : t2) : (t1 ?? t2);
   return {
     id: player.id,
     teamId: player.teamId,
@@ -206,6 +209,11 @@ router.get("/self/:token", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  // Record when the player last accessed the portal via their invite link
+  await db
+    .update(playersTable)
+    .set({ lastPortalAccessAt: new Date() })
+    .where(eq(playersTable.id, row.player.id));
   res.json(mapSelfPlayer(row.player, row.teamName));
 });
 
@@ -605,14 +613,14 @@ router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
 });
 
 router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
-  const lastLoginSq = db
+  const lastSessionSq = db
     .select({
       playerId: playerSessionsTable.playerId,
-      lastLoginAt: sql<string>`max(${playerSessionsTable.createdAt})`.as("last_login_at"),
+      lastSessionAt: sql<string>`max(${playerSessionsTable.createdAt})`.as("last_session_at"),
     })
     .from(playerSessionsTable)
     .groupBy(playerSessionsTable.playerId)
-    .as("last_logins");
+    .as("last_sessions");
 
   const rows = await db
     .select({
@@ -621,22 +629,28 @@ router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
       email: playersTable.email,
       teamName: teamsTable.name,
       invitedAt: playersTable.onboardingInviteSentAt,
-      lastLoginAt: lastLoginSq.lastLoginAt,
+      lastPortalAccessAt: playersTable.lastPortalAccessAt,
+      lastSessionAt: lastSessionSq.lastSessionAt,
     })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
-    .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
+    .leftJoin(lastSessionSq, eq(playersTable.id, lastSessionSq.playerId))
     .where(isNotNull(playersTable.onboardingInviteSentAt))
     .orderBy(desc(playersTable.onboardingInviteSentAt));
 
-  res.json(rows.map(r => ({
-    id: r.id,
-    name: r.name,
-    email: r.email,
-    teamName: r.teamName ?? null,
-    invitedAt: r.invitedAt!.toISOString(),
-    lastLoginAt: r.lastLoginAt ?? null,
-  })));
+  res.json(rows.map(r => {
+    const t1 = r.lastPortalAccessAt?.toISOString() ?? null;
+    const t2 = r.lastSessionAt ?? null;
+    const lastLoginAt = t1 && t2 ? (t1 > t2 ? t1 : t2) : (t1 ?? t2);
+    return {
+      id: r.id,
+      name: r.name,
+      email: r.email,
+      teamName: r.teamName ?? null,
+      invitedAt: r.invitedAt!.toISOString(),
+      lastLoginAt,
+    };
+  }));
 });
 
 router.get("/email-blasts", requireAdminAccess, async (req, res) => {
