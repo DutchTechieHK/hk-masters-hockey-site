@@ -130,6 +130,94 @@ function EventCard({ event, muted = false }) {
   );
 }
 
+function FunRunBanner({ data }) {
+  const handleRegister = () => {
+    if (window.filloutPopupEmbed) {
+      window.filloutPopupEmbed.openPopup(data.fillout_id);
+    } else {
+      window.open(`https://forms.fillout.com/t/${data.fillout_id}`, "_blank");
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-r from-[#1E3A6E] to-[#16305D] rounded-2xl overflow-hidden shadow-xl mb-8 border border-white/10">
+      <div className="flex flex-col sm:flex-row items-stretch">
+        {/* Accent stripe */}
+        <div className="w-full sm:w-2 bg-[#DE2910] shrink-0" />
+
+        {/* Content */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 px-6 py-7 flex-1">
+          {/* Icon */}
+          <div className="hidden sm:flex w-14 h-14 rounded-2xl bg-white/10 items-center justify-center shrink-0 text-3xl select-none">
+            🏃
+          </div>
+
+          {/* Text */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <span className="bg-[#DE2910] text-white text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                Fundraiser
+              </span>
+              <span className="text-white/40 text-xs hidden sm:inline">—</span>
+              <span className="text-white/60 text-xs font-medium">{data.subtitle}</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white leading-snug mb-2">
+              {data.title}
+            </h2>
+            <p className="text-white/70 text-sm leading-relaxed mb-4 max-w-xl">
+              {data.description}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {data.distance && (
+                <span className="inline-flex items-center gap-1.5 bg-white/10 text-white/80 text-xs font-semibold px-3 py-1 rounded-full">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  {data.distance}
+                </span>
+              )}
+              {data.date && (
+                <span className="inline-flex items-center gap-1.5 bg-white/10 text-white/80 text-xs font-semibold px-3 py-1 rounded-full">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  {data.date}
+                </span>
+              )}
+              {data.location && (
+                <span className="inline-flex items-center gap-1.5 bg-white/10 text-white/80 text-xs font-semibold px-3 py-1 rounded-full">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {data.location}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="shrink-0 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={handleRegister}
+              data-fillout-id={data.fillout_id}
+              data-fillout-embed-type="popup"
+              data-fillout-inherit-parameters
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#DE2910] hover:bg-[#c42510] text-white font-bold text-sm px-7 py-3.5 rounded-xl transition-all duration-200 shadow-lg hover:shadow-[#DE2910]/30 hover:-translate-y-0.5 active:translate-y-0"
+            >
+              Register Now
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const TABS = ["All", "Training", "Programme", "Social"];
 
 export default function Events() {
@@ -243,6 +331,10 @@ export default function Events() {
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        {content.fun_run?.enabled && (tab === "All" || tab === "Social") && (
+          <FunRunBanner data={content.fun_run} />
+        )}
 
         {loading && (
           <div className="text-center py-20 text-gray-400">Loading events…</div>
