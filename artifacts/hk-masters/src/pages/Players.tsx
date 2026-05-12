@@ -141,6 +141,7 @@ export default function Players() {
 
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
   const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
 
   const acknowledgePassport = (playerId: number) => {
@@ -221,11 +222,16 @@ export default function Players() {
     resolver: zodResolver(playerSchema)
   })
 
-  const filteredPlayers = players.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.nationality || "").toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredPlayers = players
+    .filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.nationality || "").toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => sortOrder === "asc"
+      ? a.name.localeCompare(b.name)
+      : b.name.localeCompare(a.name)
+    )
 
   const blankForm = (): Partial<PlayerFormValues> => ({
     teamId: teams.length > 0 ? teams[0].id : 0,
@@ -500,7 +506,15 @@ export default function Players() {
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
               <tr>
                 <th className="px-4 py-4 font-semibold">#</th>
-                <th className="px-4 py-4 font-semibold">Player</th>
+                <th className="px-4 py-4 font-semibold">
+                  <button
+                    onClick={() => setSortOrder(o => o === "asc" ? "desc" : "asc")}
+                    className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                  >
+                    Player
+                    <span className="text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
+                  </button>
+                </th>
                 <th className="px-4 py-4 font-semibold hidden sm:table-cell">Team</th>
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
                 <th className="px-4 py-4 font-semibold hidden lg:table-cell">Nationality</th>
