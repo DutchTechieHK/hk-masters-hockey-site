@@ -62,16 +62,37 @@ export default function PledgeForm({ onSuccess }) {
 
   if (submitted) {
     return (
-      <div className="bg-[#006B3C]/5 border border-[#006B3C]/20 rounded-2xl p-8 text-center">
-        <div className="w-14 h-14 bg-[#006B3C] rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-          </svg>
+      <div className="space-y-5">
+        <div className="bg-[#006B3C]/5 border border-[#006B3C]/20 rounded-2xl p-6 text-center">
+          <div className="w-12 h-12 bg-[#006B3C] rounded-full flex items-center justify-center mx-auto mb-3">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">Thank you for your pledge!</h3>
+          <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto">
+            Your support means a great deal to the team.
+          </p>
         </div>
-        <h3 className="text-xl font-bold text-gray-900 mb-2">Thank you for your pledge!</h3>
-        <p className="text-gray-600 leading-relaxed max-w-sm mx-auto">
-          Your support means a great deal to the team. We'll be in touch with details on how to complete your contribution.
-        </p>
+
+        <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
+          <p className="text-sm font-bold text-gray-900 mb-1">Pay now via PayMe</p>
+          <p className="text-xs text-gray-500 mb-4">
+            Open the PayMe app and scan the code below to send your{" "}
+            <span className="font-semibold text-gray-700">
+              HK${parseFloat(form.amount).toLocaleString()}
+            </span>{" "}
+            pledge.
+          </p>
+          <img
+            src="/payme-qr.jpg"
+            alt="PayMe QR code"
+            className="w-52 h-52 object-contain mx-auto rounded-xl"
+          />
+          <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+            Prefer bank transfer? A team member will be in touch with details.
+          </p>
+        </div>
       </div>
     );
   }
