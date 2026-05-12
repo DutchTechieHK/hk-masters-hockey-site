@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Gavel, ChevronDown, ChevronUp, Copy, Check, ToggleLeft, ToggleRight } from "lucide-react"
+import { Plus, Trash2, Edit2, Gavel, ChevronDown, ChevronUp, Copy, Check, ToggleLeft, ToggleRight, Upload, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 const SESSION_KEY = "hkm_admin_session"
@@ -76,6 +76,8 @@ export default function AuctionAdmin() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
+  const [imageUploading, setImageUploading] = useState(false)
+  const imageInputRef = useRef<HTMLInputElement>(null)
 
   const fetchData = useCallback(async () => {
     try {
@@ -183,6 +185,43 @@ export default function AuctionAdmin() {
       } finally {
         setBidsLoading(null)
       }
+    }
+  }
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Only image files are allowed (JPEG, PNG, GIF, WebP)", variant: "destructive" })
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Image too large — max 10 MB", variant: "destructive" })
+      return
+    }
+    setImageUploading(true)
+    try {
+      const token = getStoredToken()
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/auction/image-upload", {
+        method: "POST",
+        headers: token ? { "x-session-token": token } : {},
+        body: formData,
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? `Upload failed: ${res.status}`)
+      }
+      const { imageUrl } = await res.json() as { imageUrl: string }
+      setForm(p => ({ ...p, imageUrl }))
+      toast({ title: "Image uploaded" })
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setImageUploading(false)
     }
   }
 
@@ -375,8 +414,51 @@ export default function AuctionAdmin() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Image URL</label>
-            <Input value={form.imageUrl} onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))} placeholder="https://…" />
+            <label className="text-sm font-semibold">Image</label>
+            <div className="flex gap-2">
+              <Input
+                value={form.imageUrl}
+                onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))}
+                placeholder="https://… or upload below"
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={imageUploading}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border border-input transition-colors disabled:opacity-60 shrink-0"
+              >
+                {imageUploading ? (
+                  <span className="flex items-center gap-1.5"><span className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full inline-block" />Uploading…</span>
+                ) : (
+                  <><Upload className="w-4 h-4" />Upload</>
+                )}
+              </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+            </div>
+            {form.imageUrl && (
+              <div className="relative inline-block mt-1">
+                <img
+                  src={form.imageUrl}
+                  alt="Preview"
+                  className="w-24 h-24 object-cover rounded-lg border border-gray-200"
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, imageUrl: "" }))}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-gray-700 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

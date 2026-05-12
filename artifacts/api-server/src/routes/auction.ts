@@ -1,8 +1,13 @@
-import { Router, type Response } from "express";
+import { Router, type Response, type Request, type NextFunction } from "express";
+import multer from "multer";
 import { db } from "@workspace/db";
 import { auctionSettingsTable, auctionItemsTable, auctionBidsTable } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
 const sseClients = new Set<Response>();
 
@@ -61,6 +66,47 @@ async function getItemsWithTopBids(activeOnly = false) {
 }
 
 export const auctionAdminRouter = Router();
+
+auctionAdminRouter.post("/image-upload", requireAdminAccess, (req: Request, res: Response, next: NextFunction) => {
+  upload.single("file")(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        res.status(413).json({ error: "Image too large — max 10 MB" }); return;
+      }
+      res.status(400).json({ error: err.message }); return;
+    }
+    if (err) { next(err); return; }
+    next();
+  });
+}, async (req, res) => {
+  if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+  if (!ALLOWED_IMAGE_TYPES.includes(req.file.mimetype)) {
+    res.status(400).json({ error: "Only image files are allowed (JPEG, PNG, GIF, WebP)" }); return;
+  }
+  const storage = new ObjectStorageService();
+  const objectPath = await storage.uploadObjectEntity(req.file.buffer, req.file.mimetype);
+  const imageUrl = `/api/auction/image${objectPath}`;
+  res.json({ objectPath, imageUrl });
+});
+
+auctionAdminRouter.use("/image/objects", async (req, res, next) => {
+  const objectPath = `/objects${req.path}`;
+  const storage = new ObjectStorageService();
+  try {
+    const signedUrl = await storage.getObjectEntityDownloadURL(objectPath);
+    const gcsRes = await fetch(signedUrl);
+    if (!gcsRes.ok) { res.status(502).json({ error: "Failed to fetch image from storage" }); return; }
+    const buffer = Buffer.from(await gcsRes.arrayBuffer());
+    const contentType = gcsRes.headers.get("content-type") || "image/jpeg";
+    res.set("Content-Type", contentType);
+    res.set("Cache-Control", "public, max-age=31536000, immutable");
+    res.set("Content-Length", String(buffer.length));
+    res.send(buffer);
+  } catch (e) {
+    if (e instanceof ObjectNotFoundError) { res.status(404).json({ error: "Not found" }); return; }
+    next(e);
+  }
+});
 
 auctionAdminRouter.get("/settings", requireAdminAccess, async (_req, res) => {
   const settings = await getSettings();
