@@ -119,41 +119,47 @@ export default function Rotterdam2026() {
                   </button>
 
                   {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-gray-50">
+                    <div className="mt-3 pt-3 border-t border-gray-100">
                       {players.length === 0 ? (
-                        <p className="text-xs text-gray-400 text-center py-2">Squad list coming soon</p>
+                        <p className="text-xs text-gray-400 text-center py-3">Squad list coming soon</p>
                       ) : (
                         <>
                           {squadPlayers.length > 0 && (
-                            <div className="mb-3">
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Squad</p>
-                              {squadPlayers.map((player, i) => (
-                                <div key={i} className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
-                                  <span className="w-6 h-6 bg-[#1E3A6E]/10 rounded-full flex items-center justify-center text-xs font-bold text-[#1E3A6E] shrink-0">
-                                    {player.shirt_number || "—"}
-                                  </span>
-                                  <span className="flex-1 text-sm font-medium text-gray-800">{player.name}</span>
-                                  {player.role && (
-                                    <span className="text-xs bg-[#1E3A6E]/10 text-[#1E3A6E] px-2 py-0.5 rounded-full font-medium shrink-0">
-                                      {player.role}
+                            <div className={reserves.length > 0 ? "mb-4" : ""}>
+                              {reserves.length > 0 && (
+                                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Squad</p>
+                              )}
+                              <div className="space-y-0.5">
+                                {squadPlayers.map((player, i) => (
+                                  <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-[#1E3A6E]/4 transition-colors group">
+                                    <span className="w-8 h-8 bg-[#1E3A6E] text-white rounded-lg flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
+                                      {player.shirt_number ?? "—"}
                                     </span>
-                                  )}
-                                </div>
-                              ))}
+                                    <span className="flex-1 text-sm font-semibold text-gray-900">{player.name}</span>
+                                    {player.role && player.role.toLowerCase() !== "reserve" && (
+                                      <span className="text-xs bg-[#1E3A6E]/10 text-[#1E3A6E] px-2 py-0.5 rounded-full font-semibold shrink-0">
+                                        {player.role}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                           {reserves.length > 0 && (
                             <div>
-                              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Reserves</p>
-                              {reserves.map((player, i) => (
-                                <div key={i} className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
-                                  <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-400 shrink-0">
-                                    {player.shirt_number || "—"}
-                                  </span>
-                                  <span className="text-sm font-medium text-gray-500 flex-1">{player.name}</span>
-                                  <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">Reserve</span>
-                                </div>
-                              ))}
+                              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Reserves</p>
+                              <div className="space-y-0.5">
+                                {reserves.map((player, i) => (
+                                  <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-amber-50 transition-colors">
+                                    <span className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">
+                                      {player.shirt_number ?? "—"}
+                                    </span>
+                                    <span className="text-sm font-semibold text-gray-600 flex-1">{player.name}</span>
+                                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold shrink-0">Reserve</span>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           )}
                         </>
