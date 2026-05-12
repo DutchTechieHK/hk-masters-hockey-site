@@ -212,12 +212,13 @@ export default function Fundraising() {
       const paidAt = paymentDate
         ? new Date(paymentDate + "T12:00:00").toISOString()
         : new Date().toISOString()
+      const amountReceived = entry.amountReceived > 0 ? entry.amountReceived : entry.amountPledged
       await updateMutation.mutateAsync({
         id: entry.id,
         data: {
           donorName: entry.donorName,
           amountPledged: entry.amountPledged,
-          amountReceived: entry.amountReceived,
+          amountReceived,
           date: entry.date,
           teamId: entry.teamId ?? undefined,
           status: "received",
