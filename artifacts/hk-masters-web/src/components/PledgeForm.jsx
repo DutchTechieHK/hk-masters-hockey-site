@@ -264,8 +264,8 @@ export default function PledgeForm({ onSuccess }) {
             value={form.name}
             onChange={handleChange}
             placeholder="Jane Smith"
-            className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 ${
-              errors.name ? "border-red-400 bg-red-50" : "border-gray-200"
+            className={`w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C]/40 transition-colors ${
+              errors.name ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.name && <p className="text-xs text-red-600 mt-1">{errors.name}</p>}
@@ -283,8 +283,8 @@ export default function PledgeForm({ onSuccess }) {
             value={form.email}
             onChange={handleChange}
             placeholder="jane@example.com"
-            className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 ${
-              errors.email ? "border-red-400 bg-red-50" : "border-gray-200"
+            className={`w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C]/40 transition-colors ${
+              errors.email ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
           {errors.email && <p className="text-xs text-red-600 mt-1">{errors.email}</p>}
@@ -306,8 +306,8 @@ export default function PledgeForm({ onSuccess }) {
             value={form.amount}
             onChange={handleChange}
             placeholder="500"
-            className={`w-full pl-12 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 ${
-              errors.amount ? "border-red-400 bg-red-50" : "border-gray-200"
+            className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C]/40 transition-colors ${
+              errors.amount ? "border-red-400 bg-red-50" : "border-gray-300"
             }`}
           />
         </div>
