@@ -72,24 +72,55 @@ type BreakdownRow = {
   isTeam: boolean
 }
 
-function buildBreakdown(entries: FundraisingEntry[]): BreakdownRow[] {
-  const map = new Map<string, BreakdownRow>()
+type BreakdownResult = {
+  teamRows: BreakdownRow[]
+  playerRows: BreakdownRow[]
+}
+
+function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, string>): BreakdownResult {
+  const mo40: BreakdownRow = { key: "MO40", label: "MO40", totalPledged: 0, totalReceived: 0, count: 0, isTeam: true }
+  const mo50: BreakdownRow = { key: "MO50", label: "MO50", totalPledged: 0, totalReceived: 0, count: 0, isTeam: true }
+  const general: BreakdownRow = { key: "general", label: "General", totalPledged: 0, totalReceived: 0, count: 0, isTeam: true }
+  const playerMap = new Map<string, BreakdownRow>()
 
   for (const e of entries) {
-    const key = e.beneficiary?.trim() || "__general__"
-    const label = key === "__general__" ? "General (no beneficiary)" : key
-    const isTeam = key === "MO40 Team" || key === "MO50 Team" || key === "__general__"
+    const b = e.beneficiary?.trim()
+    if (!b) {
+      general.totalPledged += e.amountPledged
+      general.totalReceived += e.amountReceived
+      general.count++
+    } else if (b === "MO40 Team") {
+      mo40.totalPledged += e.amountPledged
+      mo40.totalReceived += e.amountReceived
+      mo40.count++
+    } else if (b === "MO50 Team") {
+      mo50.totalPledged += e.amountPledged
+      mo50.totalReceived += e.amountReceived
+      mo50.count++
+    } else {
+      if (!playerMap.has(b)) {
+        playerMap.set(b, { key: b, label: b, totalPledged: 0, totalReceived: 0, count: 0, isTeam: false })
+      }
+      const row = playerMap.get(b)!
+      row.totalPledged += e.amountPledged
+      row.totalReceived += e.amountReceived
+      row.count++
 
-    if (!map.has(key)) {
-      map.set(key, { key, label, totalPledged: 0, totalReceived: 0, count: 0, isTeam })
+      const teamCategory = playerTeamMap.get(b) ?? ""
+      if (teamCategory.toLowerCase().includes("mo40")) {
+        mo40.totalPledged += e.amountPledged
+        mo40.totalReceived += e.amountReceived
+        mo40.count++
+      } else if (teamCategory.toLowerCase().includes("mo50")) {
+        mo50.totalPledged += e.amountPledged
+        mo50.totalReceived += e.amountReceived
+        mo50.count++
+      }
     }
-    const row = map.get(key)!
-    row.totalPledged += e.amountPledged
-    row.totalReceived += e.amountReceived
-    row.count += 1
   }
 
-  return Array.from(map.values()).sort((a, b) => b.totalPledged - a.totalPledged)
+  const playerRows = Array.from(playerMap.values()).sort((a, b) => b.totalPledged - a.totalPledged)
+  return { teamRows: [mo40, mo50, general], playerRows }
 }
 
 export default function Fundraising() {
@@ -132,6 +163,18 @@ export default function Fundraising() {
 
   const { data: teams = [] } = useListTeams()
   const { data: entries = [], isLoading } = useListFundraising({ query: { enabled: !!sessionToken } })
+
+  const [playerTeamMap, setPlayerTeamMap] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    fetch("/api/public/squad")
+      .then((r) => r.json())
+      .then((data: Array<{ name: string; teamCategory: string | null }>) => {
+        const map = new Map<string, string>()
+        data.forEach((p) => { if (p.name) map.set(p.name, p.teamCategory ?? "") })
+        setPlayerTeamMap(map)
+      })
+      .catch(() => { /* non-critical */ })
+  }, [])
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FundraisingEntry | null>(null)
@@ -341,7 +384,7 @@ export default function Fundraising() {
     URL.revokeObjectURL(url)
   }
 
-  const breakdown = buildBreakdown(entries)
+  const { teamRows, playerRows } = buildBreakdown(entries, playerTeamMap)
 
   if (!sessionChecked) {
     return (
@@ -559,65 +602,108 @@ export default function Fundraising() {
       )}
 
       {activeTab === "breakdown" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+        <div className="space-y-4">
           {isLoading ? (
-            <div className="px-6 py-12 text-center text-muted-foreground">Loading...</div>
-          ) : breakdown.length === 0 ? (
-            <div className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</div>
+            <div className="bg-white rounded-2xl shadow-sm border border-border px-6 py-12 text-center text-muted-foreground">Loading...</div>
+          ) : entries.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-border px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</div>
           ) : (
-            <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
-                <tr>
-                  <th className="px-6 py-4 font-semibold">Beneficiary</th>
-                  <th className="px-6 py-4 font-semibold text-center">Pledges</th>
-                  <th className="px-6 py-4 font-semibold text-right">Total Pledged</th>
-                  <th className="px-6 py-4 font-semibold text-right">Total Received</th>
-                  <th className="px-6 py-4 font-semibold text-right">% Collected</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {breakdown.map((row) => {
-                  const pct = row.totalPledged > 0 ? (row.totalReceived / row.totalPledged) * 100 : 0
-                  return (
-                    <tr key={row.key} className="hover:bg-muted/10 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          {row.isTeam ? (
-                            <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                              {row.label}
-                            </span>
-                          ) : (
-                            <span className="font-medium text-foreground">{row.label}</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-center text-muted-foreground">{row.count}</td>
-                      <td className="px-6 py-4 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
-                      <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
-                            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
-                          </div>
-                          <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
-                        </div>
-                      </td>
+            <>
+              <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+                <div className="px-6 py-3 border-b border-border bg-muted/20">
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Team Totals</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Team-level pledges plus pledges for individual players on each team</p>
+                </div>
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold">Team</th>
+                      <th className="px-6 py-3 font-semibold text-center">Pledges</th>
+                      <th className="px-6 py-3 font-semibold text-right">Total Pledged</th>
+                      <th className="px-6 py-3 font-semibold text-right">Total Received</th>
+                      <th className="px-6 py-3 font-semibold text-right">% Collected</th>
                     </tr>
-                  )
-                })}
-              </tbody>
-              <tfoot className="border-t-2 border-border bg-muted/20">
-                <tr>
-                  <td className="px-6 py-3 text-xs font-bold text-muted-foreground uppercase">Total</td>
-                  <td className="px-6 py-3 text-center text-sm font-semibold">{entries.length}</td>
-                  <td className="px-6 py-3 text-right text-sm font-bold">{formatCurrency(totalPledged)}</td>
-                  <td className="px-6 py-3 text-right text-sm font-bold text-emerald-600">{formatCurrency(totalReceived)}</td>
-                  <td className="px-6 py-3 text-right text-xs text-muted-foreground">
-                    {totalPledged > 0 ? `${((totalReceived / totalPledged) * 100).toFixed(0)}%` : "—"}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {teamRows.map((row) => {
+                      const pct = row.totalPledged > 0 ? (row.totalReceived / row.totalPledged) * 100 : 0
+                      return (
+                        <tr key={row.key} className="hover:bg-muted/10 transition-colors">
+                          <td className="px-6 py-3">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              row.key === "general"
+                                ? "bg-gray-100 text-gray-600"
+                                : "bg-primary/10 text-primary"
+                            }`}>{row.label}</span>
+                          </td>
+                          <td className="px-6 py-3 text-center text-muted-foreground">{row.count}</td>
+                          <td className="px-6 py-3 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
+                          <td className="px-6 py-3 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
+                          <td className="px-6 py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                                <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground w-10 text-right">{row.count > 0 ? `${pct.toFixed(0)}%` : "—"}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {playerRows.length > 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+                  <div className="px-6 py-3 border-b border-border bg-muted/20">
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Individual Players</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Pledges designated for a specific player · sorted by total pledged</p>
+                  </div>
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                      <tr>
+                        <th className="px-6 py-3 font-semibold">Player</th>
+                        <th className="px-6 py-3 font-semibold text-center">Pledges</th>
+                        <th className="px-6 py-3 font-semibold text-right">Total Pledged</th>
+                        <th className="px-6 py-3 font-semibold text-right">Total Received</th>
+                        <th className="px-6 py-3 font-semibold text-right">% Collected</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {playerRows.map((row) => {
+                        const pct = row.totalPledged > 0 ? (row.totalReceived / row.totalPledged) * 100 : 0
+                        return (
+                          <tr key={row.key} className="hover:bg-muted/10 transition-colors">
+                            <td className="px-6 py-3 font-medium text-foreground">{row.label}</td>
+                            <td className="px-6 py-3 text-center text-muted-foreground">{row.count}</td>
+                            <td className="px-6 py-3 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
+                            <td className="px-6 py-3 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
+                            <td className="px-6 py-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                                </div>
+                                <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                    <tfoot className="border-t-2 border-border bg-muted/20">
+                      <tr>
+                        <td className="px-6 py-3 text-xs font-bold text-muted-foreground uppercase">All players</td>
+                        <td className="px-6 py-3 text-center text-sm font-semibold">{playerRows.reduce((s, r) => s + r.count, 0)}</td>
+                        <td className="px-6 py-3 text-right text-sm font-bold">{formatCurrency(playerRows.reduce((s, r) => s + r.totalPledged, 0))}</td>
+                        <td className="px-6 py-3 text-right text-sm font-bold text-emerald-600">{formatCurrency(playerRows.reduce((s, r) => s + r.totalReceived, 0))}</td>
+                        <td className="px-6 py-3"></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
