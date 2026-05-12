@@ -19,7 +19,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
   const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
       <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[82vh] flex flex-col shadow-2xl overflow-hidden">
