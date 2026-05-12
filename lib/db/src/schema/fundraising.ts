@@ -13,6 +13,7 @@ export const fundraisingTable = pgTable("fundraising", {
   teamId: integer("team_id").references(() => teamsTable.id),
   status: text("status").notNull().default("pending"),
   notes: text("notes"),
+  beneficiary: text("beneficiary"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

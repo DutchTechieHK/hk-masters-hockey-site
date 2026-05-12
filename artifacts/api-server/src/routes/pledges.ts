@@ -31,7 +31,7 @@ function isValidEmail(email: string): boolean {
 }
 
 router.post("/", async (req, res) => {
-  const { name, email, amount, note } = req.body ?? {};
+  const { name, email, amount, note, beneficiary } = req.body ?? {};
 
   const errors: string[] = [];
   if (typeof name !== "string" || name.trim().length === 0) errors.push("name is required");
@@ -50,6 +50,11 @@ router.post("/", async (req, res) => {
     else if (note.length > 2000) errors.push("note is too long");
   }
 
+  if (beneficiary !== undefined && beneficiary !== null) {
+    if (typeof beneficiary !== "string") errors.push("beneficiary must be a string");
+    else if (beneficiary.length > 500) errors.push("beneficiary is too long");
+  }
+
   if (errors.length > 0) {
     res.status(400).json({ error: "Invalid request", details: errors });
     return;
@@ -58,6 +63,7 @@ router.post("/", async (req, res) => {
   const cleanName = (name as string).trim();
   const cleanEmail = (email as string).trim();
   const cleanNote = typeof note === "string" ? note.trim() : "";
+  const cleanBeneficiary = typeof beneficiary === "string" && beneficiary.trim() ? beneficiary.trim() : undefined;
   const today = new Date().toISOString().slice(0, 10);
 
   const notes = cleanNote || undefined;
@@ -72,6 +78,7 @@ router.post("/", async (req, res) => {
       date: today,
       status: "pending",
       notes,
+      beneficiary: cleanBeneficiary,
     })
     .returning();
 

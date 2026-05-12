@@ -53,7 +53,7 @@ router.get("/export", requireAdminAccess, async (req, res) => {
 
   const headers = [
     "Donor Name", "Email", "Amount Pledged (HKD)", "Amount Received (HKD)",
-    "Status", "Pledge Date", "Paid Date", "Team", "Notes",
+    "Status", "Pledge Date", "Paid Date", "Team", "Beneficiary", "Notes",
   ];
 
   const csvRows = rows.map(({ f, teamName }) => [
@@ -65,6 +65,7 @@ router.get("/export", requireAdminAccess, async (req, res) => {
     escape(formatDate(f.date)),
     escape(formatDate(f.paidAt)),
     escape(teamName ?? "General"),
+    escape(f.beneficiary),
     escape(f.notes),
   ].join(","));
 
@@ -93,6 +94,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     teamName: teamName ?? undefined,
     status: f.status,
     notes: f.notes,
+    beneficiary: f.beneficiary ?? undefined,
     paidAt: f.paidAt?.toISOString(),
     createdAt: f.createdAt?.toISOString(),
   })));
@@ -109,6 +111,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     teamId: body.teamId,
     status: body.status,
     notes: body.notes,
+    beneficiary: body.beneficiary,
   }).returning();
   let teamName: string | undefined;
   if (entry.teamId) {
@@ -158,6 +161,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     teamName,
     status: entry.status,
     notes: entry.notes,
+    beneficiary: entry.beneficiary ?? undefined,
     paidAt: entry.paidAt?.toISOString(),
     createdAt: entry.createdAt?.toISOString(),
   });
@@ -180,6 +184,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     teamId: body.teamId,
     status: body.status,
     notes: body.notes,
+    beneficiary: body.beneficiary,
     paidAt,
   }).where(eq(fundraisingTable.id, id)).returning();
 
@@ -211,6 +216,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     teamName,
     status: entry.status,
     notes: entry.notes,
+    beneficiary: entry.beneficiary ?? undefined,
     paidAt: entry.paidAt?.toISOString(),
     createdAt: entry.createdAt?.toISOString(),
   });

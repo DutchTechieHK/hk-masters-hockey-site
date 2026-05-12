@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle, AlertCircle, Download } from "lucide-react"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle, AlertCircle, Download, BarChart2, List } from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -51,6 +51,7 @@ const fundSchema = z.object({
   teamId: z.coerce.number().optional().nullable(),
   status: z.enum(["pending", "confirmed", "received"]),
   notes: z.string().optional(),
+  beneficiary: z.string().optional(),
   paidAt: z.string().optional()
 })
 
@@ -60,6 +61,35 @@ const STATUS_COLORS = {
   pending: "bg-amber-100 text-amber-800",
   confirmed: "bg-blue-100 text-blue-800",
   received: "bg-emerald-100 text-emerald-800"
+}
+
+type BreakdownRow = {
+  key: string
+  label: string
+  totalPledged: number
+  totalReceived: number
+  count: number
+  isTeam: boolean
+}
+
+function buildBreakdown(entries: FundraisingEntry[]): BreakdownRow[] {
+  const map = new Map<string, BreakdownRow>()
+
+  for (const e of entries) {
+    const key = e.beneficiary?.trim() || "__general__"
+    const label = key === "__general__" ? "General (no beneficiary)" : key
+    const isTeam = key === "MO40 Team" || key === "MO50 Team" || key === "__general__"
+
+    if (!map.has(key)) {
+      map.set(key, { key, label, totalPledged: 0, totalReceived: 0, count: 0, isTeam })
+    }
+    const row = map.get(key)!
+    row.totalPledged += e.amountPledged
+    row.totalReceived += e.amountReceived
+    row.count += 1
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.totalPledged - a.totalPledged)
 }
 
 export default function Fundraising() {
@@ -105,6 +135,7 @@ export default function Fundraising() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingEntry, setEditingEntry] = useState<FundraisingEntry | null>(null)
+  const [activeTab, setActiveTab] = useState<"records" | "breakdown">("records")
 
   const createMutation = useCreateFundraising()
   const updateMutation = useUpdateFundraising()
@@ -121,7 +152,7 @@ export default function Fundraising() {
     reset({ 
       donorName: "", donorEmail: "", amountPledged: 0, amountReceived: 0, 
       date: new Date().toISOString().split('T')[0],
-      teamId: null, status: "pending", notes: "" 
+      teamId: null, status: "pending", notes: "", beneficiary: ""
     })
     setIsModalOpen(true)
   }
@@ -137,6 +168,7 @@ export default function Fundraising() {
       teamId: entry.teamId || null,
       status: entry.status,
       notes: entry.notes || "",
+      beneficiary: entry.beneficiary || "",
       paidAt: entry.paidAt ? entry.paidAt.split('T')[0] : ""
     })
     setIsModalOpen(true)
@@ -223,6 +255,7 @@ export default function Fundraising() {
           teamId: entry.teamId ?? undefined,
           status: "received",
           notes: entry.notes || undefined,
+          beneficiary: entry.beneficiary || undefined,
           paidAt,
         },
       })
@@ -250,6 +283,7 @@ export default function Fundraising() {
         ...data,
         teamId: data.teamId === 0 || !data.teamId ? undefined : data.teamId,
         donorEmail: data.donorEmail || undefined,
+        beneficiary: data.beneficiary?.trim() || undefined,
       }
       
       if (editingEntry) {
@@ -306,6 +340,8 @@ export default function Fundraising() {
     a.click()
     URL.revokeObjectURL(url)
   }
+
+  const breakdown = buildBreakdown(entries)
 
   if (!sessionChecked) {
     return (
@@ -393,101 +429,198 @@ export default function Fundraising() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Donor / Sponsor</th>
-                <th className="px-6 py-4 font-semibold">Email</th>
-                <th className="px-6 py-4 font-semibold text-right">Pledged</th>
-                <th className="px-6 py-4 font-semibold text-right">Received</th>
-                <th className="px-6 py-4 font-semibold">Status</th>
-                <th className="px-6 py-4 font-semibold">Date</th>
-                <th className="px-6 py-4 font-semibold">Paid Date</th>
-                <th className="px-6 py-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
-              ) : entries.length === 0 ? (
-                <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
-              ) : (
-                entries.map(entry => (
-                  <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-foreground">{entry.donorName}</div>
-                      <div className="text-xs text-muted-foreground">{entry.teamName || 'All Teams (General)'}</div>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {entry.donorEmail
-                        ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors">{entry.donorEmail}</a>
-                        : <span className="text-xs italic">—</span>
-                      }
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium text-foreground">{formatCurrency(entry.amountPledged)}</td>
-                    <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(entry.amountReceived)}</td>
-                    <td className="px-6 py-4">
-                      <Badge className={STATUS_COLORS[entry.status] + " capitalize border-0 shadow-none"}>
-                        {entry.status}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {entry.date ? format(parseISO(entry.date), 'MMM d, yyyy') : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-muted-foreground">
-                      {entry.paidAt
-                        ? <span className="text-emerald-600 font-medium">{format(parseISO(entry.paidAt), 'MMM d, yyyy')}</span>
-                        : <span className="text-xs italic">—</span>
-                      }
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end items-center space-x-2">
-                        {entry.status === "received" && !entry.donorEmail && (
-                          <span
-                            title="No email on file — receipt cannot be sent. Edit this record to add an email address."
-                            className="p-1.5 text-amber-500 cursor-help"
-                          >
-                            <AlertTriangle className="w-4 h-4" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                        {entry.status !== "received" && (
-                          <button
-                            onClick={() => handleMarkAsPaid(entry)}
-                            title="Mark as paid"
-                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </button>
-                        )}
-                        {entry.status === "received" && (
-                          <button
-                            onClick={() => entry.donorEmail ? handleResendReceipt(entry) : undefined}
-                            title={entry.donorEmail ? "Resend receipt email" : "No email on file — cannot resend receipt"}
-                            disabled={resendingId === entry.id || !entry.donorEmail}
-                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            <MailCheck className="w-4 h-4" />
-                          </button>
-                        )}
-                        <button onClick={() => openEditModal(entry)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(entry.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* Tab Bar */}
+      <div className="flex gap-1 mb-4 border-b border-border">
+        <button
+          onClick={() => setActiveTab("records")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+            activeTab === "records"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <List className="w-4 h-4" /> Records
+        </button>
+        <button
+          onClick={() => setActiveTab("breakdown")}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+            activeTab === "breakdown"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <BarChart2 className="w-4 h-4" /> Breakdown
+        </button>
       </div>
+
+      {activeTab === "records" && (
+        <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden flex flex-col">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">Donor / Sponsor</th>
+                  <th className="px-6 py-4 font-semibold">Email</th>
+                  <th className="px-6 py-4 font-semibold">Beneficiary</th>
+                  <th className="px-6 py-4 font-semibold text-right">Pledged</th>
+                  <th className="px-6 py-4 font-semibold text-right">Received</th>
+                  <th className="px-6 py-4 font-semibold">Status</th>
+                  <th className="px-6 py-4 font-semibold">Date</th>
+                  <th className="px-6 py-4 font-semibold">Paid Date</th>
+                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {isLoading ? (
+                  <tr><td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
+                ) : entries.length === 0 ? (
+                  <tr><td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
+                ) : (
+                  entries.map(entry => (
+                    <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-foreground">{entry.donorName}</div>
+                        <div className="text-xs text-muted-foreground">{entry.teamName || 'All Teams (General)'}</div>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {entry.donorEmail
+                          ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors">{entry.donorEmail}</a>
+                          : <span className="text-xs italic">—</span>
+                        }
+                      </td>
+                      <td className="px-6 py-4">
+                        {entry.beneficiary
+                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full">{entry.beneficiary}</span>
+                          : <span className="text-xs italic text-muted-foreground">—</span>
+                        }
+                      </td>
+                      <td className="px-6 py-4 text-right font-medium text-foreground">{formatCurrency(entry.amountPledged)}</td>
+                      <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(entry.amountReceived)}</td>
+                      <td className="px-6 py-4">
+                        <Badge className={STATUS_COLORS[entry.status] + " capitalize border-0 shadow-none"}>
+                          {entry.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {entry.date ? format(parseISO(entry.date), 'MMM d, yyyy') : '-'}
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">
+                        {entry.paidAt
+                          ? <span className="text-emerald-600 font-medium">{format(parseISO(entry.paidAt), 'MMM d, yyyy')}</span>
+                          : <span className="text-xs italic">—</span>
+                        }
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end items-center space-x-2">
+                          {entry.status === "received" && !entry.donorEmail && (
+                            <span
+                              title="No email on file — receipt cannot be sent. Edit this record to add an email address."
+                              className="p-1.5 text-amber-500 cursor-help"
+                            >
+                              <AlertTriangle className="w-4 h-4" />
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          {entry.status !== "received" && (
+                            <button
+                              onClick={() => handleMarkAsPaid(entry)}
+                              title="Mark as paid"
+                              className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {entry.status === "received" && (
+                            <button
+                              onClick={() => entry.donorEmail ? handleResendReceipt(entry) : undefined}
+                              title={entry.donorEmail ? "Resend receipt email" : "No email on file — cannot resend receipt"}
+                              disabled={resendingId === entry.id || !entry.donorEmail}
+                              className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <MailCheck className="w-4 h-4" />
+                            </button>
+                          )}
+                          <button onClick={() => openEditModal(entry)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(entry.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "breakdown" && (
+        <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+          {isLoading ? (
+            <div className="px-6 py-12 text-center text-muted-foreground">Loading...</div>
+          ) : breakdown.length === 0 ? (
+            <div className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</div>
+          ) : (
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+                <tr>
+                  <th className="px-6 py-4 font-semibold">Beneficiary</th>
+                  <th className="px-6 py-4 font-semibold text-center">Pledges</th>
+                  <th className="px-6 py-4 font-semibold text-right">Total Pledged</th>
+                  <th className="px-6 py-4 font-semibold text-right">Total Received</th>
+                  <th className="px-6 py-4 font-semibold text-right">% Collected</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {breakdown.map((row) => {
+                  const pct = row.totalPledged > 0 ? (row.totalReceived / row.totalPledged) * 100 : 0
+                  return (
+                    <tr key={row.key} className="hover:bg-muted/10 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          {row.isTeam ? (
+                            <span className="text-xs font-semibold bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                              {row.label}
+                            </span>
+                          ) : (
+                            <span className="font-medium text-foreground">{row.label}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center text-muted-foreground">{row.count}</td>
+                      <td className="px-6 py-4 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
+                      <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                            <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                          </div>
+                          <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot className="border-t-2 border-border bg-muted/20">
+                <tr>
+                  <td className="px-6 py-3 text-xs font-bold text-muted-foreground uppercase">Total</td>
+                  <td className="px-6 py-3 text-center text-sm font-semibold">{entries.length}</td>
+                  <td className="px-6 py-3 text-right text-sm font-bold">{formatCurrency(totalPledged)}</td>
+                  <td className="px-6 py-3 text-right text-sm font-bold text-emerald-600">{formatCurrency(totalReceived)}</td>
+                  <td className="px-6 py-3 text-right text-xs text-muted-foreground">
+                    {totalPledged > 0 ? `${((totalReceived / totalPledged) * 100).toFixed(0)}%` : "—"}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </div>
+      )}
 
       <Modal
         isOpen={confirmDialog.isOpen}
@@ -612,6 +745,17 @@ export default function Fundraising() {
                 <p className="text-xs text-muted-foreground">Clear to remove the payment date.</p>
               </div>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">
+              Beneficiary <span className="font-normal text-muted-foreground">(Optional)</span>
+            </label>
+            <Input
+              {...register("beneficiary")}
+              placeholder="e.g. MO40 Team, MO50 Team, or a player name"
+            />
+            <p className="text-xs text-muted-foreground">Who is this donation supporting? Leave blank for a general donation.</p>
           </div>
 
           <div className="space-y-2">

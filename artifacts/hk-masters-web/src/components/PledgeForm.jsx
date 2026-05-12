@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { API_BASE } from "../utils/api";
 
 export default function PledgeForm({ onSuccess }) {
@@ -7,6 +7,32 @@ export default function PledgeForm({ onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState(null);
+
+  const [beneficiaryType, setBeneficiaryType] = useState(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [squad, setSquad] = useState([]);
+  const [squadLoading, setSquadLoading] = useState(false);
+
+  useEffect(() => {
+    if (beneficiaryType === "player" && squad.length === 0) {
+      setSquadLoading(true);
+      fetch(`${API_BASE}/api/public/squad`)
+        .then((r) => r.json())
+        .then((data) => setSquad(Array.isArray(data) ? data : []))
+        .catch(() => setSquad([]))
+        .finally(() => setSquadLoading(false));
+    }
+  }, [beneficiaryType]);
+
+  function getBeneficiaryValue() {
+    if (beneficiaryType === "mo40") return "MO40 Team";
+    if (beneficiaryType === "mo50") return "MO50 Team";
+    if (beneficiaryType === "player" && selectedPlayerId) {
+      const player = squad.find((p) => String(p.id) === String(selectedPlayerId));
+      return player ? player.name : undefined;
+    }
+    return undefined;
+  }
 
   function validate() {
     const errs = {};
@@ -17,6 +43,9 @@ export default function PledgeForm({ onSuccess }) {
     else {
       const num = parseFloat(form.amount);
       if (isNaN(num) || num <= 0) errs.amount = "Enter a valid amount greater than 0";
+    }
+    if (beneficiaryType === "player" && !selectedPlayerId) {
+      errs.player = "Please select a player";
     }
     return errs;
   }
@@ -37,6 +66,7 @@ export default function PledgeForm({ onSuccess }) {
     setSubmitting(true);
     setServerError(null);
     try {
+      const beneficiary = getBeneficiaryValue();
       const res = await fetch(`${API_BASE}/api/pledges`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -45,6 +75,7 @@ export default function PledgeForm({ onSuccess }) {
           email: form.email.trim(),
           amount: parseFloat(form.amount),
           note: form.note.trim() || undefined,
+          beneficiary,
         }),
       });
       if (!res.ok) {
@@ -59,6 +90,12 @@ export default function PledgeForm({ onSuccess }) {
       setSubmitting(false);
     }
   }
+
+  const mo40Players = squad.filter((p) => p.teamCategory && p.teamCategory.toLowerCase().includes("mo40"));
+  const mo50Players = squad.filter((p) => p.teamCategory && p.teamCategory.toLowerCase().includes("mo50"));
+  const otherPlayers = squad.filter(
+    (p) => !p.teamCategory || (!p.teamCategory.toLowerCase().includes("mo40") && !p.teamCategory.toLowerCase().includes("mo50"))
+  );
 
   if (submitted) {
     return (
@@ -178,6 +215,85 @@ export default function PledgeForm({ onSuccess }) {
       </div>
 
       <div>
+        <p className="block text-sm font-semibold text-gray-700 mb-2">
+          Who are you supporting? <span className="text-gray-400 font-normal">(optional)</span>
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { id: "mo40", label: "MO40 Team" },
+            { id: "mo50", label: "MO50 Team" },
+            { id: "player", label: "An Individual Player" },
+          ].map((tile) => (
+            <button
+              key={tile.id}
+              type="button"
+              onClick={() => {
+                setBeneficiaryType(beneficiaryType === tile.id ? null : tile.id);
+                setSelectedPlayerId("");
+                if (errors.player) setErrors((err) => ({ ...err, player: undefined }));
+              }}
+              className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border-2 text-xs font-semibold transition-all text-center ${
+                beneficiaryType === tile.id
+                  ? "border-[#006B3C] bg-[#006B3C]/5 text-[#006B3C]"
+                  : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <span className="leading-tight">{tile.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {beneficiaryType === "player" && (
+          <div className="mt-3">
+            {squadLoading ? (
+              <p className="text-xs text-gray-400">Loading players…</p>
+            ) : (
+              <select
+                value={selectedPlayerId}
+                onChange={(e) => {
+                  setSelectedPlayerId(e.target.value);
+                  if (errors.player) setErrors((err) => ({ ...err, player: undefined }));
+                }}
+                className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 bg-white ${
+                  errors.player ? "border-red-400 bg-red-50" : "border-gray-200"
+                }`}
+              >
+                <option value="">Select a player…</option>
+                {mo40Players.length > 0 && (
+                  <optgroup label="MO40">
+                    {mo40Players.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {mo50Players.length > 0 && (
+                  <optgroup label="MO50">
+                    {mo50Players.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+                {otherPlayers.length > 0 && (
+                  <optgroup label="Other">
+                    {otherPlayers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            )}
+            {errors.player && <p className="text-xs text-red-600 mt-1">{errors.player}</p>}
+          </div>
+        )}
+      </div>
+
+      <div>
         <label htmlFor="pledge-note" className="block text-sm font-semibold text-gray-700 mb-1.5">
           Note <span className="text-gray-400 font-normal">(optional)</span>
         </label>
@@ -187,7 +303,7 @@ export default function PledgeForm({ onSuccess }) {
           rows={3}
           value={form.note}
           onChange={handleChange}
-          placeholder="e.g. In support of the MO50 squad"
+          placeholder="e.g. In memory of someone, a message for the team…"
           className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 resize-none"
         />
       </div>

@@ -707,6 +707,7 @@ export const ListFundraisingResponseItem = zod.object({
   teamName: zod.string().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
+  beneficiary: zod.string().optional(),
   paidAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
@@ -725,6 +726,7 @@ export const CreateFundraisingBody = zod.object({
   status: zod.enum(["pending", "confirmed", "received"]),
   paidAt: zod.string().nullish(),
   notes: zod.string().optional(),
+  beneficiary: zod.string().optional(),
 });
 
 /**
@@ -744,6 +746,7 @@ export const UpdateFundraisingBody = zod.object({
   status: zod.enum(["pending", "confirmed", "received"]),
   paidAt: zod.string().nullish(),
   notes: zod.string().optional(),
+  beneficiary: zod.string().optional(),
 });
 
 export const UpdateFundraisingResponse = zod.object({
@@ -757,6 +760,7 @@ export const UpdateFundraisingResponse = zod.object({
   teamName: zod.string().optional(),
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
+  beneficiary: zod.string().optional(),
   paidAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
