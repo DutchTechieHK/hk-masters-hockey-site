@@ -68,9 +68,14 @@ const REASONS = [
 
 export default function Support() {
   const supporters = useSupporterWall();
+  const [auctionLive, setAuctionLive] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    fetch(`${API_BASE}/api/public/auction`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setAuctionLive(!!d.isLive); })
+      .catch(() => {});
   }, []);
 
   return (
@@ -180,6 +185,29 @@ export default function Support() {
                 </span>
               );
             })}
+          </div>
+        </section>
+      )}
+
+      {/* Auction teaser */}
+      {auctionLive && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="bg-[#1E3A6E] rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wide">
+                Live now
+              </span>
+              <h3 className="text-xl font-extrabold text-white mb-1">Silent Auction</h3>
+              <p className="text-[#BFD9F5] text-sm leading-relaxed">
+                Bid on exclusive items to raise funds for the Rotterdam campaign. Bids update in real time.
+              </p>
+            </div>
+            <a
+              href="/auction"
+              className="shrink-0 inline-block bg-white text-[#1E3A6E] font-bold text-sm px-6 py-3 rounded-xl hover:bg-[#F2E8D5] transition-colors"
+            >
+              View Auction →
+            </a>
           </div>
         </section>
       )}

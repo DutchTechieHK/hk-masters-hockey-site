@@ -17,6 +17,7 @@ import eventsRouter from "./events";
 import announcementsRouter from "./announcements";
 import emailTemplatesRouter from "./email-templates";
 import documentsRouter from "./documents";
+import { auctionAdminRouter, auctionPublicRouter } from "./auction";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,7 @@ router.use("/events", eventsRouter);
 router.use("/announcements", announcementsRouter);
 router.use("/email-templates", emailTemplatesRouter);
 router.use("/documents", documentsRouter);
+router.use("/auction", auctionAdminRouter);
+router.use("/public/auction", auctionPublicRouter);
 
 export default router;

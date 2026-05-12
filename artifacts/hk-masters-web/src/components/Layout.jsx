@@ -3,8 +3,9 @@ import { Link, useLocation } from "wouter";
 import contactContent from "../content/contact.json";
 import { getPlayerToken } from "../lib/playerAuth";
 import { useReveal } from "../hooks/useReveal";
+import { API_BASE } from "../utils/api";
 
-const NAV_LINKS = [
+const BASE_NAV_LINKS = [
   { href: "/",               label: "Home" },
   { href: "/about",          label: "About" },
   { href: "/teams",          label: "Teams" },
@@ -15,6 +16,7 @@ const NAV_LINKS = [
   { href: "/media",          label: "Media" },
   { href: "/sponsors",       label: "Sponsors" },
   { href: "/support",        label: "Support", cta: true },
+  { href: "/auction",        label: "Auction", auctionGated: true },
   { href: "/contact",        label: "Contact" },
 ];
 
@@ -52,6 +54,7 @@ function NavLink({ href, label, onClick, cta }) {
 export default function Layout({ children }) {
   const [menuOpen, setMenuOpen]         = useState(false);
   const [isPlayerLoggedIn, setIsPlayer] = useState(false);
+  const [auctionLive, setAuctionLive]   = useState(false);
   const [location]                      = useLocation();
   const progressRef                     = useRef(null);
 
@@ -60,6 +63,14 @@ export default function Layout({ children }) {
     setMenuOpen(false);
     setIsPlayer(!!getPlayerToken());
   }, [location]);
+
+  /* Check auction live status once on mount */
+  useEffect(() => {
+    fetch(`${API_BASE}/api/public/auction`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setAuctionLive(!!d.isLive); })
+      .catch(() => {});
+  }, []);
 
   /* Scroll progress bar */
   useEffect(() => {
@@ -140,7 +151,7 @@ export default function Layout({ children }) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-11">
               <div className="flex items-center gap-6">
-                {NAV_LINKS.map((link) => (
+                {BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).map((link) => (
                   <NavLink key={link.href} href={link.href} label={link.label} cta={link.cta} />
                 ))}
               </div>
@@ -164,7 +175,7 @@ export default function Layout({ children }) {
           <div className="lg:hidden bg-[#16305D]">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 pb-4">
               <div className="flex flex-col gap-1">
-                {NAV_LINKS.map((link) => (
+                {BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).map((link) => (
                   <NavLink
                     key={link.href}
                     href={link.href}
@@ -225,7 +236,7 @@ export default function Layout({ children }) {
             <div>
               <h3 className="font-semibold text-white mb-3">Quick Links</h3>
               <div className="grid grid-cols-2 gap-x-4">
-                {[NAV_LINKS.slice(0, 5), NAV_LINKS.slice(5)].map((col, ci) => (
+                {[BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).slice(0, 5), BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).slice(5)].map((col, ci) => (
                   <ul key={ci} className="space-y-1">
                     {col.map((link) => (
                       <li key={link.href}>

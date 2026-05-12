@@ -20,6 +20,7 @@ import { Redirect } from "wouter";
 import Readiness from "@/pages/Readiness";
 import EmailHistory from "@/pages/EmailHistory";
 import Documents from "@/pages/Documents";
+import Auction from "@/pages/Auction";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate } from "@/components/AdminAuthGate";
 
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/email-history" component={EmailHistory} />
       <Route path="/readiness" component={Readiness} />
       <Route path="/documents" component={Documents} />
+      <Route path="/auction" component={Auction} />
       <Route component={NotFound} />
     </Switch>
   );
