@@ -286,27 +286,23 @@ export default function Fundraising() {
   const totalPledged = entries.reduce((sum, e) => sum + e.amountPledged, 0)
   const totalReceived = entries.reduce((sum, e) => sum + e.amountReceived, 0)
 
-  const exportCSV = () => {
-    const headers = ["Donor / Sponsor", "Email", "Team", "Status", "Pledged (HKD)", "Received (HKD)", "Pledge Date", "Paid Date", "Notes"]
-    const rows = entries.map(e => [
-      e.donorName,
-      e.donorEmail || "",
-      e.teamName || "General",
-      e.status,
-      e.amountPledged,
-      e.amountReceived,
-      e.date ? format(parseISO(e.date), "yyyy-MM-dd") : "",
-      e.paidAt ? format(parseISO(e.paidAt), "yyyy-MM-dd") : "",
-      e.notes || "",
-    ])
-    const csv = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-      .join("\n")
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const [exportStatusFilter, setExportStatusFilter] = useState<"all" | "pending" | "confirmed" | "received">("all")
+
+  const exportCSV = async () => {
+    const params = exportStatusFilter !== "all" ? `?status=${exportStatusFilter}` : ""
+    const res = await fetch(`/api/fundraising/export${params}`, {
+      headers: { "x-session-token": sessionToken ?? "" },
+    })
+    if (!res.ok) {
+      toast({ title: "Export failed", variant: "destructive" })
+      return
+    }
+    const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `hk-masters-fundraising-${format(new Date(), "yyyy-MM-dd")}.csv`
+    const suffix = exportStatusFilter !== "all" ? `-${exportStatusFilter}` : ""
+    a.download = `hk-masters-fundraising${suffix}-${format(new Date(), "yyyy-MM-dd")}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -353,7 +349,18 @@ export default function Fundraising() {
       title="Sponsors & Fundraising"
       description="Manage incoming sponsorships, donations, and fundraising efforts."
       action={
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <select
+            value={exportStatusFilter}
+            onChange={e => setExportStatusFilter(e.target.value as typeof exportStatusFilter)}
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            aria-label="Filter by status for export"
+          >
+            <option value="all">All statuses</option>
+            <option value="pending">Pending only</option>
+            <option value="confirmed">Confirmed only</option>
+            <option value="received">Received only</option>
+          </select>
           <Button variant="outline" onClick={exportCSV} disabled={entries.length === 0}>
             <Download className="w-4 h-4 mr-2" /> Export CSV
           </Button>

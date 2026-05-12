@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { fundraisingTable, teamsTable } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import {
   CreateFundraisingBody,
   UpdateFundraisingBody,
@@ -26,6 +26,54 @@ router.get("/summary", async (_req, res) => {
     totalReceived: parseFloat(row.totalReceived),
     count: Number(row.count),
   });
+});
+
+router.get("/export", requireAdminAccess, async (req, res) => {
+  const { status } = req.query as { status?: string };
+  const validStatuses = ["pending", "confirmed", "received"] as const;
+  const statusFilter = validStatuses.includes(status as typeof validStatuses[number])
+    ? (status as typeof validStatuses[number])
+    : undefined;
+
+  const rows = await db
+    .select({ f: fundraisingTable, teamName: teamsTable.name })
+    .from(fundraisingTable)
+    .leftJoin(teamsTable, eq(fundraisingTable.teamId, teamsTable.id))
+    .where(statusFilter ? eq(fundraisingTable.status, statusFilter) : undefined)
+    .orderBy(fundraisingTable.id);
+
+  const escape = (val: string | number | null | undefined) =>
+    `"${String(val ?? "").replace(/"/g, '""')}"`;
+
+  const formatDate = (d: Date | string | null | undefined) => {
+    if (!d) return "";
+    const dt = d instanceof Date ? d : new Date(d);
+    return isNaN(dt.getTime()) ? "" : dt.toISOString().split("T")[0];
+  };
+
+  const headers = [
+    "Donor Name", "Email", "Amount Pledged (HKD)", "Amount Received (HKD)",
+    "Status", "Pledge Date", "Paid Date", "Team", "Notes",
+  ];
+
+  const csvRows = rows.map(({ f, teamName }) => [
+    escape(f.donorName),
+    escape(f.donorEmail),
+    escape(parseFloat(f.amountPledged ?? "0")),
+    escape(parseFloat(f.amountReceived ?? "0")),
+    escape(f.status),
+    escape(formatDate(f.date)),
+    escape(formatDate(f.paidAt)),
+    escape(teamName ?? "General"),
+    escape(f.notes),
+  ].join(","));
+
+  const csv = [headers.map(h => escape(h)).join(","), ...csvRows].join("\n");
+  const today = new Date().toISOString().split("T")[0];
+  const suffix = statusFilter ? `-${statusFilter}` : "";
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="hk-masters-fundraising${suffix}-${today}.csv"`);
+  res.send(csv);
 });
 
 router.get("/", requireAdminAccess, async (_req, res) => {
