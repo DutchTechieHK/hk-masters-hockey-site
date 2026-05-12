@@ -1,5 +1,119 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API_BASE } from "../utils/api";
+
+function PlayerCombobox({ squad, mo40Players, mo50Players, otherPlayers, selectedPlayerId, playerSearch, setPlayerSearch, onSelect, hasError }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  const selectedPlayer = squad.find((p) => String(p.id) === String(selectedPlayerId));
+
+  const q = playerSearch.toLowerCase();
+  const filter = (list) => q ? list.filter((p) => p.name.toLowerCase().includes(q) || (p.shirtNumber && String(p.shirtNumber).includes(q))) : list;
+
+  const filteredMO40 = filter(mo40Players);
+  const filteredMO50 = filter(mo50Players);
+  const filteredOther = filter(otherPlayers);
+  const totalResults = filteredMO40.length + filteredMO50.length + filteredOther.length;
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  function handleInputChange(e) {
+    setPlayerSearch(e.target.value);
+    setOpen(true);
+    if (selectedPlayerId) onSelect("");
+  }
+
+  function handleSelect(player) {
+    onSelect(String(player.id));
+    setPlayerSearch("");
+    setOpen(false);
+  }
+
+  function handleFocus() {
+    setOpen(true);
+  }
+
+  const displayValue = selectedPlayer
+    ? `${selectedPlayer.shirtNumber ? `#${selectedPlayer.shirtNumber} ` : ""}${selectedPlayer.name}`
+    : playerSearch;
+
+  function renderGroup(label, players) {
+    if (players.length === 0) return null;
+    return (
+      <div key={label}>
+        <div className="px-3 py-1.5 text-xs font-bold text-gray-400 uppercase tracking-wider bg-gray-50 border-b border-gray-100">{label}</div>
+        {players.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); handleSelect(p); }}
+            className={`w-full text-left px-4 py-2 text-sm hover:bg-[#006B3C]/5 hover:text-[#006B3C] transition-colors flex items-center gap-2 ${
+              String(selectedPlayerId) === String(p.id) ? "bg-[#006B3C]/5 text-[#006B3C] font-semibold" : "text-gray-800"
+            }`}
+          >
+            {p.shirtNumber && (
+              <span className="text-xs text-gray-400 w-7 shrink-0 font-mono">#{p.shirtNumber}</span>
+            )}
+            <span>{p.name}</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className={`flex items-center w-full rounded-lg border text-sm bg-white ${hasError ? "border-red-400" : "border-gray-200"}`}>
+        <svg className="w-4 h-4 text-gray-400 ml-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          value={selectedPlayer ? `${selectedPlayer.shirtNumber ? `#${selectedPlayer.shirtNumber} ` : ""}${selectedPlayer.name}` : playerSearch}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          placeholder="Search by name or shirt number…"
+          className="flex-1 px-3 py-2.5 bg-transparent focus:outline-none placeholder-gray-400"
+          autoComplete="off"
+        />
+        {selectedPlayer && (
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); onSelect(""); setPlayerSearch(""); }}
+            className="mr-2 p-1 text-gray-400 hover:text-gray-600 rounded"
+            aria-label="Clear selection"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-white rounded-xl border border-gray-200 shadow-lg max-h-56 overflow-y-auto">
+          {totalResults === 0 ? (
+            <div className="px-4 py-3 text-sm text-gray-400 text-center">No players found</div>
+          ) : (
+            <>
+              {renderGroup("MO40", filteredMO40)}
+              {renderGroup("MO50", filteredMO50)}
+              {renderGroup("Other", filteredOther)}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PledgeForm({ onSuccess }) {
   const [form, setForm] = useState({ name: "", email: "", amount: "", note: "" });
@@ -10,6 +124,7 @@ export default function PledgeForm({ onSuccess }) {
 
   const [beneficiaryType, setBeneficiaryType] = useState(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [playerSearch, setPlayerSearch] = useState("");
   const [squad, setSquad] = useState([]);
   const [squadLoading, setSquadLoading] = useState(false);
 
@@ -248,45 +363,20 @@ export default function PledgeForm({ onSuccess }) {
             {squadLoading ? (
               <p className="text-xs text-gray-400">Loading players…</p>
             ) : (
-              <select
-                value={selectedPlayerId}
-                onChange={(e) => {
-                  setSelectedPlayerId(e.target.value);
+              <PlayerCombobox
+                squad={squad}
+                mo40Players={mo40Players}
+                mo50Players={mo50Players}
+                otherPlayers={otherPlayers}
+                selectedPlayerId={selectedPlayerId}
+                playerSearch={playerSearch}
+                setPlayerSearch={setPlayerSearch}
+                onSelect={(id) => {
+                  setSelectedPlayerId(id);
                   if (errors.player) setErrors((err) => ({ ...err, player: undefined }));
                 }}
-                className={`w-full px-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 bg-white ${
-                  errors.player ? "border-red-400 bg-red-50" : "border-gray-200"
-                }`}
-              >
-                <option value="">Select a player…</option>
-                {mo40Players.length > 0 && (
-                  <optgroup label="MO40">
-                    {mo40Players.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {mo50Players.length > 0 && (
-                  <optgroup label="MO50">
-                    {mo50Players.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-                {otherPlayers.length > 0 && (
-                  <optgroup label="Other">
-                    {otherPlayers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.shirtNumber ? `#${p.shirtNumber} ` : ""}{p.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+                hasError={!!errors.player}
+              />
             )}
             {errors.player && <p className="text-xs text-red-600 mt-1">{errors.player}</p>}
           </div>
