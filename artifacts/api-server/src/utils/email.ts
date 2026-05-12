@@ -900,7 +900,7 @@ export async function sendPledgeReceivedEmail(opts: {
       </tr>
     </table>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      Please keep this email as your receipt. We look forward to seeing you in Hong Kong!
+      Please keep this email as your receipt. We look forward to seeing you soon to thank you in person!
     </p>
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
       Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#006B3C;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
@@ -915,7 +915,7 @@ Amount received: ${formattedAmount}
 Reference: Pledge #${opts.pledgeId}
 Status: Received
 
-Please keep this email as your receipt. We look forward to seeing you in Hong Kong!
+Please keep this email as your receipt. We look forward to seeing you soon to thank you in person!
 
 Questions? Email us at ${ADMIN_EMAIL}.
 
