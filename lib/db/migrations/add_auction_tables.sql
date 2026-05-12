@@ -25,3 +25,6 @@ CREATE TABLE IF NOT EXISTS auction_bids (
   amount NUMERIC(10, 2) NOT NULL,
   placed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Seed a single settings row if none exists
+INSERT INTO auction_settings (is_live) SELECT false WHERE NOT EXISTS (SELECT 1 FROM auction_settings);

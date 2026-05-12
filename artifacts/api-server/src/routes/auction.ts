@@ -197,25 +197,38 @@ auctionPublicRouter.post("/:id/bid", async (req, res) => {
   const parsedAmount = parseFloat(amount);
   if (isNaN(parsedAmount) || parsedAmount <= 0) { res.status(400).json({ error: "Valid amount is required" }); return; }
 
-  const [topBidRow] = await db
-    .select({ maxAmount: sql<string>`MAX(${auctionBidsTable.amount}::numeric)::text` })
-    .from(auctionBidsTable)
-    .where(eq(auctionBidsTable.itemId, id));
+  let bid: typeof auctionBidsTable.$inferSelect;
+  try {
+    bid = await db.transaction(async (tx) => {
+      // Lock the item row to prevent concurrent bid races
+      await tx.execute(sql`SELECT id FROM auction_items WHERE id = ${id} FOR UPDATE`);
 
-  const minBid = topBidRow?.maxAmount
-    ? parseFloat(topBidRow.maxAmount) + parseFloat(item[0].minIncrement)
-    : parseFloat(item[0].startingPrice);
+      const [maxRow] = await tx
+        .select({ maxAmount: sql<string>`MAX(${auctionBidsTable.amount}::numeric)::text` })
+        .from(auctionBidsTable)
+        .where(eq(auctionBidsTable.itemId, id));
 
-  if (parsedAmount < minBid) {
-    res.status(400).json({ error: `Minimum bid is HK$${Math.round(minBid)}` }); return;
+      const minBid = maxRow?.maxAmount
+        ? parseFloat(maxRow.maxAmount) + parseFloat(item[0].minIncrement)
+        : parseFloat(item[0].startingPrice);
+
+      if (parsedAmount < minBid) {
+        throw Object.assign(new Error(`Minimum bid is HK$${Math.round(minBid)}`), { statusCode: 400 });
+      }
+
+      const [inserted] = await tx.insert(auctionBidsTable).values({
+        itemId: id,
+        bidderName: bidderName.trim(),
+        bidderEmail: bidderEmail.trim(),
+        amount: String(parsedAmount),
+      }).returning();
+      return inserted;
+    });
+  } catch (err: unknown) {
+    const e = err as { statusCode?: number; message?: string };
+    res.status(e.statusCode ?? 500).json({ error: e.message ?? "Failed to place bid" });
+    return;
   }
-
-  const [bid] = await db.insert(auctionBidsTable).values({
-    itemId: id,
-    bidderName: bidderName.trim(),
-    bidderEmail: bidderEmail.trim(),
-    amount: String(parsedAmount),
-  }).returning();
 
   const topBid = { bidderName: bid.bidderName, amount: bid.amount };
   broadcastBid(id, topBid);
