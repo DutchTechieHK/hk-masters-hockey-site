@@ -120,8 +120,7 @@ export default function Support() {
           <div>
             <h2 className="text-2xl font-bold text-[#1E3A6E] mb-2">Pledge Your Support</h2>
             <p className="text-gray-600 text-sm mb-6">
-              No payment is taken now — a team member will follow up with you directly with
-              bank transfer details.
+              Thanks for your pledge
             </p>
             <PledgeForm />
           </div>
