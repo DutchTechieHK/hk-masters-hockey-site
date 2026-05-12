@@ -4,10 +4,13 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleEsc);
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
     document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
     return () => {
       document.removeEventListener("keydown", handleEsc);
       document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     };
   }, [onClose]);
 
@@ -18,7 +21,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60"
         onClick={onClose}
       />
 
