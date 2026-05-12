@@ -169,7 +169,7 @@ function ItemCard({ item, onBidPlaced }) {
               <div>
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Current Bid</p>
                 <p className="text-2xl font-extrabold text-[#1E3A6E]">{formatHKD(topBid.amount)}</p>
-                <p className="text-xs text-gray-500 mt-0.5">by {topBid.bidderName.split(" ")[0]}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Current leading bid</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Next min:</p>
@@ -188,7 +188,7 @@ function ItemCard({ item, onBidPlaced }) {
         {closed && (
           <div className="mt-4 bg-gray-50 rounded-xl px-4 py-3 text-center">
             <p className="text-sm font-semibold text-gray-500">Auction closed</p>
-            {topBid && <p className="text-xs text-gray-400 mt-0.5">Won by {topBid.bidderName.split(" ")[0]} · {formatHKD(topBid.amount)}</p>}
+            {topBid && <p className="text-xs text-gray-400 mt-0.5">Winning bid: {formatHKD(topBid.amount)}</p>}
           </div>
         )}
 
