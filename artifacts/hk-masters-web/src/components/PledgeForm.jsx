@@ -439,7 +439,7 @@ export default function PledgeForm({ onSuccess }) {
       </button>
 
       <p className="text-xs text-gray-400 text-center leading-relaxed">
-        This is a pledge only — no payment is taken now. A team member will follow up with details on how to send funds.
+        Please use the PayMe QR Code or link to make your pledge. (If you prefer to transfer differently, just submit, and we will contact you.)
       </p>
     </form>
   );
