@@ -1,6 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { API_BASE } from "../utils/api";
 
 export default function SquadModal({ squad, teamInfo, onClose }) {
+  const [liveShirtNumbers, setLiveShirtNumbers] = useState(new Map());
+
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handleEsc);
@@ -14,15 +17,26 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
     };
   }, [onClose]);
 
+  useEffect(() => {
+    fetch(`${API_BASE}/api/public/squad`)
+      .then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        const map = new Map();
+        if (Array.isArray(rows)) rows.forEach(p => { if (p.name && p.shirtNumber != null) map.set(p.name, p.shirtNumber); });
+        setLiveShirtNumbers(map);
+      })
+      .catch(() => {});
+  }, []);
+
   const players = squad.player_list || [];
   const squad_players = players.filter(p => !p.role || p.role.toLowerCase() !== "reserve");
   const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[300] flex items-end sm:items-start sm:pt-[130px] justify-center">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[82vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[calc(100vh-150px)] flex flex-col shadow-2xl overflow-hidden">
 
         {/* Drag handle (mobile) */}
         <div className="w-10 h-1 bg-white/40 rounded-full mx-auto mt-3 mb-0 sm:hidden absolute top-0 left-1/2 -translate-x-1/2 z-10" />
@@ -76,7 +90,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#1E3A6E]/4 transition-colors group"
                       >
                         <span className="w-9 h-9 bg-[#1E3A6E] text-white rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm group-hover:bg-[#16305D] transition-colors">
-                          {player.shirt_number ?? "—"}
+                          {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
                         </span>
                         <span className="flex-1 font-semibold text-gray-900 text-sm">{player.name}</span>
                         {player.role && player.role.toLowerCase() !== "reserve" && (
@@ -100,7 +114,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
                         className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 transition-colors"
                       >
                         <span className="w-9 h-9 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center text-xs font-bold shrink-0">
-                          {player.shirt_number ?? "—"}
+                          {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
                         </span>
                         <span className="flex-1 font-semibold text-gray-600 text-sm">{player.name}</span>
                         <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold shrink-0">
