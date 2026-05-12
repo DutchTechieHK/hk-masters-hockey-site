@@ -6,10 +6,23 @@ import AutoLink from "../components/AutoLink";
 import RichText from "../components/RichText";
 import SponsorStrip from "../components/SponsorStrip";
 import NextMatchWidget from "../components/NextMatchWidget";
+import { API_BASE } from "../utils/api";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "https://app.hkmastershockey.com";
   const [expandedSquad, setExpandedSquad] = useState(null);
+  const [liveShirtNumbers, setLiveShirtNumbers] = useState(new Map());
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/public/squad`)
+      .then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        const map = new Map();
+        if (Array.isArray(rows)) rows.forEach(p => { if (p.name && p.shirtNumber != null) map.set(p.name, p.shirtNumber); });
+        setLiveShirtNumbers(map);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (window.location.hash) {
@@ -133,7 +146,7 @@ export default function Rotterdam2026() {
                                 {squadPlayers.map((player, i) => (
                                   <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-[#1E3A6E]/4 transition-colors group">
                                     <span className="w-8 h-8 bg-[#1E3A6E] text-white rounded-lg flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
-                                      {player.shirt_number ?? "—"}
+                                      {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
                                     </span>
                                     <span className="flex-1 text-sm font-semibold text-gray-900">{player.name}</span>
                                     {player.role && player.role.toLowerCase() !== "reserve" && (
@@ -153,7 +166,7 @@ export default function Rotterdam2026() {
                                 {reserves.map((player, i) => (
                                   <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-amber-50 transition-colors">
                                     <span className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">
-                                      {player.shirt_number ?? "—"}
+                                      {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
                                     </span>
                                     <span className="text-sm font-semibold text-gray-600 flex-1">{player.name}</span>
                                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold shrink-0">Reserve</span>
