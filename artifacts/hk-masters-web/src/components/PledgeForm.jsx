@@ -422,7 +422,7 @@ export default function PledgeForm({ onSuccess }) {
           value={form.note}
           onChange={handleChange}
           placeholder="A message for the team or player you are supporting…"
-          className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 resize-none"
+          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C]/40 transition-colors resize-none"
         />
       </div>
 
