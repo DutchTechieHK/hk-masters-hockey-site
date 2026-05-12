@@ -534,7 +534,7 @@ export default function Fundraising() {
                     <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="font-bold text-foreground">{entry.donorName}</div>
-                        <div className="text-xs text-muted-foreground">{entry.teamName || 'All Teams (General)'}</div>
+                        {entry.teamName && <div className="text-xs text-muted-foreground">{entry.teamName}</div>}
                       </td>
                       <td className="px-6 py-4 text-muted-foreground">
                         {entry.donorEmail
