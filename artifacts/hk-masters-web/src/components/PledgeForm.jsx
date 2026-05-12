@@ -393,7 +393,7 @@ export default function PledgeForm({ onSuccess }) {
           rows={3}
           value={form.note}
           onChange={handleChange}
-          placeholder="e.g. In memory of someone, a message for the team…"
+          placeholder="A message for the team or player you are supporting…"
           className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 resize-none"
         />
       </div>
