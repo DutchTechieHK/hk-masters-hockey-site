@@ -812,22 +812,13 @@ export default function Fundraising() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Target Team (Optional)</label>
-              <Select {...register("teamId")}>
-                <option value="0">General Fund (All Teams)</option>
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Status</label>
-              <Select {...register("status")}>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="received">Received</option>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Status</label>
+            <Select {...register("status")}>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="received">Received</option>
+            </Select>
           </div>
 
           <div className={editingEntry ? "grid grid-cols-2 gap-4" : ""}>
