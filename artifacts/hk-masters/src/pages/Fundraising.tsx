@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle, AlertCircle } from "lucide-react"
+import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailCheck, AlertTriangle, AlertCircle, Download } from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -286,6 +286,31 @@ export default function Fundraising() {
   const totalPledged = entries.reduce((sum, e) => sum + e.amountPledged, 0)
   const totalReceived = entries.reduce((sum, e) => sum + e.amountReceived, 0)
 
+  const exportCSV = () => {
+    const headers = ["Donor / Sponsor", "Email", "Team", "Status", "Pledged (HKD)", "Received (HKD)", "Pledge Date", "Paid Date", "Notes"]
+    const rows = entries.map(e => [
+      e.donorName,
+      e.donorEmail || "",
+      e.teamName || "General",
+      e.status,
+      e.amountPledged,
+      e.amountReceived,
+      e.date ? format(parseISO(e.date), "yyyy-MM-dd") : "",
+      e.paidAt ? format(parseISO(e.paidAt), "yyyy-MM-dd") : "",
+      e.notes || "",
+    ])
+    const csv = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n")
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `hk-masters-fundraising-${format(new Date(), "yyyy-MM-dd")}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   if (!sessionChecked) {
     return (
       <PageLayout title="Sponsors & Fundraising" description="Checking access...">
@@ -328,9 +353,14 @@ export default function Fundraising() {
       title="Sponsors & Fundraising"
       description="Manage incoming sponsorships, donations, and fundraising efforts."
       action={
-        <Button onClick={openAddModal}>
-          <Plus className="w-5 h-5 mr-2" /> Record Donation
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCSV} disabled={entries.length === 0}>
+            <Download className="w-4 h-4 mr-2" /> Export CSV
+          </Button>
+          <Button onClick={openAddModal}>
+            <Plus className="w-5 h-5 mr-2" /> Record Donation
+          </Button>
+        </div>
       }
     >
       {/* Top Banner */}
