@@ -77,6 +77,13 @@ type BreakdownResult = {
   playerRows: BreakdownRow[]
 }
 
+function normaliseTeamBucket(b: string): "MO40" | "MO50" | null {
+  const s = b.toLowerCase().replace(/\s+/g, "")
+  if (s === "mo40" || s === "mo40team") return "MO40"
+  if (s === "mo50" || s === "mo50team") return "MO50"
+  return null
+}
+
 function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, string>): BreakdownResult {
   const mo40: BreakdownRow = { key: "MO40", label: "MO40", totalPledged: 0, totalReceived: 0, count: 0, isTeam: true }
   const mo50: BreakdownRow = { key: "MO50", label: "MO50", totalPledged: 0, totalReceived: 0, count: 0, isTeam: true }
@@ -89,38 +96,42 @@ function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, 
       general.totalPledged += e.amountPledged
       general.totalReceived += e.amountReceived
       general.count++
-    } else if (b === "MO40 Team") {
-      mo40.totalPledged += e.amountPledged
-      mo40.totalReceived += e.amountReceived
-      mo40.count++
-    } else if (b === "MO50 Team") {
-      mo50.totalPledged += e.amountPledged
-      mo50.totalReceived += e.amountReceived
-      mo50.count++
     } else {
-      if (!playerMap.has(b)) {
-        playerMap.set(b, { key: b, label: b, totalPledged: 0, totalReceived: 0, count: 0, isTeam: false })
-      }
-      const row = playerMap.get(b)!
-      row.totalPledged += e.amountPledged
-      row.totalReceived += e.amountReceived
-      row.count++
-
-      const teamCategory = playerTeamMap.get(b) ?? ""
-      if (teamCategory.toLowerCase().includes("mo40")) {
+      const teamBucket = normaliseTeamBucket(b)
+      if (teamBucket === "MO40") {
         mo40.totalPledged += e.amountPledged
         mo40.totalReceived += e.amountReceived
         mo40.count++
-      } else if (teamCategory.toLowerCase().includes("mo50")) {
+      } else if (teamBucket === "MO50") {
         mo50.totalPledged += e.amountPledged
         mo50.totalReceived += e.amountReceived
         mo50.count++
+      } else {
+        if (!playerMap.has(b)) {
+          playerMap.set(b, { key: b, label: b, totalPledged: 0, totalReceived: 0, count: 0, isTeam: false })
+        }
+        const row = playerMap.get(b)!
+        row.totalPledged += e.amountPledged
+        row.totalReceived += e.amountReceived
+        row.count++
+
+        const teamCategory = playerTeamMap.get(b) ?? ""
+        if (teamCategory.toLowerCase().includes("mo40")) {
+          mo40.totalPledged += e.amountPledged
+          mo40.totalReceived += e.amountReceived
+          mo40.count++
+        } else if (teamCategory.toLowerCase().includes("mo50")) {
+          mo50.totalPledged += e.amountPledged
+          mo50.totalReceived += e.amountReceived
+          mo50.count++
+        }
       }
     }
   }
 
   const playerRows = Array.from(playerMap.values()).sort((a, b) => b.totalPledged - a.totalPledged)
-  return { teamRows: [mo40, mo50, general], playerRows }
+  const teamRows = [mo40, mo50, general].sort((a, b) => b.totalPledged - a.totalPledged)
+  return { teamRows, playerRows }
 }
 
 export default function Fundraising() {
