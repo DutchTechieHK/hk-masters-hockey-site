@@ -335,9 +335,33 @@ export default function PledgeForm({ onSuccess }) {
         </p>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { id: "mo40", label: "MO40 Team" },
-            { id: "mo50", label: "MO50 Team" },
-            { id: "player", label: "An Individual Player" },
+            {
+              id: "mo40",
+              label: "MO40 Team",
+              icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              ),
+            },
+            {
+              id: "mo50",
+              label: "MO50 Team",
+              icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              ),
+            },
+            {
+              id: "player",
+              label: "A Player",
+              icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              ),
+            },
           ].map((tile) => (
             <button
               key={tile.id}
@@ -347,13 +371,17 @@ export default function PledgeForm({ onSuccess }) {
                 setSelectedPlayerId("");
                 if (errors.player) setErrors((err) => ({ ...err, player: undefined }));
               }}
-              className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl border-2 text-xs font-semibold transition-all text-center ${
+              className={`flex flex-col items-center gap-2 px-2 py-4 rounded-xl border-2 text-xs font-semibold transition-all text-center cursor-pointer shadow-sm ${
                 beneficiaryType === tile.id
-                  ? "border-[#006B3C] bg-[#006B3C]/5 text-[#006B3C]"
-                  : "border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                  ? "border-[#006B3C] bg-[#006B3C]/8 text-[#006B3C] shadow-[#006B3C]/10"
+                  : "border-gray-300 text-gray-600 hover:border-[#006B3C]/40 hover:bg-[#006B3C]/4 hover:text-[#006B3C] bg-white"
               }`}
             >
+              <span className={beneficiaryType === tile.id ? "text-[#006B3C]" : "text-gray-400"}>{tile.icon}</span>
               <span className="leading-tight">{tile.label}</span>
+              {beneficiaryType === tile.id && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#006B3C]" />
+              )}
             </button>
           ))}
         </div>
