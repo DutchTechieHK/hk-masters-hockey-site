@@ -415,23 +415,17 @@ export default function AuctionAdmin() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold">Image</label>
-            <div className="flex gap-2">
-              <Input
-                value={form.imageUrl}
-                onChange={e => setForm(p => ({ ...p, imageUrl: e.target.value }))}
-                placeholder="https://… or upload below"
-                className="flex-1"
-              />
+            <div>
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
                 disabled={imageUploading}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border border-input transition-colors disabled:opacity-60 shrink-0"
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md border border-input transition-colors disabled:opacity-60"
               >
                 {imageUploading ? (
                   <span className="flex items-center gap-1.5"><span className="animate-spin w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full inline-block" />Uploading…</span>
                 ) : (
-                  <><Upload className="w-4 h-4" />Upload</>
+                  <><Upload className="w-4 h-4" />Upload image</>
                 )}
               </button>
               <input
