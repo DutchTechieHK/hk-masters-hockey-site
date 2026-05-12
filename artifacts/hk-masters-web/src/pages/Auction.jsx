@@ -26,15 +26,19 @@ function useCountdown(closesAt) {
   return timeLeft;
 }
 
-function CountdownBadge({ closesAt }) {
+function CountdownBadge({ closesAt, hero = false }) {
   const t = useCountdown(closesAt);
   if (!t) return null;
-  if (t.closed) return <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Auction closed</span>;
+  if (t.closed) {
+    if (hero) return <span className="text-white font-mono">Closed</span>;
+    return <span className="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded-full">Auction closed</span>;
+  }
   const parts = [];
   if (t.d > 0) parts.push(`${t.d}d`);
   parts.push(`${String(t.h).padStart(2, "0")}h`);
   parts.push(`${String(t.m).padStart(2, "0")}m`);
   parts.push(`${String(t.s).padStart(2, "0")}s`);
+  if (hero) return <span className="font-mono">{parts.join(" ")}</span>;
   return (
     <span className="text-xs font-mono font-bold text-[#1E3A6E] bg-[#1E3A6E]/8 px-2 py-1 rounded-full">
       ⏱ {parts.join(" ")}
@@ -285,6 +289,10 @@ export default function Auction() {
 
   const activeItems = (data.items || []).filter(i => i.isActive);
 
+  const soonestClose = activeItems
+    .filter(i => i.closesAt && new Date(i.closesAt) > new Date())
+    .sort((a, b) => new Date(a.closesAt) - new Date(b.closesAt))[0];
+
   return (
     <div>
       <div className="bg-[#1E3A6E] text-white py-16">
@@ -297,12 +305,17 @@ export default function Auction() {
             Bid on exclusive items to support HK Masters Hockey at the World Masters Cup in Rotterdam.
             Bids update live — no refresh needed.
           </p>
-          <div className="flex items-center gap-2 mt-4">
+          <div className="flex flex-wrap items-center gap-3 mt-5">
             <span className="inline-flex items-center gap-1.5 bg-white/10 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" />
               Live bidding
             </span>
             <span className="text-[#BFD9F5] text-sm">{activeItems.length} item{activeItems.length !== 1 ? "s" : ""}</span>
+            {soonestClose && (
+              <span className="inline-flex items-center gap-1.5 bg-white/10 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+                ⏱ Closes in: <CountdownBadge closesAt={soonestClose.closesAt} hero />
+              </span>
+            )}
           </div>
         </div>
       </div>

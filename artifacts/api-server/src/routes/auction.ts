@@ -22,25 +22,28 @@ async function getSettings() {
   return rows[0];
 }
 
-async function getItemsWithTopBids() {
-  const items = await db.select().from(auctionItemsTable).orderBy(auctionItemsTable.id);
-  const topBids = await db
-    .select({
-      itemId: auctionBidsTable.itemId,
-      bidderName: auctionBidsTable.bidderName,
-      amount: sql<string>`MAX(${auctionBidsTable.amount}::numeric)::text`,
-    })
-    .from(auctionBidsTable)
-    .groupBy(auctionBidsTable.itemId);
+type TopBidRow = { item_id: number; bidder_name: string; amount: string };
 
-  const topBidMap = new Map(topBids.map(b => [b.itemId, b]));
+async function getItemsWithTopBids(activeOnly = false) {
+  const itemsQuery = db.select().from(auctionItemsTable).orderBy(auctionItemsTable.id);
+  const items = activeOnly
+    ? await db.select().from(auctionItemsTable).where(eq(auctionItemsTable.isActive, true)).orderBy(auctionItemsTable.id)
+    : await itemsQuery;
+
+  // DISTINCT ON ensures we get the bidder_name for the actual highest bid row
+  const topBidRows = await db.execute<TopBidRow>(sql`
+    SELECT DISTINCT ON (item_id) item_id, bidder_name, amount::text
+    FROM auction_bids
+    ORDER BY item_id, amount DESC, placed_at DESC
+  `);
+
+  const topBidMap = new Map(topBidRows.rows.map(b => [b.item_id, b]));
 
   return items.map(item => {
     const topBidRow = topBidMap.get(item.id);
-    let topBid = null;
-    if (topBidRow) {
-      topBid = { amount: topBidRow.amount, bidderName: topBidRow.bidderName };
-    }
+    const topBid = topBidRow
+      ? { amount: topBidRow.amount, bidderName: topBidRow.bidder_name }
+      : null;
     return {
       id: item.id,
       title: item.title,
@@ -132,7 +135,7 @@ auctionAdminRouter.get("/items/:id/bids", requireAdminAccess, async (req, res) =
     .select()
     .from(auctionBidsTable)
     .where(eq(auctionBidsTable.itemId, id))
-    .orderBy(desc(auctionBidsTable.amount));
+    .orderBy(desc(auctionBidsTable.placedAt));
   res.json(bids.map(b => ({
     id: b.id,
     bidderName: b.bidderName,
@@ -150,7 +153,7 @@ auctionPublicRouter.get("/", async (_req, res) => {
     res.json({ isLive: false, items: [] });
     return;
   }
-  const items = await getItemsWithTopBids();
+  const items = await getItemsWithTopBids(true);
   res.json({ isLive: true, items });
 });
 
@@ -199,7 +202,6 @@ auctionPublicRouter.post("/:id/bid", async (req, res) => {
     .from(auctionBidsTable)
     .where(eq(auctionBidsTable.itemId, id));
 
-  const currentTop = topBidRow?.maxAmount ? parseFloat(topBidRow.maxAmount) : parseFloat(item[0].startingPrice) - 1;
   const minBid = topBidRow?.maxAmount
     ? parseFloat(topBidRow.maxAmount) + parseFloat(item[0].minIncrement)
     : parseFloat(item[0].startingPrice);
