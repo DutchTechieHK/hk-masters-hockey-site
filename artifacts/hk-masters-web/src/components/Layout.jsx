@@ -4,6 +4,7 @@ import contactContent from "../content/contact.json";
 import { getPlayerToken } from "../lib/playerAuth";
 import { useReveal } from "../hooks/useReveal";
 import { API_BASE } from "../utils/api";
+import InstallBanner, { OfflineBanner } from "./InstallBanner";
 
 const BASE_NAV_LINKS = [
   { href: "/",               label: "Home" },
@@ -202,6 +203,9 @@ export default function Layout({ children }) {
       <main className="flex-1">
         {children}
       </main>
+
+      <OfflineBanner />
+      <InstallBanner />
 
       {/* ── Footer ───────────────────────────────────────────────── */}
       <footer className="bg-[#1E3A6E] text-white mt-auto">

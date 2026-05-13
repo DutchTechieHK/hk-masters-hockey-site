@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 const isReplit = !!process.env.REPL_ID;
@@ -32,7 +33,63 @@ export default defineConfig({
       ? { "import.meta.env.VITE_API_BASE_URL": JSON.stringify(`https://${replitDevDomain}`) }
       : {}),
   },
-  plugins: [react(), tailwindcss(), ...replitPlugins],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "logo.png", "apple-touch-icon.png"],
+      manifest: {
+        name: "HK Masters Hockey",
+        short_name: "HK Masters",
+        description: "Player portal and news for HK Masters Hockey",
+        theme_color: "#1E3A6E",
+        background_color: "#1E3A6E",
+        display: "standalone",
+        orientation: "portrait",
+        icons: [
+          { src: "pwa-192.png", sizes: "192x192", type: "image/png" },
+          { src: "pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+        ],
+      },
+      workbox: {
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        navigateFallback: "index.html",
+        navigateFallbackDenylist: [/^\/api\//],
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/(player-auth|documents)\//,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "player-api-cache",
+              networkTimeoutSeconds: 10,
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-stylesheets",
+              expiration: { maxEntries: 5, maxAgeSeconds: 31536000 },
+            },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\//,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "google-fonts-webfonts",
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 20, maxAgeSeconds: 31536000 },
+            },
+          },
+        ],
+      },
+      devOptions: { enabled: false },
+    }),
+    ...replitPlugins,
+  ],
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),
