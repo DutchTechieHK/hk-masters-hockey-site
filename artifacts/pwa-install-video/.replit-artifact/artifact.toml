@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/pwa-install-video/"
+title = "How to Install the HK Masters App"
+version = "1.0.0"
+id = "artifacts/pwa-install-video"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/pwa-install-video/" ]
+localPort = 26214
+
+[services.development]
+run = "pnpm --filter @workspace/pwa-install-video run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pwa-install-video", "run", "build" ]
+publicDir = "artifacts/pwa-install-video/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26214"
+BASE_PATH = "/pwa-install-video/"
