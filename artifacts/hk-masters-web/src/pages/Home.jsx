@@ -419,7 +419,8 @@ export default function Home() {
                 const liveSquad = squadRows
                   ? buildLiveSquad(squad.short_name, squad.name, squadRows, fallbackSquad?.player_list)
                   : null;
-                const rotterdamSquad = liveSquad && liveSquad.player_list.length > 0
+                const staticCount = fallbackSquad?.player_list?.length ?? 0;
+                const rotterdamSquad = liveSquad && liveSquad.player_list.length >= staticCount && staticCount > 0
                   ? liveSquad
                   : fallbackSquad || { name: squad.name, category: squad.short_name, player_list: [] };
                 return (

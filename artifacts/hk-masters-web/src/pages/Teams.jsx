@@ -84,8 +84,11 @@ export default function Teams() {
               rotterdamMode && squadRows
                 ? buildLiveSquad(squad.short_name, squad.name, squadRows, fallbackSquad?.player_list)
                 : null;
+            const staticCount = fallbackSquad?.player_list?.length ?? 0;
             const rotterdamSquad =
-              liveSquad && liveSquad.player_list.length > 0 ? liveSquad : fallbackSquad;
+              liveSquad && liveSquad.player_list.length >= staticCount && staticCount > 0
+                ? liveSquad
+                : fallbackSquad;
 
             return (
               <div
