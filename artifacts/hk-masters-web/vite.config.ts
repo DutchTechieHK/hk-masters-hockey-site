@@ -38,7 +38,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "logo.png", "apple-touch-icon.png"],
+      includeAssets: ["favicon.svg", "logo.png", "apple-touch-icon.png", "offline.html"],
       manifest: {
         name: "HK Masters Hockey",
         short_name: "HK Masters",
@@ -47,6 +47,10 @@ export default defineConfig({
         background_color: "#1E3A6E",
         display: "standalone",
         orientation: "portrait",
+        // "." resolves relative to the manifest URL, so it works at both
+        // the root (hkmastershockey.com/) and any subpath (dev: /hk-masters-web/)
+        start_url: ".",
+        scope: ".",
         icons: [
           { src: "pwa-192.png", sizes: "192x192", type: "image/png" },
           { src: "pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
@@ -54,17 +58,22 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        // SPA: serve the cached app shell for all non-API navigations.
+        // If both network and cache fail, Workbox falls back to offline.html
+        // (included in the precache via includeAssets above).
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: /\/api\/(player-auth|documents)\//,
+            // NetworkFirst for every read-only portal/public API endpoint.
+            // Workbox only caches GET responses, so POST mutations are unaffected.
+            urlPattern: /\/api\/(announcements|contributions|documents|events|matches|player-auth|players|public|sponsors)[/]/,
             handler: "NetworkFirst",
             options: {
-              cacheName: "player-api-cache",
+              cacheName: "portal-api-cache",
               networkTimeoutSeconds: 10,
               cacheableResponse: { statuses: [0, 200] },
-              expiration: { maxEntries: 50, maxAgeSeconds: 86400 },
+              expiration: { maxEntries: 100, maxAgeSeconds: 86400 },
             },
           },
           {
