@@ -19,7 +19,7 @@ function categoryMatches(rowCategory, shortName) {
   return Boolean(rNum && sNum && rNum === sNum);
 }
 
-function buildLiveSquad(category, name, squadRows) {
+function buildLiveSquad(category, name, squadRows, staticPlayers = []) {
   const matching = squadRows
     .filter((p) => categoryMatches(p.teamCategory, category))
     .sort((a, b) => {
@@ -28,11 +28,14 @@ function buildLiveSquad(category, name, squadRows) {
       if (an !== bn) return an - bn;
       return a.name.localeCompare(b.name);
     })
-    .map((p) => ({
-      name: p.name,
-      shirt_number: p.shirtNumber ?? null,
-      role: p.position || null,
-    }));
+    .map((p) => {
+      const staticMatch = staticPlayers.find((s) => s.name === p.name);
+      return {
+        name: p.name,
+        shirt_number: p.shirtNumber ?? staticMatch?.shirt_number ?? null,
+        role: p.position || staticMatch?.role || null,
+      };
+    });
   return { name, category, player_list: matching };
 }
 
@@ -74,13 +77,13 @@ export default function Teams() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="space-y-16">
           {content.squads.map((squad, index) => {
-            const liveSquad =
-              rotterdamMode && squadRows
-                ? buildLiveSquad(squad.short_name, squad.name, squadRows)
-                : null;
             const fallbackSquad = rotterdamMode
               ? rotterdamContent.squads.find((s) => s.category === squad.short_name)
               : null;
+            const liveSquad =
+              rotterdamMode && squadRows
+                ? buildLiveSquad(squad.short_name, squad.name, squadRows, fallbackSquad?.player_list)
+                : null;
             const rotterdamSquad =
               liveSquad && liveSquad.player_list.length > 0 ? liveSquad : fallbackSquad;
 
