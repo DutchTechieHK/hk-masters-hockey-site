@@ -56,6 +56,45 @@ registerRoute(
   })
 );
 
+// Push notification handler: show a notification when the server sends a push event
+self.addEventListener("push", (event: PushEvent) => {
+  let payload: { title?: string; body?: string; url?: string } = {};
+  try {
+    if (event.data) payload = event.data.json();
+  } catch {}
+  const title = payload.title ?? "HK Masters Hockey";
+  const body = payload.body ?? "You have a new announcement.";
+  const url = payload.url ?? "/announcements";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: self.registration.scope + "pwa-192.png",
+      badge: self.registration.scope + "pwa-192.png",
+      data: { url },
+      tag: "announcement",
+    })
+  );
+});
+
+// Notification click: focus existing window or open a new one
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+  const url = (event.notification.data?.url as string | undefined) ?? "/";
+  const absoluteUrl = new URL(url, self.registration.scope).href;
+  event.waitUntil(
+    (self.clients as Clients).matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.startsWith(self.registration.scope)) {
+          (client as WindowClient).focus();
+          (client as WindowClient).navigate(absoluteUrl);
+          return;
+        }
+      }
+      return (self.clients as Clients).openWindow(absoluteUrl);
+    })
+  );
+});
+
 // True offline fallback: when BOTH network AND all caches fail for a document
 // request (e.g. first visit with no connectivity, cache fully cleared), serve
 // the precached offline.html so users see a branded error instead of a blank page.

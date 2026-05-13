@@ -3,6 +3,7 @@ import { db, announcementsTable, teamsTable } from "@workspace/db";
 import { eq, desc, or, isNull } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { requirePlayerSession } from "../middleware/playerSession";
+import { sendPushToAll, sendPushToTeam } from "../utils/push";
 
 const router: IRouter = Router();
 
@@ -32,6 +33,7 @@ function parseBody(body: unknown): {
   body: string;
   teamId: number | null;
   pinned: boolean;
+  sendPush: boolean;
 } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -47,7 +49,8 @@ function parseBody(body: unknown): {
     teamId = n;
   }
   const pinned = b.pinned === true || b.pinned === "true";
-  return { title, body: messageBody, teamId, pinned };
+  const sendPush = b.sendPush !== false && b.sendPush !== "false";
+  return { title, body: messageBody, teamId, pinned, sendPush };
 }
 
 router.get("/", requireAdminOrPlayer, async (req, res) => {
@@ -87,6 +90,17 @@ router.post("/", requireAdminAccess, async (req, res) => {
     teamId: parsed.teamId,
     pinned: parsed.pinned,
   }).returning();
+
+  if (parsed.sendPush) {
+    const excerpt = parsed.body.length > 120 ? parsed.body.slice(0, 119) + "…" : parsed.body;
+    const pushPayload = { title: parsed.title, body: excerpt, url: "/announcements" };
+    if (parsed.teamId != null) {
+      sendPushToTeam(parsed.teamId, pushPayload).catch(console.error);
+    } else {
+      sendPushToAll(pushPayload).catch(console.error);
+    }
+  }
+
   res.status(201).json(serialize(row, teamResult.team?.name));
 });
 

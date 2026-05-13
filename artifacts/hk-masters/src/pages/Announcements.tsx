@@ -28,6 +28,7 @@ type FormState = {
   body: string
   teamId: string
   pinned: boolean
+  sendPush: boolean
 }
 
 type EmailBlast = {
@@ -59,7 +60,7 @@ const EMPTY_EMAIL_FORM: EmailFormState = {
   body: "",
 }
 
-const EMPTY_FORM: FormState = { title: "", body: "", teamId: "", pinned: false }
+const EMPTY_FORM: FormState = { title: "", body: "", teamId: "", pinned: false, sendPush: true }
 
 function authHeaders(): Record<string, string> {
   const token = getStoredAdminToken()
@@ -141,7 +142,7 @@ export default function Announcements() {
 
   const openEdit = (a: Announcement) => {
     setEditing(a)
-    setForm({ title: a.title, body: a.body, teamId: a.teamId ? String(a.teamId) : "", pinned: a.pinned })
+    setForm({ title: a.title, body: a.body, teamId: a.teamId ? String(a.teamId) : "", pinned: a.pinned, sendPush: false })
     setFormError(null)
     setIsModalOpen(true)
   }
@@ -182,6 +183,7 @@ export default function Announcements() {
         body: form.body.trim(),
         teamId: form.teamId === "" ? null : Number(form.teamId),
         pinned: form.pinned,
+        sendPush: !editing && form.sendPush,
       }
       const url = editing ? `/api/announcements/${editing.id}` : "/api/announcements"
       const method = editing ? "PATCH" : "POST"
@@ -626,6 +628,17 @@ export default function Announcements() {
             />
             Pin to top of the feed
           </label>
+          {!editing && (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={form.sendPush}
+                onChange={(e) => setForm({ ...form, sendPush: e.target.checked })}
+                className="rounded border-gray-300"
+              />
+              Send push notification to subscribed players
+            </label>
+          )}
           {formError && <p className="text-sm text-rose-600">{formError}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>

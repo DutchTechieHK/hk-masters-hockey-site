@@ -5,6 +5,7 @@ import { getPlayerToken } from "../lib/playerAuth";
 import { useReveal } from "../hooks/useReveal";
 import { API_BASE } from "../utils/api";
 import InstallBanner, { OfflineBanner } from "./InstallBanner";
+import NotificationPrompt from "./NotificationPrompt";
 
 const BASE_NAV_LINKS = [
   { href: "/",               label: "Home" },
@@ -206,6 +207,7 @@ export default function Layout({ children }) {
 
       <OfflineBanner />
       <InstallBanner />
+      <NotificationPrompt />
 
       {/* ── Footer ───────────────────────────────────────────────── */}
       <footer className="bg-[#1E3A6E] text-white mt-auto">
