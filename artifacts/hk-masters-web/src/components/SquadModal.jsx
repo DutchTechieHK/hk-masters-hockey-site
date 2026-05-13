@@ -23,11 +23,13 @@ export default function SquadModal({ category, teamInfo, fallback = [], onClose 
     fetch(`${API_BASE}/api/public/squad`)
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
-        const cat = category.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        const catNum = (category.match(/\d+/) || [])[0];
         const live = (Array.isArray(rows) ? rows : [])
           .filter(p => {
-            const pc = (p.teamCategory || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
-            return pc === cat;
+            const pc = p.teamCategory || "";
+            // Match by number (e.g. "MO40" matches "Men 40+", "MO50" matches "MO50")
+            const pcNum = (pc.match(/\d+/) || [])[0];
+            return catNum && pcNum === catNum;
           })
           .sort((a, b) => {
             const an = a.shirtNumber ?? 999;
