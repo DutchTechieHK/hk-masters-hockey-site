@@ -143,7 +143,7 @@ export function Scene4() {
                   transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.2 }}
                 >
                   <div className="w-14 h-14 rounded-2xl bg-[var(--color-primary)] border-2 border-[var(--color-accent)]/60 flex items-center justify-center shadow-lg shadow-black/40">
-                    <img src={`${import.meta.env.BASE_URL}logo.png`} className="w-10 h-10" alt="" />
+                    <img src={`${import.meta.env.BASE_URL}pwa-192.png`} className="w-10 h-10" alt="" />
                   </div>
                   <span className="text-white text-[10px] font-medium drop-shadow">HK Masters</span>
                 </motion.div>

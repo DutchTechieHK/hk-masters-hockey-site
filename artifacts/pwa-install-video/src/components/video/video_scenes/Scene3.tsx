@@ -91,7 +91,7 @@ export function Scene3() {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                   >
-                    <img src={`${import.meta.env.BASE_URL}logo.png`} className="w-full h-full object-cover" />
+                    <img src={`${import.meta.env.BASE_URL}pwa-192.png`} className="w-full h-full object-cover" />
                   </motion.div>
                 )}
               </div>

@@ -42,9 +42,15 @@ export default function VideoTemplate({
   const SceneComponent = SCENE_COMPONENTS[baseSceneKey];
 
   return (
-    <div className="w-full h-screen bg-black flex items-center justify-center overflow-hidden">
+    <div className="w-full h-screen bg-black flex items-center justify-center overflow-hidden"
+      ref={(el) => {
+        if (!el) return;
+        const scale = Math.min(el.clientWidth / 1280, el.clientHeight / 720);
+        el.style.setProperty('--canvas-scale', String(scale));
+      }}
+    >
     <div className="relative overflow-hidden bg-[var(--color-bg-dark)]"
-      style={{ aspectRatio: '16/9', width: '100%', maxHeight: '100vh', maxWidth: 'calc(100vh * 16 / 9)' }}
+      style={{ width: 1280, height: 720, maxWidth: '100vw', maxHeight: '100vh', transform: 'scale(var(--canvas-scale, 1))', transformOrigin: 'top left' }}
     >
 
       {/* Persistent Background Elements */}
