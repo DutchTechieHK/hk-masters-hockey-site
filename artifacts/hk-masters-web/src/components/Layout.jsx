@@ -98,6 +98,9 @@ export default function Layout({ children }) {
   /* Scroll-reveal — re-observes on every route change so SPA navigation works */
   useReveal([location]);
 
+  const PORTAL_PREFIXES = ["/dashboard", "/schedule", "/fees", "/travel", "/announcements", "/documents", "/my-details", "/my-submission", "/login"];
+  const isPortalPage = PORTAL_PREFIXES.some((prefix) => location === prefix || location.startsWith(prefix + "/"));
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Scroll progress */}
@@ -206,7 +209,7 @@ export default function Layout({ children }) {
       </main>
 
       <OfflineBanner />
-      <InstallBanner />
+      {!isPortalPage && <InstallBanner />}
       <NotificationPrompt />
 
       {/* ── Footer ───────────────────────────────────────────────── */}
