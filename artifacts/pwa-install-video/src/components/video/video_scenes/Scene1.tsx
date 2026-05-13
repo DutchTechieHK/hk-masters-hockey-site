@@ -27,7 +27,8 @@ export function Scene1() {
         <motion.img
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt="HK Masters Logo"
-          className="w-40 h-auto mb-10 drop-shadow-2xl"
+          className="w-40 h-auto mb-10"
+          style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 16px rgba(242,232,213,0.6))' }}
           initial={{ scale: 0, rotate: -15, opacity: 0 }}
           animate={phase >= 1 ? { scale: 1, rotate: 0, opacity: 1 } : { scale: 0, rotate: -15, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}

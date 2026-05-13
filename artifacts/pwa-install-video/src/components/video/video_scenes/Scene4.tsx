@@ -81,7 +81,7 @@ export function Scene4() {
                 transition={{ duration: 0.3 }}
               >
                 <div className="w-full h-32 bg-[var(--color-bg-dark)] rounded-xl mb-3 flex items-center justify-center">
-                  <img src={`${import.meta.env.BASE_URL}logo.png`} className="h-14 opacity-60" alt="" />
+                  <img src={`${import.meta.env.BASE_URL}logo.png`} className="h-14" style={{ filter: 'brightness(0) invert(1)', opacity: 0.7 }} alt="" />
                 </div>
                 <div className="w-3/4 h-4 bg-gray-200 rounded mb-2" />
                 <div className="w-1/2 h-3 bg-gray-100 rounded mb-4" />
@@ -102,7 +102,7 @@ export function Scene4() {
                       transition={{ type: 'spring', stiffness: 300, damping: 28 }}
                     >
                       <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[var(--color-primary)] flex items-center justify-center">
-                        <img src={`${import.meta.env.BASE_URL}logo.png`} className="w-8 h-8" alt="" />
+                        <img src={`${import.meta.env.BASE_URL}logo.png`} className="w-8 h-8" style={{ filter: 'brightness(0) invert(1)' }} alt="" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-white text-xs font-semibold truncate">Add HK Masters</div>

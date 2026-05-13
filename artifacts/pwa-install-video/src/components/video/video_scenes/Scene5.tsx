@@ -34,6 +34,7 @@ export function Scene5() {
             src={`${import.meta.env.BASE_URL}logo.png`}
             alt="HK Masters Logo"
             className="w-28 h-auto"
+            style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 12px rgba(242,232,213,0.5))' }}
           />
         </motion.div>
 
