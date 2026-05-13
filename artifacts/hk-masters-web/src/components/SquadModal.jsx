@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { API_BASE } from "../utils/api";
 
-export default function SquadModal({ category, teamInfo, onClose }) {
+export default function SquadModal({ category, teamInfo, fallback = [], onClose }) {
   const [players, setPlayers] = useState(null);
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function SquadModal({ category, teamInfo, onClose }) {
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
         const cat = category.toUpperCase().replace(/[^A-Z0-9]/g, "");
-        const filtered = (Array.isArray(rows) ? rows : [])
+        const live = (Array.isArray(rows) ? rows : [])
           .filter(p => {
             const pc = (p.teamCategory || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
             return pc === cat;
@@ -35,9 +35,31 @@ export default function SquadModal({ category, teamInfo, onClose }) {
             if (an !== bn) return an - bn;
             return a.name.localeCompare(b.name);
           });
-        setPlayers(filtered);
+
+        if (live.length > 0) {
+          // DB has players — use them directly, they are the truth
+          setPlayers(live.map(p => ({
+            name: p.name,
+            shirtNumber: p.shirtNumber ?? null,
+            position: p.position ?? null,
+            role: null,
+          })));
+        } else {
+          // DB empty for this category — fall back to static JSON
+          setPlayers(fallback.map(p => ({
+            name: p.name,
+            shirtNumber: p.shirt_number ?? null,
+            position: p.role && p.role.toLowerCase() !== "reserve" ? p.role : null,
+            role: p.role ?? null,
+          })));
+        }
       })
-      .catch(() => setPlayers([]));
+      .catch(() => setPlayers(fallback.map(p => ({
+        name: p.name,
+        shirtNumber: p.shirt_number ?? null,
+        position: p.role && p.role.toLowerCase() !== "reserve" ? p.role : null,
+        role: p.role ?? null,
+      }))));
   }, [category]);
 
   const squad_players = (players || []).filter(p => p.role?.toLowerCase() !== "reserve");

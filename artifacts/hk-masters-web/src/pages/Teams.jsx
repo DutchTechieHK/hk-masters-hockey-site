@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import content from "../content/teams.json";
 import { cloudinaryResize } from "../utils/cloudinary";
+import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import RichText from "../components/RichText";
 
@@ -135,6 +136,7 @@ export default function Teams() {
         <SquadModal
           category={openSquad.category}
           teamInfo={openSquad.teamInfo}
+          fallback={rotterdamContent.squads.find(s => s.category === openSquad.category)?.player_list || []}
           onClose={() => setOpenSquad(null)}
         />
       )}

@@ -426,6 +426,7 @@ export default function Home() {
         <SquadModal
           category={openSquad.category}
           teamInfo={openSquad.teamInfo}
+          fallback={rotterdamContent.squads.find(s => s.category === openSquad.category)?.player_list || []}
           onClose={() => setOpenSquad(null)}
         />
       )}
