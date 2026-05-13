@@ -17,18 +17,45 @@ export function Scene1() {
 
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-dark)]"
+      className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.08 }}
       transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
     >
+      {/* Atmospheric stadium background */}
+      <div className="absolute inset-0">
+        <img
+          src={`${import.meta.env.BASE_URL}bg-stadium.png`}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{ objectPosition: 'center 30%' }}
+        />
+        {/* Deep navy overlay so text stays legible */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(22,48,93,0.82) 0%, rgba(22,48,93,0.72) 40%, rgba(22,48,93,0.90) 100%)',
+          }}
+        />
+        {/* Subtle vignette */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 40%, rgba(10,20,40,0.65) 100%)',
+          }}
+        />
+      </div>
+
+      {/* Content */}
       <div className="relative z-10 flex flex-col items-center text-center px-12">
         <motion.img
           src={`${import.meta.env.BASE_URL}logo.png`}
           alt="HK Masters Logo"
           className="w-40 h-auto mb-10"
-          style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 16px rgba(242,232,213,0.6))' }}
+          style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 20px rgba(242,232,213,0.7))' }}
           initial={{ scale: 0, rotate: -15, opacity: 0 }}
           animate={phase >= 1 ? { scale: 1, rotate: 0, opacity: 1 } : { scale: 0, rotate: -15, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
@@ -49,7 +76,7 @@ export function Scene1() {
         <div className="overflow-hidden mb-8">
           <motion.h1
             className="text-[4.5vw] font-bold text-white leading-tight"
-            style={{ fontFamily: 'var(--font-display)' }}
+            style={{ fontFamily: 'var(--font-display)', textShadow: '0 2px 24px rgba(0,0,0,0.6)' }}
             initial={{ y: '110%' }}
             animate={phase >= 3 ? { y: 0 } : { y: '110%' }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -67,7 +94,8 @@ export function Scene1() {
           {['iOS', 'Android'].map((label, i) => (
             <motion.div
               key={label}
-              className="px-5 py-2 rounded-full border border-[var(--color-accent)]/40 text-[var(--color-accent)] text-[1.4vw] font-medium"
+              className="px-5 py-2 rounded-full border border-[var(--color-accent)]/40 text-[var(--color-accent)] text-[1.4vw] font-medium backdrop-blur-sm"
+              style={{ background: 'rgba(242,232,213,0.08)' }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={phase >= 4 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}
               transition={{ delay: i * 0.15, type: 'spring', stiffness: 300, damping: 22 }}

@@ -36,3 +36,9 @@ id = "4s42gAPWxOY422zaMmc-P"
 uri = "file://artifacts/hk-masters-web/public/images/social-option-b.png"
 type = "image"
 title = "Hockey club outdoor BBQ social"
+
+[[generated]]
+id = "n9bfhq6ml6AkT065JB5dt"
+uri = "file://artifacts/pwa-install-video/public/bg-stadium.png"
+type = "image"
+title = "hockey stadium denim blue"
