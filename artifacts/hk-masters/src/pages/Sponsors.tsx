@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useListSponsors, useCreateSponsor, useUpdateSponsor, useDeleteSponsor, getListSponsorsQueryKey } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -13,9 +13,6 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { Sponsor } from "@workspace/api-client-react/src/generated/api.schemas"
 import { useToast } from "@/hooks/use-toast"
-
-const CLOUD_NAME = "djyvdrhal"
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "hk_masters_unsigned"
 
 const SESSION_KEY = "hkm_admin_session"
 function getStoredToken(): string | null {
@@ -69,9 +66,9 @@ export default function Sponsors() {
   const [loginPassword, setLoginPassword] = useState("")
   const [loginError, setLoginError] = useState<string | null>(null)
   const [loginLoading, setLoginLoading] = useState(false)
-  const [widgetLoaded, setWidgetLoaded] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const handleBackfillLogos = async () => {
     if (!sessionToken) return
@@ -92,51 +89,41 @@ export default function Sponsors() {
     }
   }
 
-  useEffect(() => {
-    if (document.getElementById("cloudinary-widget-script")) {
-      setWidgetLoaded(true)
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ""
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Only image files are allowed (JPEG, PNG, GIF, WebP)", variant: "destructive" })
       return
     }
-    const script = document.createElement("script")
-    script.id = "cloudinary-widget-script"
-    script.src = "https://upload-widget.cloudinary.com/global/all.js"
-    script.onload = () => setWidgetLoaded(true)
-    document.head.appendChild(script)
-  }, [])
-
-  const openUploadWidget = () => {
-    if (!widgetLoaded || !(window as unknown as { cloudinary: { createUploadWidget: (opts: Record<string, unknown>, cb: (err: unknown, result: { event: string; info: { secure_url: string } }) => void) => { open: () => void } } }).cloudinary) return
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Image too large — max 10 MB", variant: "destructive" })
+      return
+    }
     setUploading(true)
-    const w = (window as unknown as { cloudinary: { createUploadWidget: (opts: Record<string, unknown>, cb: (err: unknown, result: { event: string; info: { secure_url: string } }) => void) => { open: () => void } } }).cloudinary.createUploadWidget(
-      {
-        cloudName: CLOUD_NAME,
-        uploadPreset: UPLOAD_PRESET,
-        multiple: false,
-        maxFiles: 1,
-        resourceType: "image",
-        cropping: false,
-        sources: ["local", "url", "camera"],
-      },
-      (err: unknown, result: { event: string; info: { secure_url: string } }) => {
-        if (err) {
-          setUploading(false)
-          toast({ title: "Upload failed", variant: "destructive" })
-          return
-        }
-        if (result.event === "success") {
-          const raw = result.info.secure_url
-          const resized = raw.includes("cloudinary.com")
-            ? raw.replace("/upload/", "/upload/c_limit,w_400,q_auto,f_auto/")
-            : raw
-          setValue("logoUrl", resized, { shouldValidate: true })
-          setUploading(false)
-        }
-        if (result.event === "close") {
-          setUploading(false)
-        }
+    try {
+      const token = getStoredToken()
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/sponsors/image-upload", {
+        method: "POST",
+        headers: token ? { "x-session-token": token } : {},
+        body: formData,
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? `Upload failed: ${res.status}`)
       }
-    )
-    w.open()
+      const { imageUrl } = await res.json() as { imageUrl: string }
+      setValue("logoUrl", imageUrl, { shouldValidate: true })
+      toast({ title: "Logo uploaded" })
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setUploading(false)
+    }
   }
 
   useEffect(() => {
@@ -443,13 +430,20 @@ export default function Sponsors() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={openUploadWidget}
-                disabled={!widgetLoaded || uploading}
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploading}
                 className="shrink-0 gap-1.5"
               >
                 <Upload className="w-4 h-4" />
                 {uploading ? "Uploading…" : "Upload"}
               </Button>
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={handleLogoUpload}
+              />
             </div>
             {errors.logoUrl && <p className="text-xs text-destructive">{errors.logoUrl.message}</p>}
             {watchLogoUrl && (
