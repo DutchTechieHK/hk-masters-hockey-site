@@ -42,7 +42,7 @@ async function apiCheckSession(token: string): Promise<boolean> {
 
 const sponsorSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  logoUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  logoUrl: z.union([z.string().url(), z.string().startsWith("/"), z.literal("")]).optional(),
   websiteUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   tier: z.enum(["Gold", "Silver", "Bronze"]),
   active: z.boolean(),
