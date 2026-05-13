@@ -133,6 +133,21 @@ export default function AuctionAdmin() {
     setIsModalOpen(true)
   }
 
+  const handleDuplicate = (item: AuctionItem) => {
+    setEditingItem(null)
+    setForm({
+      title: `${item.title} (Copy)`,
+      description: item.description ?? "",
+      imageUrl: item.imageUrl ?? "",
+      startingPrice: item.startingPrice,
+      minIncrement: item.minIncrement,
+      opensAt: toLocalDatetimeInput(item.opensAt),
+      closesAt: toLocalDatetimeInput(item.closesAt),
+      isActive: item.isActive,
+    })
+    setIsModalOpen(true)
+  }
+
   const handleSave = async () => {
     if (!form.title.trim()) { toast({ title: "Title is required", variant: "destructive" }); return; }
     setSaving(true)
@@ -297,10 +312,13 @@ export default function AuctionAdmin() {
                         <Badge className={item.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
                           {item.isActive ? "Active" : "Draft"}
                         </Badge>
-                        <button onClick={() => openEditModal(item)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                        <button onClick={() => openEditModal(item)} title="Edit" className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setDeleteConfirm(item.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                        <button onClick={() => handleDuplicate(item)} title="Duplicate" className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                          <Copy className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setDeleteConfirm(item.id)} title="Delete" className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
