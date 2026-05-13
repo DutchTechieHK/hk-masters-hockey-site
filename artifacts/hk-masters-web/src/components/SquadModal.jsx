@@ -23,7 +23,20 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
         const map = new Map();
-        if (Array.isArray(rows)) rows.forEach(p => { if (p.name && p.shirtNumber != null) map.set(p.name, p.shirtNumber); });
+        if (Array.isArray(rows)) {
+          rows.forEach(p => {
+            if (p.name && p.shirtNumber != null) {
+              // Store by full name (exact)
+              map.set(p.name, p.shirtNumber);
+              // Also store by "FirstName LastName" key (strips middle names/words)
+              const parts = p.name.trim().split(/\s+/);
+              if (parts.length > 2) {
+                const shortKey = `${parts[0]} ${parts[parts.length - 1]}`;
+                if (!map.has(shortKey)) map.set(shortKey, p.shirtNumber);
+              }
+            }
+          });
+        }
         setLiveShirtNumbers(map);
       })
       .catch(() => {});
