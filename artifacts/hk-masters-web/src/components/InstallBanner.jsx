@@ -95,10 +95,24 @@ export default function InstallBanner() {
                 <path d="M35 40H15c-1.7 0-3-1.3-3-3V19c0-1.7 1.3-3 3-3h7v2h-7c-.6 0-1 .4-1 1v18c0 .6.4 1 1 1h20c.6 0 1-.4 1-1V19c0-.6-.4-1-1-1h-7v-2h7c1.7 0 3 1.3 3 3v18c0 1.7-1.3 3-3 3z" />
               </svg>{" "}
               Share then <strong className="text-white">"Add to Home Screen"</strong>
+              {" · "}
+              <a
+                href={`${import.meta.env.BASE_URL}get-the-app`}
+                className="underline text-blue-300 hover:text-white transition-colors"
+              >
+                Watch how
+              </a>
             </p>
           ) : (
             <p className="text-xs text-blue-200 mt-0.5 leading-snug">
               Install for quick access during the tournament
+              {" · "}
+              <a
+                href={`${import.meta.env.BASE_URL}get-the-app`}
+                className="underline text-blue-300 hover:text-white transition-colors"
+              >
+                Watch how
+              </a>
             </p>
           )}
         </div>

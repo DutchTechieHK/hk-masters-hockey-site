@@ -80,20 +80,38 @@ export default function InstallTip() {
               <path d="M35 40H15c-1.7 0-3-1.3-3-3V19c0-1.7 1.3-3 3-3h7v2h-7c-.6 0-1 .4-1 1v18c0 .6.4 1 1 1h20c.6 0 1-.4 1-1V19c0-.6-.4-1-1-1h-7v-2h7c1.7 0 3 1.3 3 3v18c0 1.7-1.3 3-3 3z" />
             </svg>{" "}
             <strong className="text-white">Share</strong> button in Safari, then choose{" "}
-            <strong className="text-white">"Add to Home Screen"</strong> — get instant access during the tournament.
+            <strong className="text-white">"Add to Home Screen"</strong> — get instant access during the tournament.{" "}
+            <a
+              href={`${import.meta.env.BASE_URL}get-the-app`}
+              className="underline text-blue-300 hover:text-white transition-colors"
+            >
+              Watch how
+            </a>
           </p>
         )}
         {platform === "ios-other" && (
           <p className="text-xs text-blue-200 leading-relaxed">
             Open this page in <strong className="text-white">Safari</strong>, tap the{" "}
             <strong className="text-white">Share</strong> button, then choose{" "}
-            <strong className="text-white">"Add to Home Screen"</strong> for instant access.
+            <strong className="text-white">"Add to Home Screen"</strong> for instant access.{" "}
+            <a
+              href={`${import.meta.env.BASE_URL}get-the-app`}
+              className="underline text-blue-300 hover:text-white transition-colors"
+            >
+              Watch how
+            </a>
           </p>
         )}
         {platform === "android" && (
           <p className="text-xs text-blue-200 leading-relaxed">
             Tap the <strong className="text-white">⋮ menu</strong> in Chrome, then select{" "}
-            <strong className="text-white">"Add to Home screen"</strong> — quick access during the tournament, even offline.
+            <strong className="text-white">"Add to Home screen"</strong> — quick access during the tournament, even offline.{" "}
+            <a
+              href={`${import.meta.env.BASE_URL}get-the-app`}
+              className="underline text-blue-300 hover:text-white transition-colors"
+            >
+              Watch how
+            </a>
           </p>
         )}
       </div>
