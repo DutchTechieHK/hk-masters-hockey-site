@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { API_BASE } from "../utils/api";
 
 export default function SquadModal({ squad, teamInfo, onClose }) {
@@ -32,12 +33,12 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
   const squad_players = players.filter(p => !p.role || p.role.toLowerCase() !== "reserve");
   const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
 
-  return (
+  return createPortal(
     <>
-      {/* Backdrop — separate fixed layer so backdrop-filter never swallows the modal panel */}
+      {/* Backdrop — portalled to body so CSS transforms on <main> don't clip fixed positioning */}
       <div className="fixed inset-0 z-[299] bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal panel — sits above the backdrop in its own stacking context */}
+      {/* Modal panel */}
       <div className="fixed inset-0 z-[300] flex items-end sm:items-start sm:pt-[130px] justify-center pointer-events-none">
       <div className="pointer-events-auto relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[calc(100vh-150px)] flex flex-col shadow-2xl overflow-hidden">
 
@@ -159,6 +160,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
         )}
       </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
