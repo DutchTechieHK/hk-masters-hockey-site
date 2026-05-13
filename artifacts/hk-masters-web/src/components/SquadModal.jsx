@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { API_BASE } from "../utils/api";
 
-export default function SquadModal({ squad, teamInfo, onClose }) {
-  const [liveShirtNumbers, setLiveShirtNumbers] = useState(new Map());
+export default function SquadModal({ category, teamInfo, onClose }) {
+  const [players, setPlayers] = useState(null);
 
   useEffect(() => {
     const handleEsc = (e) => { if (e.key === "Escape") onClose(); };
@@ -19,55 +19,52 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
   }, [onClose]);
 
   useEffect(() => {
+    if (!category) return;
     fetch(`${API_BASE}/api/public/squad`)
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
-        const map = new Map();
-        if (Array.isArray(rows)) {
-          rows.forEach(p => {
-            if (p.name && p.shirtNumber != null) {
-              // Store by full name (exact)
-              map.set(p.name, p.shirtNumber);
-              // Also store by "FirstName LastName" key (strips middle names/words)
-              const parts = p.name.trim().split(/\s+/);
-              if (parts.length > 2) {
-                const shortKey = `${parts[0]} ${parts[parts.length - 1]}`;
-                if (!map.has(shortKey)) map.set(shortKey, p.shirtNumber);
-              }
-            }
+        const cat = category.toUpperCase().replace(/[^A-Z0-9]/g, "");
+        const filtered = (Array.isArray(rows) ? rows : [])
+          .filter(p => {
+            const pc = (p.teamCategory || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+            return pc === cat;
+          })
+          .sort((a, b) => {
+            const an = a.shirtNumber ?? 999;
+            const bn = b.shirtNumber ?? 999;
+            if (an !== bn) return an - bn;
+            return a.name.localeCompare(b.name);
           });
-        }
-        setLiveShirtNumbers(map);
+        setPlayers(filtered);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => setPlayers([]));
+  }, [category]);
 
-  const players = squad.player_list || [];
-  const squad_players = players.filter(p => !p.role || p.role.toLowerCase() !== "reserve");
-  const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
+  const squad_players = (players || []).filter(p => p.role?.toLowerCase() !== "reserve");
+  const reserves     = (players || []).filter(p => p.role?.toLowerCase() === "reserve");
 
   return createPortal(
     <>
-      {/* Backdrop — portalled to body so CSS transforms on <main> don't clip fixed positioning */}
       <div className="fixed inset-0 z-[299] bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal panel */}
       <div className="fixed inset-0 z-[300] flex items-end sm:items-start sm:pt-[130px] justify-center pointer-events-none">
       <div className="pointer-events-auto relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[calc(100vh-150px)] flex flex-col shadow-2xl overflow-hidden">
 
-        {/* Drag handle (mobile) */}
         <div className="w-10 h-1 bg-white/40 rounded-full mx-auto mt-3 mb-0 sm:hidden absolute top-0 left-1/2 -translate-x-1/2 z-10" />
 
-        {/* Header */}
         <div className="bg-[#1E3A6E] px-6 pt-6 pb-5 shrink-0">
           <div className="flex items-start justify-between gap-4">
             <div>
               <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-2 uppercase tracking-wide">
-                {squad.category}
+                {category}
               </span>
-              <h2 className="text-xl font-extrabold text-white leading-tight">{squad.name}</h2>
-              {players.length > 0 && (
-                <p className="text-[#9BB5D8] text-sm mt-1">{squad_players.length} players{reserves.length > 0 ? ` · ${reserves.length} reserves` : ""}</p>
+              <h2 className="text-xl font-extrabold text-white leading-tight">
+                {teamInfo?.name || category}
+              </h2>
+              {players !== null && players.length > 0 && (
+                <p className="text-[#9BB5D8] text-sm mt-1">
+                  {squad_players.length} players{reserves.length > 0 ? ` · ${reserves.length} reserves` : ""}
+                </p>
               )}
             </div>
             <button
@@ -82,9 +79,12 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
           </div>
         </div>
 
-        {/* Player list */}
         <div className="overflow-y-auto flex-1 min-h-0">
-          {players.length === 0 ? (
+          {players === null ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-6 h-6 border-2 border-[#1E3A6E]/20 border-t-[#1E3A6E] rounded-full animate-spin" />
+            </div>
+          ) : players.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
               <div className="w-14 h-14 rounded-full bg-[#1E3A6E]/8 flex items-center justify-center mb-3">
                 <svg className="w-7 h-7 text-[#1E3A6E]/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,17 +102,14 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
                   )}
                   <div className="space-y-1">
                     {squad_players.map((player, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#1E3A6E]/4 transition-colors group"
-                      >
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-[#1E3A6E]/4 transition-colors group">
                         <span className="w-9 h-9 bg-[#1E3A6E] text-white rounded-xl flex items-center justify-center text-xs font-bold shrink-0 shadow-sm group-hover:bg-[#16305D] transition-colors">
-                          {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
+                          {player.shirtNumber ?? "—"}
                         </span>
                         <span className="flex-1 font-semibold text-gray-900 text-sm">{player.name}</span>
-                        {player.role && player.role.toLowerCase() !== "reserve" && (
+                        {player.position && (
                           <span className="text-xs bg-[#1E3A6E]/10 text-[#1E3A6E] px-2.5 py-1 rounded-full font-semibold shrink-0">
-                            {player.role}
+                            {player.position}
                           </span>
                         )}
                       </div>
@@ -126,17 +123,12 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 px-1">Reserves</p>
                   <div className="space-y-1">
                     {reserves.map((player, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 transition-colors"
-                      >
+                      <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-amber-50 transition-colors">
                         <span className="w-9 h-9 bg-gray-100 text-gray-500 rounded-xl flex items-center justify-center text-xs font-bold shrink-0">
-                          {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
+                          {player.shirtNumber ?? "—"}
                         </span>
                         <span className="flex-1 font-semibold text-gray-600 text-sm">{player.name}</span>
-                        <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold shrink-0">
-                          Reserve
-                        </span>
+                        <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold shrink-0">Reserve</span>
                       </div>
                     ))}
                   </div>
@@ -146,7 +138,6 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
           )}
         </div>
 
-        {/* Footer metadata */}
         {teamInfo && (teamInfo.coach || teamInfo.captain || teamInfo.manager) && (
           <div className="px-6 py-4 border-t border-gray-100 bg-[#F7F4EF] shrink-0">
             <div className="flex flex-wrap gap-x-6 gap-y-2">

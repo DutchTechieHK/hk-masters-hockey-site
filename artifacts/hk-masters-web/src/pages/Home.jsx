@@ -393,7 +393,7 @@ export default function Home() {
                     <div className="flex items-center justify-between text-xs text-[#8A7A6A] border-t border-[#E5D5BC] pt-4">
                       <span>{squad.player_count} players</span>
                       <button
-                        onClick={() => setOpenSquad({ squad: rotterdamSquad, teamInfo: squad })}
+                        onClick={() => setOpenSquad({ category: squad.short_name, teamInfo: squad })}
                         className="text-[#2A5298] font-semibold text-xs hover:text-[#1E3A6E] transition-colors"
                       >
                         View Squad →
@@ -424,7 +424,7 @@ export default function Home() {
 
       {openSquad && (
         <SquadModal
-          squad={openSquad.squad}
+          category={openSquad.category}
           teamInfo={openSquad.teamInfo}
           onClose={() => setOpenSquad(null)}
         />

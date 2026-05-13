@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link } from "wouter";
 import content from "../content/teams.json";
 import { cloudinaryResize } from "../utils/cloudinary";
-import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import RichText from "../components/RichText";
 
@@ -37,9 +36,6 @@ export default function Teams() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="space-y-16">
           {content.squads.map((squad, index) => {
-            const rotterdamSquad = rotterdamMode
-              ? rotterdamContent.squads.find((s) => s.category === squad.short_name)
-              : null;
 
             return (
               <div
@@ -89,9 +85,9 @@ export default function Teams() {
                     </div>
                   </div>
 
-                  {rotterdamMode && rotterdamSquad && (
+                  {rotterdamMode && (
                     <button
-                      onClick={() => setOpenSquad(rotterdamSquad)}
+                      onClick={() => setOpenSquad({ category: squad.short_name, teamInfo: squad })}
                       className="btn-shimmer inline-flex items-center gap-2 bg-[#1E3A6E] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-[#16305D] transition-colors duration-150 text-sm"
                     >
                       View Squad List →
@@ -137,8 +133,8 @@ export default function Teams() {
 
       {openSquad && (
         <SquadModal
-          squad={openSquad}
-          teamInfo={content.squads.find(t => t.short_name === openSquad.category)}
+          category={openSquad.category}
+          teamInfo={openSquad.teamInfo}
           onClose={() => setOpenSquad(null)}
         />
       )}
