@@ -1,25 +1,20 @@
 @import "tailwindcss";
 
-/* REPLACE THESE -- define your own palette and fonts for each video */
 :root {
-  --color-primary: #000000;
-  --color-secondary: #6B7280;
-  --color-accent: #3B82F6;
+  --color-primary: #1E3A6E; /* Denim Blue */
+  --color-secondary: #16305D; /* Deep Navy */
+  --color-accent: #F2E8D5; /* Sand */
 
-  --color-bg-light: #FFFFFF;
-  --color-bg-dark: #0F172A;
-  --color-bg-muted: #F8FAFC;
+  --color-bg-light: #F2E8D5;
+  --color-bg-dark: #16305D;
+  --color-bg-muted: #1E3A6E;
 
-  --color-text-primary: #111827;
-  --color-text-secondary: #6B7280;
-  --color-text-muted: #9CA3AF;
-  --color-text-inverse: #FFFFFF;
+  --color-text-primary: #16305D;
+  --color-text-secondary: #1E3A6E;
+  --color-text-muted: #8E9DB0;
+  --color-text-inverse: #F2E8D5;
 
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-error: #EF4444;
-
-  --font-display: 'Space Grotesk', sans-serif;
+  --font-display: 'Plus Jakarta Sans', sans-serif;
   --font-body: 'DM Sans', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
@@ -35,9 +30,6 @@
   --color-text-secondary: var(--color-text-secondary);
   --color-text-muted: var(--color-text-muted);
   --color-text-inverse: var(--color-text-inverse);
-  --color-success: var(--color-success);
-  --color-warning: var(--color-warning);
-  --color-error: var(--color-error);
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
