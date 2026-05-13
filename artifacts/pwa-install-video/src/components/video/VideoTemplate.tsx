@@ -8,11 +8,11 @@ import { Scene4 } from './video_scenes/Scene4';
 import { Scene5 } from './video_scenes/Scene5';
 
 export const SCENE_DURATIONS: Record<string, number> = {
-  open: 8000,
-  ios1: 5000,
-  ios2: 7000,
-  android: 6000,
-  close: 8000,
+  open: 10000,
+  ios1: 8000,
+  ios2: 9000,
+  android: 9000,
+  close: 10000,
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
