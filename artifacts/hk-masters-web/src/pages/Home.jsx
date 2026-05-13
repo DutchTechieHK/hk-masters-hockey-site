@@ -14,35 +14,6 @@ const ROTTERDAM_START   = new Date("2026-07-22T09:00:00+02:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 const isRotterdamMode = () => Date.now() < ROTTERDAM_MODE_END.getTime();
 
-function categoryMatches(rowCategory, shortName) {
-  if (!rowCategory) return false;
-  const r = rowCategory.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const s = shortName.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (r === s) return true;
-  const rNum = (rowCategory.match(/\d+/) || [])[0];
-  const sNum = (shortName.match(/\d+/) || [])[0];
-  return Boolean(rNum && sNum && rNum === sNum);
-}
-
-function buildLiveSquad(category, name, squadRows, staticPlayers = []) {
-  const matching = squadRows
-    .filter((p) => categoryMatches(p.teamCategory, category))
-    .sort((a, b) => {
-      const an = a.shirtNumber ?? 999;
-      const bn = b.shirtNumber ?? 999;
-      if (an !== bn) return an - bn;
-      return a.name.localeCompare(b.name);
-    })
-    .map((p) => {
-      const staticMatch = staticPlayers.find((s) => s.name === p.name);
-      return {
-        name: p.name,
-        shirt_number: p.shirtNumber ?? staticMatch?.shirt_number ?? null,
-        role: p.position || staticMatch?.role || null,
-      };
-    });
-  return { name, category, player_list: matching };
-}
 
 function useCountdown(target) {
   const calc = () => {
@@ -235,15 +206,6 @@ export default function Home() {
   const hasGallery   = content.gallery_images && content.gallery_images.length > 0;
   const [activePhoto, setActivePhoto] = useState(hasHeroImage ? content.hero_image : null);
   const [openSquad, setOpenSquad]     = useState(null);
-  const [squadRows, setSquadRows]     = useState(null);
-
-  useEffect(() => {
-    if (!isRotterdamMode()) return;
-    fetch(`${API_BASE}/api/public/squad`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => setSquadRows(Array.isArray(rows) ? rows : []))
-      .catch(() => setSquadRows([]));
-  }, []);
   const stripRef = useRef(null);
 
   const scrollStrip = (dir) => {
@@ -415,14 +377,8 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
               {teamsContent.squads.map((squad, i) => {
-                const fallbackSquad = rotterdamContent.squads.find(s => s.category === squad.short_name);
-                const liveSquad = squadRows
-                  ? buildLiveSquad(squad.short_name, squad.name, squadRows, fallbackSquad?.player_list)
-                  : null;
-                const staticCount = fallbackSquad?.player_list?.length ?? 0;
-                const rotterdamSquad = liveSquad && liveSquad.player_list.length >= staticCount && staticCount > 0
-                  ? liveSquad
-                  : fallbackSquad || { name: squad.name, category: squad.short_name, player_list: [] };
+                const rotterdamSquad = rotterdamContent.squads.find(s => s.category === squad.short_name)
+                  || { name: squad.name, category: squad.short_name, player_list: [] };
                 return (
                   <div key={squad.id} className="tilt-card reveal scale-in bg-white rounded-xl border border-[#E5D5BC] shadow-sm p-6 flex flex-col" style={{ animationDelay: `${i * 0.15}s` }}>
                     <div className="flex items-center gap-3 mb-4">

@@ -1,56 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import content from "../content/teams.json";
 import { cloudinaryResize } from "../utils/cloudinary";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import RichText from "../components/RichText";
-import { API_BASE } from "../utils/api";
 
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 
-function categoryMatches(rowCategory, shortName) {
-  if (!rowCategory) return false;
-  const r = rowCategory.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const s = shortName.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (r === s) return true;
-  const rNum = (rowCategory.match(/\d+/) || [])[0];
-  const sNum = (shortName.match(/\d+/) || [])[0];
-  return Boolean(rNum && sNum && rNum === sNum);
-}
-
-function buildLiveSquad(category, name, squadRows, staticPlayers = []) {
-  const matching = squadRows
-    .filter((p) => categoryMatches(p.teamCategory, category))
-    .sort((a, b) => {
-      const an = a.shirtNumber ?? 999;
-      const bn = b.shirtNumber ?? 999;
-      if (an !== bn) return an - bn;
-      return a.name.localeCompare(b.name);
-    })
-    .map((p) => {
-      const staticMatch = staticPlayers.find((s) => s.name === p.name);
-      return {
-        name: p.name,
-        shirt_number: p.shirtNumber ?? staticMatch?.shirt_number ?? null,
-        role: p.position || staticMatch?.role || null,
-      };
-    });
-  return { name, category, player_list: matching };
-}
-
 export default function Teams() {
   const [openSquad, setOpenSquad] = useState(null);
-  const [squadRows, setSquadRows] = useState(null);
   const rotterdamMode = new Date() < ROTTERDAM_MODE_END;
-
-  useEffect(() => {
-    if (!rotterdamMode) return;
-    fetch(`${API_BASE}/api/public/squad`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => setSquadRows(Array.isArray(rows) ? rows : []))
-      .catch(() => setSquadRows([]));
-  }, [rotterdamMode]);
 
   return (
     <div>
@@ -77,18 +37,9 @@ export default function Teams() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="space-y-16">
           {content.squads.map((squad, index) => {
-            const fallbackSquad = rotterdamMode
+            const rotterdamSquad = rotterdamMode
               ? rotterdamContent.squads.find((s) => s.category === squad.short_name)
               : null;
-            const liveSquad =
-              rotterdamMode && squadRows
-                ? buildLiveSquad(squad.short_name, squad.name, squadRows, fallbackSquad?.player_list)
-                : null;
-            const staticCount = fallbackSquad?.player_list?.length ?? 0;
-            const rotterdamSquad =
-              liveSquad && liveSquad.player_list.length >= staticCount && staticCount > 0
-                ? liveSquad
-                : fallbackSquad;
 
             return (
               <div
