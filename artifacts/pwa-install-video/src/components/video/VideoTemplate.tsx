@@ -42,7 +42,10 @@ export default function VideoTemplate({
   const SceneComponent = SCENE_COMPONENTS[baseSceneKey];
 
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-[var(--color-bg-dark)]">
+    <div className="w-full h-screen bg-black flex items-center justify-center overflow-hidden">
+    <div className="relative overflow-hidden bg-[var(--color-bg-dark)]"
+      style={{ aspectRatio: '16/9', width: '100%', maxHeight: '100vh', maxWidth: 'calc(100vh * 16 / 9)' }}
+    >
 
       {/* Persistent Background Elements */}
       <div className="absolute inset-0 z-0 pointer-events-none">
@@ -69,6 +72,7 @@ export default function VideoTemplate({
       <AnimatePresence mode="popLayout">
         {SceneComponent && <SceneComponent key={currentSceneKey} />}
       </AnimatePresence>
+    </div>
     </div>
   );
 }
