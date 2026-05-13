@@ -11,8 +11,8 @@ const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp
 
 const sseClients = new Set<Response>();
 
-function broadcastBid(itemId: number, bid: { bidderName: string; amount: string }) {
-  const data = JSON.stringify({ itemId, bid: { bidderName: bid.bidderName, amount: bid.amount } });
+function broadcastBid(itemId: number, bid: { bidderName: string; amount: string }, reserveMet: boolean | null) {
+  const data = JSON.stringify({ itemId, bid: { bidderName: bid.bidderName, amount: bid.amount }, reserveMet });
   for (const res of sseClients) {
     try { res.write(`event: bid\ndata: ${data}\n\n`); } catch { sseClients.delete(res); }
   }
@@ -49,6 +49,9 @@ async function getItemsWithTopBids(activeOnly = false) {
     const topBid = topBidRow
       ? { amount: topBidRow.amount, bidderName: topBidRow.bidder_name }
       : null;
+    const reservePrice = item.reservePrice ? parseFloat(item.reservePrice) : null;
+    const topBidAmount = topBid ? parseFloat(topBid.amount) : null;
+    const reserveMet = reservePrice === null ? null : (topBidAmount !== null && topBidAmount >= reservePrice);
     return {
       id: item.id,
       title: item.title,
@@ -56,11 +59,13 @@ async function getItemsWithTopBids(activeOnly = false) {
       imageUrl: item.imageUrl,
       startingPrice: item.startingPrice,
       minIncrement: item.minIncrement,
+      reservePrice: item.reservePrice ?? null,
       opensAt: item.opensAt?.toISOString() ?? null,
       closesAt: item.closesAt?.toISOString() ?? null,
       isActive: item.isActive,
       createdAt: item.createdAt.toISOString(),
       topBid,
+      reserveMet,
     };
   });
 }
@@ -131,16 +136,18 @@ auctionAdminRouter.get("/items", requireAdminAccess, async (_req, res) => {
 });
 
 auctionAdminRouter.post("/items", requireAdminAccess, async (req, res) => {
-  const { title, description, imageUrl, startingPrice, minIncrement, opensAt, closesAt, isActive } = req.body ?? {};
+  const { title, description, imageUrl, startingPrice, minIncrement, reservePrice, opensAt, closesAt, isActive } = req.body ?? {};
   if (!title || typeof title !== "string" || title.trim().length === 0) {
     res.status(400).json({ error: "title is required" }); return;
   }
+  const parsedReserve = reservePrice !== undefined && reservePrice !== "" && reservePrice !== null ? parseFloat(reservePrice) : null;
   const [item] = await db.insert(auctionItemsTable).values({
     title: title.trim(),
     description: description?.trim() || null,
     imageUrl: imageUrl?.trim() || null,
     startingPrice: String(parseFloat(startingPrice) || 0),
     minIncrement: String(parseFloat(minIncrement) || 100),
+    reservePrice: parsedReserve !== null && !isNaN(parsedReserve) ? String(parsedReserve) : null,
     opensAt: opensAt ? new Date(opensAt) : null,
     closesAt: closesAt ? new Date(closesAt) : null,
     isActive: isActive !== false,
@@ -151,13 +158,17 @@ auctionAdminRouter.post("/items", requireAdminAccess, async (req, res) => {
 auctionAdminRouter.patch("/items/:id", requireAdminAccess, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const { title, description, imageUrl, startingPrice, minIncrement, opensAt, closesAt, isActive } = req.body ?? {};
+  const { title, description, imageUrl, startingPrice, minIncrement, reservePrice, opensAt, closesAt, isActive } = req.body ?? {};
   const updates: Record<string, unknown> = {};
   if (title !== undefined) updates.title = title.trim();
   if (description !== undefined) updates.description = description?.trim() || null;
   if (imageUrl !== undefined) updates.imageUrl = imageUrl?.trim() || null;
   if (startingPrice !== undefined) updates.startingPrice = String(parseFloat(startingPrice) || 0);
   if (minIncrement !== undefined) updates.minIncrement = String(parseFloat(minIncrement) || 100);
+  if (reservePrice !== undefined) {
+    const parsedReserve = reservePrice !== "" && reservePrice !== null ? parseFloat(reservePrice) : null;
+    updates.reservePrice = parsedReserve !== null && !isNaN(parsedReserve) ? String(parsedReserve) : null;
+  }
   if (opensAt !== undefined) updates.opensAt = opensAt ? new Date(opensAt) : null;
   if (closesAt !== undefined) updates.closesAt = closesAt ? new Date(closesAt) : null;
   if (isActive !== undefined) updates.isActive = Boolean(isActive);
@@ -200,7 +211,8 @@ auctionPublicRouter.get("/", async (_req, res) => {
     return;
   }
   const items = await getItemsWithTopBids(true);
-  res.json({ isLive: true, items });
+  const publicItems = items.map(({ reservePrice: _rp, ...rest }) => rest);
+  res.json({ isLive: true, items: publicItems });
 });
 
 auctionPublicRouter.get("/stream", (req, res) => {
@@ -277,7 +289,9 @@ auctionPublicRouter.post("/:id/bid", async (req, res) => {
   }
 
   const topBid = { bidderName: bid.bidderName, amount: bid.amount };
-  broadcastBid(id, topBid);
+  const reservePrice = item[0].reservePrice ? parseFloat(item[0].reservePrice) : null;
+  const reserveMet = reservePrice === null ? null : parseFloat(bid.amount) >= reservePrice;
+  broadcastBid(id, topBid, reserveMet);
 
   res.status(201).json({ id: bid.id, itemId: bid.itemId, amount: bid.amount, placedAt: bid.placedAt.toISOString() });
 });

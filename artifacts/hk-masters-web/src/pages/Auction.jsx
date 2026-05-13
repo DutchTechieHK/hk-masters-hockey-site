@@ -169,7 +169,12 @@ function ItemCard({ item, onBidPlaced }) {
               <div>
                 <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Current Bid</p>
                 <p className="text-2xl font-extrabold text-[#1E3A6E]">{formatHKD(topBid.amount)}</p>
-                <p className="text-xs text-gray-500 mt-0.5">Current leading bid</p>
+                {item.reserveMet === true && (
+                  <p className="text-xs font-semibold text-emerald-600 mt-0.5">✓ Reserve met</p>
+                )}
+                {item.reserveMet === false && (
+                  <p className="text-xs font-semibold text-amber-600 mt-0.5">Reserve not yet met</p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-400">Next min:</p>
@@ -180,7 +185,12 @@ function ItemCard({ item, onBidPlaced }) {
             <div>
               <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Opening Bid</p>
               <p className="text-2xl font-extrabold text-[#1E3A6E]">{formatHKD(item.startingPrice)}</p>
-              <p className="text-xs text-gray-400 mt-0.5">No bids yet — be the first!</p>
+              {item.reserveMet === false && (
+                <p className="text-xs font-semibold text-amber-600 mt-0.5">Reserve not yet met</p>
+              )}
+              {item.reserveMet === null || item.reserveMet === undefined ? (
+                <p className="text-xs text-gray-400 mt-0.5">No bids yet — be the first!</p>
+              ) : null}
             </div>
           )}
         </div>
@@ -188,7 +198,12 @@ function ItemCard({ item, onBidPlaced }) {
         {closed && (
           <div className="mt-4 bg-gray-50 rounded-xl px-4 py-3 text-center">
             <p className="text-sm font-semibold text-gray-500">Auction closed</p>
-            {topBid && <p className="text-xs text-gray-400 mt-0.5">Winning bid: {formatHKD(topBid.amount)}</p>}
+            {topBid && item.reserveMet !== false && (
+              <p className="text-xs text-gray-400 mt-0.5">Winning bid: {formatHKD(topBid.amount)}</p>
+            )}
+            {item.reserveMet === false && (
+              <p className="text-xs text-amber-600 font-semibold mt-0.5">Reserve not reached — item not sold</p>
+            )}
           </div>
         )}
 
@@ -229,13 +244,13 @@ export default function Auction() {
       sseRef.current = es;
       es.addEventListener("bid", (e) => {
         try {
-          const { itemId, bid } = JSON.parse(e.data);
+          const { itemId, bid, reserveMet } = JSON.parse(e.data);
           setData(prev => {
             if (!prev) return prev;
             return {
               ...prev,
               items: prev.items.map(item =>
-                item.id === itemId ? { ...item, topBid: bid } : item
+                item.id === itemId ? { ...item, topBid: bid, reserveMet } : item
               ),
             };
           });

@@ -33,11 +33,13 @@ type AuctionItem = {
   imageUrl: string | null
   startingPrice: string
   minIncrement: string
+  reservePrice: string | null
   opensAt: string | null
   closesAt: string | null
   isActive: boolean
   createdAt: string
   topBid: { bidderName: string; amount: string } | null
+  reserveMet: boolean | null
 }
 
 type AuctionBid = {
@@ -59,7 +61,7 @@ function formatHKD(n: string | number) {
   return `HK$${Number(n).toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
-const EMPTY_FORM = { title: "", description: "", imageUrl: "", startingPrice: "0", minIncrement: "100", opensAt: "", closesAt: "", isActive: true }
+const EMPTY_FORM = { title: "", description: "", imageUrl: "", startingPrice: "0", minIncrement: "100", reservePrice: "", opensAt: "", closesAt: "", isActive: true }
 
 export default function AuctionAdmin() {
   const { toast } = useToast()
@@ -126,6 +128,7 @@ export default function AuctionAdmin() {
       imageUrl: item.imageUrl ?? "",
       startingPrice: item.startingPrice,
       minIncrement: item.minIncrement,
+      reservePrice: item.reservePrice ?? "",
       opensAt: toLocalDatetimeInput(item.opensAt),
       closesAt: toLocalDatetimeInput(item.closesAt),
       isActive: item.isActive,
@@ -141,6 +144,7 @@ export default function AuctionAdmin() {
       imageUrl: item.imageUrl ?? "",
       startingPrice: item.startingPrice,
       minIncrement: item.minIncrement,
+      reservePrice: item.reservePrice ?? "",
       opensAt: toLocalDatetimeInput(item.opensAt),
       closesAt: toLocalDatetimeInput(item.closesAt),
       isActive: item.isActive,
@@ -156,6 +160,7 @@ export default function AuctionAdmin() {
         ...form,
         startingPrice: parseFloat(form.startingPrice) || 0,
         minIncrement: parseFloat(form.minIncrement) || 100,
+        reservePrice: form.reservePrice !== "" ? parseFloat(form.reservePrice) || null : null,
         opensAt: form.opensAt ? new Date(form.opensAt).toISOString() : null,
         closesAt: form.closesAt ? new Date(form.closesAt).toISOString() : null,
       }
@@ -336,6 +341,18 @@ export default function AuctionAdmin() {
                         <div>
                           <span className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Top Bid</span>
                           <p className="font-bold text-emerald-700">{formatHKD(item.topBid.amount)} — {item.topBid.bidderName}</p>
+                          {item.reserveMet === true && (
+                            <span className="inline-block mt-0.5 text-xs font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">✓ Reserve met</span>
+                          )}
+                          {item.reserveMet === false && (
+                            <span className="inline-block mt-0.5 text-xs font-semibold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Reserve not met</span>
+                          )}
+                        </div>
+                      )}
+                      {item.reservePrice && !item.topBid && (
+                        <div>
+                          <span className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Reserve</span>
+                          <p className="font-bold text-gray-800">{formatHKD(item.reservePrice)}</p>
                         </div>
                       )}
                       {item.closesAt && (
@@ -481,6 +498,10 @@ export default function AuctionAdmin() {
               <label className="text-sm font-semibold">Min Increment (HKD)</label>
               <Input type="number" min="0" value={form.minIncrement} onChange={e => setForm(p => ({ ...p, minIncrement: e.target.value }))} />
             </div>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Reserve Price (HKD) <span className="font-normal text-gray-400">— optional, hidden from public</span></label>
+            <Input type="number" min="0" placeholder="Leave blank for no reserve" value={form.reservePrice} onChange={e => setForm(p => ({ ...p, reservePrice: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

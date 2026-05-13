@@ -13,6 +13,7 @@ export const auctionItemsTable = pgTable("auction_items", {
   imageUrl: text("image_url"),
   startingPrice: numeric("starting_price", { precision: 10, scale: 2 }).notNull(),
   minIncrement: numeric("min_increment", { precision: 10, scale: 2 }).notNull().default("100"),
+  reservePrice: numeric("reserve_price", { precision: 10, scale: 2 }),
   opensAt: timestamp("opens_at"),
   closesAt: timestamp("closes_at"),
   isActive: boolean("is_active").notNull().default(true),
