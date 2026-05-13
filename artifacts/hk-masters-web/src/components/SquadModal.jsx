@@ -33,10 +33,13 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
   const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-end sm:items-start sm:pt-[130px] justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+    <>
+      {/* Backdrop — separate fixed layer so backdrop-filter never swallows the modal panel */}
+      <div className="fixed inset-0 z-[299] bg-black/60 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative z-10 bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[calc(100vh-150px)] flex flex-col shadow-2xl overflow-hidden">
+      {/* Modal panel — sits above the backdrop in its own stacking context */}
+      <div className="fixed inset-0 z-[300] flex items-end sm:items-start sm:pt-[130px] justify-center pointer-events-none">
+      <div className="pointer-events-auto relative bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-3xl max-h-[90vh] sm:max-h-[calc(100vh-150px)] flex flex-col shadow-2xl overflow-hidden">
 
         {/* Drag handle (mobile) */}
         <div className="w-10 h-1 bg-white/40 rounded-full mx-auto mt-3 mb-0 sm:hidden absolute top-0 left-1/2 -translate-x-1/2 z-10" />
@@ -155,6 +158,7 @@ export default function SquadModal({ squad, teamInfo, onClose }) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
