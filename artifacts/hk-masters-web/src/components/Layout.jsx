@@ -19,6 +19,7 @@ const BASE_NAV_LINKS = [
   { href: "/sponsors",       label: "Sponsors" },
   { href: "/support",        label: "Support", cta: true },
   { href: "/auction",        label: "Auction", auctionGated: true },
+  { href: "/get-the-app",    label: "Get the App" },
   { href: "/contact",        label: "Contact" },
 ];
 

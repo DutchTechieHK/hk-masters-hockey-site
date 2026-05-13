@@ -24,6 +24,7 @@ import MyTravel from "./pages/MyTravel";
 import Announcements from "./pages/Announcements";
 import MyDocuments from "./pages/MyDocuments";
 import Auction from "./pages/Auction";
+import GetTheApp from "./pages/GetTheApp";
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -60,6 +61,7 @@ function Router() {
         <Route path="/announcements" component={Announcements} />
         <Route path="/documents" component={MyDocuments} />
         <Route path="/auction" component={Auction} />
+        <Route path="/get-the-app" component={GetTheApp} />
         <Route path="/my-schedule">{() => { window.location.replace(import.meta.env.BASE_URL + "schedule"); return null; }}</Route>
         <Route path="/privacy" component={Privacy} />
         <Route>
