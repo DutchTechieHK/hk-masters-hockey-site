@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { cloudinaryResize } from "../utils/cloudinary.js";
-import { API_BASE } from "../utils/api";
+import { API_BASE, resolveMediaUrl } from "../utils/api";
 
 const TIER_ORDER = ["Gold", "Silver", "Bronze"];
 
@@ -20,7 +20,7 @@ const sponsorshipEmail = "sponsorship@hkmastershockey.com";
 
 function SponsorCard({ sponsor }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const displayUrl = cloudinaryResize(sponsor.logoUrl, 600);
+  const displayUrl = cloudinaryResize(resolveMediaUrl(sponsor.logoUrl), 600);
   const badge = TIER_BADGE[sponsor.tier] || TIER_BADGE.Bronze;
 
   const card = (

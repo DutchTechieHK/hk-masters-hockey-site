@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { API_BASE } from "../utils/api";
+import { API_BASE, resolveMediaUrl } from "../utils/api";
 import { cloudinaryResize } from "../utils/cloudinary";
 
 const TIER_ORDER = ["Gold", "Silver", "Bronze"];
 
 function SponsorCard({ sponsor }) {
   const [imgFailed, setImgFailed] = useState(false);
-  const displayUrl = cloudinaryResize(sponsor.logoUrl, 400);
+  const displayUrl = cloudinaryResize(resolveMediaUrl(sponsor.logoUrl), 400);
 
   const inner = (
     <div
