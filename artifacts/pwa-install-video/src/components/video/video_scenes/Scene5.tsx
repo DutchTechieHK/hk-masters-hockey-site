@@ -10,7 +10,7 @@ export function Scene5() {
       setTimeout(() => setPhase(2), 1400),
       setTimeout(() => setPhase(3), 2800),
       setTimeout(() => setPhase(4), 4600),
-      setTimeout(() => setPhase(5), 9200),
+      setTimeout(() => setPhase(5), 8500),
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -51,6 +51,14 @@ export function Scene5() {
           }}
         />
       </div>
+
+      {/* Cinematic fade-to-black overlay */}
+      <motion.div
+        className="absolute inset-0 z-20 bg-black pointer-events-none"
+        initial={{ opacity: 0 }}
+        animate={phase >= 5 ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 1.5, ease: 'easeInOut' }}
+      />
 
       <div className="relative z-10 flex flex-col items-center text-center px-12">
         <motion.div
