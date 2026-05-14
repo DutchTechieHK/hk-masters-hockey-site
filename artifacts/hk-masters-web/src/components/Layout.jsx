@@ -35,15 +35,7 @@ const MOBILE_SECTIONS = [
   {
     section: null,
     links: [
-      { href: "/",               label: "Home",           Icon: Home },
-    ],
-  },
-  {
-    section: "EXPLORE",
-    links: [
-      { href: "/about",          label: "About",          Icon: Info },
-      { href: "/teams",          label: "Teams",          Icon: Users },
-      { href: "/sponsors",       label: "Sponsors",       Icon: Building2 },
+      { href: "/dashboard", label: "My Portal", Icon: User, portal: true },
     ],
   },
   {
@@ -63,11 +55,19 @@ const MOBILE_SECTIONS = [
     ],
   },
   {
-    section: "GET INVOLVED",
+    section: "CLUB",
+    links: [
+      { href: "/teams",          label: "Teams",          Icon: Users },
+      { href: "/sponsors",       label: "Sponsors",       Icon: Building2 },
+    ],
+  },
+  {
+    section: "MORE",
     links: [
       { href: "/support",        label: "Support",        Icon: Heart },
-      { href: "/get-the-app",    label: "Get the App",    Icon: Smartphone },
       { href: "/contact",        label: "Contact",        Icon: Mail },
+      { href: "/about",          label: "About",          Icon: Info },
+      { href: "/get-the-app",    label: "Get the App",    Icon: Smartphone },
     ],
   },
 ];
@@ -105,7 +105,7 @@ function NavLink({ href, label, onClick, cta }) {
 }
 
 /* ── Mobile NavLink — tall row with icon + chevron ────────────── */
-function MobileNavLink({ href, label, Icon, cta, onClose }) {
+function MobileNavLink({ href, label, Icon, cta, portal, onClose }) {
   const [location] = useLocation();
   const isActive = location === href || (href !== "/" && location.startsWith(href));
 
@@ -129,17 +129,17 @@ function MobileNavLink({ href, label, Icon, cta, onClose }) {
       href={href}
       onClick={onClose}
       className={`flex items-center gap-4 px-5 py-4 min-h-[60px] transition-colors active:bg-white/10 ${
-        isActive ? "bg-white/10" : "hover:bg-white/5"
+        isActive ? "bg-white/10" : portal ? "hover:bg-white/10" : "hover:bg-white/5"
       }`}
     >
       <Icon
         className={`w-5 h-5 shrink-0 transition-colors ${
-          isActive ? "text-white" : "text-[#8FBDE8]"
+          isActive || portal ? "text-white" : "text-[#8FBDE8]"
         }`}
       />
       <span
         className={`flex-1 text-base transition-colors ${
-          isActive ? "font-semibold text-white" : "font-medium text-[#C5D8F0]"
+          isActive ? "font-semibold text-white" : portal ? "font-semibold text-white" : "font-medium text-[#C5D8F0]"
         }`}
       >
         {label}
@@ -147,7 +147,7 @@ function MobileNavLink({ href, label, Icon, cta, onClose }) {
       {isActive ? (
         <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
       ) : (
-        <ChevronRight className="w-4 h-4 text-[#4A7BB0] shrink-0" />
+        <ChevronRight className={`w-4 h-4 shrink-0 ${portal ? "text-[#8FBDE8]" : "text-[#4A7BB0]"}`} />
       )}
     </Link>
   );
@@ -291,13 +291,14 @@ export default function Layout({ children }) {
                         </span>
                       </div>
                     )}
-                    {visibleLinks.map(({ href, label, Icon, cta }) => (
+                    {visibleLinks.map(({ href, label, Icon, cta, portal }) => (
                       <MobileNavLink
                         key={href}
-                        href={href}
+                        href={portal ? (isPlayerLoggedIn ? "/dashboard" : "/login") : href}
                         label={label}
                         Icon={Icon}
                         cta={cta}
+                        portal={portal}
                         onClose={() => setMenuOpen(false)}
                       />
                     ))}
@@ -305,22 +306,6 @@ export default function Layout({ children }) {
                 );
               })}
 
-              {/* My Portal — separated at the bottom */}
-              <div className="border-t border-[#2A5298] mt-2 pt-1">
-                <Link
-                  href={isPlayerLoggedIn ? "/dashboard" : "/login"}
-                  onClick={() => setMenuOpen(false)}
-                  className={`flex items-center gap-4 px-5 py-4 min-h-[60px] transition-colors active:bg-white/10 ${
-                    ["/dashboard", "/login"].some(p => location === p || location.startsWith(p + "/"))
-                      ? "bg-white/10"
-                      : "hover:bg-white/5"
-                  }`}
-                >
-                  <User className="w-5 h-5 shrink-0 text-[#8FBDE8]" />
-                  <span className="flex-1 text-base font-medium text-[#C5D8F0]">My Portal</span>
-                  <ChevronRight className="w-4 h-4 text-[#4A7BB0] shrink-0" />
-                </Link>
-              </div>
 
             </nav>
           </div>
