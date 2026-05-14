@@ -82,7 +82,7 @@ export default function Contact() {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5">
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -93,11 +93,11 @@ export default function Contact() {
                     value={formData.name}
                     onChange={handleChange}
                     placeholder="Your full name"
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40 focus:border-[#1E3A6E] transition-colors duration-150"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E]/60 transition-colors duration-150"
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
                     Email Address <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -108,11 +108,11 @@ export default function Contact() {
                     value={formData.email}
                     onChange={handleChange}
                     placeholder="your@email.com"
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40 focus:border-[#1E3A6E] transition-colors duration-150"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E]/60 transition-colors duration-150"
                   />
                 </div>
                 <div>
-                  <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="subject" className="block text-sm font-semibold text-gray-700 mb-1.5">
                     Subject <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -121,7 +121,7 @@ export default function Contact() {
                     required
                     value={formData.subject}
                     onChange={handleChange}
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40 focus:border-[#1E3A6E] transition-colors duration-150 bg-white"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E]/60 transition-colors duration-150"
                   >
                     <option value="">Select a subject</option>
                     {(content.subjects || []).map((s) => (
@@ -130,7 +130,7 @@ export default function Contact() {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="message" className="block text-sm font-semibold text-gray-700 mb-1.5">
                     Message <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -141,13 +141,13 @@ export default function Contact() {
                     value={formData.message}
                     onChange={handleChange}
                     placeholder="Write your message here..."
-                    className="w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40 focus:border-[#1E3A6E] transition-colors duration-150 resize-y"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/30 focus:border-[#1E3A6E]/60 transition-colors duration-150 resize-y"
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={sending}
-                  className="btn-shimmer w-full bg-[#1E3A6E] text-white font-semibold py-3 rounded-lg hover:bg-[#16305D] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="btn-shimmer w-full bg-[#1E3A6E] text-white font-semibold py-3 rounded-xl hover:bg-[#16305D] transition-colors duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {sending ? "Sending…" : "Send Message"}
                 </button>
