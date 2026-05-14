@@ -7,9 +7,9 @@ export const modules: ModuleMap = {
   "./components/mockups/public-events/Combined.tsx": () => import("../components/mockups/public-events/Combined.tsx"),
   "./components/mockups/public-events/CountdownPhotoCards.tsx": () => import("../components/mockups/public-events/CountdownPhotoCards.tsx"),
   "./components/mockups/public-events/JourneyTimeline.tsx": () => import("../components/mockups/public-events/JourneyTimeline.tsx"),
+  "./components/mockups/public-redesign/BlueNavySand.tsx": () => import("../components/mockups/public-redesign/BlueNavySand.tsx"),
+  "./components/mockups/public-redesign/GreenCurrent.tsx": () => import("../components/mockups/public-redesign/GreenCurrent.tsx"),
   "./components/mockups/sponsor-display/Banner.tsx": () => import("../components/mockups/sponsor-display/Banner.tsx"),
   "./components/mockups/sponsor-display/HeroCard.tsx": () => import("../components/mockups/sponsor-display/HeroCard.tsx"),
-  "./components/mockups/sponsor-display/Spotlight.tsx": () => import("../components/mockups/sponsor-display/Spotlight.tsx"),
-  "./components/mockups/public-redesign/BlueNavySand.tsx": () => import("../components/mockups/public-redesign/BlueNavySand.tsx"),
-  "./components/mockups/public-redesign/GreenCurrent.tsx": () => import("../components/mockups/public-redesign/GreenCurrent.tsx")
+  "./components/mockups/sponsor-display/Spotlight.tsx": () => import("../components/mockups/sponsor-display/Spotlight.tsx")
 };
