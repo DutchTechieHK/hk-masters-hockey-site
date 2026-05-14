@@ -276,7 +276,7 @@ export default function Layout({ children }) {
 
         {/* ── Mobile dropdown menu ─────────────────────────────── */}
         {menuOpen && (
-          <div className="lg:hidden bg-[#16305D] border-t border-[#2A5298] shadow-2xl">
+          <div className="lg:hidden bg-[#16305D] border-t border-[#2A5298] shadow-2xl overflow-y-auto max-h-[calc(100svh-84px)]">
             <nav className="max-w-7xl mx-auto pb-3">
 
               {MOBILE_SECTIONS.map(({ section, links }, si) => {
