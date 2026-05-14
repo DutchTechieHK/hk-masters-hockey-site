@@ -23,9 +23,8 @@ export default function InstallVideoPlayer() {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-2xl shadow-2xl"
+      className="relative w-full overflow-hidden rounded-2xl shadow-2xl aspect-[4/5] sm:aspect-video"
       style={{
-        aspectRatio: '16 / 9',
         '--iv-primary': '#1E3A6E',
         '--iv-bg-dark': '#16305D',
         '--iv-accent': '#F2E8D5',

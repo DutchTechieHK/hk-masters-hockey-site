@@ -10,7 +10,8 @@ export function PhoneFrame({ variant = 'ios', children, className = '' }: PhoneF
   const isIos = variant === 'ios';
 
   return (
-    <div className={`relative ${className}`} style={{ width: 300, height: 620 }}>
+    /* aspect-ratio drives height automatically — width set by caller via className */
+    <div className={`relative shrink-0 ${className}`} style={{ aspectRatio: '300 / 620' }}>
       <svg
         viewBox="0 0 300 620"
         fill="none"
@@ -34,9 +35,6 @@ export function PhoneFrame({ variant = 'ios', children, className = '' }: PhoneF
           fill="url(#gloss)"
           opacity="0.04"
         />
-        <rect x="12" y="12" width="276" height="596" rx="38" ry="38"
-          fill="transparent"
-        />
         {isIos ? (
           <>
             <rect x="108" y="20" width="84" height="28" rx="14" fill="#0a0a0f" />
@@ -59,9 +57,16 @@ export function PhoneFrame({ variant = 'ios', children, className = '' }: PhoneF
           </linearGradient>
         </defs>
       </svg>
+      {/* inner screen — percentage-based so it scales with the frame */}
       <div
         className="absolute overflow-hidden"
-        style={{ top: 12, left: 12, right: 12, bottom: 12, borderRadius: 38 }}
+        style={{
+          top: '1.94%',
+          left: '4%',
+          right: '4%',
+          bottom: '1.94%',
+          borderRadius: '12.67% / 6.13%',
+        }}
       >
         {children}
       </div>

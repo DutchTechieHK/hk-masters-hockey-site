@@ -34,20 +34,20 @@ export function Scene1() {
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 40%, rgba(10,20,40,0.65) 100%)' }} />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center px-12">
+      <div className="relative z-10 flex flex-col items-center text-center px-6 sm:px-12">
         <motion.div
-          className="mb-10 rounded-2xl bg-white shadow-2xl flex items-center justify-center"
-          style={{ padding: '16px 20px', boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)' }}
+          className="mb-6 sm:mb-10 rounded-2xl bg-white shadow-2xl flex items-center justify-center"
+          style={{ padding: '10px 14px', boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)' }}
           initial={{ scale: 0, rotate: -15, opacity: 0 }}
           animate={phase >= 1 ? { scale: 1, rotate: 0, opacity: 1 } : { scale: 0, rotate: -15, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         >
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="HK Masters Logo" className="h-28 w-auto object-contain" />
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="HK Masters Logo" className="h-16 sm:h-28 w-auto object-contain" />
         </motion.div>
 
-        <div className="overflow-hidden mb-3">
+        <div className="overflow-hidden mb-2 sm:mb-3">
           <motion.p
-            className="text-[2vw] font-semibold uppercase tracking-[0.4em]"
+            className="text-[3.5vw] sm:text-[2vw] font-semibold uppercase tracking-[0.4em]"
             style={{ fontFamily: 'var(--iv-font-display)', color: 'var(--iv-accent)' }}
             initial={{ y: '110%' }}
             animate={phase >= 2 ? { y: 0 } : { y: '110%' }}
@@ -57,9 +57,9 @@ export function Scene1() {
           </motion.p>
         </div>
 
-        <div className="overflow-hidden mb-8">
+        <div className="overflow-hidden mb-6 sm:mb-8">
           <motion.h1
-            className="text-[4.5vw] font-bold text-white leading-tight"
+            className="text-[6.5vw] sm:text-[4.5vw] font-bold text-white leading-tight"
             style={{ fontFamily: 'var(--iv-font-display)', textShadow: '0 2px 24px rgba(0,0,0,0.6)' }}
             initial={{ y: '110%' }}
             animate={phase >= 3 ? { y: 0 } : { y: '110%' }}
@@ -78,7 +78,7 @@ export function Scene1() {
           {['iOS', 'Android'].map((label, i) => (
             <motion.div
               key={label}
-              className="px-5 py-2 rounded-full text-[1.4vw] font-medium backdrop-blur-sm"
+              className="px-4 py-1.5 sm:px-5 sm:py-2 rounded-full text-[3vw] sm:text-[1.4vw] font-medium backdrop-blur-sm"
               style={{ border: '1px solid rgba(242,232,213,0.4)', color: 'var(--iv-accent)', background: 'rgba(242,232,213,0.08)' }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={phase >= 4 ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.8 }}

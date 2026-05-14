@@ -25,9 +25,15 @@ export function Scene3() {
       exit={{ x: '-100%' }}
       transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="flex w-full max-w-6xl items-center justify-between px-20">
-        <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.8 }}>
-          <PhoneFrame variant="ios">
+      {/* Mobile: text on top, phone below (flex-col-reverse since phone is first in DOM). Desktop: phone left, text right. */}
+      <div className="flex flex-col-reverse sm:flex-row w-full items-center justify-center sm:justify-between h-full py-4 sm:py-0 px-6 sm:px-20 gap-4 sm:gap-0">
+
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.8 }}
+        >
+          <PhoneFrame variant="ios" className="w-[42vw] sm:w-[260px]">
             {phase < 3 ? (
               <div className="relative w-full h-full bg-white flex flex-col">
                 <div className="flex items-center justify-between px-6 pt-12 pb-2 bg-white shrink-0">
@@ -104,19 +110,19 @@ export function Scene3() {
           </PhoneFrame>
         </motion.div>
 
-        <div className="w-1/2">
+        <div className="w-full sm:w-1/2 flex flex-col items-start">
           <motion.div
-            className="inline-flex items-center gap-2 mb-5 px-3 py-1 rounded-full text-[1.1vw] font-medium"
+            className="inline-flex items-center gap-2 mb-3 sm:mb-5 px-3 py-1 rounded-full text-[3vw] sm:text-[1.1vw] font-medium"
             style={{ border: '1px solid rgba(242,232,213,0.3)', color: 'rgba(242,232,213,0.7)', background: 'rgba(242,232,213,0.06)' }}
             initial={{ opacity: 0, x: 20 }}
             animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 20 }}
             transition={{ duration: 0.6 }}
           >
-            <span className="w-5 h-5 rounded-full text-[0.9vw] font-bold flex items-center justify-center" style={{ background: 'var(--iv-accent)', color: 'var(--iv-bg-dark)' }}>2</span>
+            <span className="w-5 h-5 rounded-full text-[2.5vw] sm:text-[0.9vw] font-bold flex items-center justify-center" style={{ background: 'var(--iv-accent)', color: 'var(--iv-bg-dark)' }}>2</span>
             iOS
           </motion.div>
           <motion.h2
-            className="text-[4.5vw] font-bold leading-tight"
+            className="text-[6.5vw] sm:text-[4.5vw] font-bold leading-tight"
             style={{ fontFamily: 'var(--iv-font-display)', color: 'var(--iv-accent)' }}
             initial={{ opacity: 0, x: 50 }}
             animate={phase >= 1 ? { opacity: 1, x: 0 } : { opacity: 0, x: 50 }}
@@ -125,7 +131,7 @@ export function Scene3() {
             Tap 'Add to<br />Home Screen'
           </motion.h2>
           <motion.p
-            className="text-[2.5vw] text-white/80 mt-4"
+            className="text-[4vw] sm:text-[2.5vw] text-white/80 mt-2 sm:mt-4"
             initial={{ opacity: 0, x: 30 }}
             animate={phase >= 2 ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
             transition={{ duration: 0.8 }}

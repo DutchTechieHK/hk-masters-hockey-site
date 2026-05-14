@@ -24,21 +24,23 @@ export function Scene4() {
       exit={{ opacity: 0, scale: 1.1 }}
       transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="flex w-full max-w-6xl items-center justify-between px-20">
-        <div className="w-1/2">
+      {/* Mobile: column (text top, phone bottom). Desktop: row (text left, phone right). */}
+      <div className="flex flex-col sm:flex-row w-full items-center justify-center sm:justify-between h-full py-4 sm:py-0 px-6 sm:px-20 gap-4 sm:gap-0">
+
+        <div className="w-full sm:w-1/2 flex flex-col items-start">
           <motion.div
-            className="inline-flex items-center gap-2 mb-5 px-3 py-1 rounded-full text-[1.1vw] font-medium"
+            className="inline-flex items-center gap-2 mb-3 sm:mb-5 px-3 py-1 rounded-full text-[3vw] sm:text-[1.1vw] font-medium"
             style={{ border: '1px solid rgba(242,232,213,0.3)', color: 'rgba(242,232,213,0.7)', background: 'rgba(242,232,213,0.06)' }}
             initial={{ opacity: 0, y: 20 }}
             animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
             transition={{ duration: 0.6 }}
           >
-            <span className="w-5 h-5 rounded-full text-[0.9vw] font-bold flex items-center justify-center" style={{ background: 'var(--iv-accent)', color: 'var(--iv-bg-dark)' }}>1</span>
+            <span className="w-5 h-5 rounded-full text-[2.5vw] sm:text-[0.9vw] font-bold flex items-center justify-center" style={{ background: 'var(--iv-accent)', color: 'var(--iv-bg-dark)' }}>1</span>
             Android
           </motion.div>
 
           <motion.h2
-            className="text-[4.5vw] font-bold leading-tight"
+            className="text-[6.5vw] sm:text-[4.5vw] font-bold leading-tight"
             style={{ fontFamily: 'var(--iv-font-display)', color: 'var(--iv-accent)' }}
             initial={{ opacity: 0, y: 50 }}
             animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
@@ -48,7 +50,7 @@ export function Scene4() {
           </motion.h2>
 
           <motion.p
-            className="text-[2.2vw] text-white/80 mt-4"
+            className="text-[4vw] sm:text-[2.2vw] text-white/80 mt-2 sm:mt-4"
             initial={{ opacity: 0, y: 30 }}
             animate={phase >= 2 ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
             transition={{ duration: 0.8 }}
@@ -57,7 +59,7 @@ export function Scene4() {
           </motion.p>
 
           <motion.p
-            className="text-[1.8vw] mt-3"
+            className="text-[3vw] sm:text-[1.8vw] mt-2 sm:mt-3"
             style={{ color: 'rgba(242,232,213,0.8)' }}
             initial={{ opacity: 0, y: 20 }}
             animate={phase >= 4 ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
@@ -72,7 +74,7 @@ export function Scene4() {
           animate={phase >= 1 ? { x: 0, opacity: 1 } : { x: 100, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 25 }}
         >
-          <PhoneFrame variant="android">
+          <PhoneFrame variant="android" className="w-[42vw] sm:w-[260px]">
             <div className="w-full h-full flex flex-col bg-white">
               <div className="flex items-center justify-between px-4 pt-8 pb-1 bg-white shrink-0">
                 <span className="text-[10px] font-medium text-black">9:41</span>
