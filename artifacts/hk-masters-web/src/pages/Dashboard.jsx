@@ -64,6 +64,9 @@ export default function Dashboard() {
   const [error, setError] = useState("");
   const [mandatoryCount, setMandatoryCount] = useState(0);
   const [nextSession, setNextSession] = useState(null);
+  const [myRsvp, setMyRsvp] = useState(null);
+  const [rsvpCounts, setRsvpCounts] = useState({ yes: 0, no: 0, maybe: 0 });
+  const [rsvpSaving, setRsvpSaving] = useState(false);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -116,10 +119,42 @@ export default function Dashboard() {
         const now = Date.now();
         const next = events.find((ev) => new Date(ev.startsAt).getTime() > now);
         setNextSession(next ?? null);
+        if (next) {
+          setMyRsvp(next.myRsvp ?? null);
+          setRsvpCounts(next.rsvpCounts ?? { yes: 0, no: 0, maybe: 0 });
+        }
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  const submitRsvp = async (status) => {
+    if (!nextSession) return;
+    const token = getPlayerToken();
+    if (!token) { setLocation("/login"); return; }
+    setRsvpSaving(true);
+    const prev = myRsvp;
+    const prevCounts = { ...rsvpCounts };
+    const newCounts = { ...rsvpCounts };
+    if (prev && newCounts[prev] > 0) newCounts[prev]--;
+    newCounts[status] = (newCounts[status] || 0) + 1;
+    setMyRsvp(status);
+    setRsvpCounts(newCounts);
+    try {
+      const res = await fetch(`${API_BASE}/api/player-auth/events/${nextSession.id}/rsvp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      });
+      if (res.status === 401) { setLocation("/login"); return; }
+      if (!res.ok) throw new Error("Could not save");
+    } catch {
+      setMyRsvp(prev);
+      setRsvpCounts(prevCounts);
+    } finally {
+      setRsvpSaving(false);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -192,7 +227,7 @@ export default function Dashboard() {
                 )}
               </div>
             </div>
-            {/* Button row — sits below the text so nothing gets squeezed */}
+            {/* Button row */}
             <div className="flex items-center gap-2 pl-9">
               <button
                 onClick={() => downloadSingleIcs(nextSession)}
@@ -206,6 +241,36 @@ export default function Dashboard() {
               >
                 Full schedule →
               </button>
+            </div>
+            {/* Attendance RSVP row */}
+            <div className="mt-3 pt-3 border-t border-white/15 pl-9">
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-xs text-blue-200 shrink-0">Will you attend?</span>
+                <div className="flex gap-2">
+                  {[
+                    { key: "yes", label: "Going",     on: "bg-emerald-500 text-white border-emerald-500", off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
+                    { key: "no",  label: "Not going", on: "bg-rose-500 text-white border-rose-500",       off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
+                  ].map((opt) => {
+                    const selected = myRsvp === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        disabled={rsvpSaving}
+                        onClick={() => submitRsvp(opt.key)}
+                        className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {(rsvpCounts.yes > 0 || rsvpCounts.no > 0) && (
+                  <span className="text-xs text-blue-200 whitespace-nowrap">
+                    {rsvpCounts.yes} going · {rsvpCounts.no} not going
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         )}
