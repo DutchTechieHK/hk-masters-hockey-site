@@ -57,9 +57,9 @@ export function PhoneFrame({ variant = 'ios', children, className = '' }: PhoneF
           </linearGradient>
         </defs>
       </svg>
-      {/* inner screen — percentage-based so it scales with the frame */}
+      {/* inner screen — z-20 so it renders above the SVG frame overlay (z-10) */}
       <div
-        className="absolute overflow-hidden"
+        className="absolute overflow-hidden z-20"
         style={{
           top: '1.94%',
           left: '4%',
