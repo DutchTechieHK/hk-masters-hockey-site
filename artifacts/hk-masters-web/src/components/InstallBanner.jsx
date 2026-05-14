@@ -19,6 +19,10 @@ function isSafariOnIOS() {
   return isIOS() && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
 }
 
+function isMobile() {
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+}
+
 export function OfflineBanner() {
   const [offline, setOffline] = useState(() => !navigator.onLine);
   useEffect(() => {
@@ -41,29 +45,49 @@ export function OfflineBanner() {
 
 export default function InstallBanner() {
   const [show, setShow] = useState(false);
-  const [iosDevice, setIosDevice] = useState(false);
+  // "ios" | "android-prompt" | "android-guide"
+  const [mode, setMode] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
     if (isInStandaloneMode()) return;
+
     try {
       const dismissedAt = localStorage.getItem(DISMISSED_KEY);
       if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < RESET_DAYS * MS_PER_DAY) return;
     } catch {}
 
+    // iOS Safari — always show manual instructions
     if (isSafariOnIOS()) {
-      setIosDevice(true);
+      setMode("ios");
       setShow(true);
       return;
     }
 
+    // Android / Chrome — listen for the native install prompt
     const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
+      setMode("android-prompt");
       setShow(true);
+      clearTimeout(fallbackTimer);
     };
     window.addEventListener("beforeinstallprompt", handler);
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+
+    // Fallback: if the prompt never fires within 1.5 s (app already installed,
+    // or browser chose not to offer it), still show a guide banner on mobile
+    let fallbackTimer;
+    if (isMobile()) {
+      fallbackTimer = setTimeout(() => {
+        setMode("android-guide");
+        setShow(true);
+      }, 1500);
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   const dismiss = () => {
@@ -91,7 +115,8 @@ export default function InstallBanner() {
         />
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm leading-tight">Add to Home Screen</p>
-          {iosDevice ? (
+
+          {mode === "ios" && (
             <p className="text-xs text-white/80 mt-0.5 leading-snug">
               Tap{" "}
               <svg className="w-3.5 h-3.5 inline mb-0.5" fill="currentColor" viewBox="0 0 50 50">
@@ -101,28 +126,35 @@ export default function InstallBanner() {
               </svg>{" "}
               Share then <strong className="text-white">"Add to Home Screen"</strong>
               {" · "}
-              <a
-                href="/get-the-app"
-                className="underline text-white font-medium hover:text-blue-100 transition-colors"
-              >
-                Watch how
-              </a>
-            </p>
-          ) : (
-            <p className="text-xs text-white/80 mt-0.5 leading-snug">
-              Install for quick access during the tournament
-              {" · "}
-              <a
-                href="/get-the-app"
-                className="underline text-white font-medium hover:text-blue-100 transition-colors"
-              >
+              <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
                 Watch how
               </a>
             </p>
           )}
+
+          {mode === "android-prompt" && (
+            <p className="text-xs text-white/80 mt-0.5 leading-snug">
+              Install for quick access during the tournament
+              {" · "}
+              <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
+                Watch how
+              </a>
+            </p>
+          )}
+
+          {mode === "android-guide" && (
+            <p className="text-xs text-white/80 mt-0.5 leading-snug">
+              Install this app on your phone for quick access
+              {" · "}
+              <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
+                See how
+              </a>
+            </p>
+          )}
         </div>
+
         <div className="flex items-center gap-2 shrink-0">
-          {!iosDevice && deferredPrompt && (
+          {mode === "android-prompt" && deferredPrompt && (
             <button
               onClick={install}
               className="text-xs font-bold bg-white text-[#1E3A6E] px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors"
