@@ -65,7 +65,7 @@ const MOBILE_SECTIONS = [
   {
     section: "GET INVOLVED",
     links: [
-      { href: "/support",        label: "Support",        Icon: Heart, cta: true },
+      { href: "/support",        label: "Support",        Icon: Heart },
       { href: "/get-the-app",    label: "Get the App",    Icon: Smartphone },
       { href: "/contact",        label: "Contact",        Icon: Mail },
     ],
