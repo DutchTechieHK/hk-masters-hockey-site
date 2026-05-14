@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 
-const DISMISSED_KEY = "hkm_install_tip_dismissed";
-const VISITS_KEY = "hkm_install_tip_visits";
+const DISMISSED_KEY = "hkm_install_tip_dismissed_at";
+const VISITS_KEY = "hkm_install_tip_visits_at";
 const MAX_VISITS = 3;
+const RESET_DAYS = 7;
+const MS_PER_DAY = 86_400_000;
 
 function isIOS() {
   return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -23,12 +25,18 @@ function isSafariOnIOS() {
   return isIOS() && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
 }
 
+function isExpired(tsString) {
+  if (!tsString) return true;
+  return Date.now() - parseInt(tsString, 10) > RESET_DAYS * MS_PER_DAY;
+}
+
 function shouldShow() {
   if (isInStandaloneMode()) return false;
   try {
-    if (localStorage.getItem(DISMISSED_KEY)) return false;
-    const visits = parseInt(localStorage.getItem(VISITS_KEY) || "0", 10);
-    if (visits >= MAX_VISITS) return false;
+    const dismissedAt = localStorage.getItem(DISMISSED_KEY);
+    if (dismissedAt && !isExpired(dismissedAt)) return false;
+    const [count, since] = (localStorage.getItem(VISITS_KEY) || "0|0").split("|");
+    if (!isExpired(since) && parseInt(count, 10) >= MAX_VISITS) return false;
   } catch {
     return false;
   }
@@ -37,8 +45,13 @@ function shouldShow() {
 
 function incrementVisits() {
   try {
-    const visits = parseInt(localStorage.getItem(VISITS_KEY) || "0", 10);
-    localStorage.setItem(VISITS_KEY, String(visits + 1));
+    const [count, since] = (localStorage.getItem(VISITS_KEY) || "0|0").split("|");
+    const now = Date.now();
+    if (isExpired(since)) {
+      localStorage.setItem(VISITS_KEY, `1|${now}`);
+    } else {
+      localStorage.setItem(VISITS_KEY, `${parseInt(count, 10) + 1}|${since}`);
+    }
   } catch {}
 }
 

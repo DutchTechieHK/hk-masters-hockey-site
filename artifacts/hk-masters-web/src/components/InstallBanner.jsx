@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 
-const DISMISSED_KEY = "hkm_pwa_install_dismissed";
+const DISMISSED_KEY = "hkm_pwa_install_dismissed_at";
+const RESET_DAYS = 7;
+const MS_PER_DAY = 86_400_000;
 
 function isIOS() {
   return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
@@ -44,7 +46,10 @@ export default function InstallBanner() {
 
   useEffect(() => {
     if (isInStandaloneMode()) return;
-    try { if (localStorage.getItem(DISMISSED_KEY)) return; } catch {}
+    try {
+      const dismissedAt = localStorage.getItem(DISMISSED_KEY);
+      if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < RESET_DAYS * MS_PER_DAY) return;
+    } catch {}
 
     if (isSafariOnIOS()) {
       setIosDevice(true);
@@ -63,7 +68,7 @@ export default function InstallBanner() {
 
   const dismiss = () => {
     setShow(false);
-    try { localStorage.setItem(DISMISSED_KEY, "1"); } catch {}
+    try { localStorage.setItem(DISMISSED_KEY, String(Date.now())); } catch {}
   };
 
   const install = async () => {
