@@ -1,5 +1,5 @@
 kind = "web"
-previewPath = "/hk-masters-web/"
+previewPath = "/"
 title = "HK Masters Hockey - Public Website"
 version = "1.0.0"
 id = "artifacts/hk-masters-web"
@@ -11,7 +11,7 @@ version = "1.0.0"
 
 [[services]]
 name = "web"
-paths = [ "/hk-masters-web/" ]
+paths = [ "/" ]
 localPort = 22203
 
 [services.development]
@@ -28,4 +28,4 @@ to = "/index.html"
 
 [services.env]
 PORT = "22203"
-BASE_PATH = "/hk-masters-web/"
+BASE_PATH = "/"

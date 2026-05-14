@@ -12,6 +12,7 @@ const rawPort = process.env.PORT;
 const port = rawPort ? Number(rawPort) : 3000;
 
 const basePath = process.env.BASE_PATH ?? "/";
+// Player portal is now at root (/). BASE_PATH env var drives this at runtime.
 
 const replitPlugins =
   isReplit && process.env.NODE_ENV !== "production"

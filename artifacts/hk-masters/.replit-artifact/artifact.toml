@@ -1,5 +1,5 @@
 kind = "web"
-previewPath = "/"
+previewPath = "/admin/"
 title = "HK 2026 Masters World Cup"
 version = "1.0.0"
 id = "artifacts/hk-masters"
@@ -12,14 +12,14 @@ version = "1.0.0"
 [[services]]
 localPort = 20336
 name = "web"
-paths = ["/"]
+paths = ["/admin/"]
 
 [services.development]
 run = "pnpm --filter @workspace/hk-masters run dev"
 
 [services.env]
 PORT = "20336"
-BASE_PATH = "/"
+BASE_PATH = "/admin/"
 
 [services.production]
 build = ["pnpm", "--filter", "@workspace/hk-masters", "run", "build"]
