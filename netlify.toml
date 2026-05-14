@@ -1,7 +1,7 @@
 [build]
   base    = "."
   command = "corepack enable && pnpm install && pnpm --filter @workspace/hk-masters-web run build"
-  publish = "artifacts/hk-masters-web/dist"
+  publish = "artifacts/hk-masters-web/dist/public"
 
 [build.environment]
   NODE_VERSION        = "20"
