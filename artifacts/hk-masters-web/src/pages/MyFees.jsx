@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
+import InstallTip from "../components/InstallTip";
 
 function formatMoney(n) {
   if (n == null) return "—";
@@ -74,6 +75,7 @@ export default function MyFees() {
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
       <div className="max-w-3xl mx-auto">
+        <InstallTip />
         <div className="mb-6">
           <Link href="/dashboard" className="text-sm text-green-700 hover:underline">← Back to dashboard</Link>
           <h1 className="mt-2 text-3xl font-bold text-gray-900">My fees</h1>

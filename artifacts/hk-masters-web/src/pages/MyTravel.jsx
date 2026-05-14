@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
+import InstallTip from "../components/InstallTip";
 
 function formatDateTime(iso) {
   if (!iso) return null;
@@ -104,6 +105,7 @@ export default function MyTravel() {
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
       <div className="max-w-3xl mx-auto">
+        <InstallTip />
         <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <Link href="/dashboard" className="text-sm text-green-700 hover:underline">← Back to dashboard</Link>

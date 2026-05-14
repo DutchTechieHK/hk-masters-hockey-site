@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
+import InstallTip from "../components/InstallTip";
 
 const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
 
@@ -357,6 +358,7 @@ export default function MySchedule() {
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
       <div className="max-w-4xl mx-auto">
+        <InstallTip />
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <Link href="/dashboard" className="text-sm text-green-700 hover:text-green-900 underline">
