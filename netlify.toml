@@ -1,6 +1,6 @@
 [build]
   base    = "."
-  command = "corepack enable && pnpm install && pnpm --filter @workspace/hk-masters-web run build"
+  command = "corepack enable && pnpm install && pnpm --filter @workspace/hk-masters-web run build && cp -r artifacts/hk-masters-web/netlify-cms artifacts/hk-masters-web/dist/public/admin"
   publish = "artifacts/hk-masters-web/dist/public"
 
 [build.environment]
@@ -22,6 +22,14 @@
   from   = "/api/*"
   to     = "https://masters-world-hub.replit.app/api/:splat"
   status = 200
+  force  = true
+
+# Force trailing slash on /admin so Netlify CMS (a static index.html under
+# /admin/) loads instead of falling through to the SPA catch-all below.
+[[redirects]]
+  from   = "/admin"
+  to     = "/admin/"
+  status = 301
   force  = true
 
 [[redirects]]

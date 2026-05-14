@@ -1,5 +1,7 @@
 # HK Masters Hockey — Project Overview
 
+> **Architecture map:** see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a one-page view of the 4 URLs, what hosts each one, and what gets rebuilt when you change a folder. Read it first before changing deployment, routing, or anything under `/admin/`.
+
 ## What This Is
 
 Two separate web applications managed in a pnpm monorepo:
@@ -16,8 +18,8 @@ Two separate web applications managed in a pnpm monorepo:
 - Code lives here in Replit
 - Push to GitHub triggers Netlify build automatically: `git pull -X ours origin main && git push origin main`
 - GitHub repo: `https://github.com/DutchTechieHK/hk-masters-hockey-site.git`
-- Netlify builds with: `pnpm --filter @workspace/hk-masters-web run build`
-- Publishes from: `artifacts/hk-masters-web/dist`
+- Netlify builds with: `pnpm --filter @workspace/hk-masters-web run build && cp -r artifacts/hk-masters-web/netlify-cms artifacts/hk-masters-web/dist/public/admin` (the second step injects the Decap CMS into `/admin/` on Netlify only)
+- Publishes from: `artifacts/hk-masters-web/dist/public`
 - Config: `netlify.toml` at project root
 - API calls from the public website are **proxied by Netlify** to the Replit deployment (see netlify.toml `[[redirects]]`)
 
@@ -35,7 +37,7 @@ The `netlify.toml` has a redirect rule: any `/api/*` request to hkmastershockey.
 - **Monorepo**: pnpm workspaces, Node.js 24
 - **Frontend**: React + Vite (both apps), TailwindCSS, Shadcn-style components
 - **API**: Express 5, PostgreSQL + Drizzle ORM, Zod validation
-- **Public CMS**: Decap CMS at `/hk-masters-web/public/admin/` — content stored in `src/content/*.json`
+- **Public CMS**: Decap CMS — source files in `artifacts/hk-masters-web/netlify-cms/`, copied into `dist/public/admin/` **only by the Netlify build** (so the Replit-hosted PWA never ships the CMS). Content stored in `artifacts/hk-masters-web/src/content/*.json`.
 - **Media**: Cloudinary (cloud: `djyvdrhal`, API key: `467487618148569`)
 - **Email**: Resend (`RESEND_API_KEY` secret set). Domain hkmastershockey.com not yet verified in Resend — emails fall back to `onboarding@resend.dev`
 
@@ -53,10 +55,10 @@ Only **MO40** (Men's Over-40) and **MO50** (Men's Over-50). W35 was fully remove
 
 ```
 artifacts/
-├── hk-masters-web/     # Public website (React + Vite, static)
+├── hk-masters-web/     # Public website (React + Vite, static) — also re-deployed as the Player PWA on Replit
 │   ├── src/pages/      # Home, About, Teams, Events, Rotterdam2026, Journal, JournalArticle, Media, Sponsors, Contact
 │   ├── src/content/    # CMS-managed JSON content files
-│   └── public/admin/   # Decap CMS
+│   └── netlify-cms/    # Decap CMS (Netlify-only — copied into dist/public/admin/ by netlify.toml; never shipped on Replit)
 ├── hk-masters/         # Management app (React + Vite, static)
 │   └── src/pages/      # Dashboard, Teams, Players, Kits, Travel, Fees, Fundraising, Sponsors, Schedule, Logistics, Journal (admin moderation)
 └── api-server/         # Express API (serves /api/...)
