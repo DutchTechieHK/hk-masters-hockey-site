@@ -30,7 +30,10 @@ const replitPlugins =
 export default defineConfig({
   base: basePath,
   define: {
-    ...(isReplit && replitDevDomain && !process.env.VITE_API_BASE_URL
+    // Only inject the Replit dev-domain URL during local development.
+    // Production builds must NOT set this so API calls go to the same origin
+    // where the API server artifact is deployed under /api.
+    ...(isReplit && replitDevDomain && !process.env.VITE_API_BASE_URL && process.env.NODE_ENV !== "production"
       ? { "import.meta.env.VITE_API_BASE_URL": JSON.stringify(`https://${replitDevDomain}`) }
       : {}),
   },
@@ -58,8 +61,9 @@ export default defineConfig({
         start_url: ".",
         scope: ".",
         icons: [
-          { src: "pwa-192.png", sizes: "192x192", type: "image/png" },
-          { src: "pwa-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" },
+          { src: "pwa-192.png",          sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "pwa-512-any.png",      sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "pwa-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
       injectManifest: {
