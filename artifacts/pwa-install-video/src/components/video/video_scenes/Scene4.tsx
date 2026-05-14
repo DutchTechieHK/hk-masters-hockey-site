@@ -113,11 +113,10 @@ export function Scene4() {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="w-full h-24 bg-[var(--color-bg-dark)] rounded-xl mb-3 flex items-center justify-center">
+                    <div className="w-full h-24 bg-white rounded-xl mb-3 flex items-center justify-center">
                       <img
                         src={`${import.meta.env.BASE_URL}logo.png`}
-                        className="h-10"
-                        style={{ filter: 'brightness(0) invert(1)', opacity: 0.8 }}
+                        className="h-10 object-contain"
                         alt=""
                       />
                     </div>
@@ -139,11 +138,10 @@ export function Scene4() {
                           exit={{ y: '100%' }}
                           transition={{ type: 'spring', stiffness: 300, damping: 28 }}
                         >
-                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-[var(--color-primary)] flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white flex items-center justify-center p-1">
                             <img
                               src={`${import.meta.env.BASE_URL}logo.png`}
-                              className="w-7 h-7"
-                              style={{ filter: 'brightness(0) invert(1)' }}
+                              className="w-full h-full object-contain"
                               alt=""
                             />
                           </div>

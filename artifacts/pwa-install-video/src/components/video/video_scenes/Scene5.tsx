@@ -54,13 +54,13 @@ export function Scene5() {
           initial={{ scale: 0, opacity: 0 }}
           animate={phase >= 1 ? { scale: 1, opacity: 1 } : { scale: 0, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-          className="bg-[var(--color-primary)] p-5 rounded-3xl shadow-2xl mb-10 border-4 border-white/10"
+          className="bg-white rounded-2xl mb-10"
+          style={{ padding: '16px 20px', boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)' }}
         >
           <img
             src={`${import.meta.env.BASE_URL}logo.png`}
             alt="HK Masters Logo"
-            className="w-28 h-auto"
-            style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 12px rgba(242,232,213,0.5))' }}
+            className="h-24 w-auto object-contain"
           />
         </motion.div>
 

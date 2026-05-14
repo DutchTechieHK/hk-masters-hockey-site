@@ -51,15 +51,19 @@ export function Scene1() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center text-center px-12">
-        <motion.img
-          src={`${import.meta.env.BASE_URL}logo.png`}
-          alt="HK Masters Logo"
-          className="w-40 h-auto mb-10"
-          style={{ filter: 'brightness(0) invert(1) drop-shadow(0 0 20px rgba(242,232,213,0.7))' }}
+        <motion.div
+          className="mb-10 rounded-2xl bg-white shadow-2xl flex items-center justify-center"
+          style={{ padding: '16px 20px', boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)' }}
           initial={{ scale: 0, rotate: -15, opacity: 0 }}
           animate={phase >= 1 ? { scale: 1, rotate: 0, opacity: 1 } : { scale: 0, rotate: -15, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-        />
+        >
+          <img
+            src={`${import.meta.env.BASE_URL}logo.png`}
+            alt="HK Masters Logo"
+            className="h-28 w-auto object-contain"
+          />
+        </motion.div>
 
         <div className="overflow-hidden mb-3">
           <motion.p
