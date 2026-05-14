@@ -23,7 +23,9 @@ export interface UseVideoPlayerReturn {
   currentScene: number;
   totalScenes: number;
   currentSceneKey: string;
+  sceneKeys: string[];
   hasEnded: boolean;
+  jumpToScene: (index: number) => void;
 }
 
 export function useVideoPlayer(options: UseVideoPlayerOptions): UseVideoPlayerReturn {
@@ -36,6 +38,12 @@ export function useVideoPlayer(options: UseVideoPlayerOptions): UseVideoPlayerRe
 
   const [currentScene, setCurrentScene] = useState(0);
   const [hasEnded, setHasEnded] = useState(false);
+
+  function jumpToScene(index: number) {
+    const clamped = Math.max(0, Math.min(index, totalScenes - 1));
+    setCurrentScene(clamped);
+    setHasEnded(false);
+  }
 
   // Start recording on mount
   useEffect(() => {
@@ -71,7 +79,9 @@ export function useVideoPlayer(options: UseVideoPlayerOptions): UseVideoPlayerRe
     currentScene,
     totalScenes,
     currentSceneKey: sceneKeys[currentScene],
+    sceneKeys,
     hasEnded,
+    jumpToScene,
   };
 }
 

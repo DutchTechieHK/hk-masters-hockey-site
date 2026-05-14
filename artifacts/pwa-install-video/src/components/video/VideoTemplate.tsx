@@ -23,6 +23,16 @@ const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
   close: Scene5,
 };
 
+const SCENE_LABELS: Record<string, string> = {
+  open: 'Open',
+  ios1: 'iOS 1',
+  ios2: 'iOS 2',
+  android: 'Android',
+  close: 'Close',
+};
+
+const IS_DEV = import.meta.env.DEV;
+
 export default function VideoTemplate({
   durations = SCENE_DURATIONS,
   loop = true,
@@ -32,7 +42,7 @@ export default function VideoTemplate({
   loop?: boolean;
   onSceneChange?: (sceneKey: string) => void;
 } = {}) {
-  const { currentSceneKey } = useVideoPlayer({ durations, loop });
+  const { currentSceneKey, currentScene, sceneKeys, jumpToScene } = useVideoPlayer({ durations, loop });
 
   useEffect(() => {
     onSceneChange?.(currentSceneKey);
@@ -42,7 +52,7 @@ export default function VideoTemplate({
   const SceneComponent = SCENE_COMPONENTS[baseSceneKey];
 
   return (
-    <div className="w-full h-screen bg-black flex items-center justify-center overflow-hidden"
+    <div className="w-full h-screen bg-black flex items-center justify-center overflow-hidden relative"
       ref={(el) => {
         if (!el) return;
         const scale = Math.min(el.clientWidth / 1280, el.clientHeight / 720);
@@ -79,6 +89,59 @@ export default function VideoTemplate({
         {SceneComponent && <SceneComponent key={currentSceneKey} />}
       </AnimatePresence>
     </div>
+
+    {IS_DEV && (
+      <div
+        className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-3 z-50"
+        style={{ pointerEvents: 'all' }}
+      >
+        {sceneKeys.map((key, index) => {
+          const isActive = index === currentScene;
+          const label = SCENE_LABELS[key] ?? key;
+          return (
+            <button
+              key={key}
+              onClick={() => jumpToScene(index)}
+              title={`Jump to scene ${index + 1}: ${label}`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px 6px',
+              }}
+            >
+              <div
+                style={{
+                  width: isActive ? 14 : 10,
+                  height: isActive ? 14 : 10,
+                  borderRadius: '50%',
+                  background: isActive ? '#fff' : 'rgba(255,255,255,0.35)',
+                  border: isActive ? '2px solid rgba(255,255,255,0.9)' : '2px solid rgba(255,255,255,0.2)',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isActive ? '0 0 6px rgba(255,255,255,0.7)' : 'none',
+                }}
+              />
+              <span
+                style={{
+                  fontSize: 10,
+                  color: isActive ? '#fff' : 'rgba(255,255,255,0.45)',
+                  fontFamily: 'monospace',
+                  fontWeight: isActive ? 700 : 400,
+                  transition: 'all 0.2s ease',
+                  userSelect: 'none',
+                }}
+              >
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    )}
     </div>
   );
 }
