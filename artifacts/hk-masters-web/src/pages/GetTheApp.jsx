@@ -1,3 +1,7 @@
+import { lazy, Suspense } from 'react';
+
+const InstallVideoPlayer = lazy(() => import('../components/InstallVideo/InstallVideoPlayer'));
+
 export default function GetTheApp() {
   return (
     <div>
@@ -11,6 +15,20 @@ export default function GetTheApp() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+
+        {/* Install video */}
+        <div className="mb-14">
+          <Suspense fallback={
+            <div className="w-full rounded-2xl bg-[#16305D] flex items-center justify-center" style={{ aspectRatio: '16/9' }}>
+              <div className="text-white/40 text-sm">Loading…</div>
+            </div>
+          }>
+            <InstallVideoPlayer />
+          </Suspense>
+          <p className="text-center text-sm text-gray-500 mt-3">
+            Watch the full install walkthrough above — iOS and Android covered
+          </p>
+        </div>
 
         <div className="mb-12 text-center">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-[#1E3A6E]/10 mb-4">
