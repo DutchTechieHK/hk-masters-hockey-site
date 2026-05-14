@@ -157,6 +157,8 @@ export default function Events() {
   const [rosterEventId, setRosterEventId] = useState<number | null>(null)
   const [roster, setRoster] = useState<RsvpRoster | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
+  const [reminding, setReminding] = useState(false)
+  const [remindResult, setRemindResult] = useState<{ sent: number; skippedNoEmail: number } | null>(null)
   const [showCsvImport, setShowCsvImport] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
@@ -165,6 +167,7 @@ export default function Events() {
     setRosterEventId(id)
     setRoster(null)
     setRosterLoading(true)
+    setRemindResult(null)
     try {
       const res = await fetch(`/api/events/${id}/rsvps`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Failed to load RSVPs")
@@ -188,6 +191,27 @@ export default function Events() {
       toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
       setRosterLoading(false)
+    }
+  }
+
+  const sendReminders = async () => {
+    if (rosterEventId == null || !roster || roster.noResponse.length === 0) return
+    setReminding(true)
+    setRemindResult(null)
+    try {
+      const res = await fetch(`/api/events/${rosterEventId}/rsvps/remind`, {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      if (!res.ok) throw new Error("Failed to send reminders")
+      const data = await res.json() as { sent: number; total: number; skippedNoEmail: number }
+      setRemindResult({ sent: data.sent, skippedNoEmail: data.skippedNoEmail })
+      const skippedMsg = data.skippedNoEmail > 0 ? ` (${data.skippedNoEmail} skipped — no email on file)` : ""
+      toast({ title: `Reminder${data.sent !== 1 ? "s" : ""} sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${skippedMsg}` })
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setReminding(false)
     }
   }
 
@@ -661,7 +685,24 @@ export default function Events() {
 
             {roster.noResponse.length > 0 && (
               <div>
-                <h4 className="text-sm font-semibold mb-2">No reply yet ({roster.noResponse.length})</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-semibold">No reply yet ({roster.noResponse.length})</h4>
+                  <button
+                    onClick={sendReminders}
+                    disabled={reminding || remindResult !== null}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                  >
+                    {reminding ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 animate-spin" /> Sending…
+                      </>
+                    ) : remindResult !== null ? (
+                      <>✓ Sent to {remindResult.sent}{remindResult.skippedNoEmail > 0 ? ` (${remindResult.skippedNoEmail} skipped)` : ""}</>
+                    ) : (
+                      "Remind non-responders"
+                    )}
+                  </button>
+                </div>
                 <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
                   {roster.noResponse.map((p) => (
                     <li key={p.playerId} className="px-3 py-2 text-sm bg-white">

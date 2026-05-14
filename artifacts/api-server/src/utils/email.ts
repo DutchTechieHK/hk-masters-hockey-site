@@ -1129,6 +1129,71 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendRsvpReminderEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  eventTitle: string;
+  eventDate: string;
+  eventTime: string;
+  scheduleUrl: string;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeTitle = escapeHtml(opts.eventTitle);
+  const safeDate = escapeHtml(opts.eventDate);
+  const safeTime = escapeHtml(opts.eventTime);
+  const safeUrl = escapeHtml(opts.scheduleUrl);
+
+  const html = emailShell(
+    "#1E3A6E",
+    "Quick reply needed",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      We noticed you haven't responded yet to the following session. Could you let the coaches know whether you're coming?
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:80px;">Session</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;font-weight:600;">${safeTitle}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Date</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${safeDate}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Time</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${safeTime}</td>
+      </tr>
+    </table>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="${safeUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:6px;">Mark my attendance</a>
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+We noticed you haven't responded yet to the following session. Could you let the coaches know whether you're coming?
+
+Session: ${opts.eventTitle}
+Date: ${opts.eventDate}
+Time: ${opts.eventTime}
+
+Mark your attendance here: ${opts.scheduleUrl}
+
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: `Quick reply needed: ${opts.eventTitle}`,
+    html,
+    text,
+  });
+}
+
 export async function sendBulkAnnouncementEmail(opts: {
   playerName: string;
   playerEmail: string;

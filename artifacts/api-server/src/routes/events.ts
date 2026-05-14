@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus } from "@workspace/db";
 import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
+import { sendRsvpReminderEmail } from "../utils/email";
 import { requirePlayerSession } from "../middleware/playerSession";
 
 const router: IRouter = Router();
@@ -267,6 +268,66 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     responses,
     noResponse,
   });
+}) as (req: Request, res: Response) => Promise<void>);
+
+// Admin-only: send reminder emails to all non-responders for a single event.
+router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
+  if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+
+  // Determine invited players.
+  const invitedQuery = event.teamId == null
+    ? db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
+        .from(playersTable)
+        .orderBy(asc(playersTable.name))
+    : db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
+        .from(playersTable)
+        .where(eq(playersTable.teamId, event.teamId))
+        .orderBy(asc(playersTable.name));
+  const invited = await invitedQuery;
+
+  // Find who has already responded.
+  const responded = await db
+    .select({ playerId: eventRsvpsTable.playerId })
+    .from(eventRsvpsTable)
+    .where(eq(eventRsvpsTable.eventId, id));
+  const respondedIds = new Set(responded.map((r) => r.playerId));
+
+  const allNonResponders = invited.filter((p) => !respondedIds.has(p.id));
+  const nonResponders = allNonResponders.filter((p) => !!p.email);
+  const skippedNoEmail = allNonResponders.length - nonResponders.length;
+
+  // Format date and time for the email — use Rotterdam timezone for tournament events,
+  // Hong Kong timezone for pre-tournament training (same threshold as the frontend).
+  const PUBLIC_URL = process.env.PUBLIC_URL || "https://www.hkmastershockey.com";
+  const scheduleUrl = `${PUBLIC_URL}/schedule`;
+
+  const startsAt = new Date(event.startsAt);
+  const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime();
+  const tz = startsAt.getTime() >= RTM_START_EPOCH ? "Europe/Amsterdam" : "Asia/Hong_Kong";
+  const tzLabel = tz === "Europe/Amsterdam" ? " CEST" : " HKT";
+
+  const eventDate = startsAt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz });
+  const eventTime = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz }) + tzLabel;
+
+  let sent = 0;
+  for (const player of nonResponders) {
+    const ok = await sendRsvpReminderEmail({
+      playerName: player.name,
+      playerEmail: player.email!,
+      eventTitle: event.title,
+      eventDate,
+      eventTime,
+      scheduleUrl,
+    });
+    if (ok) sent++;
+  }
+
+  console.log(`[events] Sent ${sent} RSVP reminders for event #${id} (${nonResponders.length} eligible, ${skippedNoEmail} skipped no-email, ${nonResponders.length - sent} failed)`);
+  res.json({ sent, total: allNonResponders.length, skippedNoEmail });
 }) as (req: Request, res: Response) => Promise<void>);
 
 // Player upserts their own RSVP for an event.
