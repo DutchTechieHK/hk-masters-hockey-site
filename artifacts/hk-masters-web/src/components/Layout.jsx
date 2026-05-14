@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
+import {
+  Home, Info, Users, Calendar, Trophy, ClipboardList,
+  BookOpen, Camera, Building2, Heart, Smartphone, Mail,
+  User, ChevronRight, Gavel,
+} from "lucide-react";
 import contactContent from "../content/contact.json";
 import { getPlayerToken } from "../lib/playerAuth";
 import { useReveal } from "../hooks/useReveal";
@@ -8,6 +13,7 @@ import InstallBanner, { OfflineBanner } from "./InstallBanner";
 import NotificationPrompt from "./NotificationPrompt";
 import GetTheAppStrip from "./GetTheAppStrip";
 
+/* ── Desktop nav links (unchanged) ───────────────────────────── */
 const BASE_NAV_LINKS = [
   { href: "/",               label: "Home" },
   { href: "/about",          label: "About" },
@@ -24,6 +30,49 @@ const BASE_NAV_LINKS = [
   { href: "/contact",        label: "Contact" },
 ];
 
+/* ── Mobile nav: grouped sections with icons ──────────────────── */
+const MOBILE_SECTIONS = [
+  {
+    section: null,
+    links: [
+      { href: "/",               label: "Home",           Icon: Home },
+    ],
+  },
+  {
+    section: "EXPLORE",
+    links: [
+      { href: "/about",          label: "About",          Icon: Info },
+      { href: "/teams",          label: "Teams",          Icon: Users },
+      { href: "/sponsors",       label: "Sponsors",       Icon: Building2 },
+    ],
+  },
+  {
+    section: "ROTTERDAM 2026",
+    links: [
+      { href: "/events",         label: "Events",         Icon: Calendar },
+      { href: "/rotterdam-2026", label: "Rotterdam 2026", Icon: Trophy },
+      { href: "/fixtures",       label: "Fixtures",       Icon: ClipboardList },
+      { href: "/auction",        label: "Auction",        Icon: Gavel, auctionGated: true },
+    ],
+  },
+  {
+    section: "NEWS & MEDIA",
+    links: [
+      { href: "/journal",        label: "Journal",        Icon: BookOpen },
+      { href: "/media",          label: "Media",          Icon: Camera },
+    ],
+  },
+  {
+    section: "GET INVOLVED",
+    links: [
+      { href: "/support",        label: "Support",        Icon: Heart, cta: true },
+      { href: "/get-the-app",    label: "Get the App",    Icon: Smartphone },
+      { href: "/contact",        label: "Contact",        Icon: Mail },
+    ],
+  },
+];
+
+/* ── Desktop NavLink (unchanged) ─────────────────────────────── */
 function NavLink({ href, label, onClick, cta }) {
   const [location] = useLocation();
   const isActive = location === href || (href !== "/" && location.startsWith(href));
@@ -51,6 +100,55 @@ function NavLink({ href, label, onClick, cta }) {
       }`}
     >
       {label}
+    </Link>
+  );
+}
+
+/* ── Mobile NavLink — tall row with icon + chevron ────────────── */
+function MobileNavLink({ href, label, Icon, cta, onClose }) {
+  const [location] = useLocation();
+  const isActive = location === href || (href !== "/" && location.startsWith(href));
+
+  if (cta) {
+    return (
+      <div className="px-4 py-2">
+        <Link
+          href={href}
+          onClick={onClose}
+          className="btn-shimmer flex items-center justify-center gap-3 w-full py-4 rounded-xl bg-[#DE2910] text-white font-bold text-base transition-colors hover:bg-red-700 active:bg-red-800"
+        >
+          <Icon className="w-5 h-5 shrink-0" />
+          {label}
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={`flex items-center gap-4 px-5 py-4 min-h-[60px] transition-colors active:bg-white/10 ${
+        isActive ? "bg-white/10" : "hover:bg-white/5"
+      }`}
+    >
+      <Icon
+        className={`w-5 h-5 shrink-0 transition-colors ${
+          isActive ? "text-white" : "text-[#8FBDE8]"
+        }`}
+      />
+      <span
+        className={`flex-1 text-base transition-colors ${
+          isActive ? "font-semibold text-white" : "font-medium text-[#C5D8F0]"
+        }`}
+      >
+        {label}
+      </span>
+      {isActive ? (
+        <div className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />
+      ) : (
+        <ChevronRight className="w-4 h-4 text-[#4A7BB0] shrink-0" />
+      )}
     </Link>
   );
 }
@@ -154,7 +252,7 @@ export default function Layout({ children }) {
           </div>
         </div>
 
-        {/* Row 2 — Navigation strip (dark denim, desktop) */}
+        {/* Row 2 — Navigation strip (dark denim, desktop only) */}
         <div className="hidden lg:block bg-[#16305D]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-11">
@@ -176,32 +274,55 @@ export default function Layout({ children }) {
           </div>
         </div>
 
-        {/* Mobile dropdown menu */}
+        {/* ── Mobile dropdown menu ─────────────────────────────── */}
         {menuOpen && (
-          <div className="lg:hidden bg-[#16305D]">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 pb-4">
-              <div className="flex flex-col gap-1">
-                {BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).map((link) => (
-                  <NavLink
-                    key={link.href}
-                    href={link.href}
-                    label={link.label}
-                    cta={link.cta}
-                    onClick={() => setMenuOpen(false)}
-                  />
-                ))}
+          <div className="lg:hidden bg-[#16305D] border-t border-[#2A5298] shadow-2xl">
+            <nav className="max-w-7xl mx-auto pb-3">
+
+              {MOBILE_SECTIONS.map(({ section, links }, si) => {
+                const visibleLinks = links.filter(l => !l.auctionGated || auctionLive);
+                if (!visibleLinks.length) return null;
+                return (
+                  <div key={si} className={si > 0 ? "mt-1" : ""}>
+                    {section && (
+                      <div className="px-5 pt-4 pb-1.5">
+                        <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#5A8BBF]">
+                          {section}
+                        </span>
+                      </div>
+                    )}
+                    {visibleLinks.map(({ href, label, Icon, cta }) => (
+                      <MobileNavLink
+                        key={href}
+                        href={href}
+                        label={label}
+                        Icon={Icon}
+                        cta={cta}
+                        onClose={() => setMenuOpen(false)}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+
+              {/* My Portal — separated at the bottom */}
+              <div className="border-t border-[#2A5298] mt-2 pt-1">
                 <Link
                   href={isPlayerLoggedIn ? "/dashboard" : "/login"}
                   onClick={() => setMenuOpen(false)}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-[#8FBDE8] hover:text-white transition-colors duration-150 py-1"
+                  className={`flex items-center gap-4 px-5 py-4 min-h-[60px] transition-colors active:bg-white/10 ${
+                    ["/dashboard", "/login"].some(p => location === p || location.startsWith(p + "/"))
+                      ? "bg-white/10"
+                      : "hover:bg-white/5"
+                  }`}
                 >
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                  </svg>
-                  My Portal
+                  <User className="w-5 h-5 shrink-0 text-[#8FBDE8]" />
+                  <span className="flex-1 text-base font-medium text-[#C5D8F0]">My Portal</span>
+                  <ChevronRight className="w-4 h-4 text-[#4A7BB0] shrink-0" />
                 </Link>
               </div>
-            </div>
+
+            </nav>
           </div>
         )}
       </header>
