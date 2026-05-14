@@ -1,6 +1,8 @@
 # HK Masters Hockey — Project Overview
 
-> **Architecture map:** see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a one-page view of the 4 URLs, what hosts each one, and what gets rebuilt when you change a folder. Read it first before changing deployment, routing, or anything under `/admin/`.
+## Architecture
+
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a one-page view of the 4 URLs (public site, Decap CMS, player PWA, coach portal), what hosts each one, and what gets rebuilt when you change a folder. Read it first before changing deployment, routing, or anything under `/admin/`.
 
 ## What This Is
 
