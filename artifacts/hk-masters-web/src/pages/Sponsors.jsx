@@ -24,13 +24,13 @@ function SponsorCard({ sponsor }) {
   const badge = TIER_BADGE[sponsor.tier] || TIER_BADGE.Bronze;
 
   const card = (
-    <div className="group bg-white border border-[#D9C9A8] rounded-2xl flex flex-col items-center justify-center py-10 px-8 gap-4 min-h-[180px] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
-      <div className="flex items-center justify-center">
+    <div className="group bg-white border border-[#D9C9A8] rounded-2xl flex flex-col items-center justify-center py-6 px-4 sm:py-10 sm:px-8 gap-3 min-h-[130px] sm:min-h-[180px] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+      <div className="flex items-center justify-center w-full">
         {displayUrl && !imgFailed ? (
           <img
             src={displayUrl}
             alt={sponsor.name}
-            className="max-h-28 max-w-xs object-contain"
+            className="max-h-16 sm:max-h-28 w-full object-contain"
             onError={() => setImgFailed(true)}
           />
         ) : (
@@ -41,7 +41,7 @@ function SponsorCard({ sponsor }) {
         )}
       </div>
       {sponsor.websiteUrl && (
-        <p className="text-[#8A7A6A] text-xs tracking-widest uppercase">
+        <p className="text-[#8A7A6A] text-xs tracking-wide sm:tracking-widest uppercase truncate w-full text-center">
           {sponsor.websiteUrl.replace(/^https?:\/\//, "")}
         </p>
       )}
@@ -95,14 +95,14 @@ export default function Sponsors() {
           <p className="text-[#8A7A6A] text-sm tracking-widest uppercase">Loading…</p>
         </section>
       ) : hasSponsors ? (
-        <section className="bg-[#EDE0C4] py-20 px-4 sm:px-6 lg:px-8 border-b border-[#D9C9A8]">
-          <div className="max-w-5xl mx-auto space-y-16">
+        <section className="bg-[#EDE0C4] py-10 sm:py-20 px-4 sm:px-6 lg:px-8 border-b border-[#D9C9A8]">
+          <div className="max-w-5xl mx-auto space-y-10 sm:space-y-16">
             {tierGroups.map(({ name, sponsors }) => {
               const badge = TIER_BADGE[name] || TIER_BADGE.Bronze;
               const cols  = TIER_COLS[name]  || TIER_COLS.Bronze;
               return (
                 <div key={name} className="reveal">
-                  <div className="flex items-center gap-4 mb-10">
+                  <div className="flex items-center gap-4 mb-5 sm:mb-10">
                     <div className="h-px flex-1 bg-[#D9C9A8]" />
                     <span
                       className="text-xs font-bold tracking-widest uppercase px-5 py-2 rounded-full border"
