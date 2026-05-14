@@ -7,6 +7,13 @@ import { CacheableResponsePlugin } from "workbox-cacheable-response";
 
 declare const self: ServiceWorkerGlobalScope;
 
+// Take control immediately on install/activate so new deploys apply at once
+// without requiring the user to close all tabs or clear the cache manually.
+self.skipWaiting();
+self.addEventListener("activate", (event) => {
+  event.waitUntil((self.clients as Clients).claim());
+});
+
 // Inject precache manifest at build time (all static assets: JS, CSS, HTML, images)
 precacheAndRoute(self.__WB_MANIFEST);
 
