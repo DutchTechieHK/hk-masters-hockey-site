@@ -72,7 +72,7 @@ export default function InstallTip() {
       <div className="flex-1 min-w-0">
         <p className="font-bold text-sm leading-tight mb-1">Add this app to your home screen</p>
         {platform === "ios-safari" && (
-          <p className="text-xs text-blue-200 leading-relaxed">
+          <p className="text-xs text-white/80 leading-relaxed">
             Tap the{" "}
             <svg className="w-3.5 h-3.5 inline mb-0.5" fill="currentColor" viewBox="0 0 50 50">
               <path d="M30.3 13.7L25 8.4l-5.3 5.3-1.4-1.4L25 5.6l6.7 6.7z" />
@@ -82,33 +82,33 @@ export default function InstallTip() {
             <strong className="text-white">Share</strong> button in Safari, then choose{" "}
             <strong className="text-white">"Add to Home Screen"</strong> — get instant access during the tournament.{" "}
             <a
-              href={`${import.meta.env.BASE_URL}get-the-app`}
-              className="underline text-blue-300 hover:text-white transition-colors"
+              href="/get-the-app"
+              className="underline text-white font-medium hover:text-blue-100 transition-colors"
             >
               Watch how
             </a>
           </p>
         )}
         {platform === "ios-other" && (
-          <p className="text-xs text-blue-200 leading-relaxed">
+          <p className="text-xs text-white/80 leading-relaxed">
             Open this page in <strong className="text-white">Safari</strong>, tap the{" "}
             <strong className="text-white">Share</strong> button, then choose{" "}
             <strong className="text-white">"Add to Home Screen"</strong> for instant access.{" "}
             <a
-              href={`${import.meta.env.BASE_URL}get-the-app`}
-              className="underline text-blue-300 hover:text-white transition-colors"
+              href="/get-the-app"
+              className="underline text-white font-medium hover:text-blue-100 transition-colors"
             >
               Watch how
             </a>
           </p>
         )}
         {platform === "android" && (
-          <p className="text-xs text-blue-200 leading-relaxed">
+          <p className="text-xs text-white/80 leading-relaxed">
             Tap the <strong className="text-white">⋮ menu</strong> in Chrome, then select{" "}
             <strong className="text-white">"Add to Home screen"</strong> — quick access during the tournament, even offline.{" "}
             <a
-              href={`${import.meta.env.BASE_URL}get-the-app`}
-              className="underline text-blue-300 hover:text-white transition-colors"
+              href="/get-the-app"
+              className="underline text-white font-medium hover:text-blue-100 transition-colors"
             >
               Watch how
             </a>

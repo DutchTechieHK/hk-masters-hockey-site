@@ -87,7 +87,7 @@ export default function InstallBanner() {
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm leading-tight">Add to Home Screen</p>
           {iosDevice ? (
-            <p className="text-xs text-blue-200 mt-0.5 leading-snug">
+            <p className="text-xs text-white/80 mt-0.5 leading-snug">
               Tap{" "}
               <svg className="w-3.5 h-3.5 inline mb-0.5" fill="currentColor" viewBox="0 0 50 50">
                 <path d="M30.3 13.7L25 8.4l-5.3 5.3-1.4-1.4L25 5.6l6.7 6.7z" />
@@ -97,19 +97,19 @@ export default function InstallBanner() {
               Share then <strong className="text-white">"Add to Home Screen"</strong>
               {" · "}
               <a
-                href={`${import.meta.env.BASE_URL}get-the-app`}
-                className="underline text-blue-300 hover:text-white transition-colors"
+                href="/get-the-app"
+                className="underline text-white font-medium hover:text-blue-100 transition-colors"
               >
                 Watch how
               </a>
             </p>
           ) : (
-            <p className="text-xs text-blue-200 mt-0.5 leading-snug">
+            <p className="text-xs text-white/80 mt-0.5 leading-snug">
               Install for quick access during the tournament
               {" · "}
               <a
-                href={`${import.meta.env.BASE_URL}get-the-app`}
-                className="underline text-blue-300 hover:text-white transition-colors"
+                href="/get-the-app"
+                className="underline text-white font-medium hover:text-blue-100 transition-colors"
               >
                 Watch how
               </a>
