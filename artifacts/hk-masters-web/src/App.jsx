@@ -63,6 +63,7 @@ function Router() {
         <Route path="/auction" component={Auction} />
         <Route path="/get-the-app" component={GetTheApp} />
         <Route path="/my-schedule">{() => { window.location.replace(import.meta.env.BASE_URL + "schedule"); return null; }}</Route>
+        <Route path="/admin">{() => { window.location.replace("/admin/"); return null; }}</Route>
         <Route path="/privacy" component={Privacy} />
         <Route>
           <div className="min-h-screen flex items-center justify-center">
