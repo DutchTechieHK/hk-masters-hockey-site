@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 import { API_BASE } from "../utils/api";
-import InstallTip from "../components/InstallTip";
 
 const CARDS = [
   { key: "fees", title: "My fees", desc: "Your tournament fee balance and payment history.", emoji: "💳", to: "fees" },
@@ -194,9 +193,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
       <div className="max-w-5xl mx-auto">
-
-        {/* Install tip */}
-        <InstallTip />
 
         {/* Welcome header */}
         <div className="flex items-start justify-between mb-6">

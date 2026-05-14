@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "wouter";
 import { API_BASE } from "../utils/api";
-import InstallTip from "../components/InstallTip";
 
 const CLOUDINARY_CLOUD_NAME = "djyvdrhal";
 const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned";
@@ -477,7 +476,6 @@ export default function MyDetails() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-3xl mx-auto">
-        <InstallTip />
         {/* Header */}
         <div className="mb-8">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wide">
