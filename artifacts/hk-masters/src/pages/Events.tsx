@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -192,6 +192,52 @@ export default function Events() {
     } finally {
       setRosterLoading(false)
     }
+  }
+
+  const downloadRosterCsv = () => {
+    if (!roster) return
+    const statusOrder = { yes: 0, no: 1, maybe: 2 }
+    const statusLabel = { yes: "Going", maybe: "Maybe", no: "Not going" }
+
+    const rows: { name: string; team: string; jersey: string; status: string; respondedAt: string }[] = [
+      ...roster.responses
+        .slice()
+        .sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.playerName.localeCompare(b.playerName))
+        .map((r) => ({
+          name: r.playerName,
+          team: r.teamName ?? "",
+          jersey: r.shirtNumber != null ? String(r.shirtNumber) : "",
+          status: statusLabel[r.status],
+          respondedAt: format(new Date(r.respondedAt), "yyyy-MM-dd HH:mm"),
+        })),
+      ...roster.noResponse
+        .slice()
+        .sort((a, b) => a.playerName.localeCompare(b.playerName))
+        .map((p) => ({
+          name: p.playerName,
+          team: p.teamName ?? "",
+          jersey: p.shirtNumber != null ? String(p.shirtNumber) : "",
+          status: "No reply",
+          respondedAt: "",
+        })),
+    ]
+
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const header = ["Name", "Team", "Jersey #", "Status", "Responded At"]
+    const lines = [header.map(escape).join(","), ...rows.map((r) => [r.name, r.team, r.jersey, r.status, r.respondedAt].map(escape).join(","))]
+    const csv = lines.join("\r\n")
+
+    const slug = roster.event.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    const date = format(new Date(roster.event.startsAt), "yyyy-MM-dd")
+    const filename = `attendance-${slug}-${date}.csv`
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 100)
   }
 
   const sendReminders = async () => {
@@ -632,7 +678,13 @@ export default function Events() {
           <div className="py-8 text-center text-muted-foreground">Loading…</div>
         ) : (
           <div className="space-y-5">
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={downloadRosterCsv}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition"
+              >
+                <Download className="w-3.5 h-3.5" /> Download CSV
+              </button>
               <button
                 onClick={refreshRoster}
                 disabled={rosterLoading}
