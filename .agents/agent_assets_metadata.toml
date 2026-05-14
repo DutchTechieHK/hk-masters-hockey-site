@@ -48,3 +48,9 @@ id = "ouFNDgE4XppJ_WQxPgnoz"
 uri = "file://artifacts/pwa-install-video/public/bg-rotterdam.png"
 type = "image"
 title = "Rotterdam skyline dusk"
+
+[[generated]]
+id = "p5f6TLCtzAJH7qv8i8-rB"
+uri = "file://artifacts/hk-masters-web/public/pwa-512.png"
+type = "image"
+title = "hk-masters-pwa-icon"
