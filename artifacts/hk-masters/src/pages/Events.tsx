@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -172,6 +172,20 @@ export default function Events() {
     } catch (err) {
       toast({ title: (err as Error).message, variant: "destructive" })
       setRosterEventId(null)
+    } finally {
+      setRosterLoading(false)
+    }
+  }
+
+  const refreshRoster = async () => {
+    if (rosterEventId == null) return
+    setRosterLoading(true)
+    try {
+      const res = await fetch(`/api/events/${rosterEventId}/rsvps`, { headers: authHeaders() })
+      if (!res.ok) throw new Error("Failed to refresh RSVPs")
+      setRoster(await res.json())
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
       setRosterLoading(false)
     }
@@ -594,6 +608,15 @@ export default function Events() {
           <div className="py-8 text-center text-muted-foreground">Loading…</div>
         ) : (
           <div className="space-y-5">
+            <div className="flex justify-end">
+              <button
+                onClick={refreshRoster}
+                disabled={rosterLoading}
+                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition disabled:opacity-50"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Refresh
+              </button>
+            </div>
             <div className="grid grid-cols-4 gap-2 text-center text-xs">
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
                 <div className="text-2xl font-bold text-emerald-800">{roster.counts.yes}</div>
