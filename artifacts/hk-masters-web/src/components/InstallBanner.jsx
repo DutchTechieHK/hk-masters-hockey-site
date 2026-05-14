@@ -144,10 +144,11 @@ export default function InstallBanner() {
 
           {mode === "android-guide" && (
             <p className="text-xs text-white/80 mt-0.5 leading-snug">
-              Install this app on your phone for quick access
+              Tap <strong className="text-white">⋮ Menu</strong> then{" "}
+              <strong className="text-white">"Add to Home screen"</strong>
               {" · "}
               <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
-                See how
+                Watch how
               </a>
             </p>
           )}
