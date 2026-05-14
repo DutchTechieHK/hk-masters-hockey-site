@@ -144,6 +144,132 @@ function authHeaders(): HeadersInit {
   return token ? { "x-session-token": token } : {}
 }
 
+type EventMonthSectionProps = {
+  month: string
+  items: EventRow[]
+  past: boolean
+  selected: Set<number>
+  allSelected: boolean
+  toggleSelectAll: () => void
+  toggleSelect: (id: number) => void
+  openRoster: (id: number) => void
+  openEditModal: (ev: EventRow) => void
+  handleDelete: (id: number, title: string) => void
+}
+
+function EventMonthSection({
+  month, items, past,
+  selected, allSelected, toggleSelectAll, toggleSelect,
+  openRoster, openEditModal, handleDelete,
+}: EventMonthSectionProps) {
+  return (
+    <section className={past ? "opacity-60" : ""}>
+      <h2 className={`text-lg font-bold mb-3 ${past ? "text-muted-foreground" : "text-foreground"}`}>
+        {month}
+      </h2>
+      <div className={`rounded-2xl shadow-sm border overflow-hidden ${past ? "bg-muted/30 border-border/50" : "bg-white border-border"}`}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+              <tr>
+                {!past && (
+                  <th className="px-4 py-3 w-8">
+                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded accent-[#006B3C]" />
+                  </th>
+                )}
+                {past && <th className="px-4 py-3 w-8" />}
+                <th className="px-6 py-3 font-semibold">When</th>
+                <th className="px-6 py-3 font-semibold">Kind</th>
+                <th className="px-6 py-3 font-semibold">Title</th>
+                <th className="px-6 py-3 font-semibold">Where</th>
+                <th className="px-6 py-3 font-semibold">Visibility</th>
+                <th className="px-6 py-3 font-semibold">Attendance</th>
+                <th className="px-6 py-3 font-semibold text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {items.map((ev) => {
+                const meta = KIND_META[ev.kind] ?? KIND_META.meeting
+                const Icon = meta.icon
+                const tz = eventTz(ev.startsAt)
+                const isRtm = tz === ROTTERDAM_TZ
+                return (
+                  <tr key={ev.id} className={`hover:bg-muted/10 ${selected.has(ev.id) ? "bg-green-50/50" : ""}`}>
+                    <td className="px-4 py-4">
+                      {!past && (
+                        <input type="checkbox" checked={selected.has(ev.id)} onChange={() => toggleSelect(ev.id)} className="w-4 h-4 rounded accent-[#006B3C]" />
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-foreground">
+                        {new Date(ev.startsAt).toLocaleDateString("en-GB", {
+                          weekday: "short", day: "numeric", month: "short", timeZone: tz,
+                        })}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(ev.startsAt).toLocaleTimeString("en-GB", {
+                          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
+                        })}
+                        {ev.endsAt && ` – ${new Date(ev.endsAt).toLocaleTimeString("en-GB", {
+                          hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
+                        })}`}
+                        <span className={`ml-1 text-[10px] uppercase tracking-wide ${isRtm ? "text-[#006B3C]" : "text-blue-500"}`}>
+                          {isRtm ? "RTM" : "HKT"}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <Badge className={`${meta.colour} border-0 inline-flex items-center gap-1`}>
+                        <Icon className="w-3 h-3" /> {meta.label}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-foreground">{ev.title}</td>
+                    <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
+                    <td className="px-6 py-4 text-muted-foreground">
+                      <div className="flex flex-col gap-1">
+                        <span>{ev.teamName || "All squads"}</span>
+                        {ev.isPublic && (
+                          <span className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-[#006B3C] text-[10px] font-bold uppercase tracking-wide">
+                            Public
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={() => openRoster(ev.id)}
+                        className="inline-flex items-center gap-2 text-xs font-medium text-foreground hover:underline"
+                        title="View roster"
+                      >
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">✅ {ev.rsvpCounts?.yes ?? 0}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">🤔 {ev.rsvpCounts?.maybe ?? 0}</span>
+                        <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">❌ {ev.rsvpCounts?.no ?? 0}</span>
+                      </button>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end items-center gap-1">
+                        <button onClick={() => openRoster(ev.id)} title="View RSVPs" className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all">
+                          <ClipboardList className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(ev.id, ev.title)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function Events() {
   const { toast } = useToast()
   const { data: teams = [] } = useListTeams()
@@ -162,6 +288,7 @@ export default function Events() {
   const [showCsvImport, setShowCsvImport] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
+  const [showPast, setShowPast] = useState(false)
 
   const openRoster = async (id: number) => {
     setRosterEventId(id)
@@ -401,15 +528,24 @@ export default function Events() {
     }
   }
 
-  // group by month — use the event's correct timezone so headers match displayed dates
-  const grouped = events.reduce<Record<string, EventRow[]>>((acc, ev) => {
-    const key = new Date(ev.startsAt).toLocaleDateString("en-GB", {
-      month: "long", year: "numeric", timeZone: eventTz(ev.startsAt),
-    })
-    if (!acc[key]) acc[key] = []
-    acc[key].push(ev)
-    return acc
-  }, {})
+  const now = Date.now()
+
+  const upcomingEvents = events.filter(ev => new Date(ev.startsAt).getTime() >= now)
+  const pastEvents    = events.filter(ev => new Date(ev.startsAt).getTime() <  now)
+
+  function groupByMonth(evs: EventRow[]): Record<string, EventRow[]> {
+    return evs.reduce<Record<string, EventRow[]>>((acc, ev) => {
+      const key = new Date(ev.startsAt).toLocaleDateString("en-GB", {
+        month: "long", year: "numeric", timeZone: eventTz(ev.startsAt),
+      })
+      if (!acc[key]) acc[key] = []
+      acc[key].push(ev)
+      return acc
+    }, {})
+  }
+
+  const grouped     = groupByMonth(upcomingEvents)
+  const pastGrouped = groupByMonth(pastEvents)
 
   return (
     <PageLayout
@@ -435,111 +571,67 @@ export default function Events() {
         </div>
       ) : (
         <div className="space-y-8">
+          {/* ── Upcoming events ── */}
+          {upcomingEvents.length === 0 && (
+            <div className="bg-white rounded-2xl border border-border shadow-sm p-10 text-center text-muted-foreground">
+              No upcoming events. Add a training, meeting or social above.
+            </div>
+          )}
           {Object.entries(grouped).map(([month, items]) => (
-            <section key={month}>
-              <h2 className="text-lg font-bold text-foreground mb-3">{month}</h2>
-              <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
-                      <tr>
-                        <th className="px-4 py-3 w-8">
-                          <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded accent-[#006B3C]" />
-                        </th>
-                        <th className="px-6 py-3 font-semibold">When</th>
-                        <th className="px-6 py-3 font-semibold">Kind</th>
-                        <th className="px-6 py-3 font-semibold">Title</th>
-                        <th className="px-6 py-3 font-semibold">Where</th>
-                        <th className="px-6 py-3 font-semibold">Visibility</th>
-                        <th className="px-6 py-3 font-semibold">Attendance</th>
-                        <th className="px-6 py-3 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {items.map((ev) => {
-                        const meta = KIND_META[ev.kind] ?? KIND_META.meeting
-                        const Icon = meta.icon
-                        return (
-                          <tr key={ev.id} className={`hover:bg-muted/10 ${selected.has(ev.id) ? "bg-green-50/50" : ""}`}>
-                            <td className="px-4 py-4">
-                              <input type="checkbox" checked={selected.has(ev.id)} onChange={() => toggleSelect(ev.id)} className="w-4 h-4 rounded accent-[#006B3C]" />
-                            </td>
-                            <td className="px-6 py-4">
-                              {(() => {
-                                const tz = eventTz(ev.startsAt)
-                                const isRtm = tz === ROTTERDAM_TZ
-                                return (
-                                  <>
-                                    <div className="font-semibold text-foreground">
-                                      {new Date(ev.startsAt).toLocaleDateString("en-GB", {
-                                        weekday: "short", day: "numeric", month: "short", timeZone: tz,
-                                      })}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                      {new Date(ev.startsAt).toLocaleTimeString("en-GB", {
-                                        hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
-                                      })}
-                                      {ev.endsAt && ` – ${new Date(ev.endsAt).toLocaleTimeString("en-GB", {
-                                        hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
-                                      })}`}
-                                      <span className={`ml-1 text-[10px] uppercase tracking-wide ${isRtm ? "text-[#006B3C]" : "text-blue-500"}`}>
-                                        {isRtm ? "RTM" : "HKT"}
-                                      </span>
-                                    </div>
-                                  </>
-                                )
-                              })()}
-                            </td>
-                            <td className="px-6 py-4">
-                              <Badge className={`${meta.colour} border-0 inline-flex items-center gap-1`}>
-                                <Icon className="w-3 h-3" /> {meta.label}
-                              </Badge>
-                            </td>
-                            <td className="px-6 py-4 font-medium text-foreground">{ev.title}</td>
-                            <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
-                            <td className="px-6 py-4 text-muted-foreground">
-                              <div className="flex flex-col gap-1">
-                                <span>{ev.teamName || "All squads"}</span>
-                                {ev.isPublic && (
-                                  <span className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-[#006B3C] text-[10px] font-bold uppercase tracking-wide">
-                                    Public
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <button
-                                onClick={() => openRoster(ev.id)}
-                                className="inline-flex items-center gap-2 text-xs font-medium text-foreground hover:underline"
-                                title="View roster"
-                              >
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">✅ {ev.rsvpCounts?.yes ?? 0}</span>
-                                <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">🤔 {ev.rsvpCounts?.maybe ?? 0}</span>
-                                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">❌ {ev.rsvpCounts?.no ?? 0}</span>
-                              </button>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div className="flex justify-end items-center gap-1">
-                                <button onClick={() => openRoster(ev.id)} title="View RSVPs" className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all">
-                                  <ClipboardList className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => handleDelete(ev.id, ev.title)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
+            <EventMonthSection
+              key={month}
+              month={month}
+              items={items}
+              past={false}
+              selected={selected}
+              allSelected={allSelected}
+              toggleSelectAll={toggleSelectAll}
+              toggleSelect={toggleSelect}
+              openRoster={openRoster}
+              openEditModal={openEditModal}
+              handleDelete={handleDelete}
+            />
           ))}
+
+          {/* ── Past events ── */}
+          {pastEvents.length > 0 && (
+            <div>
+              <button
+                onClick={() => setShowPast(v => !v)}
+                className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-3 group"
+              >
+                <svg
+                  className={`w-4 h-4 transition-transform duration-200 ${showPast ? "rotate-90" : ""}`}
+                  fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+                Past Events
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-normal">
+                  {pastEvents.length}
+                </span>
+              </button>
+              {showPast && (
+                <div className="space-y-8">
+                  {Object.entries(pastGrouped).reverse().map(([month, items]) => (
+                    <EventMonthSection
+                      key={month}
+                      month={month}
+                      items={items}
+                      past={true}
+                      selected={selected}
+                      allSelected={allSelected}
+                      toggleSelectAll={toggleSelectAll}
+                      toggleSelect={toggleSelect}
+                      openRoster={openRoster}
+                      openEditModal={openEditModal}
+                      handleDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
