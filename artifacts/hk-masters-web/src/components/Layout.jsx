@@ -318,7 +318,6 @@ export default function Layout({ children }) {
       </main>
 
       <OfflineBanner />
-      {location !== "/get-the-app" && <InstallBanner />}
       <NotificationPrompt />
 
       {/* ── Footer ───────────────────────────────────────────────── */}
