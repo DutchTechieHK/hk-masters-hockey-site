@@ -25,11 +25,14 @@ export function Scene5() {
     >
       {/* Rotterdam skyline background */}
       <div className="absolute inset-0">
-        <img
+        <motion.img
           src={`${import.meta.env.BASE_URL}bg-rotterdam.png`}
           alt=""
           className="w-full h-full object-cover"
-          style={{ objectPosition: 'center 60%' }}
+          style={{ objectPosition: 'center 60%', transformOrigin: 'center 60%' }}
+          initial={{ scale: 1 }}
+          animate={{ scale: 1.08 }}
+          transition={{ duration: 10, ease: 'linear' }}
         />
         {/* Deep navy overlay so text stays legible */}
         <div
