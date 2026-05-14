@@ -17,12 +17,38 @@ export function Scene5() {
 
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-bg-dark)]"
+      className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.06 }}
       transition={{ duration: 1.5 }}
     >
+      {/* Rotterdam skyline background */}
+      <div className="absolute inset-0">
+        <img
+          src={`${import.meta.env.BASE_URL}bg-rotterdam.png`}
+          alt=""
+          className="w-full h-full object-cover"
+          style={{ objectPosition: 'center 60%' }}
+        />
+        {/* Deep navy overlay so text stays legible */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(22,48,93,0.85) 0%, rgba(22,48,93,0.75) 40%, rgba(22,48,93,0.92) 100%)',
+          }}
+        />
+        {/* Subtle vignette */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 40%, rgba(10,20,40,0.65) 100%)',
+          }}
+        />
+      </div>
+
       <div className="relative z-10 flex flex-col items-center text-center px-12">
         <motion.div
           initial={{ scale: 0, opacity: 0 }}

@@ -42,3 +42,9 @@ id = "n9bfhq6ml6AkT065JB5dt"
 uri = "file://artifacts/pwa-install-video/public/bg-stadium.png"
 type = "image"
 title = "hockey stadium denim blue"
+
+[[generated]]
+id = "ouFNDgE4XppJ_WQxPgnoz"
+uri = "file://artifacts/pwa-install-video/public/bg-rotterdam.png"
+type = "image"
+title = "Rotterdam skyline dusk"
