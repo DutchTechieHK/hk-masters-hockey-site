@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [myRsvp, setMyRsvp] = useState(null);
   const [rsvpCounts, setRsvpCounts] = useState({ yes: 0, no: 0, maybe: 0 });
   const [rsvpSaving, setRsvpSaving] = useState(false);
+  const [rsvpError, setRsvpError] = useState(false);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -133,6 +134,7 @@ export default function Dashboard() {
     const token = getPlayerToken();
     if (!token) { setLocation("/login"); return; }
     setRsvpSaving(true);
+    setRsvpError(false);
     const prev = myRsvp;
     const prevCounts = { ...rsvpCounts };
     const newCounts = { ...rsvpCounts };
@@ -151,6 +153,7 @@ export default function Dashboard() {
     } catch {
       setMyRsvp(prev);
       setRsvpCounts(prevCounts);
+      setRsvpError(true);
     } finally {
       setRsvpSaving(false);
     }
@@ -271,6 +274,9 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
+              {rsvpError && (
+                <p className="mt-1.5 text-xs text-red-300">Couldn't save — please try again.</p>
+              )}
             </div>
           </div>
         )}
