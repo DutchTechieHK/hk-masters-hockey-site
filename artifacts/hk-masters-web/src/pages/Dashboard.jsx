@@ -179,19 +179,21 @@ export default function Dashboard() {
 
         {/* Next session widget */}
         {nextSession && (
-          <div className="mb-4 bg-[#1E3A6E] text-white rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="text-2xl shrink-0">{KIND_EMOJI[nextSession.kind] ?? "📌"}</span>
-              <div className="min-w-0">
+          <div className="mb-4 bg-[#1E3A6E] text-white rounded-2xl px-5 py-4">
+            {/* Info row */}
+            <div className="flex items-start gap-3 mb-3">
+              <span className="text-2xl shrink-0 mt-0.5">{KIND_EMOJI[nextSession.kind] ?? "📌"}</span>
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-blue-200 mb-0.5">Next session</p>
-                <p className="font-semibold text-white leading-snug truncate">{nextSession.title}</p>
+                <p className="font-semibold text-white leading-snug">{nextSession.title}</p>
                 <p className="text-sm text-blue-100 mt-0.5">{formatNextSession(nextSession)}</p>
                 {nextSession.location && (
                   <p className="text-xs text-blue-200 mt-0.5">📍 {nextSession.location}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Button row — sits below the text so nothing gets squeezed */}
+            <div className="flex items-center gap-2 pl-9">
               <button
                 onClick={() => downloadSingleIcs(nextSession)}
                 className="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 transition text-white whitespace-nowrap"
