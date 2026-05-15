@@ -175,6 +175,7 @@ export interface CreatePlayer {
   goalieSmockSize?: string;
   travelDates?: string;
   feePaid: boolean;
+  passportCopyUrl?: string;
   passportCopyReviewed?: boolean;
   paymentAmountDue?: number;
   paymentAmountPaid?: number;

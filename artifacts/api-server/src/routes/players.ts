@@ -527,6 +527,28 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     ...directUpdate
   } = body;
   void _ignoredFeePaid;
+  // Admin-initiated passport upload: stamp passportCopyUploadedAt + isUpdate
+  // so the file shows up correctly in passport timestamps. Unlike the player
+  // self PATCH route we do NOT reset passportCopyReviewed (admin uploaded it
+  // themselves so they trust it) and we do NOT send a notification email.
+  if (
+    "passportCopyUrl" in directUpdate &&
+    typeof directUpdate.passportCopyUrl === "string" &&
+    directUpdate.passportCopyUrl.length > 0
+  ) {
+    const [existing] = await db
+      .select({
+        passportCopyUrl: playersTable.passportCopyUrl,
+      })
+      .from(playersTable)
+      .where(eq(playersTable.id, id));
+    if (existing && existing.passportCopyUrl !== directUpdate.passportCopyUrl) {
+      const isUpdate =
+        existing.passportCopyUrl !== null && existing.passportCopyUrl !== "";
+      (directUpdate as Record<string, unknown>).passportCopyUploadedAt = new Date();
+      (directUpdate as Record<string, unknown>).passportCopyUploadedIsUpdate = isUpdate;
+    }
+  }
   if (Object.keys(directUpdate).length > 0) {
     await db.update(playersTable).set(directUpdate).where(eq(playersTable.id, id));
   }

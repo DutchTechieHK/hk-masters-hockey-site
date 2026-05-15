@@ -457,10 +457,8 @@ export default function Players() {
               teamId: player.teamId,
               email: player.email,
               feePaid: player.feePaid,
+              passportCopyUrl: url,
               passportCopyReviewed: true,
-              // passportCopyUrl exists on the API contract but is missing from
-              // the stale generated CreatePlayer type — cast to bypass.
-              ...({ passportCopyUrl: url } as Record<string, unknown>),
             },
           })
           queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
