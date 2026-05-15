@@ -8,7 +8,7 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -24,6 +24,20 @@ function cloudinaryViewUrl(url: string): string {
     return url.replace(/\.pdf$/i, ".jpg")
   }
   return url
+}
+
+const CLOUDINARY_CLOUD_NAME = "djyvdrhal"
+const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned"
+
+declare global {
+  interface Window {
+    cloudinary?: {
+      openUploadWidget: (
+        options: Record<string, unknown>,
+        callback: (error: unknown, result: { event: string; info?: { secure_url?: string } }) => void,
+      ) => { close: () => void }
+    }
+  }
 }
 
 const SESSION_KEY = "hkm_admin_session"
@@ -218,7 +232,7 @@ export default function Players() {
     }
   }
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<PlayerFormValues>({
+  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerSchema)
   })
 
@@ -392,6 +406,77 @@ export default function Players() {
     } finally {
       setLoginLoading(false)
     }
+  }
+
+  const [uploadingPassportFor, setUploadingPassportFor] = useState<number | null>(null)
+
+  const handleAdminUploadPassport = (player: Player) => {
+    if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
+      toast({ title: "Upload service not ready yet — try again in a moment", variant: "destructive" })
+      return
+    }
+    if (uploadingPassportFor !== null) return
+    setUploadingPassportFor(player.id)
+    window.cloudinary.openUploadWidget(
+      {
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ["local", "camera"],
+        multiple: false,
+        resourceType: "auto",
+        accessMode: "public",
+        clientAllowedFormats: ["jpg", "jpeg", "png", "pdf", "heic", "webp"],
+        maxFileSize: 10000000,
+        folder: "passport-copies",
+        cropping: false,
+        showAdvancedOptions: false,
+        showPoweredBy: false,
+      },
+      async (error, result) => {
+        if (error) {
+          setUploadingPassportFor(null)
+          toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" })
+          return
+        }
+        if (result.event === "close") {
+          setUploadingPassportFor(null)
+          return
+        }
+        if (result.event !== "success") return
+        const url = result.info?.secure_url
+        if (!url) {
+          setUploadingPassportFor(null)
+          toast({ title: "Upload failed", description: "No file URL returned.", variant: "destructive" })
+          return
+        }
+        try {
+          await updateMutation.mutateAsync({
+            id: player.id,
+            data: {
+              name: player.name,
+              teamId: player.teamId,
+              email: player.email,
+              feePaid: player.feePaid,
+              passportCopyReviewed: true,
+              // passportCopyUrl exists on the API contract but is missing from
+              // the stale generated CreatePlayer type — cast to bypass.
+              ...({ passportCopyUrl: url } as Record<string, unknown>),
+            },
+          })
+          queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+          acknowledgePassport(player.id)
+          if (editingPlayer && editingPlayer.id === player.id) {
+            setEditingPlayer({ ...editingPlayer, passportCopyUrl: url, passportCopyReviewed: true })
+            setValue("passportCopyReviewed", true, { shouldDirty: false })
+          }
+          toast({ title: `Passport uploaded for ${player.name}` })
+        } catch {
+          toast({ title: "File uploaded but could not be saved", variant: "destructive" })
+        } finally {
+          setUploadingPassportFor(null)
+        }
+      },
+    )
   }
 
   const handleToggleReviewed = async (player: Player) => {
@@ -803,33 +888,57 @@ export default function Players() {
               <label className="text-sm font-semibold">Passport Expiry</label>
               <Input type="date" {...register("passportExpiry")} />
             </div>
-            {editingPlayer?.passportCopyUrl && (
+            {editingPlayer && (
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-semibold">Passport Copy</label>
-                <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-2.5 border">
-                  <Shield className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-sm text-muted-foreground flex-1">File uploaded by player</span>
-                  <a
-                    href={cloudinaryViewUrl(editingPlayer.passportCopyUrl)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+                <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-2.5 border flex-wrap">
+                  <Shield className={`w-4 h-4 shrink-0 ${editingPlayer.passportCopyUrl ? "text-emerald-600" : "text-muted-foreground"}`} />
+                  <span className="text-sm text-muted-foreground flex-1 min-w-[8rem]">
+                    {editingPlayer.passportCopyUrl ? "Passport copy on file" : "No passport copy uploaded yet"}
+                  </span>
+                  {editingPlayer.passportCopyUrl && (
+                    <a
+                      href={cloudinaryViewUrl(editingPlayer.passportCopyUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      View
+                    </a>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => editingPlayer && handleAdminUploadPassport(editingPlayer)}
+                    disabled={uploadingPassportFor === editingPlayer.id}
+                    className="shrink-0"
                   >
-                    <LinkIcon className="w-3.5 h-3.5" />
-                    View
-                  </a>
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    {uploadingPassportFor === editingPlayer.id
+                      ? "Uploading…"
+                      : editingPlayer.passportCopyUrl
+                        ? "Replace on behalf of player"
+                        : "Upload on behalf of player"}
+                  </Button>
                 </div>
-                <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-xl border">
-                  <input
-                    type="checkbox"
-                    id="passportCopyReviewed"
-                    className="w-5 h-5 rounded border-2 text-primary focus:ring-primary accent-primary"
-                    {...register("passportCopyReviewed")}
-                  />
-                  <label htmlFor="passportCopyReviewed" className="font-semibold cursor-pointer text-sm">
-                    Passport copy reviewed and valid
-                  </label>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use this if a player emailed you their passport because the in-app upload didn't work for them. The file will be marked as reviewed automatically.
+                </p>
+                {editingPlayer.passportCopyUrl && (
+                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-xl border">
+                    <input
+                      type="checkbox"
+                      id="passportCopyReviewed"
+                      className="w-5 h-5 rounded border-2 text-primary focus:ring-primary accent-primary"
+                      {...register("passportCopyReviewed")}
+                    />
+                    <label htmlFor="passportCopyReviewed" className="font-semibold cursor-pointer text-sm">
+                      Passport copy reviewed and valid
+                    </label>
+                  </div>
+                )}
               </div>
             )}
             <div className="space-y-2">
