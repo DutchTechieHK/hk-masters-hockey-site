@@ -49,6 +49,7 @@ import type {
   Team,
   TravelReminderResult,
   UpdateSelfPlayer,
+  UpsertKitDistribution,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1669,8 +1670,20 @@ export const useDeletePlayer = <
 /**
  * @summary List all kit orders
  */
-export const getListKitsUrl = (_params?: ListKitsParams) => {
-  return `/api/kits`;
+export const getListKitsUrl = (params?: ListKitsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/kits?${stringifiedParams}`
+    : `/api/kits`;
 };
 
 export const listKits = async (
@@ -1832,6 +1845,275 @@ export const useCreateKit = <
   TContext
 > => {
   return useMutation(getCreateKitMutationOptions(options));
+};
+
+/**
+ * @summary List all kit distributions
+ */
+export const getListKitDistributionsUrl = () => {
+  return `/api/kits/distributions`;
+};
+
+export const listKitDistributions = async (
+  options?: RequestInit,
+): Promise<KitDistribution[]> => {
+  return customFetch<KitDistribution[]>(getListKitDistributionsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListKitDistributionsQueryKey = () => {
+  return [`/api/kits/distributions`] as const;
+};
+
+export const getListKitDistributionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listKitDistributions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listKitDistributions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListKitDistributionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listKitDistributions>>
+  > = ({ signal }) => listKitDistributions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listKitDistributions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListKitDistributionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listKitDistributions>>
+>;
+export type ListKitDistributionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all kit distributions
+ */
+
+export function useListKitDistributions<
+  TData = Awaited<ReturnType<typeof listKitDistributions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listKitDistributions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListKitDistributionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Upsert (record) a kit distribution for a player+item
+ */
+export const getUpsertKitDistributionUrl = (
+  playerId: number,
+  itemType: string,
+) => {
+  return `/api/kits/distributions/${playerId}/${itemType}`;
+};
+
+export const upsertKitDistribution = async (
+  playerId: number,
+  itemType: string,
+  upsertKitDistribution: UpsertKitDistribution,
+  options?: RequestInit,
+): Promise<KitDistribution> => {
+  return customFetch<KitDistribution>(
+    getUpsertKitDistributionUrl(playerId, itemType),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(upsertKitDistribution),
+    },
+  );
+};
+
+export const getUpsertKitDistributionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertKitDistribution>>,
+    TError,
+    {
+      playerId: number;
+      itemType: string;
+      data: BodyType<UpsertKitDistribution>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertKitDistribution>>,
+  TError,
+  { playerId: number; itemType: string; data: BodyType<UpsertKitDistribution> },
+  TContext
+> => {
+  const mutationKey = ["upsertKitDistribution"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertKitDistribution>>,
+    {
+      playerId: number;
+      itemType: string;
+      data: BodyType<UpsertKitDistribution>;
+    }
+  > = (props) => {
+    const { playerId, itemType, data } = props ?? {};
+
+    return upsertKitDistribution(playerId, itemType, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertKitDistributionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertKitDistribution>>
+>;
+export type UpsertKitDistributionMutationBody = BodyType<UpsertKitDistribution>;
+export type UpsertKitDistributionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upsert (record) a kit distribution for a player+item
+ */
+export const useUpsertKitDistribution = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertKitDistribution>>,
+    TError,
+    {
+      playerId: number;
+      itemType: string;
+      data: BodyType<UpsertKitDistribution>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertKitDistribution>>,
+  TError,
+  { playerId: number; itemType: string; data: BodyType<UpsertKitDistribution> },
+  TContext
+> => {
+  return useMutation(getUpsertKitDistributionMutationOptions(options));
+};
+
+/**
+ * @summary Delete a kit distribution record
+ */
+export const getDeleteKitDistributionUrl = (
+  playerId: number,
+  itemType: string,
+) => {
+  return `/api/kits/distributions/${playerId}/${itemType}`;
+};
+
+export const deleteKitDistribution = async (
+  playerId: number,
+  itemType: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteKitDistributionUrl(playerId, itemType), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteKitDistributionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteKitDistribution>>,
+    TError,
+    { playerId: number; itemType: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteKitDistribution>>,
+  TError,
+  { playerId: number; itemType: string },
+  TContext
+> => {
+  const mutationKey = ["deleteKitDistribution"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteKitDistribution>>,
+    { playerId: number; itemType: string }
+  > = (props) => {
+    const { playerId, itemType } = props ?? {};
+
+    return deleteKitDistribution(playerId, itemType, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteKitDistributionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteKitDistribution>>
+>;
+
+export type DeleteKitDistributionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a kit distribution record
+ */
+export const useDeleteKitDistribution = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteKitDistribution>>,
+    TError,
+    { playerId: number; itemType: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteKitDistribution>>,
+  TError,
+  { playerId: number; itemType: string },
+  TContext
+> => {
+  return useMutation(getDeleteKitDistributionMutationOptions(options));
 };
 
 /**
@@ -2003,168 +2285,6 @@ export const useDeleteKit = <
   TContext
 > => {
   return useMutation(getDeleteKitMutationOptions(options));
-};
-
-// ── Kit Distributions ──
-
-export const getListKitDistributionsUrl = () => `/api/kits/distributions`;
-
-export const listKitDistributions = async (
-  options?: RequestInit,
-): Promise<KitDistribution[]> => {
-  return customFetch<KitDistribution[]>(getListKitDistributionsUrl(), {
-    ...options,
-    method: "GET",
-  });
-};
-
-export const getListKitDistributionsQueryKey = () =>
-  [`/api/kits/distributions`] as const;
-
-export const getListKitDistributionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listKitDistributions>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listKitDistributions>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  const { query: queryOptions, request: requestOptions } = options ?? {};
-  const queryKey =
-    queryOptions?.queryKey ?? getListKitDistributionsQueryKey();
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listKitDistributions>>
-  > = ({ signal }) => listKitDistributions({ signal, ...requestOptions });
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listKitDistributions>>,
-    TError,
-    TData
-  > & { queryKey: QueryKey };
-};
-
-export function useListKitDistributions<
-  TData = Awaited<ReturnType<typeof listKitDistributions>>,
-  TError = ErrorType<unknown>,
->(options?: {
-  query?: UseQueryOptions<
-    Awaited<ReturnType<typeof listKitDistributions>>,
-    TError,
-    TData
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getListKitDistributionsQueryOptions(options);
-  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
-    queryKey: QueryKey;
-  };
-  query.queryKey = queryOptions.queryKey;
-  return query;
-}
-
-export const upsertKitDistribution = async (
-  playerId: number,
-  itemType: string,
-  data: { collectedAt?: string; notes?: string },
-  options?: RequestInit,
-): Promise<KitDistribution> => {
-  return customFetch<KitDistribution>(
-    `/api/kits/distributions/${playerId}/${encodeURIComponent(itemType)}`,
-    { ...options, method: "PUT", body: JSON.stringify(data) },
-  );
-};
-
-export const getUpsertKitDistributionMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof upsertKitDistribution>>,
-    TError,
-    { playerId: number; itemType: string; data: { collectedAt?: string; notes?: string } },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof upsertKitDistribution>>,
-  TError,
-  { playerId: number; itemType: string; data: { collectedAt?: string; notes?: string } },
-  TContext
-> => {
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  return {
-    mutationFn: ({ playerId, itemType, data }) =>
-      upsertKitDistribution(playerId, itemType, data, requestOptions),
-    ...mutationOptions,
-  };
-};
-
-export const useUpsertKitDistribution = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof upsertKitDistribution>>,
-    TError,
-    { playerId: number; itemType: string; data: { collectedAt?: string; notes?: string } },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  return useMutation(getUpsertKitDistributionMutationOptions(options));
-};
-
-export const deleteKitDistribution = async (
-  playerId: number,
-  itemType: string,
-  options?: RequestInit,
-): Promise<void> => {
-  return customFetch<void>(
-    `/api/kits/distributions/${playerId}/${encodeURIComponent(itemType)}`,
-    { ...options, method: "DELETE" },
-  );
-};
-
-export const getDeleteKitDistributionMutationOptions = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof deleteKitDistribution>>,
-    TError,
-    { playerId: number; itemType: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof deleteKitDistribution>>,
-  TError,
-  { playerId: number; itemType: string },
-  TContext
-> => {
-  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
-  return {
-    mutationFn: ({ playerId, itemType }) =>
-      deleteKitDistribution(playerId, itemType, requestOptions),
-    ...mutationOptions,
-  };
-};
-
-export const useDeleteKitDistribution = <
-  TError = ErrorType<unknown>,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof deleteKitDistribution>>,
-    TError,
-    { playerId: number; itemType: string },
-    TContext
-  >;
-  request?: SecondParameter<typeof customFetch>;
-}) => {
-  return useMutation(getDeleteKitDistributionMutationOptions(options));
 };
 
 /**

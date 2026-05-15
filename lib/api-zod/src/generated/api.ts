@@ -19,6 +19,21 @@ export const HealthCheckResponse = zod.object({
  */
 export const GetDashboardResponse = zod.object({
   totalPlayers: zod.number(),
+  playersPaidCount: zod.number(),
+  feesAmountDue: zod.number(),
+  feesAmountPaid: zod.number(),
+  feesAmountOutstanding: zod.number(),
+  upcomingMatchCount: zod.number(),
+  nextMatchKickoffAt: zod.string().nullish(),
+  upcomingEventCount: zod.number(),
+  nextEventStartsAt: zod.string().nullish(),
+  nextEventTitle: zod.string().nullish(),
+  documentCounts: zod.object({
+    total: zod.number(),
+    mandatory: zod.number(),
+    regulation: zod.number(),
+    information: zod.number(),
+  }),
   teamStats: zod.array(
     zod.object({
       teamId: zod.number(),
@@ -141,8 +156,10 @@ export const ListPlayersResponseItem = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
-  passportCopyReviewed: zod.boolean().optional(),
+  passportCopyUrl: zod.string().nullish(),
+  passportCopyReviewed: zod.boolean().nullish(),
+  passportCopyUploadedAt: zod.string().nullish(),
+  passportCopyUploadedIsUpdate: zod.boolean().nullish(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
   flightArrivalDateTime: zod.string().optional(),
@@ -167,6 +184,7 @@ export const ListPlayersResponseItem = zod.object({
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
   onboardingInviteSentAt: zod.string().nullish(),
+  lastLoginAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 export const ListPlayersResponse = zod.array(ListPlayersResponseItem);
@@ -185,7 +203,7 @@ export const CreatePlayerBody = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
+  passportCopyUrl: zod.string().nullish(),
   passportCopyReviewed: zod.boolean().optional(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
@@ -284,7 +302,7 @@ export const GetSelfPlayerResponse = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
+  passportCopyUrl: zod.string().nullish(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
   flightArrivalDateTime: zod.string().optional(),
@@ -325,7 +343,7 @@ export const UpdateSelfPlayerBody = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
+  passportCopyUrl: zod.string().nullish(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
   flightArrivalDateTime: zod.string().optional(),
@@ -354,7 +372,7 @@ export const UpdateSelfPlayerResponse = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
+  passportCopyUrl: zod.string().nullish(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
   flightArrivalDateTime: zod.string().optional(),
@@ -465,7 +483,7 @@ export const UpdatePlayerBody = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
+  passportCopyUrl: zod.string().nullish(),
   passportCopyReviewed: zod.boolean().optional(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
@@ -503,8 +521,10 @@ export const UpdatePlayerResponse = zod.object({
   nationality: zod.string().optional(),
   passportNumber: zod.string().optional(),
   passportExpiry: zod.string().optional(),
-  passportCopyUrl: zod.string().optional(),
-  passportCopyReviewed: zod.boolean().optional(),
+  passportCopyUrl: zod.string().nullish(),
+  passportCopyReviewed: zod.boolean().nullish(),
+  passportCopyUploadedAt: zod.string().nullish(),
+  passportCopyUploadedIsUpdate: zod.boolean().nullish(),
   emergencyContactName: zod.string().optional(),
   emergencyContactPhone: zod.string().optional(),
   flightArrivalDateTime: zod.string().optional(),
@@ -529,6 +549,7 @@ export const UpdatePlayerResponse = zod.object({
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
   onboardingInviteSentAt: zod.string().nullish(),
+  lastLoginAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
 
@@ -542,29 +563,19 @@ export const DeletePlayerParams = zod.object({
 /**
  * @summary List all kit orders
  */
-export const ListKitsQueryParams = zod.object({});
-
-const kitOrderStatusEnum = zod.enum([
-  "not_ordered",
-  "artwork_pending",
-  "artwork_approved",
-  "ordered",
-  "in_production",
-  "dispatched",
-  "received",
-]);
-
-const kitItemTypeEnum = zod.enum([
-  "playing_kit",
-  "training_kit",
-  "travel_leisure_kit",
-  "accessories",
-]);
+export const ListKitsQueryParams = zod.object({
+  playerId: zod.coerce.number().optional(),
+});
 
 export const ListKitsResponseItem = zod.object({
   id: zod.number(),
+  itemType: zod.enum([
+    "playing_kit",
+    "training_kit",
+    "travel_leisure_kit",
+    "accessories",
+  ]),
   itemName: zod.string(),
-  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
   quantity: zod.number(),
   unitCostHKD: zod.number(),
@@ -577,7 +588,15 @@ export const ListKitsResponseItem = zod.object({
   artworkApprovedDate: zod.string().optional(),
   expectedDeliveryDate: zod.string().optional(),
   actualDeliveryDate: zod.string().optional(),
-  orderStatus: kitOrderStatusEnum,
+  orderStatus: zod.enum([
+    "not_ordered",
+    "artwork_pending",
+    "artwork_approved",
+    "ordered",
+    "in_production",
+    "dispatched",
+    "received",
+  ]),
   notes: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
@@ -587,8 +606,13 @@ export const ListKitsResponse = zod.array(ListKitsResponseItem);
  * @summary Create a kit order
  */
 export const CreateKitBody = zod.object({
+  itemType: zod.enum([
+    "playing_kit",
+    "training_kit",
+    "travel_leisure_kit",
+    "accessories",
+  ]),
   itemName: zod.string(),
-  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
   quantity: zod.number(),
   unitCostHKD: zod.number(),
@@ -600,8 +624,59 @@ export const CreateKitBody = zod.object({
   artworkApprovedDate: zod.string().optional(),
   expectedDeliveryDate: zod.string().optional(),
   actualDeliveryDate: zod.string().optional(),
-  orderStatus: kitOrderStatusEnum,
+  orderStatus: zod.enum([
+    "not_ordered",
+    "artwork_pending",
+    "artwork_approved",
+    "ordered",
+    "in_production",
+    "dispatched",
+    "received",
+  ]),
   notes: zod.string().optional(),
+});
+
+/**
+ * @summary List all kit distributions
+ */
+export const ListKitDistributionsResponseItem = zod.object({
+  id: zod.number(),
+  playerId: zod.number(),
+  itemType: zod.string(),
+  collectedAt: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+export const ListKitDistributionsResponse = zod.array(
+  ListKitDistributionsResponseItem,
+);
+
+/**
+ * @summary Upsert (record) a kit distribution for a player+item
+ */
+export const UpsertKitDistributionParams = zod.object({
+  playerId: zod.coerce.number(),
+  itemType: zod.coerce.string(),
+});
+
+export const UpsertKitDistributionBody = zod.object({
+  collectedAt: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpsertKitDistributionResponse = zod.object({
+  id: zod.number(),
+  playerId: zod.number(),
+  itemType: zod.string(),
+  collectedAt: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Delete a kit distribution record
+ */
+export const DeleteKitDistributionParams = zod.object({
+  playerId: zod.coerce.number(),
+  itemType: zod.coerce.string(),
 });
 
 /**
@@ -612,8 +687,13 @@ export const UpdateKitParams = zod.object({
 });
 
 export const UpdateKitBody = zod.object({
+  itemType: zod.enum([
+    "playing_kit",
+    "training_kit",
+    "travel_leisure_kit",
+    "accessories",
+  ]),
   itemName: zod.string(),
-  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
   quantity: zod.number(),
   unitCostHKD: zod.number(),
@@ -625,14 +705,27 @@ export const UpdateKitBody = zod.object({
   artworkApprovedDate: zod.string().optional(),
   expectedDeliveryDate: zod.string().optional(),
   actualDeliveryDate: zod.string().optional(),
-  orderStatus: kitOrderStatusEnum,
+  orderStatus: zod.enum([
+    "not_ordered",
+    "artwork_pending",
+    "artwork_approved",
+    "ordered",
+    "in_production",
+    "dispatched",
+    "received",
+  ]),
   notes: zod.string().optional(),
 });
 
 export const UpdateKitResponse = zod.object({
   id: zod.number(),
+  itemType: zod.enum([
+    "playing_kit",
+    "training_kit",
+    "travel_leisure_kit",
+    "accessories",
+  ]),
   itemName: zod.string(),
-  itemType: kitItemTypeEnum,
   supplier: zod.string().optional(),
   quantity: zod.number(),
   unitCostHKD: zod.number(),
@@ -645,7 +738,15 @@ export const UpdateKitResponse = zod.object({
   artworkApprovedDate: zod.string().optional(),
   expectedDeliveryDate: zod.string().optional(),
   actualDeliveryDate: zod.string().optional(),
-  orderStatus: kitOrderStatusEnum,
+  orderStatus: zod.enum([
+    "not_ordered",
+    "artwork_pending",
+    "artwork_approved",
+    "ordered",
+    "in_production",
+    "dispatched",
+    "received",
+  ]),
   notes: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
@@ -655,42 +756,6 @@ export const UpdateKitResponse = zod.object({
  */
 export const DeleteKitParams = zod.object({
   id: zod.coerce.number(),
-});
-
-/**
- * @summary List kit distributions (collected status per player per item type)
- */
-export const ListKitDistributionsResponse = zod.array(
-  zod.object({
-    id: zod.number(),
-    playerId: zod.number(),
-    itemType: zod.string(),
-    collectedAt: zod.string().nullable().optional(),
-    notes: zod.string().nullable().optional(),
-  }),
-);
-
-export const UpsertKitDistributionParams = zod.object({
-  playerId: zod.coerce.number(),
-  itemType: zod.string(),
-});
-
-export const UpsertKitDistributionBody = zod.object({
-  collectedAt: zod.string().optional(),
-  notes: zod.string().optional(),
-});
-
-export const KitDistributionResponse = zod.object({
-  id: zod.number(),
-  playerId: zod.number(),
-  itemType: zod.string(),
-  collectedAt: zod.string().nullable().optional(),
-  notes: zod.string().nullable().optional(),
-});
-
-export const DeleteKitDistributionParams = zod.object({
-  playerId: zod.coerce.number(),
-  itemType: zod.string(),
 });
 
 /**

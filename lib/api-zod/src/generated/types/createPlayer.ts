@@ -17,6 +17,8 @@ export interface CreatePlayer {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string | null;
+  passportCopyReviewed?: boolean;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;

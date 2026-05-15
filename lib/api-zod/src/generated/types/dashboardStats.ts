@@ -5,11 +5,22 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { DashboardStatsDocumentCounts } from "./dashboardStatsDocumentCounts";
 import type { DashboardStatsTeamStatsItem } from "./dashboardStatsTeamStatsItem";
 import type { DashboardStatsUpcomingDeadlinesItem } from "./dashboardStatsUpcomingDeadlinesItem";
 
 export interface DashboardStats {
   totalPlayers: number;
+  playersPaidCount: number;
+  feesAmountDue: number;
+  feesAmountPaid: number;
+  feesAmountOutstanding: number;
+  upcomingMatchCount: number;
+  nextMatchKickoffAt?: string | null;
+  upcomingEventCount: number;
+  nextEventStartsAt?: string | null;
+  nextEventTitle?: string | null;
+  documentCounts: DashboardStatsDocumentCounts;
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;

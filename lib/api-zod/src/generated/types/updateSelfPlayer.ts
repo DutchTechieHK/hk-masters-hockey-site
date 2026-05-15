@@ -13,6 +13,7 @@ export interface UpdateSelfPlayer {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;

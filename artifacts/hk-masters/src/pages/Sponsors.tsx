@@ -11,7 +11,7 @@ import { Plus, Trash2, Edit2, Star, Lock, ExternalLink, ImageOff, Upload, Refres
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { Sponsor } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Sponsor } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 
 const SESSION_KEY = "hkm_admin_session"
@@ -155,7 +155,7 @@ export default function Sponsors() {
     }
   }
 
-  const { data: sponsors = [], isLoading } = useListSponsors({ query: { enabled: !!sessionToken } })
+  const { data: sponsors = [], isLoading } = useListSponsors({ query: { queryKey: getListSponsorsQueryKey(), enabled: !!sessionToken } })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSponsor, setEditingSponsor] = useState<Sponsor | null>(null)

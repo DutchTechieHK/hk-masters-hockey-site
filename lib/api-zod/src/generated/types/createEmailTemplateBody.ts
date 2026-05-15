@@ -6,6 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListKitsParams = {
-  playerId?: number;
-};
+export interface CreateEmailTemplateBody {
+  name: string;
+  subject: string;
+  body: string;
+}

@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListKitsParams = {
-  playerId?: number;
+export type DashboardStatsDocumentCounts = {
+  total: number;
+  mandatory: number;
+  regulation: number;
+  information: number;
 };

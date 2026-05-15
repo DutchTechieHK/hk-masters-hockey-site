@@ -43,6 +43,13 @@ export interface FeeReminderResult {
   total: number;
 }
 
+export type DashboardStatsDocumentCounts = {
+  total: number;
+  mandatory: number;
+  regulation: number;
+  information: number;
+};
+
 export type DashboardStatsTeamStatsItem = {
   teamId: number;
   teamName: string;
@@ -58,20 +65,22 @@ export type DashboardStatsUpcomingDeadlinesItem = {
   category: string;
 };
 
-export type DashboardStatsDocumentCounts = {
-  total: number;
-  mandatory: number;
-  regulation: number;
-  information: number;
-};
-
 export interface DashboardStats {
   totalPlayers: number;
+  playersPaidCount: number;
+  feesAmountDue: number;
+  feesAmountPaid: number;
+  feesAmountOutstanding: number;
+  upcomingMatchCount: number;
+  nextMatchKickoffAt?: string | null;
+  upcomingEventCount: number;
+  nextEventStartsAt?: string | null;
+  nextEventTitle?: string | null;
+  documentCounts: DashboardStatsDocumentCounts;
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
-  documentCounts: DashboardStatsDocumentCounts;
 }
 
 export interface Team {
@@ -117,10 +126,10 @@ export interface Player {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
-  passportCopyUrl?: string;
-  passportCopyReviewed?: boolean;
+  passportCopyUrl?: string | null;
+  passportCopyReviewed?: boolean | null;
   passportCopyUploadedAt?: string | null;
-  passportCopyUploadedIsUpdate?: boolean;
+  passportCopyUploadedIsUpdate?: boolean | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -160,6 +169,8 @@ export interface CreatePlayer {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  passportCopyUrl?: string | null;
+  passportCopyReviewed?: boolean;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -175,8 +186,6 @@ export interface CreatePlayer {
   goalieSmockSize?: string;
   travelDates?: string;
   feePaid: boolean;
-  passportCopyUrl?: string;
-  passportCopyReviewed?: boolean;
   paymentAmountDue?: number;
   paymentAmountPaid?: number;
   paymentDate?: string;
@@ -197,7 +206,7 @@ export interface SelfPlayer {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
-  passportCopyUrl?: string;
+  passportCopyUrl?: string | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -221,12 +230,13 @@ export interface SelfPlayer {
 }
 
 export interface UpdateSelfPlayer {
+  name?: string;
   phone?: string;
   dateOfBirth?: string;
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
-  passportCopyUrl?: string;
+  passportCopyUrl?: string | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -294,8 +304,8 @@ export const KitOrderOrderStatus = {
 
 export interface KitOrder {
   id: number;
-  itemName: string;
   itemType: KitOrderItemType;
+  itemName: string;
   supplier?: string;
   quantity: number;
   unitCostHKD: number;
@@ -337,8 +347,8 @@ export const CreateKitOrderOrderStatus = {
 } as const;
 
 export interface CreateKitOrder {
-  itemName: string;
   itemType: CreateKitOrderItemType;
+  itemName: string;
   supplier?: string;
   quantity: number;
   unitCostHKD: number;
@@ -360,6 +370,11 @@ export interface KitDistribution {
   itemType: string;
   collectedAt?: string | null;
   notes?: string | null;
+}
+
+export interface UpsertKitDistribution {
+  collectedAt?: string;
+  notes?: string;
 }
 
 export type FundraisingEntryStatus =
@@ -554,24 +569,6 @@ export interface CreateMatch {
   notes?: string;
 }
 
-export type ListPlayersParams = {
-  teamId?: number;
-};
-
-export type GetPlayerAccessToken200 = {
-  accessToken: string | null;
-};
-
-export type ListKitsParams = Record<string, never>;
-
-export type ListLogisticsParams = {
-  teamId?: number;
-};
-
-export type ListMatchesParams = {
-  teamId?: number;
-};
-
 export interface EmailBlastItem {
   id: number;
   subject: string;
@@ -611,3 +608,23 @@ export interface UpdateEmailTemplateVariables {
   id: number;
   body: UpdateEmailTemplateBody;
 }
+
+export type ListPlayersParams = {
+  teamId?: number;
+};
+
+export type GetPlayerAccessToken200 = {
+  accessToken: string | null;
+};
+
+export type ListKitsParams = {
+  playerId?: number;
+};
+
+export type ListLogisticsParams = {
+  teamId?: number;
+};
+
+export type ListMatchesParams = {
+  teamId?: number;
+};

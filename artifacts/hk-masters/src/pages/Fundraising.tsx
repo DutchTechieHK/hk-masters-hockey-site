@@ -11,7 +11,7 @@ import { Plus, Trash2, Edit2, TrendingUp, HandCoins, Lock, CheckCircle2, MailChe
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { FundraisingEntry } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { FundraisingEntry } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/utils"
 import { format, parseISO } from "date-fns"
@@ -173,7 +173,7 @@ export default function Fundraising() {
   }
 
   const { data: teams = [] } = useListTeams()
-  const { data: entries = [], isLoading } = useListFundraising({ query: { enabled: !!sessionToken } })
+  const { data: entries = [], isLoading } = useListFundraising({ query: { queryKey: getListFundraisingQueryKey(), enabled: !!sessionToken } })
 
   const [playerTeamMap, setPlayerTeamMap] = useState<Map<string, string>>(new Map())
   useEffect(() => {

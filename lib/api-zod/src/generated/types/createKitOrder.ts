@@ -9,8 +9,8 @@ import type { CreateKitOrderItemType } from "./createKitOrderItemType";
 import type { CreateKitOrderOrderStatus } from "./createKitOrderOrderStatus";
 
 export interface CreateKitOrder {
-  itemName: string;
   itemType: CreateKitOrderItemType;
+  itemName: string;
   supplier?: string;
   quantity: number;
   unitCostHKD: number;

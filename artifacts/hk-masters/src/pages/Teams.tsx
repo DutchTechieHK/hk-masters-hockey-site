@@ -12,7 +12,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { format } from "date-fns"
-import type { Team } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Team } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 
 const teamSchema = z.object({

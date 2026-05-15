@@ -444,6 +444,69 @@ paths:
               schema:
                 $ref: "#/components/schemas/KitOrder"
 
+  /kits/distributions:
+    get:
+      operationId: listKitDistributions
+      tags: [kits]
+      summary: List all kit distributions
+      responses:
+        "200":
+          description: List of kit distributions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KitDistribution"
+
+  /kits/distributions/{playerId}/{itemType}:
+    put:
+      operationId: upsertKitDistribution
+      tags: [kits]
+      summary: Upsert (record) a kit distribution for a player+item
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemType
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertKitDistribution"
+      responses:
+        "200":
+          description: Recorded distribution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KitDistribution"
+    delete:
+      operationId: deleteKitDistribution
+      tags: [kits]
+      summary: Delete a kit distribution record
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemType
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
   /kits/{id}:
     put:
       operationId: updateKit
@@ -860,6 +923,43 @@ components:
       properties:
         totalPlayers:
           type: integer
+        playersPaidCount:
+          type: integer
+        feesAmountDue:
+          type: number
+        feesAmountPaid:
+          type: number
+        feesAmountOutstanding:
+          type: number
+        upcomingMatchCount:
+          type: integer
+        nextMatchKickoffAt:
+          type: string
+          nullable: true
+        upcomingEventCount:
+          type: integer
+        nextEventStartsAt:
+          type: string
+          nullable: true
+        nextEventTitle:
+          type: string
+          nullable: true
+        documentCounts:
+          type: object
+          properties:
+            total:
+              type: integer
+            mandatory:
+              type: integer
+            regulation:
+              type: integer
+            information:
+              type: integer
+          required:
+            - total
+            - mandatory
+            - regulation
+            - information
         teamStats:
           type: array
           items:
@@ -905,6 +1005,13 @@ components:
               - category
       required:
         - totalPlayers
+        - playersPaidCount
+        - feesAmountDue
+        - feesAmountPaid
+        - feesAmountOutstanding
+        - upcomingMatchCount
+        - upcomingEventCount
+        - documentCounts
         - teamStats
         - totalFundsRaised
         - fundraisingTarget
@@ -1006,6 +1113,18 @@ components:
           type: string
         passportExpiry:
           type: string
+        passportCopyUrl:
+          type: string
+          nullable: true
+        passportCopyReviewed:
+          type: boolean
+          nullable: true
+        passportCopyUploadedAt:
+          type: string
+          nullable: true
+        passportCopyUploadedIsUpdate:
+          type: boolean
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1025,6 +1144,12 @@ components:
         shortsSize:
           type: string
         jacketSize:
+          type: string
+        poloSize:
+          type: string
+        trackTopSize:
+          type: string
+        goalieSmockSize:
           type: string
         travelDates:
           type: string
@@ -1049,6 +1174,9 @@ components:
           type: string
           nullable: true
         onboardingInviteSentAt:
+          type: string
+          nullable: true
+        lastLoginAt:
           type: string
           nullable: true
         createdAt:
@@ -1083,6 +1211,11 @@ components:
           type: string
         passportExpiry:
           type: string
+        passportCopyUrl:
+          type: string
+          nullable: true
+        passportCopyReviewed:
+          type: boolean
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1102,6 +1235,12 @@ components:
         shortsSize:
           type: string
         jacketSize:
+          type: string
+        poloSize:
+          type: string
+        trackTopSize:
+          type: string
+        goalieSmockSize:
           type: string
         travelDates:
           type: string
@@ -1150,6 +1289,9 @@ components:
           type: string
         passportExpiry:
           type: string
+        passportCopyUrl:
+          type: string
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1167,6 +1309,12 @@ components:
         shortsSize:
           type: string
         jacketSize:
+          type: string
+        poloSize:
+          type: string
+        trackTopSize:
+          type: string
+        goalieSmockSize:
           type: string
         dietaryRequirements:
           type: string
@@ -1196,6 +1344,8 @@ components:
     UpdateSelfPlayer:
       type: object
       properties:
+        name:
+          type: string
         phone:
           type: string
         dateOfBirth:
@@ -1206,6 +1356,9 @@ components:
           type: string
         passportExpiry:
           type: string
+        passportCopyUrl:
+          type: string
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1223,6 +1376,12 @@ components:
         shortsSize:
           type: string
         jacketSize:
+          type: string
+        poloSize:
+          type: string
+        trackTopSize:
+          type: string
+        goalieSmockSize:
           type: string
         dietaryRequirements:
           type: string
@@ -1279,78 +1438,120 @@ components:
       properties:
         id:
           type: integer
-        playerId:
-          type: integer
-        playerName:
-          type: string
-        teamId:
-          type: integer
-        teamName:
-          type: string
         itemType:
           type: string
           enum: [playing_kit, training_kit, travel_leisure_kit, accessories]
         itemName:
           type: string
-        size:
+        supplier:
           type: string
         quantity:
           type: integer
-        unitCost:
+        unitCostHKD:
           type: number
-        totalCost:
+        totalCostHKD:
           type: number
-        supplier:
+        depositAmountHKD:
+          type: number
+        depositPaidDate:
+          type: string
+        balanceDueDate:
+          type: string
+        balancePaidDate:
+          type: string
+        orderPlacedDate:
+          type: string
+        artworkApprovedDate:
+          type: string
+        expectedDeliveryDate:
+          type: string
+        actualDeliveryDate:
           type: string
         orderStatus:
           type: string
-          enum: [not_ordered, ordered, received, distributed]
+          enum: [not_ordered, artwork_pending, artwork_approved, ordered, in_production, dispatched, received]
         notes:
           type: string
         createdAt:
           type: string
       required:
         - id
-        - playerId
         - itemType
         - itemName
-        - size
         - quantity
-        - unitCost
-        - totalCost
+        - unitCostHKD
+        - totalCostHKD
         - orderStatus
 
     CreateKitOrder:
       type: object
       properties:
-        playerId:
-          type: integer
         itemType:
           type: string
           enum: [playing_kit, training_kit, travel_leisure_kit, accessories]
         itemName:
           type: string
-        size:
+        supplier:
           type: string
         quantity:
           type: integer
-        unitCost:
+        unitCostHKD:
           type: number
-        supplier:
+        depositAmountHKD:
+          type: number
+        depositPaidDate:
+          type: string
+        balanceDueDate:
+          type: string
+        balancePaidDate:
+          type: string
+        orderPlacedDate:
+          type: string
+        artworkApprovedDate:
+          type: string
+        expectedDeliveryDate:
+          type: string
+        actualDeliveryDate:
           type: string
         orderStatus:
           type: string
-          enum: [not_ordered, ordered, received, distributed]
+          enum: [not_ordered, artwork_pending, artwork_approved, ordered, in_production, dispatched, received]
         notes:
           type: string
       required:
-        - playerId
         - itemType
         - itemName
-        - size
         - quantity
-        - unitCost
+        - unitCostHKD
         - orderStatus
+
+    KitDistribution:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        itemType:
+          type: string
+        collectedAt:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - id
+        - playerId
+        - itemType
+
+    UpsertKitDistribution:
+      type: object
+      properties:
+        collectedAt:
+          type: string
+        notes:
+          type: string
 
     FundraisingEntry:
       type: object
@@ -1377,6 +1578,8 @@ components:
           type: string
           enum: [pending, confirmed, received]
         notes:
+          type: string
+        beneficiary:
           type: string
         paidAt:
           type: string
@@ -1414,6 +1617,8 @@ components:
           type: string
           nullable: true
         notes:
+          type: string
+        beneficiary:
           type: string
       required:
         - donorName
@@ -1583,3 +1788,103 @@ components:
         - opponent
         - kickoffAt
         - status
+
+    EmailBlastItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        subject:
+          type: string
+        body:
+          type: string
+        audienceType:
+          type: string
+        teamIds:
+          type: string
+          nullable: true
+        playerIds:
+          type: string
+          nullable: true
+        recipientCount:
+          type: integer
+        sentCount:
+          type: integer
+        failedCount:
+          type: integer
+        sentByEmail:
+          type: string
+          nullable: true
+        sentAt:
+          type: string
+      required:
+        - id
+        - subject
+        - body
+        - audienceType
+        - recipientCount
+        - sentCount
+        - failedCount
+        - sentAt
+
+    EmailTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - subject
+        - body
+        - createdAt
+        - updatedAt
+
+    CreateEmailTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+      required:
+        - name
+        - subject
+        - body
+
+    UpdateEmailTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        subject:
+          type: string
+        body:
+          type: string
+      required:
+        - name
+        - subject
+        - body
+
+    UpdateEmailTemplateVariables:
+      type: object
+      properties:
+        id:
+          type: integer
+        body:
+          $ref: "#/components/schemas/UpdateEmailTemplateBody"
+      required:
+        - id
+        - body

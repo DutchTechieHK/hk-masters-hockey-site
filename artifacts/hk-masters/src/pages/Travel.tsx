@@ -11,7 +11,7 @@ import { Download, AlertTriangle, Edit2, Plane, BedDouble, MapPin, Mail, Search,
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { Player, CreatePlayer } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Player, CreatePlayer } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { MaskedInput } from "@/components/MaskedInput"
 

@@ -164,7 +164,7 @@ export default function Players() {
     setPassportAckState(prev => ({ ...prev, [playerId]: Date.now() }))
   }
 
-  const getPassportBadge = (player: { id: number; passportCopyUploadedAt?: string | null; passportCopyUploadedIsUpdate?: boolean }): "new" | "updated" | null => {
+  const getPassportBadge = (player: { id: number; passportCopyUploadedAt?: string | null; passportCopyUploadedIsUpdate?: boolean | null }): "new" | "updated" | null => {
     if (!player.passportCopyUploadedAt) return null
     const uploadedMs = new Date(player.passportCopyUploadedAt).getTime()
     const ackedMs = passportAck[player.id] ?? 0
@@ -179,7 +179,7 @@ export default function Players() {
   const { data: teams = [] } = useListTeams()
   const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
     selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined,
-    { query: { refetchInterval: 30_000 } }
+    { query: { queryKey: getListPlayersQueryKey(selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined), refetchInterval: 30_000 } }
   )
 
   const [isModalOpen, setIsModalOpen] = useState(false)

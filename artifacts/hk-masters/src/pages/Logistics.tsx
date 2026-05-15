@@ -11,7 +11,7 @@ import { Plus, Trash2, Calendar, CheckCircle2, Clock, Circle, Plane, Building2, 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { LogisticsTask } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { LogisticsTask } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 

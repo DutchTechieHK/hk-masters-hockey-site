@@ -17,4 +17,5 @@ export interface CreateFundraisingEntry {
   status: CreateFundraisingEntryStatus;
   paidAt?: string | null;
   notes?: string;
+  beneficiary?: string;
 }

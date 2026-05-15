@@ -6,6 +6,7 @@ import {
   useDeleteMatch,
   getListMatchesQueryKey,
   useListTeams,
+  getListTeamsQueryKey,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -21,7 +22,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { format } from "date-fns"
-import type { Match } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Match } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 
 const SESSION_KEY = "hkm_admin_session"
@@ -158,8 +159,8 @@ export default function Schedule() {
     }
   }
 
-  const { data: matches = [], isLoading } = useListMatches(undefined, { query: { enabled: !!sessionToken } })
-  const { data: teams = [] } = useListTeams({ query: { enabled: !!sessionToken } })
+  const { data: matches = [], isLoading } = useListMatches(undefined, { query: { queryKey: getListMatchesQueryKey(), enabled: !!sessionToken } })
+  const { data: teams = [] } = useListTeams({ query: { queryKey: getListTeamsQueryKey(), enabled: !!sessionToken } })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editing, setEditing] = useState<Match | null>(null)

@@ -10,8 +10,8 @@ import type { KitOrderOrderStatus } from "./kitOrderOrderStatus";
 
 export interface KitOrder {
   id: number;
-  itemName: string;
   itemType: KitOrderItemType;
+  itemName: string;
   supplier?: string;
   quantity: number;
   unitCostHKD: number;

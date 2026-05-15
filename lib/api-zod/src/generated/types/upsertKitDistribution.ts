@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type ListKitsParams = {
-  playerId?: number;
-};
+export interface UpsertKitDistribution {
+  collectedAt?: string;
+  notes?: string;
+}

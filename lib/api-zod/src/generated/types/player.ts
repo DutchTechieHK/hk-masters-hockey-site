@@ -19,10 +19,10 @@ export interface Player {
   nationality?: string;
   passportNumber?: string;
   passportExpiry?: string;
-  passportCopyUrl?: string;
-  passportCopyReviewed?: boolean;
+  passportCopyUrl?: string | null;
+  passportCopyReviewed?: boolean | null;
   passportCopyUploadedAt?: string | null;
-  passportCopyUploadedIsUpdate?: boolean;
+  passportCopyUploadedIsUpdate?: boolean | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -47,5 +47,6 @@ export interface Player {
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
   onboardingInviteSentAt?: string | null;
+  lastLoginAt?: string | null;
   createdAt?: string;
 }

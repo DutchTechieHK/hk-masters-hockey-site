@@ -32,7 +32,7 @@ import {
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { Player } from "@workspace/api-client-react/src/generated/api.schemas"
+import type { Player } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/utils"
 
@@ -149,7 +149,7 @@ export default function Fees() {
 
   const { data: editingPayments = [], isLoading: isLoadingPayments } = useListPlayerPayments(
     editingPlayer?.id ?? 0,
-    { query: { enabled: !!editingPlayer } }
+    { query: { queryKey: getListPlayerPaymentsQueryKey(editingPlayer?.id ?? 0), enabled: !!editingPlayer } }
   )
 
   const editingPaymentsTotal = editingPayments.reduce((s, p) => s + (p.amount ?? 0), 0)

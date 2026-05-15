@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createEmailTemplateBody";
 export * from "./createFundraisingEntry";
 export * from "./createFundraisingEntryStatus";
 export * from "./createKitOrder";
@@ -22,13 +23,17 @@ export * from "./createSponsor";
 export * from "./createSponsorTier";
 export * from "./createTeam";
 export * from "./dashboardStats";
+export * from "./dashboardStatsDocumentCounts";
 export * from "./dashboardStatsTeamStatsItem";
 export * from "./dashboardStatsUpcomingDeadlinesItem";
+export * from "./emailBlastItem";
+export * from "./emailTemplate";
 export * from "./feeReminderResult";
 export * from "./fundraisingEntry";
 export * from "./fundraisingEntryStatus";
 export * from "./getPlayerAccessToken200";
 export * from "./healthStatus";
+export * from "./kitDistribution";
 export * from "./kitOrder";
 export * from "./kitOrderItemType";
 export * from "./kitOrderOrderStatus";
@@ -52,4 +57,7 @@ export * from "./sponsor";
 export * from "./sponsorTier";
 export * from "./team";
 export * from "./travelReminderResult";
+export * from "./updateEmailTemplateBody";
+export * from "./updateEmailTemplateVariables";
 export * from "./updateSelfPlayer";
+export * from "./upsertKitDistribution";
