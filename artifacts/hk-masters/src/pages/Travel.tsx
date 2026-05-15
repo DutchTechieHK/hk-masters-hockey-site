@@ -492,7 +492,7 @@ export default function Travel() {
                               <div className="flex items-center gap-2">
                                 <span className="font-semibold text-foreground">{player.name}</span>
                                 {missingFlight && (
-                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" title="No flight info" />
+                                  <span title="No flight info" className="inline-flex"><AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0" /></span>
                                 )}
                               </div>
                             </td>
