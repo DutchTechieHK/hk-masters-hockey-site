@@ -20,8 +20,9 @@ import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
 function cloudinaryViewUrl(url: string): string {
-  if (url.includes("res.cloudinary.com") && url.includes("/image/upload/") && url.toLowerCase().endsWith(".pdf")) {
-    return url.replace(/\.pdf$/i, ".jpg")
+  if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
+    if (url.toLowerCase().endsWith(".pdf")) return url.replace(/\.pdf$/i, ".jpg")
+    if (/\.(heic|heif)$/i.test(url)) return url.replace(/\.(heic|heif)$/i, ".jpg")
   }
   return url
 }

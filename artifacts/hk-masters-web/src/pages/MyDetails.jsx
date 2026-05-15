@@ -7,8 +7,9 @@ const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned";
 
 function cloudinaryViewUrl(url) {
   if (!url) return url;
-  if (url.includes("res.cloudinary.com") && url.includes("/image/upload/") && url.toLowerCase().endsWith(".pdf")) {
-    return url.replace(/\.pdf$/i, ".jpg");
+  if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
+    if (url.toLowerCase().endsWith(".pdf")) return url.replace(/\.pdf$/i, ".jpg");
+    if (/\.(heic|heif)$/i.test(url)) return url.replace(/\.(heic|heif)$/i, ".jpg");
   }
   return url;
 }
