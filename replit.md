@@ -102,6 +102,8 @@ Community members can submit articles and photos via the public Journal page. Su
 
 **Auth model**: Browser login POSTs the `ADMIN_API_KEY` as a password to `POST /api/admin/auth`, receives a session token (stored in localStorage), used as `x-session-token` header. Server-to-server calls use `x-admin-key` header directly.
 
+**Session lifetime**: Admin session tokens use a sliding 12-hour idle timeout with a 30-day absolute cap from creation. Each authenticated request slides the expiry forward to `now + 12h` (capped at `createdAt + 30d`), so coaches stay signed in throughout multi-hour working sessions and across days of regular use, while abandoned sessions still expire after 12h of inactivity and no session can outlive 30 days even with constant use.
+
 **API endpoints**:
 - `GET /api/contributions/approved` — public; returns approved submissions
 - `GET /api/contributions/approved/:id` — public; single approved article
