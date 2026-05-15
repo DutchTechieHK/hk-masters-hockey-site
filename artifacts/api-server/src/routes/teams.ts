@@ -8,7 +8,7 @@ import {
   UpdateTeamParams,
   DeleteTeamParams,
 } from "@workspace/api-zod";
-import { requireAdminAccess } from "../middleware/adminAuth";
+import { hasAdminAccess, requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
 
@@ -30,9 +30,18 @@ function mapTeam(t: typeof teamsTable.$inferSelect) {
   };
 }
 
-router.get("/", requireAdminAccess, async (_req, res) => {
+function mapTeamPublic(t: typeof teamsTable.$inferSelect) {
+  return {
+    id: t.id,
+    name: t.name,
+    category: t.category,
+  };
+}
+
+router.get("/", async (req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
-  res.json(teams.map(mapTeam));
+  const isAdmin = await hasAdminAccess(req);
+  res.json(isAdmin ? teams.map(mapTeam) : teams.map(mapTeamPublic));
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {
