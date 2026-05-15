@@ -24,6 +24,10 @@ export interface CreatePlayer {
   flightArrivalDateTime?: string;
   flightDepartureDateTime?: string;
   arrivalCity?: string;
+  outboundFlightNumber?: string;
+  outboundDepartureDateTime?: string;
+  returnFlightNumber?: string;
+  returnArrivalDateTime?: string;
   roomSharingPreference?: string;
   roomSharingWith?: string;
   shirtSize?: string;

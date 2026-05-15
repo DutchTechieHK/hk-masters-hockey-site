@@ -121,6 +121,10 @@ const playerSchema = z.object({
   flightArrivalDateTime: z.string().optional(),
   flightDepartureDateTime: z.string().optional(),
   arrivalCity: z.string().optional(),
+  outboundFlightNumber: z.string().optional(),
+  outboundDepartureDateTime: z.string().optional(),
+  returnFlightNumber: z.string().optional(),
+  returnArrivalDateTime: z.string().optional(),
   roomSharingPreference: z.string().optional(),
   roomSharingWith: z.string().optional(),
   shirtSize: z.string().optional(),
@@ -254,6 +258,8 @@ export default function Players() {
     dateOfBirth: "", nationality: "", passportNumber: "", passportExpiry: "",
     emergencyContactName: "", emergencyContactPhone: "",
     flightArrivalDateTime: "", flightDepartureDateTime: "", arrivalCity: "",
+    outboundFlightNumber: "", outboundDepartureDateTime: "",
+    returnFlightNumber: "", returnArrivalDateTime: "",
     roomSharingPreference: "shared", roomSharingWith: "",
     shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
     feePaid: false, passportCopyReviewed: false,
@@ -286,6 +292,10 @@ export default function Players() {
       flightArrivalDateTime: player.flightArrivalDateTime || "",
       flightDepartureDateTime: player.flightDepartureDateTime || "",
       arrivalCity: player.arrivalCity || "",
+      outboundFlightNumber: player.outboundFlightNumber || "",
+      outboundDepartureDateTime: player.outboundDepartureDateTime || "",
+      returnFlightNumber: player.returnFlightNumber || "",
+      returnArrivalDateTime: player.returnArrivalDateTime || "",
       roomSharingPreference: player.roomSharingPreference || "shared",
       roomSharingWith: player.roomSharingWith || "",
       shirtSize: player.shirtSize || "",
@@ -950,20 +960,44 @@ export default function Players() {
             </div>
           </div>
 
-          <SectionHeading>Travel & Accommodation</SectionHeading>
+          <SectionHeading>Outbound Flight (Hong Kong → Europe)</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Flight Arrival (Rotterdam)</label>
+              <label className="text-sm font-semibold">Flight Number</label>
+              <Input {...register("outboundFlightNumber")} placeholder="e.g. KL888" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Departs Hong Kong (HKT)</label>
+              <Input type="datetime-local" {...register("outboundDepartureDateTime")} />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Arrives in Europe (local time)</label>
               <Input type="datetime-local" {...register("flightArrivalDateTime")} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Flight Departure (Rotterdam)</label>
+              <label className="text-sm font-semibold">Arrival City/Airport</label>
+              <Input {...register("arrivalCity")} placeholder="e.g. Amsterdam Schiphol (AMS)" />
+            </div>
+          </div>
+
+          <SectionHeading>Return Flight (Europe → Hong Kong)</SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Flight Number</label>
+              <Input {...register("returnFlightNumber")} placeholder="e.g. KL887" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Departs Europe (local time)</label>
               <Input type="datetime-local" {...register("flightDepartureDateTime")} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrival City/Airport</label>
-              <Input {...register("arrivalCity")} placeholder="e.g. Rotterdam The Hague Airport (RTM)" />
+              <label className="text-sm font-semibold">Arrives Hong Kong (HKT)</label>
+              <Input type="datetime-local" {...register("returnArrivalDateTime")} />
             </div>
+          </div>
+
+          <SectionHeading>Accommodation</SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Travel Dates (Summary)</label>
               <Input {...register("travelDates")} placeholder="e.g. 10 Jul – 25 Jul" />
@@ -975,7 +1009,7 @@ export default function Players() {
                 <option value="single">Single</option>
               </Select>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-semibold">Room Sharing With (Player Name)</label>
               <Input {...register("roomSharingWith")} placeholder="Preferred roommate" />
             </div>

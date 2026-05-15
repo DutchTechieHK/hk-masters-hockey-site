@@ -19,6 +19,10 @@ export interface UpdateSelfPlayer {
   flightArrivalDateTime?: string;
   flightDepartureDateTime?: string;
   arrivalCity?: string;
+  outboundFlightNumber?: string;
+  outboundDepartureDateTime?: string;
+  returnFlightNumber?: string;
+  returnArrivalDateTime?: string;
   roomSharingPreference?: string;
   shirtSize?: string;
   shortsSize?: string;

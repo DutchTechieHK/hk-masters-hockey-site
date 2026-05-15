@@ -17,11 +17,20 @@ function cloudinaryViewUrl(url) {
 
 const SECTIONS = [
   {
-    title: "Travel",
+    title: "Outbound flight (Hong Kong → Europe)",
     fields: [
-      { key: "flightArrivalDateTime", label: "Flight arrival (Rotterdam)", type: "datetime-local", placeholder: "" },
-      { key: "flightDepartureDateTime", label: "Flight departure (Rotterdam)", type: "datetime-local", placeholder: "" },
-      { key: "arrivalCity", label: "Arrival city / airport", type: "text", placeholder: "e.g. Rotterdam The Hague Airport (RTM)" },
+      { key: "outboundFlightNumber", label: "Flight number", type: "text", placeholder: "e.g. KL888" },
+      { key: "outboundDepartureDateTime", label: "Departs Hong Kong (HKT)", type: "datetime-local", placeholder: "" },
+      { key: "flightArrivalDateTime", label: "Arrives in Europe (local time)", type: "datetime-local", placeholder: "" },
+      { key: "arrivalCity", label: "Arrival city / airport", type: "text", placeholder: "e.g. Amsterdam Schiphol (AMS)" },
+    ],
+  },
+  {
+    title: "Return flight (Europe → Hong Kong)",
+    fields: [
+      { key: "returnFlightNumber", label: "Flight number", type: "text", placeholder: "e.g. KL887" },
+      { key: "flightDepartureDateTime", label: "Departs Europe (local time)", type: "datetime-local", placeholder: "" },
+      { key: "returnArrivalDateTime", label: "Arrives Hong Kong (HKT)", type: "datetime-local", placeholder: "" },
     ],
   },
   {

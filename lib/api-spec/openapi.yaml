@@ -1135,6 +1135,14 @@ components:
           type: string
         arrivalCity:
           type: string
+        outboundFlightNumber:
+          type: string
+        outboundDepartureDateTime:
+          type: string
+        returnFlightNumber:
+          type: string
+        returnArrivalDateTime:
+          type: string
         roomSharingPreference:
           type: string
         roomSharingWith:
@@ -1226,6 +1234,14 @@ components:
           type: string
         arrivalCity:
           type: string
+        outboundFlightNumber:
+          type: string
+        outboundDepartureDateTime:
+          type: string
+        returnFlightNumber:
+          type: string
+        returnArrivalDateTime:
+          type: string
         roomSharingPreference:
           type: string
         roomSharingWith:
@@ -1302,6 +1318,14 @@ components:
           type: string
         arrivalCity:
           type: string
+        outboundFlightNumber:
+          type: string
+        outboundDepartureDateTime:
+          type: string
+        returnFlightNumber:
+          type: string
+        returnArrivalDateTime:
+          type: string
         roomSharingPreference:
           type: string
         shirtSize:
@@ -1368,6 +1392,14 @@ components:
         flightDepartureDateTime:
           type: string
         arrivalCity:
+          type: string
+        outboundFlightNumber:
+          type: string
+        outboundDepartureDateTime:
+          type: string
+        returnFlightNumber:
+          type: string
+        returnArrivalDateTime:
           type: string
         roomSharingPreference:
           type: string
