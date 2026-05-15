@@ -42,11 +42,48 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     function onExpired() {
       clearAdminToken();
+      queryClient.cancelQueries();
       queryClient.clear();
       setStatus("unauthed");
     }
     window.addEventListener(SESSION_EXPIRED_EVENT, onExpired);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired);
+  }, [queryClient]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function revalidate() {
+      const stored = getStoredAdminToken();
+      if (!stored) {
+        if (!cancelled) {
+          setStatus("unauthed");
+        }
+        return;
+      }
+      const valid = await apiCheckAdminSession(stored);
+      if (cancelled) return;
+      if (!valid) {
+        clearAdminToken();
+        queryClient.cancelQueries();
+        queryClient.clear();
+        setStatus("unauthed");
+      }
+    }
+
+    function onFocus() {
+      if (document.visibilityState === "visible") {
+        revalidate();
+      }
+    }
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, [queryClient]);
 
   async function handleLogin(e: FormEvent) {
@@ -107,7 +144,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     </div>
   );
 
-  if (status === "unauthed" && !hasEverAuthed) {
+  if (status === "unauthed") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-muted/40 p-4">
         {loginCard}
@@ -115,14 +152,5 @@ export function AdminAuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  return (
-    <>
-      {children}
-      {status === "unauthed" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          {loginCard}
-        </div>
-      )}
-    </>
-  );
+  return <>{children}</>;
 }
