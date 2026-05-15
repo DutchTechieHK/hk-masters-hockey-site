@@ -24,7 +24,10 @@ const teamSchema = z.object({
   assistantManagerName: z.string().optional(),
   assistantManagerContact: z.string().optional(),
   whatsappGroupLink: z.string().optional(),
-  targetPlayerCount: z.union([z.coerce.number().int().min(1), z.literal("")]).optional(),
+  targetPlayerCount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? undefined : v),
+    z.coerce.number().int().min(1).optional()
+  ),
   kitNotes: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -161,7 +164,7 @@ export default function Teams() {
       name: "", category: "MO40",
       managerName: "", managerEmail: "", managerPhone: "",
       assistantManagerName: "", assistantManagerContact: "",
-      whatsappGroupLink: "", targetPlayerCount: "", kitNotes: "", notes: ""
+      whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: ""
     })
     setIsModalOpen(true)
   }
@@ -177,7 +180,7 @@ export default function Teams() {
       assistantManagerName: team.assistantManagerName || "",
       assistantManagerContact: team.assistantManagerContact || "",
       whatsappGroupLink: team.whatsappGroupLink || "",
-      targetPlayerCount: team.targetPlayerCount ?? "",
+      targetPlayerCount: team.targetPlayerCount ?? undefined,
       kitNotes: team.kitNotes || "",
       notes: team.notes || ""
     })
