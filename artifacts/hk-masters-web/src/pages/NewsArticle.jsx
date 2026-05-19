@@ -55,21 +55,24 @@ export default function NewsArticle() {
   const { slug } = useParams();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [errorKind, setErrorKind] = useState(null); // "notFound" | "transient" | null
 
   useArticleOpenGraph(post);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    setNotFound(false);
+    setErrorKind(null);
     fetch(`${API_BASE}/api/news/${encodeURIComponent(slug)}`)
       .then((r) => {
         if (r.status === 404) {
-          setNotFound(true);
+          if (!cancelled) setErrorKind("notFound");
           return null;
         }
-        if (!r.ok) throw new Error("Failed to load");
+        if (!r.ok) {
+          if (!cancelled) setErrorKind("transient");
+          return null;
+        }
         return r.json();
       })
       .then((data) => {
@@ -78,7 +81,7 @@ export default function NewsArticle() {
       })
       .catch(() => {
         if (cancelled) return;
-        setNotFound(true);
+        setErrorKind("transient");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -102,7 +105,20 @@ export default function NewsArticle() {
     );
   }
 
-  if (notFound || !post) {
+  if (errorKind === "transient" || (!post && errorKind !== "notFound")) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
+        <div className="text-5xl mb-6">⚠️</div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">This article is temporarily unavailable</h1>
+        <p className="text-gray-500 mb-8">We couldn't load this post right now. Please try again in a few minutes.</p>
+        <Link href="/news" className="inline-flex items-center gap-1.5 text-[#1E3A6E] font-semibold hover:text-[#16305D] transition-colors">
+          &larr; Back to News
+        </Link>
+      </div>
+    );
+  }
+
+  if (errorKind === "notFound" || !post) {
     return (
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
         <div className="text-5xl mb-6">📰</div>

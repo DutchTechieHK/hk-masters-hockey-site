@@ -100,6 +100,8 @@ export default function News() {
     };
   }, []);
 
+  const showSetupHint = !state.loading && !state.error && !state.configured;
+
   return (
     <div>
       {/* Hero */}
@@ -145,7 +147,11 @@ export default function News() {
           <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 text-center">
             <div className="text-4xl mb-3">📰</div>
             <p className="text-gray-700 font-semibold mb-1">No news posts yet</p>
-            <p className="text-sm text-gray-500">Check back soon for tournament updates and announcements.</p>
+            <p className="text-sm text-gray-500">
+              {showSetupHint
+                ? "News publishing is being set up — posts will appear here soon."
+                : "Check back soon for tournament updates and announcements."}
+            </p>
           </div>
         )}
 

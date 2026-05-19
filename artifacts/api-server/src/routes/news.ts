@@ -25,14 +25,19 @@ router.get("/", async (_req, res) => {
 
 router.post("/refresh", (req, res) => {
   const expected = process.env.NOTION_WEBHOOK_SECRET;
-  if (expected) {
-    const provided =
-      (req.headers["x-webhook-secret"] as string | undefined) ||
-      (req.query.secret as string | undefined);
-    if (provided !== expected) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+  // Refresh MUST be secret-verified. If no secret is configured, refuse —
+  // an open invalidation endpoint is an easy DoS vector.
+  if (!expected) {
+    res.status(503).json({ error: "Refresh endpoint not configured" });
+    return;
+  }
+  // Header-only — never accept secrets via query string (they leak into
+  // access logs, browser history, and Referer headers).
+  const provided = req.headers["x-webhook-secret"];
+  const providedStr = typeof provided === "string" ? provided : "";
+  if (providedStr !== expected) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
   }
   clearNewsCache();
   res.json({ ok: true, refreshedAt: new Date().toISOString() });

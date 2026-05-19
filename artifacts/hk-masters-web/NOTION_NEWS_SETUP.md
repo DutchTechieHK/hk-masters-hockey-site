@@ -71,13 +71,16 @@ This makes posts appear on the site within seconds of you publishing them, inste
 1. Ask the developer to add a `NOTION_WEBHOOK_SECRET` secret (any random string — the dev can generate one).
 2. The webhook URL will be:
    ```
-   https://app.hkmastershockey.com/api/news/refresh?secret=<NOTION_WEBHOOK_SECRET>
+   https://app.hkmastershockey.com/api/news/refresh
    ```
 3. In your News database, click the **⚡ Automations** button (top-right).
 4. Create a new automation:
    - **Trigger**: "When Status is set to" → `Published`
    - **Action**: "Send webhook" → paste the URL above.
+   - **Custom headers**: add header `x-webhook-secret` with value `<NOTION_WEBHOOK_SECRET>`.
 5. Save the automation.
+
+> Why a header (not a query string)? Putting the secret in the URL leaks it into server access logs, browser history, and HTTP Referer headers. The API only accepts the secret via the `x-webhook-secret` header.
 
 Now: change a post's Status from Draft to Published → the site updates within seconds.
 
