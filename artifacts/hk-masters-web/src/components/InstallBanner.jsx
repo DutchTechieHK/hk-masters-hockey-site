@@ -76,6 +76,9 @@ export default function InstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
+    // Only show on mobile devices — desktop users install via the browser address bar
+    if (!isMobile()) return;
+
     // Never show when running as an installed PWA
     if (isInStandaloneMode()) return;
 
@@ -106,11 +109,9 @@ export default function InstallBanner() {
     // Fallback: if the prompt hasn't fired within 1.5 s show a manual guide.
     // This covers:
     //   • Android Chrome when the app is already installed (prompt suppressed)
-    //   • Desktop Chrome/Edge when the PWA hasn't met install criteria yet
-    //   • Any other mobile browser that doesn't support beforeinstallprompt
+    //   • Any mobile browser that doesn't support beforeinstallprompt
     let fallbackTimer = setTimeout(() => {
-      const fallbackMode = isMobile() ? "android-guide" : "desktop-guide";
-      setMode(fallbackMode);
+      setMode("android-guide");
       setShow(true);
     }, 1500);
 
