@@ -27,6 +27,12 @@ function sanitizeUrl(url, key) {
   if (!url || typeof url !== "string") return "";
   const trimmed = url.trim();
   if (!trimmed) return "";
+  // The API server rewrites Notion image URLs in the markdown body to the
+  // relative path /api/news/image?url=... — resolve them against API_BASE so
+  // they work in split-origin deployments (web on a different host than API).
+  if (trimmed.startsWith("/api/news/image?")) {
+    return `${API_BASE}${trimmed}`;
+  }
   if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith("?")) return trimmed;
   if (key === "src" && /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(trimmed)) {
     return trimmed;
