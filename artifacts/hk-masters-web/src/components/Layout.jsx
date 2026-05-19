@@ -21,6 +21,7 @@ const BASE_NAV_LINKS = [
   { href: "/events",         label: "Events" },
   { href: "/rotterdam-2026", label: "Rotterdam 2026" },
   { href: "/fixtures",       label: "Fixtures" },
+  { href: "/news",           label: "News" },
   { href: "/journal",        label: "Journal" },
   { href: "/media",          label: "Media" },
   { href: "/sponsors",       label: "Sponsors" },
@@ -50,6 +51,7 @@ const MOBILE_SECTIONS = [
   {
     section: "NEWS & MEDIA",
     links: [
+      { href: "/news",           label: "News",           Icon: BookOpen },
       { href: "/journal",        label: "Journal",        Icon: BookOpen },
       { href: "/media",          label: "Media",          Icon: Camera },
     ],

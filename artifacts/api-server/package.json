@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
+    "@notionhq/client": "^5.21.0",
     "@types/multer": "^2.1.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
@@ -21,6 +22,7 @@
     "express": "^5",
     "google-auth-library": "^10.6.2",
     "multer": "^2.1.1",
+    "notion-to-md": "^3.1.9",
     "resend": "^6.12.2",
     "web-push": "^3.6.7"
   },

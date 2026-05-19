@@ -9,6 +9,8 @@ import Rotterdam2026 from "./pages/Rotterdam2026";
 import Schedule from "./pages/Schedule";
 import Journal from "./pages/Journal";
 import JournalArticle from "./pages/JournalArticle";
+import News from "./pages/News";
+import NewsArticle from "./pages/NewsArticle";
 import Media from "./pages/Media";
 import Sponsors from "./pages/Sponsors";
 import Support from "./pages/Support";
@@ -47,6 +49,8 @@ function Router() {
         <Route path="/fixtures" component={Schedule} />
         <Route path="/journal/:slug" component={JournalArticle} />
         <Route path="/journal" component={Journal} />
+        <Route path="/news/:slug" component={NewsArticle} />
+        <Route path="/news" component={News} />
         <Route path="/media" component={Media} />
         <Route path="/sponsors" component={Sponsors} />
         <Route path="/support" component={Support} />

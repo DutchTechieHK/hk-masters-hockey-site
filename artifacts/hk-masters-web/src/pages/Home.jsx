@@ -109,6 +109,104 @@ function PhotoPlaceholder({ label }) {
   );
 }
 
+function useLatestNews() {
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/news`)
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setPosts((data.posts || []).slice(0, 3)))
+      .catch(() => setPosts([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { posts, loading };
+}
+
+function proxyNotionImage(url) {
+  if (!url) return null;
+  if (
+    url.includes("amazonaws.com") ||
+    url.includes("notion.so") ||
+    url.includes("file.notion")
+  ) {
+    return `${API_BASE}/api/news/image?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
+function LatestNewsSection() {
+  const { posts, loading } = useLatestNews();
+  if (loading || posts.length === 0) return null;
+
+  return (
+    <section className="bg-white border-t border-gray-100 py-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="reveal flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-[#1E3A6E]">Latest from the team</h2>
+          <Link
+            href="/news"
+            className="text-[#2A5298] font-medium hover:text-[#1E3A6E] transition-colors duration-150 text-sm"
+          >
+            See all news &rarr;
+          </Link>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {posts.map((post) => {
+            const cover = proxyNotionImage(post.coverImage);
+            const dateStr = post.publishedAt
+              ? format(parseISO(post.publishedAt), "d MMM yyyy")
+              : null;
+            return (
+              <Link
+                key={post.id}
+                href={`/news/${post.slug}`}
+                className="reveal bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+              >
+                {cover ? (
+                  <div className="aspect-[16/9] overflow-hidden bg-gray-100">
+                    <img
+                      src={cover}
+                      alt={post.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+                    />
+                  </div>
+                ) : (
+                  <div className="aspect-[16/9] bg-[#16305D] flex items-center justify-center">
+                    <span className="text-[#5B9FE0] text-xs font-semibold uppercase tracking-widest opacity-60">
+                      HK Masters
+                    </span>
+                  </div>
+                )}
+                <div className="p-5 flex flex-col flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    {post.category && (
+                      <span className="text-xs font-semibold bg-[#EEF4FB] text-[#1E3A6E] px-2 py-0.5 rounded-full">
+                        {post.category}
+                      </span>
+                    )}
+                    {dateStr && <span className="text-xs text-gray-400">{dateStr}</span>}
+                  </div>
+                  <h3 className="text-base font-bold text-gray-900 leading-snug mb-1">
+                    {post.title}
+                  </h3>
+                  {post.excerpt && (
+                    <p className="text-sm text-gray-600 leading-relaxed line-clamp-3">
+                      {post.excerpt}
+                    </p>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function useLatestJournalArticle() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -415,6 +513,9 @@ export default function Home() {
           </div>
         </section>
       )}
+
+      {/* Latest News (from Notion) */}
+      <LatestNewsSection />
 
       {/* Latest Journal Article */}
       <LatestJournalCard />

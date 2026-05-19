@@ -19,6 +19,7 @@ import emailTemplatesRouter from "./email-templates";
 import documentsRouter from "./documents";
 import { auctionAdminRouter, auctionPublicRouter } from "./auction";
 import pushRouter from "./push";
+import newsRouter from "./news";
 
 const router: IRouter = Router();
 
@@ -43,5 +44,6 @@ router.use("/documents", documentsRouter);
 router.use("/auction", auctionAdminRouter);
 router.use("/public/auction", auctionPublicRouter);
 router.use("/push", pushRouter);
+router.use("/news", newsRouter);
 
 export default router;
