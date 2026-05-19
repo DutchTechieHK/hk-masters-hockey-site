@@ -1,3 +1,29 @@
+/**
+ * InstallBanner — PWA install prompt shown at the bottom of every page.
+ *
+ * Show / hide policy
+ * ──────────────────
+ * The banner is SHOWN when ALL of the following are true:
+ *   1. The app is NOT already running in standalone (installed PWA) mode.
+ *   2. The user has NOT dismissed the banner within the last 7 days
+ *      (tracked via localStorage key `hkm_pwa_install_dismissed_at`).
+ *      The cooldown resets only on explicit user dismissal — never on first load.
+ *
+ * Platform-specific behaviour
+ * ───────────────────────────
+ *   iOS Safari    → Shows immediately with "Share → Add to Home Screen" instructions.
+ *                   (beforeinstallprompt never fires on iOS.)
+ *   Android/Chrome → Shows the native OS install prompt if `beforeinstallprompt` fires;
+ *                   otherwise falls back to a "⋮ Menu → Add to Home screen" guide after 1.5 s.
+ *   Desktop Chrome/Edge → Shows native prompt via `beforeinstallprompt`;
+ *                         otherwise falls back to "click install icon in address bar" after 1.5 s.
+ *
+ * Service-worker update note
+ * ──────────────────────────
+ * The SW (src/sw.ts) uses skipWaiting() + clients.claim() so new deployments
+ * activate immediately on the next page navigation, meaning stale-cached users
+ * receive the updated JS bundle (and therefore this banner) on their very next load.
+ */
 import { useState, useEffect } from "react";
 
 const DISMISSED_KEY = "hkm_pwa_install_dismissed_at";
@@ -45,26 +71,29 @@ export function OfflineBanner() {
 
 export default function InstallBanner() {
   const [show, setShow] = useState(false);
-  // "ios" | "android-prompt" | "android-guide"
+  // "ios" | "android-prompt" | "android-guide" | "desktop-guide"
   const [mode, setMode] = useState(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   useEffect(() => {
+    // Never show when running as an installed PWA
     if (isInStandaloneMode()) return;
 
+    // Never show within the dismissal cooldown period
     try {
       const dismissedAt = localStorage.getItem(DISMISSED_KEY);
       if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < RESET_DAYS * MS_PER_DAY) return;
     } catch {}
 
-    // iOS Safari — always show manual instructions
+    // iOS Safari — show manual share-sheet instructions immediately
+    // (beforeinstallprompt never fires on iOS)
     if (isSafariOnIOS()) {
       setMode("ios");
       setShow(true);
       return;
     }
 
-    // Android / Chrome — listen for the native install prompt
+    // Chrome / Edge / Firefox — listen for the native install prompt
     const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -74,15 +103,16 @@ export default function InstallBanner() {
     };
     window.addEventListener("beforeinstallprompt", handler);
 
-    // Fallback: if the prompt never fires within 1.5 s (app already installed,
-    // or browser chose not to offer it), still show a guide banner on mobile
-    let fallbackTimer;
-    if (isMobile()) {
-      fallbackTimer = setTimeout(() => {
-        setMode("android-guide");
-        setShow(true);
-      }, 1500);
-    }
+    // Fallback: if the prompt hasn't fired within 1.5 s show a manual guide.
+    // This covers:
+    //   • Android Chrome when the app is already installed (prompt suppressed)
+    //   • Desktop Chrome/Edge when the PWA hasn't met install criteria yet
+    //   • Any other mobile browser that doesn't support beforeinstallprompt
+    let fallbackTimer = setTimeout(() => {
+      const fallbackMode = isMobile() ? "android-guide" : "desktop-guide";
+      setMode(fallbackMode);
+      setShow(true);
+    }, 1500);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
@@ -146,6 +176,16 @@ export default function InstallBanner() {
             <p className="text-xs text-white/80 mt-0.5 leading-snug">
               Tap <strong className="text-white">⋮ Menu</strong> then{" "}
               <strong className="text-white">"Add to Home screen"</strong>
+              {" · "}
+              <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
+                Watch how
+              </a>
+            </p>
+          )}
+
+          {mode === "desktop-guide" && (
+            <p className="text-xs text-white/80 mt-0.5 leading-snug">
+              Click the <strong className="text-white">install icon</strong> in your browser's address bar
               {" · "}
               <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
                 Watch how

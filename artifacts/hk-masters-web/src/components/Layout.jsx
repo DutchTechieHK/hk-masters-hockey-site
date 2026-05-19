@@ -320,6 +320,7 @@ export default function Layout({ children }) {
       </main>
 
       <OfflineBanner />
+      <InstallBanner />
       <NotificationPrompt />
 
       {/* ── Footer ───────────────────────────────────────────────── */}
