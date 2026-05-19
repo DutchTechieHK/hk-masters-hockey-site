@@ -24,7 +24,13 @@ const appShellHandler = createHandlerBoundToURL(
   import.meta.env.BASE_URL + "index.html"
 );
 registerRoute(
-  new NavigationRoute(appShellHandler, { denylist: [/^\/api\//] })
+  new NavigationRoute(appShellHandler, {
+    denylist: [
+      /^\/api\//,        // API calls
+      /^\/admin\//,      // Admin portal (separate SPA)
+      /^\/pwa-install-video\//,  // Video artifact
+    ],
+  })
 );
 
 // NetworkFirst for all read-only portal and public API endpoints.
