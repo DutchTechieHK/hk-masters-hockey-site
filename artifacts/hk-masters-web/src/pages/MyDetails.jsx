@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "wouter";
 import { API_BASE } from "../utils/api";
+import { TRAVEL_DATE_BOUNDS } from "../lib/travelDateBounds.js";
 
 const CLOUDINARY_CLOUD_NAME = "djyvdrhal";
 const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned";
@@ -20,8 +21,8 @@ const SECTIONS = [
     title: "Outbound flight (Hong Kong → Europe)",
     fields: [
       { key: "outboundFlightNumber", label: "Flight number", type: "text", placeholder: "e.g. KL888" },
-      { key: "outboundDepartureDateTime", label: "Departs Hong Kong (HKT)", type: "datetime-local", placeholder: "" },
-      { key: "flightArrivalDateTime", label: "Arrives in Europe (local time)", type: "datetime-local", placeholder: "" },
+      { key: "outboundDepartureDateTime", label: "Departs Hong Kong (HKT)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.outboundDepartureDateTime },
+      { key: "flightArrivalDateTime", label: "Arrives in Europe (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightArrivalDateTime },
       { key: "arrivalCity", label: "Arrival city / airport", type: "text", placeholder: "e.g. Amsterdam Schiphol (AMS)" },
     ],
   },
@@ -29,8 +30,8 @@ const SECTIONS = [
     title: "Return flight (Europe → Hong Kong)",
     fields: [
       { key: "returnFlightNumber", label: "Flight number", type: "text", placeholder: "e.g. KL887" },
-      { key: "flightDepartureDateTime", label: "Departs Europe (local time)", type: "datetime-local", placeholder: "" },
-      { key: "returnArrivalDateTime", label: "Arrives Hong Kong (HKT)", type: "datetime-local", placeholder: "" },
+      { key: "flightDepartureDateTime", label: "Departs Europe (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightDepartureDateTime },
+      { key: "returnArrivalDateTime", label: "Arrives Hong Kong (HKT)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.returnArrivalDateTime },
     ],
   },
   {
@@ -568,6 +569,8 @@ export default function MyDetails() {
                         value={form[field.key] ?? ""}
                         onChange={(e) => handleChange(field.key, e.target.value)}
                         placeholder={field.placeholder}
+                        min={field.min}
+                        max={field.max}
                         className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#006B3C]/30 focus:border-[#006B3C] transition-colors"
                       />
                     )}
