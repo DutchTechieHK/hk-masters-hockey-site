@@ -1,8 +1,18 @@
-import { Client, isFullPage } from "@notionhq/client";
+import { Client, isFullPage, isFullDatabase } from "@notionhq/client";
 import { NotionToMarkdown } from "notion-to-md";
 
 const NOTION_TOKEN = process.env.NOTION_API_TOKEN || "";
 const NEWS_DB_ID = process.env.NOTION_NEWS_DATABASE_ID || "";
+// Pin Notion API version so a future server-side default change can't silently
+// alter response shapes our parsers depend on.
+const NOTION_API_VERSION = "2025-09-03";
+
+// Hosts whose images we are willing to proxy (mirrors news.ts allowlist).
+const NOTION_IMAGE_HOSTS = new Set([
+  "prod-files-secure.s3.us-west-2.amazonaws.com",
+  "file.notion.so",
+  "s3.us-west-2.amazonaws.com",
+]);
 
 export function isNotionConfigured(): boolean {
   return Boolean(NOTION_TOKEN && NEWS_DB_ID);
@@ -13,7 +23,10 @@ let cachedConverter: NotionToMarkdown | null = null;
 
 function getClient(): Client {
   if (!cachedClient) {
-    cachedClient = new Client({ auth: NOTION_TOKEN });
+    cachedClient = new Client({
+      auth: NOTION_TOKEN,
+      notionVersion: NOTION_API_VERSION,
+    });
   }
   return cachedClient;
 }
@@ -143,15 +156,46 @@ let cachedDataSourceId: string | null = null;
 async function resolveDataSourceId(): Promise<string> {
   if (cachedDataSourceId) return cachedDataSourceId;
   const client = getClient();
-  const db: any = await client.databases.retrieve({ database_id: NEWS_DB_ID });
-  const ds = Array.isArray(db.data_sources) ? db.data_sources[0] : null;
-  if (!ds?.id) {
-    // Older databases may still accept the database_id as the data source id.
-    cachedDataSourceId = NEWS_DB_ID;
-    return cachedDataSourceId;
+  const db = await client.databases.retrieve({ database_id: NEWS_DB_ID });
+  if (!isFullDatabase(db)) {
+    throw new Error(`Notion database ${NEWS_DB_ID} returned a partial response`);
   }
-  cachedDataSourceId = ds.id;
-  return cachedDataSourceId as string;
+  // In Notion API 2025-09-03 every database has a `data_sources` array.
+  // Use a defensive read so older API versions (single-source databases that
+  // accept the database_id directly) still work.
+  const sources = (db as unknown as { data_sources?: Array<{ id: string }> })
+    .data_sources;
+  const first = Array.isArray(sources) && sources.length > 0 ? sources[0] : null;
+  cachedDataSourceId = first?.id ?? NEWS_DB_ID;
+  return cachedDataSourceId;
+}
+
+type QueryResponse = {
+  results: unknown[];
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+async function queryDataSource(
+  client: Client,
+  dataSourceId: string,
+  cursor: string | undefined,
+): Promise<QueryResponse> {
+  const ds = (client as unknown as {
+    dataSources: {
+      query: (args: Record<string, unknown>) => Promise<QueryResponse>;
+    };
+  }).dataSources;
+  if (!ds || typeof ds.query !== "function") {
+    throw new Error("Notion client is missing dataSources.query — SDK version mismatch");
+  }
+  return ds.query({
+    data_source_id: dataSourceId,
+    filter: { property: "Status", select: { equals: "Published" } },
+    sorts: [{ property: "Published date", direction: "descending" }],
+    page_size: 50,
+    start_cursor: cursor,
+  });
 }
 
 export async function fetchPublishedPosts(): Promise<NewsPostSummary[]> {
@@ -161,24 +205,43 @@ export async function fetchPublishedPosts(): Promise<NewsPostSummary[]> {
   const results: NewsPostSummary[] = [];
   let cursor: string | undefined = undefined;
   do {
-    const res: any = await (client as any).dataSources.query({
-      data_source_id: dataSourceId,
-      filter: {
-        property: "Status",
-        select: { equals: "Published" },
-      },
-      sorts: [{ property: "Published date", direction: "descending" }],
-      page_size: 50,
-      start_cursor: cursor,
-    });
+    const res = await queryDataSource(client, dataSourceId, cursor);
+    if (!Array.isArray(res.results)) {
+      throw new Error("Notion query returned unexpected shape (no results array)");
+    }
     for (const page of res.results) {
       const summary = pageToSummary(page);
       if (summary) results.push(summary);
     }
-    cursor = res.has_more ? res.next_cursor : undefined;
+    cursor = res.has_more && res.next_cursor ? res.next_cursor : undefined;
     if (results.length >= 100) break;
   } while (cursor);
   return results;
+}
+
+// Public path on the api-server router where the image proxy lives.
+const IMAGE_PROXY_PATH = "/api/news/image?url=";
+
+// Rewrite Notion-hosted image URLs in a markdown body so they always go through
+// our proxy (Notion's S3 URLs are signed and expire). Doing this server-side
+// gives deterministic behavior independent of client-side string heuristics.
+export function rewriteNotionImageUrlsInMarkdown(md: string): string {
+  if (!md) return md;
+  // Match ![alt](url "optional title")
+  return md.replace(
+    /(!\[[^\]]*\]\()([^)\s]+)((?:\s+"[^"]*")?\))/g,
+    (full, prefix, rawUrl: string, suffix) => {
+      const cleanUrl = rawUrl.replace(/^<|>$/g, "");
+      try {
+        const u = new URL(cleanUrl);
+        if (u.protocol !== "https:") return full;
+        if (!NOTION_IMAGE_HOSTS.has(u.hostname)) return full;
+        return `${prefix}${IMAGE_PROXY_PATH}${encodeURIComponent(cleanUrl)}${suffix}`;
+      } catch {
+        return full;
+      }
+    },
+  );
 }
 
 export async function fetchPostBySlug(slug: string): Promise<NewsPost | null> {
@@ -189,7 +252,8 @@ export async function fetchPostBySlug(slug: string): Promise<NewsPost | null> {
   const n2m = getConverter();
   const blocks = await n2m.pageToMarkdown(match.id);
   const mdString = n2m.toMarkdownString(blocks);
-  return { ...match, bodyMarkdown: mdString.parent || "" };
+  const body = rewriteNotionImageUrlsInMarkdown(mdString.parent || "");
+  return { ...match, bodyMarkdown: body };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

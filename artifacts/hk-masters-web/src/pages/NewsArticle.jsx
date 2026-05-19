@@ -19,6 +19,22 @@ function proxiedImage(url) {
   return url;
 }
 
+// Strict URL sanitizer for ReactMarkdown — drops javascript:, vbscript:, file:,
+// and other non-web schemes so rendered links/images can never execute script.
+// Allows http(s), mailto, tel, and inline image data: URIs.
+const SAFE_PROTOCOLS = /^(?:https?|mailto|tel):/i;
+function sanitizeUrl(url, key) {
+  if (!url || typeof url !== "string") return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith("?")) return trimmed;
+  if (key === "src" && /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(trimmed)) {
+    return trimmed;
+  }
+  if (SAFE_PROTOCOLS.test(trimmed)) return trimmed;
+  return "";
+}
+
 function useArticleOpenGraph(post) {
   const ogTitle = post ? `${post.title} — HK Masters Hockey` : null;
   const ogDescription = post?.excerpt
@@ -149,9 +165,11 @@ export default function NewsArticle() {
           <div className="prose prose-sm sm:prose-base max-w-none prose-headings:text-gray-900 prose-a:text-[#1E3A6E] prose-img:rounded-xl">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
+              skipHtml
+              urlTransform={sanitizeUrl}
               components={{
                 img: ({ src, alt }) => (
-                  <img src={proxiedImage(src) || src} alt={alt || ""} loading="lazy" />
+                  <img src={src} alt={alt || ""} loading="lazy" />
                 ),
                 a: ({ href, children }) => (
                   <a href={href} target="_blank" rel="noopener noreferrer">
