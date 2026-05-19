@@ -310,7 +310,13 @@ async function refreshPost(slug: string): Promise<NewsPost | null> {
   const p = (async () => {
     try {
       const fresh = await fetchPostBySlug(slug);
-      if (fresh) postCache.set(slug, { value: fresh, fetchedAt: Date.now() });
+      if (fresh) {
+        postCache.set(slug, { value: fresh, fetchedAt: Date.now() });
+      } else {
+        // Post no longer published (draft/archived/deleted). Evict stale cache
+        // immediately so /news/:slug starts returning 404 right away.
+        postCache.delete(slug);
+      }
       return fresh;
     } catch (err) {
       console.error(`[notion-news] post refresh failed for "${slug}":`, err);
@@ -330,7 +336,10 @@ export async function getCachedPost(slug: string): Promise<NewsPost | null> {
   const now = Date.now();
   if (!entry) return refreshPost(slug);
   if (now - entry.fetchedAt > TTL_MS) {
-    refreshPost(slug).catch(() => {});
+    // Block on the revalidation when the entry is stale, so an unpublished
+    // post is reflected as 404 on the very next request after TTL — not
+    // served once more from stale cache.
+    return refreshPost(slug);
   }
   return entry.value;
 }
