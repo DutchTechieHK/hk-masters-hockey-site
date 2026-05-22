@@ -30,9 +30,8 @@ function pad(n) { return String(n).padStart(2, "0"); }
 
 // Browser-local display (for HK events)
 function formatDateTime(iso) {
-  return new Date(iso).toLocaleString("en-GB", {
+  return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
-    hour: "2-digit", minute: "2-digit", hour12: false,
   });
 }
 
@@ -45,9 +44,8 @@ function formatTimeRange(startsAt, endsAt) {
 
 // Rotterdam-timezone display (for Rotterdam events)
 function formatDateTimeRtm(iso) {
-  return new Date(iso).toLocaleString("en-GB", {
+  return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
-    hour: "2-digit", minute: "2-digit", hour12: false,
     timeZone: ROTTERDAM_TZ,
   });
 }
@@ -157,8 +155,8 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
   const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
   const dateStr = isRtm ? formatDateTimeRtm(ev.startsAt) : formatDateTime(ev.startsAt);
   const timeRange = isRtm
-    ? (ev.endsAt ? ` · ${formatTimeRangeRtm(ev.startsAt, ev.endsAt)}` : "")
-    : (ev.endsAt ? ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}` : "");
+    ? ` · ${formatTimeRangeRtm(ev.startsAt, ev.endsAt)}`
+    : ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
 
   return (
     <li className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
