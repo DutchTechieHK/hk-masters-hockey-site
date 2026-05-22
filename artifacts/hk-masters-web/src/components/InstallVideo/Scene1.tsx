@@ -36,13 +36,13 @@ export function Scene1() {
 
       <div className="relative z-10 flex flex-col items-center text-center px-6 sm:px-12">
         <motion.div
-          className="mb-6 sm:mb-10 rounded-2xl bg-white shadow-2xl flex items-center justify-center"
+          className="mb-5 sm:mb-7 rounded-2xl bg-white shadow-2xl flex items-center justify-center"
           style={{ padding: '10px 14px', boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.12)' }}
           initial={{ scale: 0, rotate: -15, opacity: 0 }}
           animate={phase >= 1 ? { scale: 1, rotate: 0, opacity: 1 } : { scale: 0, rotate: -15, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 28 }}
         >
-          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="HK Masters Logo" className="h-16 sm:h-28 w-auto object-contain" />
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="HK Masters Logo" className="h-14 sm:h-20 w-auto object-contain" />
         </motion.div>
 
         <div className="overflow-hidden mb-2 sm:mb-3">
