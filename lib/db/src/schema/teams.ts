@@ -15,6 +15,9 @@ export const teamsTable = pgTable("teams", {
   targetPlayerCount: integer("target_player_count"),
   kitNotes: text("kit_notes"),
   notes: text("notes"),
+  coachName: text("coach_name"),
+  captainName: text("captain_name"),
+  description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

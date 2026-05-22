@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { teamsTable, playersTable } from "@workspace/db/schema";
+import { eq, sql } from "drizzle-orm";
 import {
   CreateTeamBody,
   UpdateTeamBody,
@@ -26,22 +26,39 @@ function mapTeam(t: typeof teamsTable.$inferSelect) {
     targetPlayerCount: t.targetPlayerCount,
     kitNotes: t.kitNotes,
     notes: t.notes,
+    coachName: t.coachName,
+    captainName: t.captainName,
+    description: t.description,
     createdAt: t.createdAt?.toISOString(),
   };
 }
 
-function mapTeamPublic(t: typeof teamsTable.$inferSelect) {
+function mapTeamPublic(t: typeof teamsTable.$inferSelect, playerCount: number) {
   return {
     id: t.id,
     name: t.name,
     category: t.category,
+    managerName: t.managerName || null,
+    coachName: t.coachName || null,
+    captainName: t.captainName || null,
+    description: t.description || null,
+    playerCount,
   };
 }
 
 router.get("/", async (req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
   const isAdmin = await hasAdminAccess(req);
-  res.json(isAdmin ? teams.map(mapTeam) : teams.map(mapTeamPublic));
+  if (isAdmin) {
+    return res.json(teams.map(mapTeam));
+  }
+  // For public: include live player counts
+  const counts = await db
+    .select({ teamId: playersTable.teamId, count: sql<number>`count(*)::int` })
+    .from(playersTable)
+    .groupBy(playersTable.teamId);
+  const countMap = new Map(counts.map((r) => [r.teamId, r.count]));
+  return res.json(teams.map((t) => mapTeamPublic(t, countMap.get(t.id) ?? 0)));
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {

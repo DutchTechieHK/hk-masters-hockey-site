@@ -30,6 +30,9 @@ const teamSchema = z.object({
   ),
   kitNotes: z.string().optional(),
   notes: z.string().optional(),
+  coachName: z.string().optional(),
+  captainName: z.string().optional(),
+  description: z.string().optional(),
 })
 
 type TeamFormValues = z.infer<typeof teamSchema>
@@ -164,7 +167,8 @@ export default function Teams() {
       name: "", category: "MO40",
       managerName: "", managerEmail: "", managerPhone: "",
       assistantManagerName: "", assistantManagerContact: "",
-      whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: ""
+      whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: "",
+      coachName: "", captainName: "", description: "",
     })
     setIsModalOpen(true)
   }
@@ -182,7 +186,10 @@ export default function Teams() {
       whatsappGroupLink: team.whatsappGroupLink || "",
       targetPlayerCount: team.targetPlayerCount ?? undefined,
       kitNotes: team.kitNotes || "",
-      notes: team.notes || ""
+      notes: team.notes || "",
+      coachName: (team as any).coachName || "",
+      captainName: (team as any).captainName || "",
+      description: (team as any).description || "",
     })
     setIsModalOpen(true)
   }
@@ -356,6 +363,28 @@ export default function Teams() {
                 <label className="text-sm font-semibold">Assistant Manager Contact</label>
                 <Input placeholder="Phone or email" {...register("assistantManagerContact")} />
               </div>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-border">
+            <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Public Profile</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Coach Name</label>
+                <Input placeholder="e.g. John Smith" {...register("coachName")} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-semibold">Captain Name</label>
+                <Input placeholder="e.g. Jane Doe" {...register("captainName")} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Public Description</label>
+              <textarea
+                className="flex w-full rounded-xl border-2 border-input bg-background px-4 py-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/10 transition-all min-h-[80px]"
+                placeholder="Short description shown on the public Teams page..."
+                {...register("description")}
+              />
             </div>
           </div>
 

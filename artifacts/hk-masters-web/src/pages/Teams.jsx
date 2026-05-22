@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { API_BASE } from "../utils/api";
 import content from "../content/teams.json";
 import { cloudinaryResize } from "../utils/cloudinary";
 import rotterdamContent from "../content/rotterdam.json";
@@ -8,9 +9,40 @@ import RichText from "../components/RichText";
 
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 
+function useTeams() {
+  const [teams, setTeams] = useState(null);
+  useEffect(() => {
+    fetch(`${API_BASE}/api/teams`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (Array.isArray(data)) setTeams(data); })
+      .catch(() => {});
+  }, []);
+  return teams;
+}
+
+// Merge live API data into the static squad entry (for photo, id, short_name, description fallback)
+function mergeSquad(staticSquad, liveTeams) {
+  if (!liveTeams) return staticSquad;
+  const live = liveTeams.find(
+    (t) => t.category === staticSquad.short_name || t.name === staticSquad.name
+  );
+  if (!live) return staticSquad;
+  return {
+    ...staticSquad,
+    manager: live.managerName || staticSquad.manager,
+    coach: live.coachName || staticSquad.coach,
+    captain: live.captainName || staticSquad.captain,
+    description: live.description || staticSquad.description,
+    player_count: live.playerCount ?? staticSquad.player_count,
+  };
+}
+
 export default function Teams() {
   const [openSquad, setOpenSquad] = useState(null);
+  const liveTeams = useTeams();
   const rotterdamMode = new Date() < ROTTERDAM_MODE_END;
+
+  const squads = content.squads.map((s) => mergeSquad(s, liveTeams));
 
   return (
     <div>
@@ -36,8 +68,7 @@ export default function Teams() {
       {/* Squads */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="space-y-16">
-          {content.squads.map((squad, index) => {
-
+          {squads.map((squad, index) => {
             return (
               <div
                 key={squad.id}
