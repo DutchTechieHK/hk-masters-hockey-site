@@ -90,6 +90,9 @@ export const CreateTeamBody = zod.object({
   targetPlayerCount: zod.number().optional(),
   kitNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  coachName: zod.string().optional(),
+  captainName: zod.string().optional(),
+  description: zod.string().optional(),
 });
 
 /**
@@ -111,6 +114,9 @@ export const UpdateTeamBody = zod.object({
   targetPlayerCount: zod.number().optional(),
   kitNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  coachName: zod.string().optional(),
+  captainName: zod.string().optional(),
+  description: zod.string().optional(),
 });
 
 export const UpdateTeamResponse = zod.object({
@@ -126,6 +132,9 @@ export const UpdateTeamResponse = zod.object({
   targetPlayerCount: zod.number().optional(),
   kitNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  coachName: zod.string().optional(),
+  captainName: zod.string().optional(),
+  description: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
 
