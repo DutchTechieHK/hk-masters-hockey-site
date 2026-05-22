@@ -20,20 +20,17 @@ function useTeams() {
   return teams;
 }
 
-// Merge live API data into the static squad entry (for photo, id, short_name, description fallback)
-function mergeSquad(staticSquad, liveTeams) {
-  if (!liveTeams) return staticSquad;
-  const live = liveTeams.find(
-    (t) => t.category === staticSquad.short_name || t.name === staticSquad.name
-  );
-  if (!live) return staticSquad;
+// Merge live API data (by index — API returns teams ordered by id) into static squad entry.
+// Static JSON provides photo, short_name, and fallback text; DB provides live counts + staff names.
+function mergeSquad(staticSquad, liveTeam) {
+  if (!liveTeam) return staticSquad;
   return {
     ...staticSquad,
-    manager: live.managerName || staticSquad.manager,
-    coach: live.coachName || staticSquad.coach,
-    captain: live.captainName || staticSquad.captain,
-    description: live.description || staticSquad.description,
-    player_count: live.playerCount ?? staticSquad.player_count,
+    manager: liveTeam.managerName || staticSquad.manager,
+    coach: liveTeam.coachName || staticSquad.coach,
+    captain: liveTeam.captainName || staticSquad.captain,
+    description: liveTeam.description || staticSquad.description,
+    player_count: liveTeam.playerCount ?? staticSquad.player_count,
   };
 }
 
@@ -42,7 +39,8 @@ export default function Teams() {
   const liveTeams = useTeams();
   const rotterdamMode = new Date() < ROTTERDAM_MODE_END;
 
-  const squads = content.squads.map((s) => mergeSquad(s, liveTeams));
+  // liveTeams is sorted by DB id; static squads are in the same order (MO40 first, MO50 second)
+  const squads = content.squads.map((s, i) => mergeSquad(s, liveTeams ? liveTeams[i] : null));
 
   return (
     <div>
