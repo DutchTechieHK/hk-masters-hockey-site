@@ -228,7 +228,7 @@ export default function Teams() {
   return (
     <PageLayout
       title="Teams"
-      description="Manage the 3 Hong Kong field hockey teams travelling to Rotterdam."
+      description="Manage the 2 Hong Kong field hockey teams travelling to Rotterdam."
       action={
         !selectedTeam ? (
           <Button onClick={openAddModal}>
