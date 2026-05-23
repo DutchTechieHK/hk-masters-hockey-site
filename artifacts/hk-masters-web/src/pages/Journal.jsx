@@ -628,10 +628,30 @@ function ContributeForm() {
                       >
                         ×
                       </button>
-                      {i === 0 && (
-                        <span className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none">
+                      {i === 0 ? (
+                        <span className="absolute bottom-1 left-1 flex items-center gap-0.5 bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none shadow">
+                          <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20"><path d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"/></svg>
                           Cover
                         </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (touchDidDragRef.current || touchDrag.from !== null) return;
+                            setPhotoUrls((prev) => {
+                              const next = [...prev];
+                              const [moved] = next.splice(i, 1);
+                              next.unshift(moved);
+                              return next;
+                            });
+                          }}
+                          className="absolute bottom-1 left-1 flex items-center gap-0.5 bg-black/60 hover:bg-amber-400 hover:text-amber-900 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          aria-label="Set as cover photo"
+                        >
+                          <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20"><path d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"/></svg>
+                          Cover
+                        </button>
                       )}
                     </div>
                   );
@@ -698,9 +718,12 @@ function ContributeForm() {
                   </div>
                 ))}
               </div>
-              {photoUrls.length > 1 && (
+              {photoUrls.length > 0 && (
                 <p className="text-xs text-gray-400 mb-3">
-                  Drag to reorder · tap &amp; hold on mobile · tap to preview
+                  {photoUrls.length > 1
+                    ? <>⭐ <strong className="text-gray-500">Cover</strong> = the hero photo shown at the top of your article and on the home page. Tap <strong className="text-gray-500">Cover</strong> on any photo to promote it, or drag to reorder.</>
+                    : <>⭐ This photo will appear as the hero at the top of your article and on the home page.</>
+                  }
                 </p>
               )}
               {dragPos && touchDrag.from !== null && photoUrls[touchDrag.from] && (
