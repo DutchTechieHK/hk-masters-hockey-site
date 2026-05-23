@@ -749,7 +749,7 @@ export default function Journal() {
                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
                   Photos ({editPhotoUrls.length})
                 </h4>
-                <p className="text-xs text-muted-foreground mb-2">Drag to reorder · long-press on mobile</p>
+                <p className="text-xs text-muted-foreground mb-2">First photo = cover (shown at top of article &amp; on the home page). Drag, use arrows, or tap <strong>Cover</strong> to change it.</p>
                 <div
                   className="grid grid-cols-3 gap-2"
                   onTouchMove={handlePhotoGridTouchMove}
@@ -787,6 +787,30 @@ export default function Journal() {
                         ].join(" ")}
                       >
                         <img src={url} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" loading="lazy" draggable={false} />
+                        {i === 0 ? (
+                          <span className="absolute bottom-1 left-1 flex items-center gap-0.5 bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded leading-none shadow">
+                            <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20"><path d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"/></svg>
+                            Cover
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editTouchDidDragRef.current || editTouchDrag.from !== null) return
+                              setEditPhotoUrls((prev) => {
+                                const next = [...prev]
+                                const [moved] = next.splice(i, 1)
+                                next.unshift(moved)
+                                return next
+                              })
+                            }}
+                            className="absolute bottom-1 left-1 flex items-center gap-0.5 bg-black/60 hover:bg-amber-400 hover:text-amber-900 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded leading-none transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                            title="Set as cover photo"
+                          >
+                            <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20"><path d="M10 1l2.39 4.84 5.34.78-3.86 3.76.91 5.32L10 13.27l-4.78 2.51.91-5.32L2.27 6.62l5.34-.78z"/></svg>
+                            Cover
+                          </button>
+                        )}
                         <div className="absolute top-1 left-1 flex flex-col gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
                             type="button"
