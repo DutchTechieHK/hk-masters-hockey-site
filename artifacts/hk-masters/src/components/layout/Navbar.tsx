@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { href: "/sponsors", label: "Sponsors", icon: Star },
   { href: "/matches", label: "Matches", icon: CalendarDays },
   { href: "/events", label: "Events", icon: CalendarClock },
-  { href: "/announcements", label: "News", icon: Megaphone },
+  { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/email-history", label: "Email History", icon: History },
   { href: "/logistics", label: "Logistics", icon: Plane },
   { href: "/travel", label: "Travel", icon: Luggage },
