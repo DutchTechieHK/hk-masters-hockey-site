@@ -421,6 +421,7 @@ router.post("/send-travel-reminders", requireSession, async (req, res) => {
       sent++;
       await db.update(playersTable).set({ travelReminderSentAt: new Date() }).where(eq(playersTable.id, player.id));
     } else failed++;
+    await new Promise((r) => setTimeout(r, 600));
   }
 
   console.log(`[travel-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
@@ -466,6 +467,7 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
       sentPlayerIds.push(player.id);
       await db.update(playersTable).set({ onboardingInviteSentAt: new Date() }).where(eq(playersTable.id, player.id));
     } else failed++;
+    await new Promise((r) => setTimeout(r, 600));
   }
 
   // Log to email_blasts for audit trail
@@ -517,6 +519,7 @@ router.post("/send-fee-reminders", requireSession, async (req, res) => {
       sent++;
       await db.update(playersTable).set({ feeReminderSentAt: new Date() }).where(eq(playersTable.id, player.id));
     } else failed++;
+    await new Promise((r) => setTimeout(r, 600));
   }
 
   console.log(`[fee-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
