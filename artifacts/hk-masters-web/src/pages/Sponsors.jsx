@@ -24,13 +24,13 @@ function SponsorCard({ sponsor }) {
   const badge = TIER_BADGE[sponsor.tier] || TIER_BADGE.Bronze;
 
   const card = (
-    <div className="group bg-white border border-[#D9C9A8] rounded-2xl flex flex-col items-center justify-center py-6 px-4 sm:py-10 sm:px-8 gap-3 min-h-[130px] sm:min-h-[180px] shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
-      <div className="flex items-center justify-center w-full">
+    <div className="group bg-white border border-[#D9C9A8] rounded-2xl flex flex-col items-center justify-center py-6 px-4 sm:py-10 sm:px-8 gap-3 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+      <div className="flex items-center justify-center w-full h-16 sm:h-28">
         {displayUrl && !imgFailed ? (
           <img
             src={displayUrl}
             alt={sponsor.name}
-            className="max-h-16 sm:max-h-28 w-full object-contain"
+            className="max-h-full max-w-full object-contain"
             onError={() => setImgFailed(true)}
           />
         ) : (
