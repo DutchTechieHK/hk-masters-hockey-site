@@ -88,15 +88,16 @@ export default function InstallBanner() {
       if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < RESET_DAYS * MS_PER_DAY) return;
     } catch {}
 
-    // iOS Safari — show manual share-sheet instructions immediately
-    // (beforeinstallprompt never fires on iOS)
-    if (isSafariOnIOS()) {
-      setMode("ios");
+    // All iOS devices — beforeinstallprompt never fires on iOS regardless of browser.
+    // Safari users can use Share → Add to Home Screen directly.
+    // Chrome/other iOS browsers need to be told to open in Safari first.
+    if (isIOS()) {
+      setMode(isSafariOnIOS() ? "ios-safari" : "ios-other");
       setShow(true);
       return;
     }
 
-    // Chrome / Edge / Firefox — listen for the native install prompt
+    // Chrome / Edge / Firefox (Android / desktop) — listen for the native install prompt
     const handler = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -147,9 +148,25 @@ export default function InstallBanner() {
         <div className="flex-1 min-w-0">
           <p className="font-bold text-sm leading-tight">Add to Home Screen</p>
 
-          {mode === "ios" && (
+          {mode === "ios-safari" && (
             <p className="text-xs text-white/80 mt-0.5 leading-snug">
               Tap{" "}
+              <svg className="w-3.5 h-3.5 inline mb-0.5" fill="currentColor" viewBox="0 0 50 50">
+                <path d="M30.3 13.7L25 8.4l-5.3 5.3-1.4-1.4L25 5.6l6.7 6.7z" />
+                <path d="M24 7h2v21h-2z" />
+                <path d="M35 40H15c-1.7 0-3-1.3-3-3V19c0-1.7 1.3-3 3-3h7v2h-7c-.6 0-1 .4-1 1v18c0 .6.4 1 1 1h20c.6 0 1-.4 1-1V19c0-.6-.4-1-1-1h-7v-2h7c1.7 0 3 1.3 3 3v18c0 1.7-1.3 3-3 3z" />
+              </svg>{" "}
+              Share then <strong className="text-white">"Add to Home Screen"</strong>
+              {" · "}
+              <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
+                Watch how
+              </a>
+            </p>
+          )}
+
+          {mode === "ios-other" && (
+            <p className="text-xs text-white/80 mt-0.5 leading-snug">
+              Open this page in <strong className="text-white">Safari</strong>, tap{" "}
               <svg className="w-3.5 h-3.5 inline mb-0.5" fill="currentColor" viewBox="0 0 50 50">
                 <path d="M30.3 13.7L25 8.4l-5.3 5.3-1.4-1.4L25 5.6l6.7 6.7z" />
                 <path d="M24 7h2v21h-2z" />
