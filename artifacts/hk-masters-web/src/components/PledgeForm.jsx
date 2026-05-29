@@ -174,17 +174,17 @@ function PaymentConfirmationPanel({ method, amount, donorName }) {
         <p className="text-sm font-bold text-gray-900 mb-1 text-center">Bank Transfer Details</p>
         <p className="text-xs text-gray-500 mb-5 text-center">
           Please transfer your{" "}
-          <span className="font-semibold text-gray-700">{formatted}</span> pledge to the account below and use your name as the reference.
+          <span className="font-semibold text-gray-700">{formatted}</span> pledge to the account below using the reference shown.
         </p>
         <div className="space-y-2.5">
           {[
             ["Bank", "Citibank Hong Kong"],
-            ["Account Name", "HK Masters Hockey"],
+            ["Account Name", "Rene Theil"],
             ["Bank Code", "250"],
             ["Branch Code", "390"],
             ["Account Number", "0046103724"],
             ["SWIFT / BIC", "CITIHKAXXXX"],
-            ["Reference", donorName],
+            ["Reference", "Hong Kong Masters Hockey"],
           ].map(([label, value]) => (
             <div key={label} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
               <span className="text-xs font-semibold text-gray-500">{label}</span>
