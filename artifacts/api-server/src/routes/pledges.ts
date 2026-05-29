@@ -30,8 +30,11 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const VALID_PAYMENT_METHODS = ["payme", "wise", "bank_transfer"] as const;
+type PaymentMethod = typeof VALID_PAYMENT_METHODS[number];
+
 router.post("/", async (req, res) => {
-  const { name, email, amount, note, beneficiary } = req.body ?? {};
+  const { name, email, amount, note, beneficiary, paymentMethod } = req.body ?? {};
 
   const errors: string[] = [];
   if (typeof name !== "string" || name.trim().length === 0) errors.push("name is required");
@@ -55,6 +58,10 @@ router.post("/", async (req, res) => {
     else if (beneficiary.length > 500) errors.push("beneficiary is too long");
   }
 
+  if (paymentMethod !== undefined && paymentMethod !== null) {
+    if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) errors.push("paymentMethod must be payme, wise, or bank_transfer");
+  }
+
   if (errors.length > 0) {
     res.status(400).json({ error: "Invalid request", details: errors });
     return;
@@ -64,6 +71,7 @@ router.post("/", async (req, res) => {
   const cleanEmail = (email as string).trim();
   const cleanNote = typeof note === "string" ? note.trim() : "";
   const cleanBeneficiary = typeof beneficiary === "string" && beneficiary.trim() ? beneficiary.trim() : undefined;
+  const cleanPaymentMethod: PaymentMethod | undefined = VALID_PAYMENT_METHODS.includes(paymentMethod) ? paymentMethod : undefined;
   const today = new Date().toISOString().slice(0, 10);
 
   const notes = cleanNote || undefined;
@@ -79,6 +87,7 @@ router.post("/", async (req, res) => {
       status: "pending",
       notes,
       beneficiary: cleanBeneficiary,
+      paymentMethod: cleanPaymentMethod,
     })
     .returning();
 

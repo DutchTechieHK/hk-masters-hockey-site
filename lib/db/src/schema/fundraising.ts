@@ -14,6 +14,7 @@ export const fundraisingTable = pgTable("fundraising", {
   status: text("status").notNull().default("pending"),
   notes: text("notes"),
   beneficiary: text("beneficiary"),
+  paymentMethod: text("payment_method"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

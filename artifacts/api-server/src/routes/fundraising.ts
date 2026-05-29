@@ -95,6 +95,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     status: f.status,
     notes: f.notes,
     beneficiary: f.beneficiary ?? undefined,
+    paymentMethod: f.paymentMethod ?? undefined,
     paidAt: f.paidAt?.toISOString(),
     createdAt: f.createdAt?.toISOString(),
   })));

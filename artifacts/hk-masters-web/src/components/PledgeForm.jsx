@@ -41,10 +41,6 @@ function PlayerCombobox({ squad, mo40Players, mo50Players, otherPlayers, selecte
     setOpen(true);
   }
 
-  const displayValue = selectedPlayer
-    ? `${selectedPlayer.shirtNumber ? `#${selectedPlayer.shirtNumber} ` : ""}${selectedPlayer.name}`
-    : playerSearch;
-
   function renderGroup(label, players) {
     if (players.length === 0) return null;
     return (
@@ -115,6 +111,109 @@ function PlayerCombobox({ squad, mo40Players, mo50Players, otherPlayers, selecte
   );
 }
 
+const PAYMENT_METHODS = [
+  {
+    id: "payme",
+    label: "PayMe",
+    sublabel: "HK app",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+    ),
+  },
+  {
+    id: "wise",
+    label: "Wise",
+    sublabel: "International",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: "bank_transfer",
+    label: "Bank Transfer",
+    sublabel: "Citibank HK",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+      </svg>
+    ),
+  },
+];
+
+function PaymentConfirmationPanel({ method, amount, donorName }) {
+  const formatted = `HK$${parseFloat(amount).toLocaleString()}`;
+
+  if (method === "wise") {
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
+        <p className="text-sm font-bold text-gray-900 mb-1">Pay via Wise</p>
+        <p className="text-xs text-gray-500 mb-4">
+          Scan the QR code below in the Wise app to send your{" "}
+          <span className="font-semibold text-gray-700">{formatted}</span> pledge.
+          Please use your name as the payment reference.
+        </p>
+        <img
+          src="/wise-qr.png"
+          alt="Wise QR code"
+          className="w-52 h-52 object-contain mx-auto rounded-xl"
+        />
+        <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+          Reference: <span className="font-semibold text-gray-600">{donorName}</span>
+        </p>
+      </div>
+    );
+  }
+
+  if (method === "bank_transfer") {
+    return (
+      <div className="bg-white border border-gray-200 rounded-2xl p-6">
+        <p className="text-sm font-bold text-gray-900 mb-1 text-center">Bank Transfer Details</p>
+        <p className="text-xs text-gray-500 mb-5 text-center">
+          Please transfer your{" "}
+          <span className="font-semibold text-gray-700">{formatted}</span> pledge to the account below and use your name as the reference.
+        </p>
+        <div className="space-y-2.5">
+          {[
+            ["Bank", "Citibank Hong Kong"],
+            ["Account Name", "HK Masters Hockey"],
+            ["Bank Code", "250"],
+            ["Branch Code", "390"],
+            ["Account Number", "0046103724"],
+            ["SWIFT / BIC", "CITIHKAXXXX"],
+            ["Reference", donorName],
+          ].map(([label, value]) => (
+            <div key={label} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+              <span className="text-xs font-semibold text-gray-500">{label}</span>
+              <span className={`text-sm font-mono ${label === "Reference" ? "font-semibold text-[#006B3C]" : "text-gray-800"}`}>
+                {value}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
+      <p className="text-sm font-bold text-gray-900 mb-1">Pay now via PayMe</p>
+      <p className="text-xs text-gray-500 mb-4">
+        Open the PayMe app and scan the code below to send your{" "}
+        <span className="font-semibold text-gray-700">{formatted}</span> pledge.
+      </p>
+      <img
+        src="/payme-qr.jpg"
+        alt="PayMe QR code"
+        className="w-52 h-52 object-contain mx-auto rounded-xl"
+      />
+    </div>
+  );
+}
+
 export default function PledgeForm({ onSuccess }) {
   const [form, setForm] = useState({ name: "", email: "", amount: "", note: "" });
   const [errors, setErrors] = useState({});
@@ -127,6 +226,7 @@ export default function PledgeForm({ onSuccess }) {
   const [playerSearch, setPlayerSearch] = useState("");
   const [squad, setSquad] = useState([]);
   const [squadLoading, setSquadLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState(null);
 
   useEffect(() => {
     if (beneficiaryType === "player" && squad.length === 0) {
@@ -162,6 +262,7 @@ export default function PledgeForm({ onSuccess }) {
     if (beneficiaryType === "player" && !selectedPlayerId) {
       errs.player = "Please select a player";
     }
+    if (!paymentMethod) errs.paymentMethod = "Please select a payment method";
     return errs;
   }
 
@@ -191,6 +292,7 @@ export default function PledgeForm({ onSuccess }) {
           amount: parseFloat(form.amount),
           note: form.note.trim() || undefined,
           beneficiary,
+          paymentMethod,
         }),
       });
       if (!res.ok) {
@@ -226,25 +328,11 @@ export default function PledgeForm({ onSuccess }) {
             Your support means a great deal to the team.
           </p>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
-          <p className="text-sm font-bold text-gray-900 mb-1">Pay now via PayMe</p>
-          <p className="text-xs text-gray-500 mb-4">
-            Open the PayMe app and scan the code below to send your{" "}
-            <span className="font-semibold text-gray-700">
-              HK${parseFloat(form.amount).toLocaleString()}
-            </span>{" "}
-            pledge.
-          </p>
-          <img
-            src="/payme-qr.jpg"
-            alt="PayMe QR code"
-            className="w-52 h-52 object-contain mx-auto rounded-xl"
-          />
-          <p className="text-xs text-gray-400 mt-4 leading-relaxed">
-            Prefer bank transfer? A team member will be in touch with details.
-          </p>
-        </div>
+        <PaymentConfirmationPanel
+          method={paymentMethod}
+          amount={form.amount}
+          donorName={form.name.trim()}
+        />
       </div>
     );
   }
@@ -426,6 +514,41 @@ export default function PledgeForm({ onSuccess }) {
         />
       </div>
 
+      <div>
+        <p className={`block text-sm font-semibold mb-2 ${errors.paymentMethod ? "text-red-600" : "text-gray-700"}`}>
+          How will you pay? <span className="text-[#DE2910]">*</span>
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          {PAYMENT_METHODS.map((pm) => (
+            <button
+              key={pm.id}
+              type="button"
+              onClick={() => {
+                setPaymentMethod(paymentMethod === pm.id ? null : pm.id);
+                if (errors.paymentMethod) setErrors((err) => ({ ...err, paymentMethod: undefined }));
+              }}
+              className={`flex flex-col items-center gap-1.5 px-2 py-4 rounded-xl border-2 text-xs font-semibold transition-all text-center cursor-pointer shadow-sm ${
+                paymentMethod === pm.id
+                  ? "border-[#1E3A6E] bg-[#1E3A6E]/8 text-[#1E3A6E] shadow-[#1E3A6E]/10"
+                  : errors.paymentMethod
+                  ? "border-red-300 text-gray-600 bg-white"
+                  : "border-gray-300 text-gray-600 hover:border-[#1E3A6E]/40 hover:bg-[#1E3A6E]/4 hover:text-[#1E3A6E] bg-white"
+              }`}
+            >
+              <span className={paymentMethod === pm.id ? "text-[#1E3A6E]" : "text-gray-400"}>{pm.icon}</span>
+              <span className="leading-tight">{pm.label}</span>
+              <span className={`text-[10px] font-normal leading-tight ${paymentMethod === pm.id ? "text-[#1E3A6E]/70" : "text-gray-400"}`}>
+                {pm.sublabel}
+              </span>
+              {paymentMethod === pm.id && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A6E]" />
+              )}
+            </button>
+          ))}
+        </div>
+        {errors.paymentMethod && <p className="text-xs text-red-600 mt-1">{errors.paymentMethod}</p>}
+      </div>
+
       {serverError && (
         <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{serverError}</p>
       )}
@@ -437,10 +560,6 @@ export default function PledgeForm({ onSuccess }) {
       >
         {submitting ? "Submitting…" : "Submit my pledge"}
       </button>
-
-      <p className="text-xs text-gray-400 text-center leading-relaxed">
-        Please use the PayMe QR Code or link to make your pledge. (If you prefer to transfer differently, just submit, and we will contact you.)
-      </p>
     </form>
   );
 }

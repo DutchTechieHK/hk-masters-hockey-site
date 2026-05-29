@@ -13,6 +13,7 @@ psql "$DATABASE_URL" -f lib/db/migrations/add_events_table.sql
 psql "$DATABASE_URL" -f lib/db/migrations/add_event_rsvps_table.sql
 psql "$DATABASE_URL" -f lib/db/migrations/add_announcements_table.sql
 psql "$DATABASE_URL" -f lib/db/migrations/add_team_public_fields.sql
+psql "$DATABASE_URL" -f lib/db/migrations/add_fundraising_payment_method.sql
 
 # Sync any remaining schema changes
 pnpm --filter db push-force

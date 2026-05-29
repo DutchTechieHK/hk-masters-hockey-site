@@ -19,6 +19,7 @@ export interface FundraisingEntry {
   status: FundraisingEntryStatus;
   notes?: string;
   beneficiary?: string;
+  paymentMethod?: string | null;
   paidAt?: string | null;
   createdAt?: string;
 }
