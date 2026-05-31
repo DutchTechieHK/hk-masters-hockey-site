@@ -39,3 +39,23 @@ VITE_PUBLIC_SITE_URL = "https://hkmastershockey.com"
 
 [userenv.development]
 EMAIL_OVERRIDE = "play@hkmastershockey.com"
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 8081
+
+[[ports]]
+localPort = 20336
+externalPort = 80
+
+[[ports]]
+localPort = 22203
+externalPort = 3001
+
+[[ports]]
+localPort = 26214
+externalPort = 3000
