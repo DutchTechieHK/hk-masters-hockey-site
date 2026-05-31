@@ -20,6 +20,7 @@ import documentsRouter from "./documents";
 import { auctionAdminRouter, auctionPublicRouter } from "./auction";
 import pushRouter from "./push";
 import newsRouter from "./news";
+import { legoJarPublicRouter, legoJarAdminRouter } from "./lego-jar";
 
 const router: IRouter = Router();
 
@@ -45,5 +46,7 @@ router.use("/auction", auctionAdminRouter);
 router.use("/public/auction", auctionPublicRouter);
 router.use("/push", pushRouter);
 router.use("/news", newsRouter);
+router.use("/lego-jar", legoJarPublicRouter);
+router.use("/admin/lego-jar", legoJarAdminRouter);
 
 export default router;
