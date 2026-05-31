@@ -239,9 +239,10 @@ export default function LegoJar() {
   // Delete confirm
   const [deleteGuessId, setDeleteGuessId] = useState<number | null>(null)
 
-  // Edit guesser (group-level contact info)
+  // Edit guesser (group-level contact info + per-guess fields)
   const [editGroup, setEditGroup] = useState<GuesserGroup | null>(null)
   const [editContactForm, setEditContactForm] = useState({ guesserName: "", guesserEmail: "", guesserPhone: "" })
+  const [editGuessRows, setEditGuessRows] = useState<{ id: number; guessNumber: string; paymentMethod: string; amountPaid: string }[]>([])
   const [editGroupSaving, setEditGroupSaving] = useState(false)
 
   function openEditGroup(group: GuesserGroup) {
@@ -250,6 +251,12 @@ export default function LegoJar() {
       guesserEmail: group.guesserEmail ?? "",
       guesserPhone: group.guesserPhone ?? "",
     })
+    setEditGuessRows(group.guesses.map((g) => ({
+      id: g.id,
+      guessNumber: String(g.guessNumber),
+      paymentMethod: g.paymentMethod ?? "cash",
+      amountPaid: g.amountPaid != null ? String(Math.round(Number(g.amountPaid))) : "",
+    })))
     setEditGroup(group)
   }
 
@@ -259,14 +266,22 @@ export default function LegoJar() {
     setEditGroupSaving(true)
     try {
       const results: Guess[] = await Promise.all(
-        editGroup.guesses.map((g) => apiFetch(`/api/admin/lego-jar/guesses/${g.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({
-            guesserName: editContactForm.guesserName.trim(),
-            guesserEmail: editContactForm.guesserEmail.trim() || null,
-            guesserPhone: editContactForm.guesserPhone.trim() || null,
-          }),
-        }))
+        editGroup.guesses.map((g, i) => {
+          const row = editGuessRows[i]
+          return apiFetch(`/api/admin/lego-jar/guesses/${g.id}`, {
+            method: "PATCH",
+            body: JSON.stringify({
+              guesserName: editContactForm.guesserName.trim(),
+              guesserEmail: editContactForm.guesserEmail.trim() || null,
+              guesserPhone: editContactForm.guesserPhone.trim() || null,
+              ...(row ? {
+                guessNumber: parseInt(row.guessNumber, 10) || g.guessNumber,
+                paymentMethod: row.paymentMethod || null,
+                amountPaid: row.amountPaid !== "" ? Number(row.amountPaid) : null,
+              } : {}),
+            }),
+          })
+        })
       )
       setGuesses((prev) => {
         const byId = new Map(results.map((r) => [r.id, r]))
@@ -388,7 +403,7 @@ export default function LegoJar() {
       const email = gs.find((g) => g.guesserEmail)?.guesserEmail ?? null
       const phone = gs.find((g) => g.guesserPhone)?.guesserPhone ?? null
       const paidCount = gs.filter((g) => g.paid).length
-      const totalAmountPaid = gs.filter((g) => g.paid).reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0)
+      const totalAmountPaid = Math.round(gs.filter((g) => g.paid).reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0))
       const pmCounts: Record<string, number> = {}
       for (const g of gs) { if (g.paymentMethod) pmCounts[g.paymentMethod] = (pmCounts[g.paymentMethod] ?? 0) + 1 }
       const dominantPm = Object.entries(pmCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
@@ -1250,14 +1265,9 @@ export default function LegoJar() {
         </div>
       </Modal>
 
-      {/* Edit guesser contact info */}
+      {/* Edit guesser contact info + per-guess fields */}
       <Modal isOpen={editGroup !== null} onClose={() => setEditGroup(null)} title="Edit Guesser">
         <div className="space-y-4 p-1">
-          {editGroup && editGroup.guesses.length > 1 && (
-            <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
-              Updates name, email and phone for all {editGroup.guesses.length} guesses by this person.
-            </p>
-          )}
           <div>
             <label className="block text-sm font-semibold mb-1.5">Name *</label>
             <Input
@@ -1285,6 +1295,57 @@ export default function LegoJar() {
               onChange={(e) => setEditContactForm((f) => ({ ...f, guesserPhone: e.target.value }))}
             />
           </div>
+
+          {/* Per-guess rows */}
+          {editGuessRows.length > 0 && (
+            <div className="border-t border-border pt-4 space-y-3">
+              <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                {editGuessRows.length === 1 ? "Guess details" : `${editGuessRows.length} Guesses`}
+              </p>
+              {editGuessRows.map((row, i) => (
+                <div key={row.id} className="bg-muted/30 rounded-lg p-3 space-y-2">
+                  {editGuessRows.length > 1 && (
+                    <p className="text-xs font-semibold text-muted-foreground">Guess {i + 1}</p>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Guess number *</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={row.guessNumber}
+                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, guessNumber: e.target.value } : r))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold mb-1">Amount paid (HK$)</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        placeholder="e.g. 50"
+                        value={row.amountPaid}
+                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, amountPaid: e.target.value } : r))}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-semibold mb-1">Payment method</label>
+                      <select
+                        value={row.paymentMethod}
+                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, paymentMethod: e.target.value } : r))}
+                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="payme">PayMe</option>
+                        <option value="wise">Wise</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             <Button variant="outline" className="flex-1" onClick={() => setEditGroup(null)}>Cancel</Button>
             <Button className="flex-1" onClick={handleSaveEditGroup} disabled={editGroupSaving}>
