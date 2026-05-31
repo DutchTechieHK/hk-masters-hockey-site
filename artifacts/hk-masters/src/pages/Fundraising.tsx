@@ -511,7 +511,7 @@ export default function Fundraising() {
         <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden flex flex-col">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
+              <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr>
                   <th className="px-6 py-4 font-semibold">Donor / Sponsor</th>
                   <th className="px-6 py-4 font-semibold">Email</th>
@@ -522,7 +522,7 @@ export default function Fundraising() {
                   <th className="px-6 py-4 font-semibold">Status</th>
                   <th className="px-6 py-4 font-semibold">Date</th>
                   <th className="px-6 py-4 font-semibold">Paid Date</th>
-                  <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                  <th className="px-6 py-4 font-semibold text-right sticky right-0 z-20 bg-muted border-l border-border">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -579,7 +579,7 @@ export default function Fundraising() {
                           : <span className="text-xs italic">—</span>
                         }
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-6 py-4 text-right sticky right-0 z-10 bg-white border-l border-border">
                         <div className="flex justify-end items-center space-x-2">
                           {entry.status === "received" && !entry.donorEmail && (
                             <span
