@@ -374,8 +374,8 @@ export default function LegoJarSection() {
                 { label: "Raised so far", value: `HK$${totalRaised.toLocaleString()}` },
                 { label: "Per guess", value: `HK$${Number(pricePerGuess).toLocaleString()}` },
               ].map(({ label, value }) => (
-                <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 text-center">
-                  <p className="text-xl font-extrabold text-[#1E3A6E] leading-tight">{value}</p>
+                <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3 sm:p-4 text-center">
+                  <p className="text-base sm:text-xl font-extrabold text-[#1E3A6E] leading-tight break-words">{value}</p>
                   <p className="text-xs text-gray-500 mt-1">{label}</p>
                 </div>
               ))}
@@ -457,26 +457,28 @@ export default function LegoJarSection() {
                 <div className="px-5 py-4 border-b border-gray-100">
                   <h3 className="font-bold text-gray-900 text-sm">Jar journey so far</h3>
                 </div>
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                    <tr>
-                      <th className="px-5 py-2.5 text-left font-semibold">Holder</th>
-                      <th className="px-5 py-2.5 text-left font-semibold">Location</th>
-                      <th className="px-5 py-2.5 text-right font-semibold">Guesses</th>
-                      <th className="px-5 py-2.5 text-right font-semibold">Raised</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pastRounds.map((r) => (
-                      <tr key={r.id}>
-                        <td className="px-5 py-3 font-medium text-gray-900">{r.holderName}</td>
-                        <td className="px-5 py-3 text-gray-500 text-xs">{r.location ?? "—"}</td>
-                        <td className="px-5 py-3 text-right font-medium text-gray-700">{r.guessCount}</td>
-                        <td className="px-5 py-3 text-right font-bold text-[#1E3A6E]">HK${r.amountRaised.toLocaleString()}</td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+                      <tr>
+                        <th className="px-3 sm:px-5 py-2.5 text-left font-semibold">Holder</th>
+                        <th className="px-3 sm:px-5 py-2.5 text-left font-semibold">Location</th>
+                        <th className="px-3 sm:px-5 py-2.5 text-right font-semibold">Guesses</th>
+                        <th className="px-3 sm:px-5 py-2.5 text-right font-semibold whitespace-nowrap">Raised</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {pastRounds.map((r) => (
+                        <tr key={r.id}>
+                          <td className="px-3 sm:px-5 py-3 font-medium text-gray-900 whitespace-nowrap">{r.holderName}</td>
+                          <td className="px-3 sm:px-5 py-3 text-gray-500 text-xs">{r.location ?? "—"}</td>
+                          <td className="px-3 sm:px-5 py-3 text-right font-medium text-gray-700">{r.guessCount}</td>
+                          <td className="px-3 sm:px-5 py-3 text-right font-bold text-[#1E3A6E] whitespace-nowrap">HK${r.amountRaised.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
