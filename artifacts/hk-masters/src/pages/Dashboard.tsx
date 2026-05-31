@@ -120,38 +120,6 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column (2/3 width) */}
         <div className="lg:col-span-2 space-y-8">
-          
-          {/* Team Breakdown */}
-          <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-xl font-display font-bold">Team Breakdown</h2>
-            </div>
-            <div className="divide-y divide-border">
-              {stats.teamStats.map((team) => (
-                <div key={team.teamId} className="p-6 hover:bg-muted/30 transition-colors">
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-primary">{team.teamName}</h3>
-                      <p className="text-sm text-muted-foreground">{team.category} • {team.playerCount} players</p>
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground mb-1">Fees Paid</p>
-                        <p className="font-semibold text-emerald-600">{team.feesPaid} paid</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground mb-1">Outstanding</p>
-                        <p className="font-semibold text-rose-600">{team.feesOutstanding} unpaid</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {stats.teamStats.length === 0 && (
-                <div className="p-8 text-center text-muted-foreground">No teams registered yet.</div>
-              )}
-            </div>
-          </div>
 
           {/* Fundraising Progress */}
           <div className="bg-white rounded-2xl shadow-sm border border-border p-6 relative overflow-hidden">
@@ -204,6 +172,38 @@ export default function Dashboard() {
             <p className="text-sm font-medium text-emerald-600 mt-3 text-right">
               {fundraisingProgress.toFixed(1)}% achieved
             </p>
+          </div>
+
+          {/* Team Breakdown */}
+          <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
+            <div className="p-6 border-b border-border">
+              <h2 className="text-xl font-display font-bold">Team Breakdown</h2>
+            </div>
+            <div className="divide-y divide-border">
+              {stats.teamStats.map((team) => (
+                <div key={team.teamId} className="p-6 hover:bg-muted/30 transition-colors">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-primary">{team.teamName}</h3>
+                      <p className="text-sm text-muted-foreground">{team.category} • {team.playerCount} players</p>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground mb-1">Fees Paid</p>
+                        <p className="font-semibold text-emerald-600">{team.feesPaid} paid</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground mb-1">Outstanding</p>
+                        <p className="font-semibold text-rose-600">{team.feesOutstanding} unpaid</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {stats.teamStats.length === 0 && (
+                <div className="p-8 text-center text-muted-foreground">No teams registered yet.</div>
+              )}
+            </div>
           </div>
 
         </div>
