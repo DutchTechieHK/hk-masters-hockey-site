@@ -21,6 +21,7 @@ import { auctionAdminRouter, auctionPublicRouter } from "./auction";
 import pushRouter from "./push";
 import newsRouter from "./news";
 import { legoJarPublicRouter, legoJarAdminRouter } from "./lego-jar";
+import funRunRouter from "./fun-run";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use("/push", pushRouter);
 router.use("/news", newsRouter);
 router.use("/lego-jar", legoJarPublicRouter);
 router.use("/admin/lego-jar", legoJarAdminRouter);
+router.use("/fun-run", funRunRouter);
 
 export default router;
