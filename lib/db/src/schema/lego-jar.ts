@@ -40,5 +40,6 @@ export const legoJarGuessesTable = pgTable("lego_jar_guesses", {
   guessNumber: integer("guess_number").notNull(),
   paymentMethod: text("payment_method"),
   paid: boolean("paid").notNull().default(false),
+  amountPaid: numeric("amount_paid", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

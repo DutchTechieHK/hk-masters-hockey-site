@@ -43,15 +43,18 @@ function serializeRound(r: typeof legoJarRoundsTable.$inferSelect & { guessCount
   };
 }
 
-async function getRoundWithStats(roundId: number) {
-  const [stats] = await db
-    .select({
-      guessCount: sql<number>`COUNT(*)`,
-      totalRaised: sql<string>`COALESCE(SUM(CASE WHEN paid THEN 50 ELSE 0 END), 0)`,
-    })
-    .from(legoJarGuessesTable)
-    .where(eq(legoJarGuessesTable.roundId, roundId));
-  return stats;
+function serializeGuess(g: typeof legoJarGuessesTable.$inferSelect) {
+  return {
+    id: g.id,
+    roundId: g.roundId,
+    guesserName: g.guesserName,
+    guesserEmail: g.guesserEmail ?? null,
+    guessNumber: g.guessNumber,
+    paymentMethod: g.paymentMethod ?? null,
+    paid: g.paid,
+    amountPaid: g.amountPaid != null ? Number(g.amountPaid) : null,
+    createdAt: g.createdAt.toISOString(),
+  };
 }
 
 // ─── Default prize data ───────────────────────────────────────────────────────
@@ -116,11 +119,12 @@ function serializePrize(p: typeof legoJarPrizesTable.$inferSelect) {
 legoJarPublicRouter.get("/stats", async (_req, res) => {
   const config = await getConfig();
   const currentRound = await getCurrentRound();
+  const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
   const [totals] = await db
     .select({
       totalGuesses: sql<number>`COUNT(*)`,
-      paidGuesses: sql<number>`COUNT(*) FILTER (WHERE paid = true)`,
+      totalRaised: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
     })
     .from(legoJarGuessesTable);
 
@@ -134,7 +138,7 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
       const [s] = await db
         .select({
           guessCount: sql<number>`COUNT(*)`,
-          paidCount: sql<number>`COUNT(*) FILTER (WHERE paid = true)`,
+          amountRaised: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
         })
         .from(legoJarGuessesTable)
         .where(eq(legoJarGuessesTable.roundId, r.id));
@@ -145,13 +149,10 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
         startedAt: r.startedAt.toISOString(),
         endedAt: r.endedAt?.toISOString() ?? null,
         guessCount: Number(s.guessCount),
-        amountRaised: Number(s.paidCount) * Number(config?.pricePerGuess ?? 50),
+        amountRaised: Number(s.amountRaised),
       };
     })
   );
-
-  const pricePerGuess = Number(config?.pricePerGuess ?? 50);
-  const totalRaised = Number(totals.paidGuesses) * pricePerGuess;
 
   res.json({
     config: config
@@ -171,7 +172,7 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
         }
       : null,
     totalGuesses: Number(totals.totalGuesses),
-    totalRaised,
+    totalRaised: Number(totals.totalRaised),
     rounds: roundStats,
   });
 });
@@ -184,7 +185,7 @@ legoJarPublicRouter.get("/prizes", async (_req, res) => {
 
 // POST /api/lego-jar/guesses  (public submission)
 legoJarPublicRouter.post("/guesses", async (req, res) => {
-  const { guesserName, guesserEmail, guessNumber, paymentMethod } = req.body ?? {};
+  const { guesserName, guesserEmail, guessNumbers, guessNumber, paymentMethod, totalAmountPaid } = req.body ?? {};
 
   const errors: string[] = [];
   if (typeof guesserName !== "string" || !guesserName.trim()) errors.push("guesserName is required");
@@ -195,9 +196,18 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guesserEmail.trim())) errors.push("guesserEmail is invalid");
   }
 
-  const parsedGuess = typeof guessNumber === "number" ? guessNumber : parseInt(guessNumber, 10);
-  if (isNaN(parsedGuess) || parsedGuess < 1) errors.push("guessNumber must be a positive integer");
-  else if (parsedGuess > 100000) errors.push("guessNumber is unreasonably large");
+  // Accept either guessNumbers array or single guessNumber
+  const rawNumbers: unknown[] = Array.isArray(guessNumbers) ? guessNumbers : guessNumber != null ? [guessNumber] : [];
+  if (rawNumbers.length === 0) errors.push("At least one guess number is required");
+  if (rawNumbers.length > 10) errors.push("A maximum of 10 guess numbers is allowed");
+
+  const parsedNumbers: number[] = [];
+  for (const n of rawNumbers) {
+    const parsed = typeof n === "number" ? n : parseInt(String(n), 10);
+    if (isNaN(parsed) || parsed < 1) { errors.push("Each guess number must be a positive integer"); break; }
+    if (parsed > 100000) { errors.push("A guess number is unreasonably large"); break; }
+    parsedNumbers.push(parsed);
+  }
 
   if (!paymentMethod || !VALID_PAYMENT_METHODS.includes(paymentMethod)) {
     errors.push("paymentMethod must be one of: payme, wise, bank_transfer, cash");
@@ -209,45 +219,56 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
   }
 
   const currentRound = await getCurrentRound();
-
   const config = await getConfig();
+  const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
-  const [guess] = await db
+  // Distribute amountPaid equally across all rows
+  const totalPaid = totalAmountPaid != null ? Number(totalAmountPaid) : null;
+  const perRowAmount = totalPaid != null ? +(totalPaid / parsedNumbers.length).toFixed(2) : null;
+
+  const insertedGuesses = await db
     .insert(legoJarGuessesTable)
-    .values({
-      roundId: currentRound?.id ?? null,
-      guesserName: (guesserName as string).trim(),
-      guesserEmail: guesserEmail?.trim() || null,
-      guessNumber: parsedGuess,
-      paymentMethod,
-      paid: false,
-    })
+    .values(
+      parsedNumbers.map((num) => ({
+        roundId: currentRound?.id ?? null,
+        guesserName: (guesserName as string).trim(),
+        guesserEmail: guesserEmail?.trim() || null,
+        guessNumber: num,
+        paymentMethod,
+        paid: false,
+        amountPaid: perRowAmount != null ? String(perRowAmount) : null,
+      }))
+    )
     .returning();
 
-  if (guess.guesserEmail) {
+  const firstGuess = insertedGuesses[0];
+
+  if (firstGuess.guesserEmail) {
     sendLegoJarGuessConfirmationEmail({
-      guesserName: guess.guesserName,
-      guesserEmail: guess.guesserEmail,
-      guessNumber: guess.guessNumber,
-      paymentMethod: guess.paymentMethod ?? paymentMethod,
-      pricePerGuess: config ? Number(config.pricePerGuess) : 50,
+      guesserName: firstGuess.guesserName,
+      guesserEmail: firstGuess.guesserEmail,
+      guessNumber: firstGuess.guessNumber,
+      paymentMethod: firstGuess.paymentMethod ?? paymentMethod,
+      pricePerGuess: totalPaid ?? pricePerGuess,
     }).catch((err) => console.error("[lego-jar] Failed to send confirmation email:", err));
   }
 
   sendLegoJarGuessAdminNotificationEmail({
-    guesserName: guess.guesserName,
-    guesserEmail: guess.guesserEmail ?? null,
-    guessNumber: guess.guessNumber,
-    paymentMethod: guess.paymentMethod ?? paymentMethod,
-    guessId: guess.id,
+    guesserName: firstGuess.guesserName,
+    guesserEmail: firstGuess.guesserEmail ?? null,
+    guessNumber: firstGuess.guessNumber,
+    paymentMethod: firstGuess.paymentMethod ?? paymentMethod,
+    guessId: firstGuess.id,
   }).catch((err) => console.error("[lego-jar] Failed to send admin notification email:", err));
 
   res.status(201).json({
-    id: guess.id,
-    guesserName: guess.guesserName,
-    guessNumber: guess.guessNumber,
-    paymentMethod: guess.paymentMethod,
-    createdAt: guess.createdAt.toISOString(),
+    guesses: insertedGuesses.map(serializeGuess),
+    // backward compat: single-guess callers still get top-level fields
+    id: firstGuess.id,
+    guesserName: firstGuess.guesserName,
+    guessNumber: firstGuess.guessNumber,
+    paymentMethod: firstGuess.paymentMethod,
+    createdAt: firstGuess.createdAt.toISOString(),
   });
 });
 
@@ -368,6 +389,7 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
         .select({
           guessCount: sql<number>`COUNT(*)`,
           paidCount: sql<number>`COUNT(*) FILTER (WHERE paid = true)`,
+          amountRaised: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
         })
         .from(legoJarGuessesTable)
         .where(eq(legoJarGuessesTable.roundId, r.id));
@@ -381,7 +403,7 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
         notes: r.notes ?? null,
         guessCount: Number(s.guessCount),
         paidCount: Number(s.paidCount),
-        amountRaised: Number(s.paidCount) * pricePerGuess,
+        amountRaised: Number(s.amountRaised),
         isCurrent: r.endedAt === null,
       };
     })
@@ -459,56 +481,59 @@ legoJarAdminRouter.get("/guesses", async (req, res) => {
     .where(roundId ? eq(legoJarGuessesTable.roundId, parseInt(roundId, 10)) : undefined)
     .orderBy(desc(legoJarGuessesTable.createdAt));
 
-  res.json(
-    guesses.map((g) => ({
-      id: g.id,
-      roundId: g.roundId,
-      guesserName: g.guesserName,
-      guesserEmail: g.guesserEmail ?? null,
-      guessNumber: g.guessNumber,
-      paymentMethod: g.paymentMethod ?? null,
-      paid: g.paid,
-      createdAt: g.createdAt.toISOString(),
-    }))
-  );
+  res.json(guesses.map(serializeGuess));
 });
 
-// POST /api/admin/lego-jar/guesses  (manual entry)
+// POST /api/admin/lego-jar/guesses  (manual entry — supports batch)
 legoJarAdminRouter.post("/guesses", async (req, res) => {
-  const { roundId, guesserName, guesserEmail, guessNumber, paymentMethod, paid } = req.body ?? {};
+  const { roundId, guesserName, guesserEmail, guessNumbers, guessNumber, paymentMethod, paid, amountPaid } = req.body ?? {};
 
   if (typeof guesserName !== "string" || !guesserName.trim()) {
     res.status(400).json({ error: "guesserName is required" });
     return;
   }
-  const parsedGuess = parseInt(guessNumber, 10);
-  if (isNaN(parsedGuess) || parsedGuess < 1) {
-    res.status(400).json({ error: "guessNumber must be a positive integer" });
+
+  // Accept either guessNumbers array or legacy single guessNumber
+  const rawNumbers: unknown[] = Array.isArray(guessNumbers) ? guessNumbers : guessNumber != null ? [guessNumber] : [];
+  if (rawNumbers.length === 0) {
+    res.status(400).json({ error: "At least one guess number is required" });
+    return;
+  }
+  if (rawNumbers.length > 10) {
+    res.status(400).json({ error: "A maximum of 10 guess numbers is allowed" });
     return;
   }
 
-  const [guess] = await db
+  const parsedNumbers: number[] = [];
+  for (const n of rawNumbers) {
+    const parsed = typeof n === "number" ? n : parseInt(String(n), 10);
+    if (isNaN(parsed) || parsed < 1) {
+      res.status(400).json({ error: "Each guess number must be a positive integer" });
+      return;
+    }
+    parsedNumbers.push(parsed);
+  }
+
+  // Distribute amountPaid equally across all rows
+  const totalPaid = amountPaid != null && amountPaid !== "" ? Number(amountPaid) : null;
+  const perRowAmount = totalPaid != null ? +(totalPaid / parsedNumbers.length).toFixed(2) : null;
+
+  const insertedGuesses = await db
     .insert(legoJarGuessesTable)
-    .values({
-      roundId: roundId ? parseInt(roundId, 10) : null,
-      guesserName: (guesserName as string).trim(),
-      guesserEmail: guesserEmail?.trim() || null,
-      guessNumber: parsedGuess,
-      paymentMethod: paymentMethod || null,
-      paid: !!paid,
-    })
+    .values(
+      parsedNumbers.map((num) => ({
+        roundId: roundId ? parseInt(roundId, 10) : null,
+        guesserName: (guesserName as string).trim(),
+        guesserEmail: guesserEmail?.trim() || null,
+        guessNumber: num,
+        paymentMethod: paymentMethod || null,
+        paid: !!paid,
+        amountPaid: perRowAmount != null ? String(perRowAmount) : null,
+      }))
+    )
     .returning();
 
-  res.status(201).json({
-    id: guess.id,
-    roundId: guess.roundId,
-    guesserName: guess.guesserName,
-    guesserEmail: guess.guesserEmail ?? null,
-    guessNumber: guess.guessNumber,
-    paymentMethod: guess.paymentMethod ?? null,
-    paid: guess.paid,
-    createdAt: guess.createdAt.toISOString(),
-  });
+  res.status(201).json(insertedGuesses.map(serializeGuess));
 });
 
 // PATCH /api/admin/lego-jar/guesses/:id  (toggle paid, etc.)
@@ -516,13 +541,14 @@ legoJarAdminRouter.patch("/guesses/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { paid, guesserName, guesserEmail, guessNumber, paymentMethod } = req.body ?? {};
+  const { paid, guesserName, guesserEmail, guessNumber, paymentMethod, amountPaid } = req.body ?? {};
   const updateData: Record<string, unknown> = {};
   if (paid !== undefined) updateData.paid = !!paid;
   if (guesserName !== undefined) updateData.guesserName = String(guesserName).trim();
   if (guesserEmail !== undefined) updateData.guesserEmail = guesserEmail?.trim() || null;
   if (guessNumber !== undefined) updateData.guessNumber = parseInt(guessNumber, 10);
   if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod || null;
+  if (amountPaid !== undefined) updateData.amountPaid = amountPaid != null && amountPaid !== "" ? String(Number(amountPaid)) : null;
 
   const [guess] = await db
     .update(legoJarGuessesTable)
@@ -532,16 +558,7 @@ legoJarAdminRouter.patch("/guesses/:id", async (req, res) => {
 
   if (!guess) { res.status(404).json({ error: "Guess not found" }); return; }
 
-  res.json({
-    id: guess.id,
-    roundId: guess.roundId,
-    guesserName: guess.guesserName,
-    guesserEmail: guess.guesserEmail ?? null,
-    guessNumber: guess.guessNumber,
-    paymentMethod: guess.paymentMethod ?? null,
-    paid: guess.paid,
-    createdAt: guess.createdAt.toISOString(),
-  });
+  res.json(serializeGuess(guess));
 });
 
 // DELETE /api/admin/lego-jar/guesses/:id

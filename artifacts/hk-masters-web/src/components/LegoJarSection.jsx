@@ -53,13 +53,14 @@ const PAYMENT_METHODS = [
   },
 ];
 
-function PaymentPanel({ method, guesserName }) {
+function PaymentPanel({ method, guesserName, totalAmount }) {
+  const amtLabel = `HK$${Number(totalAmount ?? 50).toLocaleString()}`;
   if (method === "payme") {
     return (
       <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
         <p className="text-sm font-bold text-gray-900 mb-1">Pay via PayMe</p>
         <p className="text-xs text-gray-500 mb-4">
-          Open the PayMe app and scan the QR code to send your <span className="font-semibold text-gray-700">HK$50</span> guess fee.
+          Open the PayMe app and scan the QR code to send your <span className="font-semibold text-gray-700">{amtLabel}</span> guess fee.
         </p>
         <img src="/payme-qr.jpg" alt="PayMe QR code" className="w-52 h-52 object-contain mx-auto rounded-xl" />
       </div>
@@ -70,7 +71,7 @@ function PaymentPanel({ method, guesserName }) {
       <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
         <p className="text-sm font-bold text-gray-900 mb-1">Pay via Wise</p>
         <p className="text-xs text-gray-500 mb-4">
-          Scan the QR code in the Wise app to send <span className="font-semibold text-gray-700">HK$50</span>.
+          Scan the QR code in the Wise app to send <span className="font-semibold text-gray-700">{amtLabel}</span>.
           Use your name as the reference.
         </p>
         <img src="/wise-qr.png" alt="Wise QR code" className="w-52 h-52 object-contain mx-auto rounded-xl" />
@@ -82,7 +83,7 @@ function PaymentPanel({ method, guesserName }) {
     <div className="bg-white border border-gray-200 rounded-2xl p-6">
       <p className="text-sm font-bold text-gray-900 mb-1 text-center">Bank Transfer Details</p>
       <p className="text-xs text-gray-500 mb-5 text-center">
-        Transfer <span className="font-semibold text-gray-700">HK$50</span> to the account below.
+        Transfer <span className="font-semibold text-gray-700">{amtLabel}</span> to the account below.
       </p>
       <div className="space-y-2.5">
         {[
@@ -239,10 +240,11 @@ function PrizesSection({ prizes, onZoom }) {
 export default function LegoJarSection() {
   const { stats, prizes, error } = useLegoJarData();
 
+  const [tier, setTier] = useState("1"); // "1" or "3"
   const [form, setForm] = useState({
     guesserName: "",
     guesserEmail: "",
-    guessNumber: "",
+    guessNumbers: [""],
     paymentMethod: "",
   });
   const [errors, setErrors] = useState({});
@@ -269,15 +271,36 @@ export default function LegoJarSection() {
   const pastRounds = rounds.filter((r) => r.endedAt !== null);
   const jarImageUrl = stats?.config?.imageUrl ?? "/lego-jar.jpg";
 
+  const tierTotal = tier === "3" ? 100 : 50;
+
+  function handleTierChange(newTier) {
+    setTier(newTier);
+    setForm((f) => ({ ...f, guessNumbers: newTier === "3" ? ["", "", ""] : [""] }));
+    if (errors.guessNumbers) setErrors((e) => ({ ...e, guessNumbers: undefined }));
+  }
+
+  function handleGuessNumberChange(index, value) {
+    setForm((f) => ({ ...f, guessNumbers: f.guessNumbers.map((n, i) => i === index ? value : n) }));
+    if (errors.guessNumbers) setErrors((e) => ({ ...e, guessNumbers: undefined }));
+  }
+
   function validate() {
     const errs = {};
     if (!form.guesserName.trim()) errs.guesserName = "Your name is required";
     if (form.guesserEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.guesserEmail.trim())) {
       errs.guesserEmail = "Enter a valid email address";
     }
-    const num = parseInt(form.guessNumber, 10);
-    if (!form.guessNumber) errs.guessNumber = "Enter your guess";
-    else if (isNaN(num) || num < 1) errs.guessNumber = "Enter a number greater than 0";
+    const filled = form.guessNumbers.filter((n) => n.trim() !== "");
+    if (filled.length === 0) {
+      errs.guessNumbers = tier === "3" ? "Enter all 3 guess numbers" : "Enter your guess";
+    } else if (tier === "3" && filled.length < 3) {
+      errs.guessNumbers = "Fill in all 3 guess numbers";
+    } else {
+      for (const n of filled) {
+        const parsed = parseInt(n, 10);
+        if (isNaN(parsed) || parsed < 1) { errs.guessNumbers = "Each guess must be a number greater than 0"; break; }
+      }
+    }
     if (!form.paymentMethod) errs.paymentMethod = "Please choose a payment method";
     return errs;
   }
@@ -295,14 +318,16 @@ export default function LegoJarSection() {
     setSubmitting(true);
     setServerError(null);
     try {
+      const parsedNumbers = form.guessNumbers.filter((n) => n.trim()).map((n) => parseInt(n, 10));
       const res = await fetch(`${API_BASE}/api/lego-jar/guesses`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           guesserName: form.guesserName.trim(),
           guesserEmail: form.guesserEmail.trim() || undefined,
-          guessNumber: parseInt(form.guessNumber, 10),
+          guessNumbers: parsedNumbers,
           paymentMethod: form.paymentMethod,
+          totalAmountPaid: tierTotal,
         }),
       });
       if (!res.ok) {
@@ -464,12 +489,18 @@ export default function LegoJarSection() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center justify-center gap-2">Guess submitted! <LegoBrickIcon className="w-8 h-6" /></h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center justify-center gap-2">
+                    {tier === "3" ? "3 guesses submitted!" : "Guess submitted!"} <LegoBrickIcon className="w-8 h-6" />
+                  </h3>
                   <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto">
-                    Your guess of <span className="font-bold text-[#1E3A6E]">{Number(form.guessNumber).toLocaleString()}</span> is in. Good luck!
+                    {tier === "3" ? (
+                      <>Your guesses of <span className="font-bold text-[#1E3A6E]">{form.guessNumbers.filter(Boolean).map((n) => Number(n).toLocaleString()).join(", ")}</span> are in. Good luck!</>
+                    ) : (
+                      <>Your guess of <span className="font-bold text-[#1E3A6E]">{Number(form.guessNumbers[0]).toLocaleString()}</span> is in. Good luck!</>
+                    )}
                   </p>
                 </div>
-                <PaymentPanel method={form.paymentMethod} guesserName={form.guesserName.trim()} />
+                <PaymentPanel method={form.paymentMethod} guesserName={form.guesserName.trim()} totalAmount={tierTotal} />
               </div>
             ) : (
               <form onSubmit={handleSubmit} noValidate className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
@@ -515,28 +546,65 @@ export default function LegoJarSection() {
                   </div>
                 </div>
 
+                {/* Tier selector */}
                 <div>
-                  <label htmlFor="lj-guess" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Your guess — how many LEGO bricks? <span className="text-[#DE2910]">*</span>
+                  <p className="block text-sm font-semibold text-gray-700 mb-2">
+                    How many guesses? <span className="text-[#DE2910]">*</span>
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: "1", label: "1 guess", price: "HK$50" },
+                      { value: "3", label: "3 guesses", price: "HK$100" },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleTierChange(opt.value)}
+                        className={`flex flex-col items-center gap-0.5 px-4 py-3.5 rounded-xl border-2 text-sm font-semibold transition-all shadow-sm ${
+                          tier === opt.value
+                            ? "border-[#1E3A6E] bg-[#1E3A6E]/8 text-[#1E3A6E]"
+                            : "border-gray-300 text-gray-600 hover:border-[#1E3A6E]/40 bg-white"
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        <span className={`text-xs font-bold ${tier === opt.value ? "text-[#1E3A6E]" : "text-gray-500"}`}>{opt.price}</span>
+                        {tier === opt.value && <span className="w-1.5 h-1.5 rounded-full bg-[#1E3A6E] mt-0.5" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Guess number field(s) */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    {tier === "3" ? "Your 3 guesses — how many LEGO bricks?" : "Your guess — how many LEGO bricks?"}{" "}
+                    <span className="text-[#DE2910]">*</span>
                   </label>
-                  <input
-                    id="lj-guess"
-                    name="guessNumber"
-                    type="number"
-                    min="1"
-                    value={form.guessNumber}
-                    onChange={handleChange}
-                    placeholder="e.g. 342"
-                    className={`w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/20 focus:border-[#1E3A6E]/40 transition-colors ${
-                      errors.guessNumber ? "border-red-400 bg-red-50" : "border-gray-300"
-                    }`}
-                  />
-                  {errors.guessNumber && <p className="text-xs text-red-600 mt-1">{errors.guessNumber}</p>}
+                  <div className={tier === "3" ? "grid grid-cols-3 gap-2" : ""}>
+                    {form.guessNumbers.map((num, i) => (
+                      <div key={i}>
+                        {tier === "3" && (
+                          <p className="text-xs text-gray-500 mb-1 font-medium">Guess {i + 1}</p>
+                        )}
+                        <input
+                          type="number"
+                          min="1"
+                          value={num}
+                          onChange={(e) => handleGuessNumberChange(i, e.target.value)}
+                          placeholder="e.g. 342"
+                          className={`w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/20 focus:border-[#1E3A6E]/40 transition-colors ${
+                            errors.guessNumbers ? "border-red-400 bg-red-50" : "border-gray-300"
+                          }`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {errors.guessNumbers && <p className="text-xs text-red-600 mt-1">{errors.guessNumbers}</p>}
                 </div>
 
                 <div>
                   <p className="block text-sm font-semibold text-gray-700 mb-2">
-                    How will you pay the HK${Number(pricePerGuess).toLocaleString()} fee? <span className="text-[#DE2910]">*</span>
+                    How will you pay the <span className="text-[#1E3A6E]">HK${tierTotal}</span> fee? <span className="text-[#DE2910]">*</span>
                   </p>
                   <div className="grid grid-cols-3 gap-3">
                     {PAYMENT_METHODS.map((pm) => (
@@ -572,7 +640,7 @@ export default function LegoJarSection() {
                   disabled={submitting}
                   className="w-full bg-[#1E3A6E] text-white font-bold text-sm py-3.5 rounded-xl hover:bg-[#162d56] disabled:opacity-60 transition-colors shadow-sm"
                 >
-                  {submitting ? "Submitting…" : `Submit guess · HK$${Number(pricePerGuess).toLocaleString()}`}
+                  {submitting ? "Submitting…" : `Submit ${tier === "3" ? "3 guesses" : "guess"} · HK$${tierTotal}`}
                 </button>
               </form>
             )}

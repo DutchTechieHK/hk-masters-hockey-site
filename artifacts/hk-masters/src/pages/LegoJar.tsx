@@ -67,6 +67,7 @@ type Guess = {
   guessNumber: number
   paymentMethod: string | null
   paid: boolean
+  amountPaid: number | null
   createdAt: string
 }
 
@@ -206,8 +207,11 @@ export default function LegoJar() {
   // Log guess dialog
   const [guessOpen, setGuessOpen] = useState(false)
   const [guessForm, setGuessForm] = useState({
-    guesserName: "", guesserEmail: "", guessNumber: "", paymentMethod: "cash", paid: true
+    guesserName: "", guesserEmail: "", paymentMethod: "cash", paid: true
   })
+  const [guessMode, setGuessMode] = useState<"tier1" | "tier3" | "custom">("tier1")
+  const [guessNumbers, setGuessNumbers] = useState<string[]>([""])
+  const [guessAmountPaid, setGuessAmountPaid] = useState("50")
   const [guessSaving, setGuessSaving] = useState(false)
 
   // Config panel
@@ -273,7 +277,9 @@ export default function LegoJar() {
   const totalGuesses = guesses.length
   const paidGuesses = guesses.filter((g) => g.paid).length
   const pricePerGuess = Number(config?.pricePerGuess ?? 50)
-  const totalRaised = paidGuesses * pricePerGuess
+  const totalRaised = guesses
+    .filter((g) => g.paid)
+    .reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0)
 
   // Filtered guesses for guesses tab
   const filteredGuesses = guesses.filter((g) => {
@@ -319,11 +325,21 @@ export default function LegoJar() {
     }
   }
 
-  // Log a guess
+  function resetGuessDialog() {
+    setGuessForm({ guesserName: "", guesserEmail: "", paymentMethod: "cash", paid: true })
+    setGuessMode("tier1")
+    setGuessNumbers([""])
+    setGuessAmountPaid("50")
+  }
+
+  // Log a guess (supports batches)
   const handleLogGuess = async () => {
     if (!guessForm.guesserName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return }
-    const num = parseInt(guessForm.guessNumber, 10)
-    if (isNaN(num) || num < 1) { toast({ title: "Enter a valid guess number", variant: "destructive" }); return }
+    const validNums = guessNumbers.map((n) => n.trim()).filter(Boolean)
+    if (validNums.length === 0) { toast({ title: "Enter at least one guess number", variant: "destructive" }); return }
+    const parsedNums = validNums.map((n) => parseInt(n, 10))
+    if (parsedNums.some((n) => isNaN(n) || n < 1)) { toast({ title: "All guess numbers must be positive integers", variant: "destructive" }); return }
+    const amountPaid = guessAmountPaid.trim() ? Number(guessAmountPaid) : null
     setGuessSaving(true)
     try {
       await apiFetch("/api/admin/lego-jar/guesses", {
@@ -332,14 +348,15 @@ export default function LegoJar() {
           roundId: currentRound?.id ?? null,
           guesserName: guessForm.guesserName.trim(),
           guesserEmail: guessForm.guesserEmail.trim() || null,
-          guessNumber: num,
+          guessNumbers: parsedNums,
           paymentMethod: guessForm.paymentMethod,
           paid: guessForm.paid,
+          amountPaid,
         }),
       })
-      toast({ title: "Guess logged!" })
+      toast({ title: parsedNums.length === 1 ? "Guess logged!" : `${parsedNums.length} guesses logged!` })
       setGuessOpen(false)
-      setGuessForm({ guesserName: "", guesserEmail: "", guessNumber: "", paymentMethod: "cash", paid: true })
+      resetGuessDialog()
       await load()
     } catch (err) {
       toast({ title: (err as Error).message || "Failed", variant: "destructive" })
@@ -655,21 +672,22 @@ export default function LegoJar() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/30 text-xs text-muted-foreground uppercase border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 text-left font-semibold">Guesser</th>
-                    <th className="px-6 py-3 text-left font-semibold">Email</th>
-                    <th className="px-6 py-3 text-right font-semibold">Guess #</th>
-                    <th className="px-6 py-3 text-left font-semibold">Round / Holder</th>
-                    <th className="px-6 py-3 text-left font-semibold">Payment</th>
-                    <th className="px-6 py-3 text-left font-semibold">Paid</th>
-                    <th className="px-6 py-3 text-left font-semibold">Date</th>
-                    <th className="px-6 py-3 text-right font-semibold">Actions</th>
+                    <th className="px-4 py-3 text-left font-semibold">Guesser</th>
+                    <th className="px-4 py-3 text-left font-semibold">Email</th>
+                    <th className="px-4 py-3 text-right font-semibold">Guess #</th>
+                    <th className="px-4 py-3 text-right font-semibold">Amt</th>
+                    <th className="px-4 py-3 text-left font-semibold">Round / Holder</th>
+                    <th className="px-4 py-3 text-left font-semibold">Payment</th>
+                    <th className="px-4 py-3 text-left font-semibold">Paid</th>
+                    <th className="px-4 py-3 text-left font-semibold">Date</th>
+                    <th className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {loading ? (
-                    <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading…</td></tr>
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
                   ) : filteredGuesses.length === 0 ? (
-                    <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                    <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                       {totalGuesses === 0 ? "No guesses yet." : "No guesses match your filters."}
                     </td></tr>
                   ) : (
@@ -677,18 +695,21 @@ export default function LegoJar() {
                       const round = rounds.find((r) => r.id === g.roundId)
                       return (
                         <tr key={g.id} className="hover:bg-muted/10 group">
-                          <td className="px-6 py-3 font-medium">{g.guesserName}</td>
-                          <td className="px-6 py-3 text-muted-foreground text-xs">{g.guesserEmail ?? "—"}</td>
-                          <td className="px-6 py-3 text-right font-mono font-bold">{g.guessNumber.toLocaleString()}</td>
-                          <td className="px-6 py-3 text-muted-foreground text-xs">{round ? round.holderName : "—"}</td>
-                          <td className="px-6 py-3">
+                          <td className="px-4 py-3 font-medium">{g.guesserName}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{g.guesserEmail ?? "—"}</td>
+                          <td className="px-4 py-3 text-right font-mono font-bold">{g.guessNumber.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right text-xs font-mono text-muted-foreground">
+                            {g.amountPaid != null ? `HK$${Number(g.amountPaid).toFixed(0)}` : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{round ? round.holderName : "—"}</td>
+                          <td className="px-4 py-3">
                             {g.paymentMethod ? (
                               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PM_COLORS[g.paymentMethod] ?? "bg-gray-100 text-gray-600"}`}>
                                 {PM_LABELS[g.paymentMethod] ?? g.paymentMethod}
                               </span>
                             ) : "—"}
                           </td>
-                          <td className="px-6 py-3">
+                          <td className="px-4 py-3">
                             <button
                               onClick={() => togglePaid(g)}
                               className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
@@ -698,8 +719,8 @@ export default function LegoJar() {
                               {g.paid ? "✓ Paid" : "Unpaid"}
                             </button>
                           </td>
-                          <td className="px-6 py-3 text-muted-foreground text-xs">{format(parseISO(g.createdAt), "d MMM yyyy")}</td>
-                          <td className="px-6 py-3 text-right">
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{format(parseISO(g.createdAt), "d MMM yyyy")}</td>
+                          <td className="px-4 py-3 text-right">
                             <button
                               onClick={() => setDeleteGuessId(g.id)}
                               className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive rounded transition-all"
@@ -900,7 +921,7 @@ export default function LegoJar() {
       </Modal>
 
       {/* Log Guess dialog */}
-      <Modal isOpen={guessOpen} onClose={() => setGuessOpen(false)} title="Log a Guess">
+      <Modal isOpen={guessOpen} onClose={() => { setGuessOpen(false); resetGuessDialog() }} title="Log a Guess">
         <div className="space-y-4 p-1">
           {currentRound && (
             <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
@@ -908,6 +929,36 @@ export default function LegoJar() {
               {currentRound.location && ` · ${currentRound.location}`}
             </div>
           )}
+
+          {/* Tier selector */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">Pricing tier</label>
+            <div className="flex gap-2">
+              {([
+                { key: "tier1", label: "1 guess", price: "HK$50" },
+                { key: "tier3", label: "3 guesses", price: "HK$100" },
+                { key: "custom", label: "Custom", price: "" },
+              ] as const).map(({ key, label, price }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setGuessMode(key)
+                    if (key === "tier1") { setGuessNumbers([""]); setGuessAmountPaid("50") }
+                    else if (key === "tier3") { setGuessNumbers(["", "", ""]); setGuessAmountPaid("100") }
+                    else { setGuessNumbers([""]); setGuessAmountPaid("") }
+                  }}
+                  className={`flex-1 px-3 py-2 text-sm rounded-lg border-2 font-semibold transition-all text-center ${
+                    guessMode === key ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
+                  }`}
+                >
+                  <span className="block">{label}</span>
+                  {price && <span className="text-xs font-normal opacity-80">{price}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="block text-sm font-semibold mb-1.5">Guesser name *</label>
@@ -927,17 +978,70 @@ export default function LegoJar() {
                 onChange={(e) => setGuessForm((f) => ({ ...f, guesserEmail: e.target.value }))}
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1.5">Guess number *</label>
+
+            {/* Guess number fields */}
+            {guessNumbers.map((num, i) => (
+              <div key={i} className={guessNumbers.length === 1 ? "col-span-2" : ""}>
+                <label className="block text-sm font-semibold mb-1.5">
+                  {guessNumbers.length === 1 ? "Guess number *" : `Guess ${i + 1} *`}
+                </label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="e.g. 342"
+                  value={num}
+                  onChange={(e) => setGuessNumbers((prev) => prev.map((n, j) => j === i ? e.target.value : n))}
+                />
+              </div>
+            ))}
+
+            {/* Custom mode: add/remove */}
+            {guessMode === "custom" && (
+              <div className="col-span-2 flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => setGuessNumbers((prev) => [...prev, ""])}
+                  disabled={guessNumbers.length >= 10}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1" /> Add guess
+                </Button>
+                {guessNumbers.length > 1 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => setGuessNumbers((prev) => prev.slice(0, -1))}
+                  >
+                    Remove last
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Amount paid */}
+            <div className={guessNumbers.length === 1 ? "" : "col-span-2"}>
+              <label className="block text-sm font-semibold mb-1.5">
+                Total amount paid <span className="font-normal text-muted-foreground">(HK$)</span>
+              </label>
               <Input
                 type="number"
-                min="1"
-                placeholder="e.g. 342"
-                value={guessForm.guessNumber}
-                onChange={(e) => setGuessForm((f) => ({ ...f, guessNumber: e.target.value }))}
+                min="0"
+                placeholder={guessMode === "tier1" ? "50" : guessMode === "tier3" ? "100" : "e.g. 500"}
+                value={guessAmountPaid}
+                onChange={(e) => setGuessAmountPaid(e.target.value)}
+                readOnly={guessMode !== "custom"}
+                className={guessMode !== "custom" ? "bg-muted/40 cursor-default" : ""}
               />
+              {guessNumbers.length > 1 && guessAmountPaid && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  = HK${(Number(guessAmountPaid) / guessNumbers.length).toFixed(2)} per guess
+                </p>
+              )}
             </div>
-            <div>
+
+            <div className={guessNumbers.length === 1 ? "" : "col-span-2"}>
               <label className="block text-sm font-semibold mb-1.5">Payment method</label>
               <select
                 value={guessForm.paymentMethod}
@@ -961,9 +1065,9 @@ export default function LegoJar() {
             <span className="text-sm font-medium">Payment received</span>
           </label>
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setGuessOpen(false)}>Cancel</Button>
+            <Button variant="outline" className="flex-1" onClick={() => { setGuessOpen(false); resetGuessDialog() }}>Cancel</Button>
             <Button className="flex-1" onClick={handleLogGuess} disabled={guessSaving}>
-              {guessSaving ? "Saving…" : "Log guess"}
+              {guessSaving ? "Saving…" : guessNumbers.filter(Boolean).length > 1 ? `Log ${guessNumbers.filter(Boolean).length} guesses` : "Log guess"}
             </Button>
           </div>
         </div>
