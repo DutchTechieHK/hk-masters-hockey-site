@@ -104,30 +104,15 @@ function PaymentPanel({ method, guesserName }) {
   );
 }
 
-function useLegoJarStats() {
-  const [stats, setStats] = useState(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    fetch(`${API_BASE}/api/lego-jar/stats`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setStats(d))
-      .catch(() => setError(true));
-  }, []);
-
-  return { stats, error };
-}
-
-const PRIZES = [
+const FALLBACK_PRIZES = [
   {
     rank: 1,
     badge: "1st Prize",
     badgeColor: "bg-amber-400 text-amber-900",
     title: "7 Nights in a 4-Bedroom Bali Villa",
     description: "Stay at The Starling Villa in Bali — a stunning 4-bedroom private villa with its own pool, open-plan living areas, and lush tropical gardens. Perfect for a family holiday or a group getaway.",
-    image: "/bali-villa.jpg",
+    imageUrl: "/bali-villa.jpg",
     imageAlt: "The Starling Villa, Bali — private pool and tropical gardens",
-    zoomable: true,
   },
   {
     rank: 2,
@@ -135,9 +120,8 @@ const PRIZES = [
     badgeColor: "bg-gray-200 text-gray-700",
     title: "To be announced",
     description: "Watch this space — we're lining up something great for second place.",
-    image: null,
+    imageUrl: null,
     imageAlt: null,
-    zoomable: false,
   },
   {
     rank: 3,
@@ -145,14 +129,34 @@ const PRIZES = [
     badgeColor: "bg-orange-100 text-orange-700",
     title: "To be announced",
     description: "A special prize for the runner-up. Stay tuned!",
-    image: null,
+    imageUrl: null,
     imageAlt: null,
-    zoomable: false,
   },
 ];
 
-function PrizesSection({ onZoom }) {
-  const [first, ...rest] = PRIZES;
+function useLegoJarData() {
+  const [stats, setStats] = useState(null);
+  const [prizes, setPrizes] = useState(FALLBACK_PRIZES);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/lego-jar/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setStats(d))
+      .catch(() => setError(true));
+
+    fetch(`${API_BASE}/api/lego-jar/prizes`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (Array.isArray(d) && d.length > 0) setPrizes(d); })
+      .catch(() => {});
+  }, []);
+
+  return { stats, prizes, error };
+}
+
+function PrizesSection({ prizes, onZoom }) {
+  const [first, ...rest] = prizes;
+  if (!first) return null;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -164,16 +168,16 @@ function PrizesSection({ onZoom }) {
       {/* Hero prize — 1st place */}
       <div className="p-4">
         <div className="relative rounded-xl overflow-hidden border border-gray-100">
-          {first.image && (
+          {first.imageUrl && (
             <button
               type="button"
-              onClick={() => onZoom(first.image, first.imageAlt)}
+              onClick={() => onZoom(first.imageUrl, first.imageAlt)}
               className="relative group block w-full h-52 focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40 cursor-zoom-in"
-              aria-label="Expand villa photo"
+              aria-label="Expand prize photo"
             >
               <img
-                src={first.image}
-                alt={first.imageAlt}
+                src={first.imageUrl}
+                alt={first.imageAlt ?? first.title}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
@@ -189,6 +193,13 @@ function PrizesSection({ onZoom }) {
               </span>
             </button>
           )}
+          {!first.imageUrl && (
+            <div className="px-4 pt-4">
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${first.badgeColor}`}>
+                {first.badge}
+              </span>
+            </div>
+          )}
 
           <div className="p-4">
             <p className="font-bold text-gray-900 text-base leading-snug mb-1">{first.title}</p>
@@ -197,24 +208,36 @@ function PrizesSection({ onZoom }) {
         </div>
 
         {/* 2nd + 3rd prizes side by side */}
-        <div className="grid grid-cols-2 gap-3 mt-3">
-          {rest.map((prize) => (
-            <div key={prize.rank} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-2 ${prize.badgeColor}`}>
-                {prize.badge}
-              </span>
-              <p className="font-semibold text-gray-800 text-sm leading-snug mb-1">{prize.title}</p>
-              <p className="text-xs text-gray-500 leading-relaxed">{prize.description}</p>
-            </div>
-          ))}
-        </div>
+        {rest.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            {rest.map((prize) => (
+              <div key={prize.rank} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+                {prize.imageUrl && (
+                  <button
+                    type="button"
+                    onClick={() => onZoom(prize.imageUrl, prize.imageAlt)}
+                    className="block w-full mb-2 rounded-lg overflow-hidden cursor-zoom-in"
+                    aria-label={`Expand ${prize.badge} photo`}
+                  >
+                    <img src={prize.imageUrl} alt={prize.imageAlt ?? prize.title} className="w-full h-24 object-cover" />
+                  </button>
+                )}
+                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-2 ${prize.badgeColor}`}>
+                  {prize.badge}
+                </span>
+                <p className="font-semibold text-gray-800 text-sm leading-snug mb-1">{prize.title}</p>
+                <p className="text-xs text-gray-500 leading-relaxed">{prize.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export default function LegoJarSection() {
-  const { stats, error } = useLegoJarStats();
+  const { stats, prizes, error } = useLegoJarData();
 
   const [form, setForm] = useState({
     guesserName: "",
@@ -399,7 +422,7 @@ export default function LegoJarSection() {
             </div>
 
             {/* Prizes */}
-            <PrizesSection onZoom={(src, alt) => setLightbox({ src, alt })} />
+            <PrizesSection prizes={prizes} onZoom={(src, alt) => setLightbox({ src, alt })} />
 
             {/* Round history table */}
             {pastRounds.length > 0 && (

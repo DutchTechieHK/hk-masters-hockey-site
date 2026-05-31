@@ -34,6 +34,17 @@ type Config = {
   imageUrl: string | null
 }
 
+type Prize = {
+  id: number
+  rank: number
+  badge: string
+  badgeColor: string
+  title: string
+  description: string
+  imageUrl: string | null
+  imageAlt: string | null
+}
+
 type Round = {
   id: number
   holderName: string
@@ -183,6 +194,7 @@ export default function LegoJar() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [guesses, setGuesses] = useState<Guess[]>([])
   const [squad, setSquad] = useState<SquadPlayer[]>([])
+  const [prizes, setPrizes] = useState<Prize[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"overview" | "guesses" | "config">("overview")
 
@@ -202,6 +214,10 @@ export default function LegoJar() {
   const [configForm, setConfigForm] = useState({ pricePerGuess: "50", actualCount: "", status: "active", imageUrl: "" })
   const [configSaving, setConfigSaving] = useState(false)
 
+  // Prizes panel — one form entry per prize rank
+  const [prizeForms, setPrizeForms] = useState<Record<number, { title: string; description: string; imageUrl: string; imageAlt: string }>>({})
+  const [prizeSaving, setPrizeSaving] = useState<Record<number, boolean>>({})
+
   // Delete confirm
   const [deleteGuessId, setDeleteGuessId] = useState<number | null>(null)
 
@@ -214,11 +230,12 @@ export default function LegoJar() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [cfg, rds, gss, sq] = await Promise.all([
+      const [cfg, rds, gss, sq, pzs] = await Promise.all([
         apiFetch("/api/admin/lego-jar/config"),
         apiFetch("/api/admin/lego-jar/rounds"),
         apiFetch("/api/admin/lego-jar/guesses"),
         fetch("/api/public/squad").then((r) => r.ok ? r.json() : []).catch(() => []),
+        apiFetch("/api/admin/lego-jar/prizes"),
       ])
       setConfig(cfg)
       setRounds(rds)
@@ -230,6 +247,18 @@ export default function LegoJar() {
         status: cfg?.status ?? "active",
         imageUrl: cfg?.imageUrl ?? "",
       })
+      const pzArr: Prize[] = Array.isArray(pzs) ? pzs : []
+      setPrizes(pzArr)
+      const forms: Record<number, { title: string; description: string; imageUrl: string; imageAlt: string }> = {}
+      for (const p of pzArr) {
+        forms[p.rank] = {
+          title: p.title,
+          description: p.description,
+          imageUrl: p.imageUrl ?? "",
+          imageAlt: p.imageAlt ?? "",
+        }
+      }
+      setPrizeForms(forms)
     } catch (err) {
       toast({ title: (err as Error).message || "Failed to load data", variant: "destructive" })
     } finally {
@@ -342,6 +371,35 @@ export default function LegoJar() {
       toast({ title: (err as Error).message || "Failed", variant: "destructive" })
     } finally {
       setDeleteGuessId(null)
+    }
+  }
+
+  // Save a prize
+  const handleSavePrize = async (rank: number) => {
+    const form = prizeForms[rank]
+    if (!form) return
+    if (!form.title.trim()) { toast({ title: "Title is required", variant: "destructive" }); return }
+    if (!form.description.trim()) { toast({ title: "Description is required", variant: "destructive" }); return }
+    const prize = prizes.find((p) => p.rank === rank)
+    setPrizeSaving((s) => ({ ...s, [rank]: true }))
+    try {
+      const updated = await apiFetch(`/api/admin/lego-jar/prizes/${rank}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          badge: prize?.badge,
+          badgeColor: prize?.badgeColor,
+          title: form.title.trim(),
+          description: form.description.trim(),
+          imageUrl: form.imageUrl.trim() || null,
+          imageAlt: form.imageAlt.trim() || null,
+        }),
+      })
+      setPrizes((prev) => prev.map((p) => p.rank === rank ? updated : p))
+      toast({ title: `${rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"} prize saved` })
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to save prize", variant: "destructive" })
+    } finally {
+      setPrizeSaving((s) => ({ ...s, [rank]: false }))
     }
   }
 
@@ -663,6 +721,70 @@ export default function LegoJar() {
       {/* CONFIG TAB */}
       {activeTab === "config" && (
         <div className="max-w-lg space-y-6">
+          {/* Prizes section */}
+          <div className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-5">
+            <h3 className="font-bold text-foreground">Prizes</h3>
+            {prizes.length === 0 && loading && (
+              <p className="text-sm text-muted-foreground">Loading prizes…</p>
+            )}
+            {prizes.map((prize) => {
+              const form = prizeForms[prize.rank] ?? { title: "", description: "", imageUrl: "", imageAlt: "" }
+              const saving = prizeSaving[prize.rank] ?? false
+              const RANK_LABELS = ["", "1st Prize", "2nd Prize", "3rd Prize"]
+              return (
+                <div key={prize.rank} className="border border-border rounded-xl p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${prize.badgeColor}`}>
+                      {prize.badge}
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">{RANK_LABELS[prize.rank]}</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">Title *</label>
+                    <Input
+                      value={form.title}
+                      onChange={(e) => setPrizeForms((f) => ({ ...f, [prize.rank]: { ...form, title: e.target.value } }))}
+                      placeholder="e.g. 7 Nights in Bali Villa"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">Description *</label>
+                    <textarea
+                      value={form.description}
+                      onChange={(e) => setPrizeForms((f) => ({ ...f, [prize.rank]: { ...form, description: e.target.value } }))}
+                      placeholder="Describe the prize…"
+                      rows={3}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">Photo URL <span className="font-normal">(optional)</span></label>
+                    <Input
+                      type="url"
+                      value={form.imageUrl}
+                      onChange={(e) => setPrizeForms((f) => ({ ...f, [prize.rank]: { ...form, imageUrl: e.target.value } }))}
+                      placeholder="https://…"
+                    />
+                    {form.imageUrl && (
+                      <img src={form.imageUrl} alt="Prize preview" className="mt-2 w-32 h-24 object-cover rounded-lg border" />
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground mb-1">Photo alt text <span className="font-normal">(optional)</span></label>
+                    <Input
+                      value={form.imageAlt}
+                      onChange={(e) => setPrizeForms((f) => ({ ...f, [prize.rank]: { ...form, imageAlt: e.target.value } }))}
+                      placeholder="e.g. Bali villa with pool"
+                    />
+                  </div>
+                  <Button size="sm" onClick={() => handleSavePrize(prize.rank)} disabled={saving}>
+                    {saving ? "Saving…" : `Save ${RANK_LABELS[prize.rank]}`}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+
           <div className="bg-white rounded-2xl border border-border p-6 shadow-sm space-y-4">
             <h3 className="font-bold text-foreground">Challenge Settings</h3>
             <div>

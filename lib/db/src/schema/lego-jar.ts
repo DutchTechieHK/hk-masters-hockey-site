@@ -1,5 +1,17 @@
 import { pgTable, serial, text, integer, boolean, numeric, timestamp } from "drizzle-orm/pg-core";
 
+export const legoJarPrizesTable = pgTable("lego_jar_prizes", {
+  id: serial("id").primaryKey(),
+  rank: integer("rank").notNull().unique(),
+  badge: text("badge").notNull(),
+  badgeColor: text("badge_color").notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url"),
+  imageAlt: text("image_alt"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const legoJarConfigTable = pgTable("lego_jar_config", {
   id: serial("id").primaryKey(),
   pricePerGuess: numeric("price_per_guess", { precision: 10, scale: 2 }).notNull().default("50"),

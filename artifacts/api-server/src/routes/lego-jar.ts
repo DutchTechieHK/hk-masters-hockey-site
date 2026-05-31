@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { legoJarConfigTable, legoJarRoundsTable, legoJarGuessesTable } from "@workspace/db/schema";
-import { eq, isNull, desc, sql } from "drizzle-orm";
+import { legoJarConfigTable, legoJarRoundsTable, legoJarGuessesTable, legoJarPrizesTable } from "@workspace/db/schema";
+import { eq, isNull, desc, sql, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { sendLegoJarGuessConfirmationEmail, sendLegoJarGuessAdminNotificationEmail } from "../utils/email";
 
@@ -52,6 +52,62 @@ async function getRoundWithStats(roundId: number) {
     .from(legoJarGuessesTable)
     .where(eq(legoJarGuessesTable.roundId, roundId));
   return stats;
+}
+
+// ─── Default prize data ───────────────────────────────────────────────────────
+
+const DEFAULT_PRIZES = [
+  {
+    rank: 1,
+    badge: "1st Prize",
+    badgeColor: "bg-amber-400 text-amber-900",
+    title: "7 Nights in a 4-Bedroom Bali Villa",
+    description:
+      "Stay at The Starling Villa in Bali — a stunning 4-bedroom private villa with its own pool, open-plan living areas, and lush tropical gardens. Perfect for a family holiday or a group getaway.",
+    imageUrl: "/bali-villa.jpg",
+    imageAlt: "The Starling Villa, Bali — private pool and tropical gardens",
+  },
+  {
+    rank: 2,
+    badge: "2nd Prize",
+    badgeColor: "bg-gray-200 text-gray-700",
+    title: "To be announced",
+    description: "Watch this space — we're lining up something great for second place.",
+    imageUrl: null,
+    imageAlt: null,
+  },
+  {
+    rank: 3,
+    badge: "3rd Prize",
+    badgeColor: "bg-orange-100 text-orange-700",
+    title: "To be announced",
+    description: "A special prize for the runner-up. Stay tuned!",
+    imageUrl: null,
+    imageAlt: null,
+  },
+];
+
+async function getPrizes() {
+  const rows = await db.select().from(legoJarPrizesTable).orderBy(asc(legoJarPrizesTable.rank));
+  if (rows.length === 0) {
+    const inserted = await db.insert(legoJarPrizesTable).values(DEFAULT_PRIZES).returning();
+    return inserted.sort((a, b) => a.rank - b.rank);
+  }
+  return rows;
+}
+
+function serializePrize(p: typeof legoJarPrizesTable.$inferSelect) {
+  return {
+    id: p.id,
+    rank: p.rank,
+    badge: p.badge,
+    badgeColor: p.badgeColor,
+    title: p.title,
+    description: p.description,
+    imageUrl: p.imageUrl ?? null,
+    imageAlt: p.imageAlt ?? null,
+    updatedAt: p.updatedAt.toISOString(),
+  };
 }
 
 // ─── Public Routes ───────────────────────────────────────────────────────────
@@ -118,6 +174,12 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
     totalRaised,
     rounds: roundStats,
   });
+});
+
+// GET /api/lego-jar/prizes
+legoJarPublicRouter.get("/prizes", async (_req, res) => {
+  const prizes = await getPrizes();
+  res.json(prizes.map(serializePrize));
 });
 
 // POST /api/lego-jar/guesses  (public submission)
@@ -192,6 +254,62 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
 // ─── Admin Routes ────────────────────────────────────────────────────────────
 
 legoJarAdminRouter.use(requireAdminAccess);
+
+// GET /api/admin/lego-jar/prizes
+legoJarAdminRouter.get("/prizes", async (_req, res) => {
+  const prizes = await getPrizes();
+  res.json(prizes.map(serializePrize));
+});
+
+// PUT /api/admin/lego-jar/prizes/:rank
+legoJarAdminRouter.put("/prizes/:rank", async (req, res) => {
+  const rank = parseInt(req.params.rank, 10);
+  if (isNaN(rank) || rank < 1 || rank > 3) {
+    res.status(400).json({ error: "rank must be 1, 2, or 3" });
+    return;
+  }
+
+  const { badge, badgeColor, title, description, imageUrl, imageAlt } = req.body ?? {};
+
+  if (typeof title !== "string" || !title.trim()) {
+    res.status(400).json({ error: "title is required" });
+    return;
+  }
+  if (typeof description !== "string" || !description.trim()) {
+    res.status(400).json({ error: "description is required" });
+    return;
+  }
+
+  await getPrizes();
+
+  const [existing] = await db
+    .select()
+    .from(legoJarPrizesTable)
+    .where(eq(legoJarPrizesTable.rank, rank));
+
+  const values = {
+    rank,
+    badge: badge?.trim() || `${rank === 1 ? "1st" : rank === 2 ? "2nd" : "3rd"} Prize`,
+    badgeColor: badgeColor?.trim() || "",
+    title: title.trim(),
+    description: description.trim(),
+    imageUrl: imageUrl?.trim() || null,
+    imageAlt: imageAlt?.trim() || null,
+    updatedAt: new Date(),
+  };
+
+  if (!existing) {
+    const [row] = await db.insert(legoJarPrizesTable).values(values).returning();
+    res.json(serializePrize(row));
+  } else {
+    const [row] = await db
+      .update(legoJarPrizesTable)
+      .set(values)
+      .where(eq(legoJarPrizesTable.rank, rank))
+      .returning();
+    res.json(serializePrize(row));
+  }
+});
 
 // GET /api/admin/lego-jar/config
 legoJarAdminRouter.get("/config", async (_req, res) => {
