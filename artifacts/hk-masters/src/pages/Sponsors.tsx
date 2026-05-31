@@ -237,6 +237,8 @@ export default function Sponsors() {
 
   const activeSponsorCount = sponsors.filter((s) => s.active).length
   const missingLogoCount = sponsors.filter((s) => !s.logoUrl).length
+  const hasContributions = sponsors.some((s) => s.contributionAmount != null)
+  const totalContributions = sponsors.reduce((sum, s) => sum + (s.contributionAmount ?? 0), 0)
 
   if (!sessionChecked) {
     return (
@@ -327,14 +329,15 @@ export default function Sponsors() {
                 <th className="px-6 py-4 font-semibold">Tier</th>
                 <th className="px-6 py-4 font-semibold">Website</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
+                {hasContributions && <th className="px-6 py-4 font-semibold text-right">Contribution</th>}
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">Loading sponsors...</td></tr>
+                <tr><td colSpan={hasContributions ? 7 : 6} className="px-6 py-8 text-center text-muted-foreground">Loading sponsors...</td></tr>
               ) : sortedSponsors.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">No sponsors yet. Add one to get started.</td></tr>
+                <tr><td colSpan={hasContributions ? 7 : 6} className="px-6 py-12 text-center text-muted-foreground">No sponsors yet. Add one to get started.</td></tr>
               ) : (
                 sortedSponsors.map((sponsor) => (
                   <tr key={sponsor.id} className="hover:bg-muted/10 transition-colors group">
@@ -385,6 +388,14 @@ export default function Sponsors() {
                         {sponsor.active ? "Active" : "Inactive"}
                       </Badge>
                     </td>
+                    {hasContributions && (
+                      <td className="px-6 py-4 text-right tabular-nums">
+                        {sponsor.contributionAmount != null
+                          ? <span className="font-medium text-foreground">HK${sponsor.contributionAmount.toLocaleString()}</span>
+                          : <span className="text-muted-foreground italic">—</span>
+                        }
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => openEditModal(sponsor)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
@@ -399,6 +410,15 @@ export default function Sponsors() {
                 ))
               )}
             </tbody>
+            {hasContributions && totalContributions > 0 && (
+              <tfoot className="border-t-2 border-border bg-muted/20">
+                <tr>
+                  <td colSpan={5} className="px-6 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Total Contributions</td>
+                  <td className="px-6 py-3 text-right font-bold text-foreground tabular-nums">HK${totalContributions.toLocaleString()}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
         {sponsors.length > 0 && (
