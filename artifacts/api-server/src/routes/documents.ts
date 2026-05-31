@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { db } from "@workspace/db";
 import { documentsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { requireSession, getSessionLabel } from "../middleware/adminSession";
 import { requirePlayerSession } from "../middleware/playerSession";
@@ -112,7 +112,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const docs = await db
     .select()
     .from(documentsTable)
-    .orderBy(documentsTable.category, documentsTable.uploadedAt);
+    .orderBy(documentsTable.category, desc(documentsTable.uploadedAt));
   res.json(docs.map(mapDocument));
 });
 
@@ -120,7 +120,7 @@ router.get("/player", requirePlayerSession, async (_req, res) => {
   const docs = await db
     .select()
     .from(documentsTable)
-    .orderBy(documentsTable.category, documentsTable.uploadedAt);
+    .orderBy(documentsTable.category, desc(documentsTable.uploadedAt));
   res.json(docs.map(mapDocumentForPlayer));
 });
 
