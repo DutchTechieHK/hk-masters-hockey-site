@@ -1,6 +1,25 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
 
+function LegoBrickIcon({ className = "w-7 h-7" }) {
+  return (
+    <svg className={className} viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="0" y="8" width="32" height="14" rx="2" fill="#E3000B" />
+      <rect x="0" y="18" width="32" height="4" rx="1" fill="#B20009" />
+      <rect x="4" y="3" width="6" height="7" rx="3" fill="#E3000B" />
+      <rect x="4" y="3" width="6" height="7" rx="3" fill="#C20008" opacity="0.5" />
+      <rect x="13" y="3" width="6" height="7" rx="3" fill="#E3000B" />
+      <rect x="13" y="3" width="6" height="7" rx="3" fill="#C20008" opacity="0.5" />
+      <rect x="22" y="3" width="6" height="7" rx="3" fill="#E3000B" />
+      <rect x="22" y="3" width="6" height="7" rx="3" fill="#C20008" opacity="0.5" />
+      <rect x="4" y="3" width="6" height="3" rx="2" fill="#FF3333" opacity="0.4" />
+      <rect x="13" y="3" width="6" height="3" rx="2" fill="#FF3333" opacity="0.4" />
+      <rect x="22" y="3" width="6" height="3" rx="2" fill="#FF3333" opacity="0.4" />
+      <rect x="0" y="8" width="32" height="2.5" rx="0" fill="#FF3333" opacity="0.18" />
+    </svg>
+  );
+}
+
 const PAYMENT_METHODS = [
   {
     id: "payme",
@@ -179,7 +198,9 @@ export default function LegoJarSection() {
           <span className="inline-block bg-[#1E3A6E] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
             Fundraiser
           </span>
-          <h2 className="text-3xl font-extrabold text-gray-900 mb-3">🧱 LEGO Jar Challenge</h2>
+          <h2 className="text-3xl font-extrabold text-gray-900 mb-3 flex items-center gap-3">
+            <LegoBrickIcon className="w-10 h-7 shrink-0" /> LEGO Jar Challenge
+          </h2>
           <p className="text-gray-600 max-w-2xl leading-relaxed">
             How many LEGO bricks are in the jar? Guess the exact number for{" "}
             <span className="font-semibold text-[#1E3A6E]">HK${Number(pricePerGuess).toLocaleString()}</span> — the closest guess wins!
@@ -215,8 +236,8 @@ export default function LegoJarSection() {
                     className="w-20 h-20 object-cover rounded-xl border border-gray-200 shrink-0"
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-[#1E3A6E]/8 rounded-xl flex items-center justify-center text-4xl shrink-0">
-                    🧱
+                  <div className="w-20 h-20 bg-[#1E3A6E]/8 rounded-xl flex items-center justify-center shrink-0">
+                    <LegoBrickIcon className="w-12 h-9" />
                   </div>
                 )}
                 <div className="flex-1">
@@ -299,7 +320,7 @@ export default function LegoJarSection() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">Guess submitted! 🧱</h3>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center justify-center gap-2">Guess submitted! <LegoBrickIcon className="w-8 h-6" /></h3>
                   <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto">
                     Your guess of <span className="font-bold text-[#1E3A6E]">{Number(form.guessNumber).toLocaleString()}</span> is in. Good luck!
                   </p>
