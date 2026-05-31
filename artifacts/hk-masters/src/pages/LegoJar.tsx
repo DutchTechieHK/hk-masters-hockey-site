@@ -244,7 +244,10 @@ export default function LegoJar() {
   // Edit guesser (group-level contact info + per-guess fields)
   const [editGroup, setEditGroup] = useState<GuesserGroup | null>(null)
   const [editContactForm, setEditContactForm] = useState({ guesserName: "", guesserEmail: "", guesserPhone: "" })
-  const [editGuessRows, setEditGuessRows] = useState<{ id: number; guessNumber: string; paymentMethod: string }[]>([])
+  const [editGuessRows, setEditGuessRows] = useState<{ id: number; guessNumber: string }[]>([])
+  const [editGroupPaymentMethod, setEditGroupPaymentMethod] = useState("cash")
+  const [editGroupPaid, setEditGroupPaid] = useState(false)
+  const [editGroupPaidTouched, setEditGroupPaidTouched] = useState(false)
   const [editGroupAmountPaid, setEditGroupAmountPaid] = useState("")
   const [editGroupSaving, setEditGroupSaving] = useState(false)
 
@@ -257,8 +260,12 @@ export default function LegoJar() {
     setEditGuessRows(group.guesses.map((g) => ({
       id: g.id,
       guessNumber: String(g.guessNumber),
-      paymentMethod: g.paymentMethod ?? "cash",
     })))
+    // A bet is one payment: use the guesser's dominant payment method, and treat
+    // it as received only when every guess in the bet is already marked received.
+    setEditGroupPaymentMethod(group.dominantPaymentMethod ?? group.guesses[0]?.paymentMethod ?? "cash")
+    setEditGroupPaid(group.guesses.length > 0 && group.paidCount === group.guesses.length)
+    setEditGroupPaidTouched(false)
     // Use the already-rounded group total — avoids writing 33+33+33=99 back to DB
     setEditGroupAmountPaid(group.totalAmountPaid > 0 ? String(group.totalAmountPaid) : "")
     setEditGroup(group)
@@ -286,9 +293,14 @@ export default function LegoJar() {
               guesserName: editContactForm.guesserName.trim(),
               guesserEmail: editContactForm.guesserEmail.trim() || null,
               guesserPhone: editContactForm.guesserPhone.trim() || null,
+              // One bet = one payment: apply the same method to every guess in
+              // the group. Only touch paid status when the admin explicitly
+              // toggled it, so saving unrelated edits never clears the existing
+              // received status of a partially-paid bet.
+              paymentMethod: editGroupPaymentMethod || null,
+              ...(editGroupPaidTouched ? { paid: editGroupPaid } : {}),
               ...(row ? {
                 guessNumber: parseInt(row.guessNumber, 10) || g.guessNumber,
-                paymentMethod: row.paymentMethod || null,
                 amountPaid: perRowAmounts[i],
               } : {}),
             }),
@@ -1372,45 +1384,41 @@ export default function LegoJar() {
               <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
                 {editGuessRows.length === 1 ? "Guess details" : `${editGuessRows.length} Guesses`}
               </p>
-              {editGuessRows.map((row, i) => (
-                <div key={row.id} className="bg-muted/30 rounded-lg p-3 space-y-2">
-                  {editGuessRows.length > 1 && (
-                    <p className="text-xs font-semibold text-muted-foreground">Guess {i + 1}</p>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2">
-                      <label className="block text-xs font-semibold mb-1">Guess number *</label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={row.guessNumber}
-                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, guessNumber: e.target.value } : r))}
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="block text-xs font-semibold mb-1">Payment method</label>
-                      <select
-                        value={row.paymentMethod}
-                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, paymentMethod: e.target.value } : r))}
-                        className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                      >
-                        <option value="cash">Cash</option>
-                        <option value="payme">PayMe</option>
-                        <option value="wise">Wise</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                      </select>
-                    </div>
+              {/* Guess numbers — one per guess */}
+              <div className="grid grid-cols-2 gap-3">
+                {editGuessRows.map((row, i) => (
+                  <div key={row.id}>
+                    <label className="block text-xs font-semibold mb-1">
+                      {editGuessRows.length === 1 ? "Guess number *" : `Guess ${i + 1} number *`}
+                    </label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={row.guessNumber}
+                      onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, guessNumber: e.target.value } : r))}
+                    />
                   </div>
-                </div>
-              ))}
-              {/* Single total amount field — distributed across rows on save to avoid rounding errors */}
+                ))}
+              </div>
+
+              {/* One bet = one payment: a single payment method for the whole bet */}
               <div>
-                <label className="block text-xs font-semibold mb-1">
-                  Total amount paid (HK$)
-                  {editGuessRows.length > 1 && (
-                    <span className="font-normal text-muted-foreground ml-1">— split evenly across {editGuessRows.length} guesses on save</span>
-                  )}
-                </label>
+                <label className="block text-xs font-semibold mb-1">Payment method</label>
+                <select
+                  value={editGroupPaymentMethod}
+                  onChange={(e) => setEditGroupPaymentMethod(e.target.value)}
+                  className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="payme">PayMe</option>
+                  <option value="wise">Wise</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                </select>
+              </div>
+
+              {/* Single total amount field — stored on the first guess to avoid rounding errors */}
+              <div>
+                <label className="block text-xs font-semibold mb-1">Total amount paid (HK$)</label>
                 <Input
                   type="number"
                   min="0"
@@ -1419,6 +1427,20 @@ export default function LegoJar() {
                   onChange={(e) => setEditGroupAmountPaid(e.target.value)}
                 />
               </div>
+
+              {/* Single payment-received toggle for the whole bet */}
+              <label className="flex items-center gap-2.5 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={editGroupPaid}
+                  onChange={(e) => { setEditGroupPaid(e.target.checked); setEditGroupPaidTouched(true) }}
+                  className="w-4 h-4 rounded border-input"
+                />
+                <span className="text-sm font-medium">Payment received</span>
+                {editGuessRows.length > 1 && (
+                  <span className="text-xs text-muted-foreground">— applies to all {editGuessRows.length} guesses</span>
+                )}
+              </label>
             </div>
           )}
 

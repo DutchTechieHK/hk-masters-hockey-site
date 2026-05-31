@@ -11,6 +11,12 @@ Each guess is a row in `lego_jar_guesses` with its own `amount_paid`. A "bet" of
 
 **How to apply:** Both create endpoints (public + admin) and the admin edit-modal save use this rule. Display code still `Math.round()`s sums as a harmless safety net. If you ever reintroduce per-guess amounts, keep them whole or the rounding bug returns.
 
+# Payment is bet-level, not per-guess
+
+In the admin Edit Guesser dialog, **payment method and "payment received" are one-per-bet**, not per-guess (a bet is one transaction). Saving applies the single method to every guess in the group; guess numbers stay per-guess. The "Payment received" checkbox is only sent to the API when the admin **explicitly toggles it** (a "touched" flag) — otherwise an unrelated edit (name/number fix) would silently clear `paid`/`paid_at` on a legacy partially-paid bet.
+
+**Why:** A binary toggle can't represent a mixed (e.g. 2/3 paid) group, so an unconditional `paid` PATCH on save would clobber existing received status. Initialize the toggle as checked only when all guesses are already paid.
+
 # Correcting live guess data
 
 The **dev database is empty** — all real LEGO jar / fundraising data lives in **production**. `executeSql({environment:"production"})` is **read-only** (writes roll back).
