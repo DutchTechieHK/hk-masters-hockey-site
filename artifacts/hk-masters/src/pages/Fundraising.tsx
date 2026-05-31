@@ -513,43 +513,42 @@ export default function Fundraising() {
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr>
-                  <th className="px-6 py-4 font-semibold">Donor / Sponsor</th>
-                  <th className="px-6 py-4 font-semibold">Email</th>
-                  <th className="px-6 py-4 font-semibold">Beneficiary</th>
-                  <th className="px-6 py-4 font-semibold">Payment</th>
-                  <th className="px-6 py-4 font-semibold text-right">Pledged</th>
-                  <th className="px-6 py-4 font-semibold text-right">Received</th>
-                  <th className="px-6 py-4 font-semibold">Status</th>
-                  <th className="px-6 py-4 font-semibold">Date</th>
-                  <th className="px-6 py-4 font-semibold">Paid Date</th>
-                  <th className="px-6 py-4 font-semibold text-right sticky right-0 z-20 bg-muted border-l border-border">Actions</th>
+                  <th className="px-4 py-3 font-semibold">Donor / Sponsor</th>
+                  <th className="px-4 py-3 font-semibold">Email</th>
+                  <th className="px-4 py-3 font-semibold">Beneficiary</th>
+                  <th className="px-4 py-3 font-semibold">Payment</th>
+                  <th className="px-4 py-3 font-semibold text-right">Pledged</th>
+                  <th className="px-4 py-3 font-semibold text-right">Received</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Dates</th>
+                  <th className="px-4 py-3 font-semibold text-right sticky right-0 z-20 bg-muted border-l border-border">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {isLoading ? (
-                  <tr><td colSpan={10} className="px-6 py-8 text-center text-muted-foreground">Loading records...</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading records...</td></tr>
                 ) : entries.length === 0 ? (
-                  <tr><td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">No fundraising records yet.</td></tr>
                 ) : (
                   entries.map(entry => (
                     <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-foreground">{entry.donorName}</div>
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-foreground whitespace-nowrap">{entry.donorName}</div>
                         {entry.teamName && <div className="text-xs text-muted-foreground">{entry.teamName}</div>}
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">
+                      <td className="px-4 py-3 text-muted-foreground max-w-[160px]">
                         {entry.donorEmail
-                          ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors">{entry.donorEmail}</a>
+                          ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors block truncate" title={entry.donorEmail}>{entry.donorEmail}</a>
                           : <span className="text-xs italic">—</span>
                         }
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         {entry.beneficiary
-                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full">{entry.beneficiary}</span>
+                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">{entry.beneficiary}</span>
                           : <span className="text-xs italic text-muted-foreground">—</span>
                         }
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {entry.paymentMethod === "payme" && (
                           <span className="text-xs font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded-full">PayMe</span>
                         )}
@@ -557,29 +556,26 @@ export default function Fundraising() {
                           <span className="text-xs font-medium bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">Wise</span>
                         )}
                         {entry.paymentMethod === "bank_transfer" && (
-                          <span className="text-xs font-medium bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Bank Transfer</span>
+                          <span className="text-xs font-medium bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Bank</span>
                         )}
                         {!entry.paymentMethod && (
                           <span className="text-xs italic text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-right font-medium text-foreground">{formatCurrency(entry.amountPledged)}</td>
-                      <td className="px-6 py-4 text-right font-bold text-emerald-600">{formatCurrency(entry.amountReceived)}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3 text-right font-medium text-foreground whitespace-nowrap">{formatCurrency(entry.amountPledged)}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(entry.amountReceived)}</td>
+                      <td className="px-4 py-3">
                         <Badge className={STATUS_COLORS[entry.status] + " capitalize border-0 shadow-none"}>
                           {entry.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        {entry.date ? format(parseISO(entry.date), 'MMM d, yyyy') : '-'}
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                        <div>{entry.date ? format(parseISO(entry.date), 'd MMM yy') : '—'}</div>
+                        {entry.paidAt && (
+                          <div className="text-xs text-emerald-600 font-medium">{format(parseISO(entry.paidAt), 'd MMM yy')} ✓</div>
+                        )}
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground">
-                        {entry.paidAt
-                          ? <span className="text-emerald-600 font-medium">{format(parseISO(entry.paidAt), 'MMM d, yyyy')}</span>
-                          : <span className="text-xs italic">—</span>
-                        }
-                      </td>
-                      <td className="px-6 py-4 text-right sticky right-0 z-10 bg-white border-l border-border">
+                      <td className="px-4 py-3 text-right sticky right-0 z-10 bg-white border-l border-border">
                         <div className="flex justify-end items-center space-x-2">
                           {entry.status === "received" && !entry.donorEmail && (
                             <span
