@@ -26,6 +26,22 @@ async function getCurrentRound() {
   return round ?? null;
 }
 
+function serializeRound(r: typeof legoJarRoundsTable.$inferSelect & { guessCount?: number; paidCount?: number; amountRaised?: number }) {
+  return {
+    id: r.id,
+    holderName: r.holderName,
+    squadMemberId: r.squadMemberId ?? null,
+    location: r.location ?? null,
+    startedAt: r.startedAt.toISOString(),
+    endedAt: r.endedAt?.toISOString() ?? null,
+    notes: (r as any).notes ?? null,
+    guessCount: (r as any).guessCount ?? 0,
+    paidCount: (r as any).paidCount ?? 0,
+    amountRaised: (r as any).amountRaised ?? 0,
+    isCurrent: r.endedAt === null,
+  };
+}
+
 async function getRoundWithStats(roundId: number) {
   const [stats] = await db
     .select({
@@ -219,6 +235,7 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
       return {
         id: r.id,
         holderName: r.holderName,
+        squadMemberId: r.squadMemberId ?? null,
         location: r.location ?? null,
         startedAt: r.startedAt.toISOString(),
         endedAt: r.endedAt?.toISOString() ?? null,
@@ -236,7 +253,7 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
 
 // POST /api/admin/lego-jar/rounds  (start a new round / pass the jar)
 legoJarAdminRouter.post("/rounds", async (req, res) => {
-  const { holderName, location, notes, closeCurrentRound } = req.body ?? {};
+  const { holderName, squadMemberId, location, notes, closeCurrentRound } = req.body ?? {};
 
   if (typeof holderName !== "string" || !holderName.trim()) {
     res.status(400).json({ error: "holderName is required" });
@@ -257,6 +274,7 @@ legoJarAdminRouter.post("/rounds", async (req, res) => {
     .insert(legoJarRoundsTable)
     .values({
       holderName: holderName.trim(),
+      squadMemberId: squadMemberId ? parseInt(squadMemberId, 10) : null,
       location: location?.trim() || null,
       notes: notes?.trim() || null,
     })
@@ -265,6 +283,7 @@ legoJarAdminRouter.post("/rounds", async (req, res) => {
   res.status(201).json({
     id: round.id,
     holderName: round.holderName,
+    squadMemberId: round.squadMemberId ?? null,
     location: round.location ?? null,
     startedAt: round.startedAt.toISOString(),
     endedAt: null,

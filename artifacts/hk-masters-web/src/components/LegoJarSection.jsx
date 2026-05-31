@@ -32,16 +32,6 @@ const PAYMENT_METHODS = [
       </svg>
     ),
   },
-  {
-    id: "cash",
-    label: "Cash",
-    sublabel: "In person",
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-      </svg>
-    ),
-  },
 ];
 
 function PaymentPanel({ method, guesserName }) {
@@ -69,39 +59,28 @@ function PaymentPanel({ method, guesserName }) {
       </div>
     );
   }
-  if (method === "bank_transfer") {
-    return (
-      <div className="bg-white border border-gray-200 rounded-2xl p-6">
-        <p className="text-sm font-bold text-gray-900 mb-1 text-center">Bank Transfer Details</p>
-        <p className="text-xs text-gray-500 mb-5 text-center">
-          Transfer <span className="font-semibold text-gray-700">HK$50</span> to the account below.
-        </p>
-        <div className="space-y-2.5">
-          {[
-            ["Bank", "Citibank Hong Kong"],
-            ["Account Name", "Rene Theil"],
-            ["Bank Code", "250"],
-            ["Branch Code", "390"],
-            ["Account Number", "0046103724"],
-            ["SWIFT / BIC", "CITIHKAXXXX"],
-            ["Reference", "Hong Kong Masters Hockey"],
-          ].map(([label, value]) => (
-            <div key={label} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-              <span className="text-xs font-semibold text-gray-500">{label}</span>
-              <span className={`text-sm font-mono ${label === "Reference" ? "font-semibold text-[#1E3A6E]" : "text-gray-800"}`}>{value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
   return (
-    <div className="bg-[#FFF8E1] border border-amber-200 rounded-2xl p-6 text-center">
-      <div className="text-3xl mb-3">🤝</div>
-      <p className="text-sm font-bold text-gray-900 mb-1">Pay in cash</p>
-      <p className="text-xs text-gray-600 leading-relaxed">
-        Hand your <span className="font-semibold">HK$50</span> cash directly to the jar holder. They'll mark your guess as paid. Thank you!
+    <div className="bg-white border border-gray-200 rounded-2xl p-6">
+      <p className="text-sm font-bold text-gray-900 mb-1 text-center">Bank Transfer Details</p>
+      <p className="text-xs text-gray-500 mb-5 text-center">
+        Transfer <span className="font-semibold text-gray-700">HK$50</span> to the account below.
       </p>
+      <div className="space-y-2.5">
+        {[
+          ["Bank", "Citibank Hong Kong"],
+          ["Account Name", "Rene Theil"],
+          ["Bank Code", "250"],
+          ["Branch Code", "390"],
+          ["Account Number", "0046103724"],
+          ["SWIFT / BIC", "CITIHKAXXXX"],
+          ["Reference", "Hong Kong Masters Hockey"],
+        ].map(([label, value]) => (
+          <div key={label} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+            <span className="text-xs font-semibold text-gray-500">{label}</span>
+            <span className={`text-sm font-mono ${label === "Reference" ? "font-semibold text-[#1E3A6E]" : "text-gray-800"}`}>{value}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -138,6 +117,9 @@ export default function LegoJarSection() {
   const totalGuesses = stats?.totalGuesses ?? 0;
   const totalRaised = stats?.totalRaised ?? 0;
   const currentRound = stats?.currentRound ?? null;
+  const rounds = stats?.rounds ?? [];
+  const pastRounds = rounds.filter((r) => r.endedAt !== null);
+  const jarImageUrl = stats?.config?.imageUrl ?? null;
 
   function validate() {
     const errs = {};
@@ -222,24 +204,40 @@ export default function LegoJarSection() {
               ))}
             </div>
 
-            {/* Current holder */}
-            {currentRound && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Jar currently with</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#1E3A6E]/10 rounded-full flex items-center justify-center text-lg">🧱</div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-lg leading-tight">{currentRound.holderName}</p>
-                    {currentRound.location && (
-                      <p className="text-xs text-gray-500 mt-0.5">{currentRound.location}</p>
-                    )}
+            {/* Current holder + optional jar photo */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">The jar right now</p>
+              <div className="flex items-start gap-4">
+                {jarImageUrl ? (
+                  <img
+                    src={jarImageUrl}
+                    alt="The LEGO jar"
+                    className="w-20 h-20 object-cover rounded-xl border border-gray-200 shrink-0"
+                  />
+                ) : (
+                  <div className="w-20 h-20 bg-[#1E3A6E]/8 rounded-xl flex items-center justify-center text-4xl shrink-0">
+                    🧱
                   </div>
+                )}
+                <div className="flex-1">
+                  {currentRound ? (
+                    <>
+                      <p className="font-bold text-gray-900 text-lg leading-tight">{currentRound.holderName}</p>
+                      {currentRound.location && (
+                        <p className="text-xs text-gray-500 mt-0.5">{currentRound.location}</p>
+                      )}
+                      <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+                        Get your guess in — the jar moves around to team events and social gatherings.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-500 leading-relaxed">
+                      The jar is warming up! Check back soon to find out who has it next.
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-                  Get your guess in now — the jar moves around to team events and social gatherings.
-                </p>
               </div>
-            )}
+            </div>
 
             {/* How it works */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -260,6 +258,35 @@ export default function LegoJarSection() {
                 ))}
               </ul>
             </div>
+
+            {/* Round history table */}
+            {pastRounds.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
+                  <h3 className="font-bold text-gray-900 text-sm">Jar journey so far</h3>
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+                    <tr>
+                      <th className="px-5 py-2.5 text-left font-semibold">Holder</th>
+                      <th className="px-5 py-2.5 text-left font-semibold">Location</th>
+                      <th className="px-5 py-2.5 text-right font-semibold">Guesses</th>
+                      <th className="px-5 py-2.5 text-right font-semibold">Raised</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {pastRounds.map((r) => (
+                      <tr key={r.id}>
+                        <td className="px-5 py-3 font-medium text-gray-900">{r.holderName}</td>
+                        <td className="px-5 py-3 text-gray-500 text-xs">{r.location ?? "—"}</td>
+                        <td className="px-5 py-3 text-right font-medium text-gray-700">{r.guessCount}</td>
+                        <td className="px-5 py-3 text-right font-bold text-[#1E3A6E]">HK${r.amountRaised.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Right: Form or success */}
@@ -346,7 +373,7 @@ export default function LegoJarSection() {
                   <p className="block text-sm font-semibold text-gray-700 mb-2">
                     How will you pay the HK${Number(pricePerGuess).toLocaleString()} fee? <span className="text-[#DE2910]">*</span>
                   </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     {PAYMENT_METHODS.map((pm) => (
                       <button
                         key={pm.id}

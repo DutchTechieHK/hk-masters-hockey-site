@@ -17,6 +17,7 @@ ON CONFLICT (id) DO NOTHING;
 CREATE TABLE IF NOT EXISTS lego_jar_rounds (
   id SERIAL PRIMARY KEY,
   holder_name TEXT NOT NULL,
+  squad_member_id INTEGER REFERENCES players(id),
   location TEXT,
   started_at TIMESTAMP NOT NULL DEFAULT NOW(),
   ended_at TIMESTAMP,

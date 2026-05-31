@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
-import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History } from "lucide-react"
+import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
@@ -38,6 +37,7 @@ type Config = {
 type Round = {
   id: number
   holderName: string
+  squadMemberId: number | null
   location: string | null
   startedAt: string
   endedAt: string | null
@@ -59,6 +59,13 @@ type Guess = {
   createdAt: string
 }
 
+type SquadPlayer = {
+  id: number
+  name: string
+  shirtNumber: number | null
+  teamCategory: string | null
+}
+
 const PM_LABELS: Record<string, string> = {
   payme: "PayMe",
   wise: "Wise",
@@ -77,18 +84,111 @@ function formatHKD(n: number) {
   return `HK$${n.toLocaleString()}`
 }
 
+// ── Squad member combobox ─────────────────────────────────────────────────────
+function SquadCombobox({
+  squad,
+  selectedId,
+  onSelect,
+}: {
+  squad: SquadPlayer[]
+  selectedId: string
+  onSelect: (id: string, name: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [q, setQ] = useState("")
+  const containerRef = useRef<HTMLDivElement>(null)
+  const selected = squad.find((p) => String(p.id) === selectedId)
+
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onClick)
+    return () => document.removeEventListener("mousedown", onClick)
+  }, [])
+
+  const filtered = q
+    ? squad.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || String(p.shirtNumber ?? "").includes(q))
+    : squad
+
+  const mo40 = filtered.filter((p) => p.teamCategory?.toLowerCase().includes("mo40"))
+  const mo50 = filtered.filter((p) => p.teamCategory?.toLowerCase().includes("mo50"))
+  const other = filtered.filter((p) => !p.teamCategory?.toLowerCase().includes("mo40") && !p.teamCategory?.toLowerCase().includes("mo50"))
+
+  function renderGroup(label: string, players: SquadPlayer[]) {
+    if (!players.length) return null
+    return (
+      <div key={label}>
+        <div className="px-3 py-1.5 text-xs font-bold text-muted-foreground uppercase tracking-wider bg-muted/30 border-b border-border">{label}</div>
+        {players.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              onSelect(String(p.id), p.name)
+              setQ("")
+              setOpen(false)
+            }}
+            className={`w-full text-left px-4 py-2 text-sm hover:bg-muted/40 flex items-center gap-2 ${String(selectedId) === String(p.id) ? "bg-primary/5 text-primary font-semibold" : "text-foreground"}`}
+          >
+            {p.shirtNumber != null && <span className="text-xs text-muted-foreground w-7 shrink-0 font-mono">#{p.shirtNumber}</span>}
+            <span>{p.name}</span>
+          </button>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="flex items-center w-full rounded-md border border-input bg-background text-sm">
+        <Search className="w-4 h-4 text-muted-foreground ml-3 shrink-0" />
+        <input
+          type="text"
+          value={selected && !open ? selected.name : q}
+          onChange={(e) => { setQ(e.target.value); onSelect("", ""); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          placeholder="Search squad members…"
+          className="flex-1 px-3 py-2 bg-transparent focus:outline-none placeholder:text-muted-foreground"
+          autoComplete="off"
+        />
+        {selectedId && (
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); onSelect("", ""); setQ("") }} className="mr-2 p-1 text-muted-foreground hover:text-foreground rounded">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute z-50 w-full mt-1 bg-popover rounded-md border border-border shadow-lg max-h-52 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="px-4 py-3 text-sm text-muted-foreground text-center">No players found</div>
+          ) : (
+            <>
+              {renderGroup("MO40", mo40)}
+              {renderGroup("MO50", mo50)}
+              {renderGroup("Other", other)}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function LegoJar() {
   const { toast } = useToast()
 
   const [config, setConfig] = useState<Config | null>(null)
   const [rounds, setRounds] = useState<Round[]>([])
   const [guesses, setGuesses] = useState<Guess[]>([])
+  const [squad, setSquad] = useState<SquadPlayer[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<"overview" | "guesses" | "config">("overview")
 
   // Pass jar dialog
   const [passJarOpen, setPassJarOpen] = useState(false)
-  const [passForm, setPassForm] = useState({ holderName: "", location: "", notes: "" })
+  const [passForm, setPassForm] = useState({ holderName: "", squadMemberId: "", location: "", notes: "" })
   const [passSaving, setPassSaving] = useState(false)
 
   // Log guess dialog
@@ -105,17 +205,25 @@ export default function LegoJar() {
   // Delete confirm
   const [deleteGuessId, setDeleteGuessId] = useState<number | null>(null)
 
+  // Guess search/filter state
+  const [guessSearch, setGuessSearch] = useState("")
+  const [guessFilterPm, setGuessFilterPm] = useState("all")
+  const [guessFilterPaid, setGuessFilterPaid] = useState("all")
+  const [guessFilterRound, setGuessFilterRound] = useState("all")
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [cfg, rds, gss] = await Promise.all([
+      const [cfg, rds, gss, sq] = await Promise.all([
         apiFetch("/api/admin/lego-jar/config"),
         apiFetch("/api/admin/lego-jar/rounds"),
         apiFetch("/api/admin/lego-jar/guesses"),
+        fetch("/api/public/squad").then((r) => r.ok ? r.json() : []).catch(() => []),
       ])
       setConfig(cfg)
       setRounds(rds)
       setGuesses(gss)
+      setSquad(Array.isArray(sq) ? sq : [])
       setConfigForm({
         pricePerGuess: String(cfg?.pricePerGuess ?? 50),
         actualCount: cfg?.actualCount != null ? String(cfg.actualCount) : "",
@@ -138,6 +246,24 @@ export default function LegoJar() {
   const pricePerGuess = Number(config?.pricePerGuess ?? 50)
   const totalRaised = paidGuesses * pricePerGuess
 
+  // Filtered guesses for guesses tab
+  const filteredGuesses = guesses.filter((g) => {
+    const q = guessSearch.trim().toLowerCase()
+    if (q) {
+      const nameMatch = g.guesserName.toLowerCase().includes(q)
+      const emailMatch = g.guesserEmail?.toLowerCase().includes(q) ?? false
+      if (!nameMatch && !emailMatch) return false
+    }
+    if (guessFilterPm !== "all" && g.paymentMethod !== guessFilterPm) return false
+    if (guessFilterPaid === "paid" && !g.paid) return false
+    if (guessFilterPaid === "unpaid" && g.paid) return false
+    if (guessFilterRound !== "all") {
+      const rId = guessFilterRound === "none" ? null : parseInt(guessFilterRound, 10)
+      if (g.roundId !== rId) return false
+    }
+    return true
+  })
+
   // Pass the Jar
   const handlePassJar = async () => {
     if (!passForm.holderName.trim()) { toast({ title: "Holder name is required", variant: "destructive" }); return }
@@ -145,11 +271,17 @@ export default function LegoJar() {
     try {
       await apiFetch("/api/admin/lego-jar/rounds", {
         method: "POST",
-        body: JSON.stringify({ ...passForm, closeCurrentRound: true }),
+        body: JSON.stringify({
+          holderName: passForm.holderName.trim(),
+          squadMemberId: passForm.squadMemberId || null,
+          location: passForm.location.trim() || null,
+          notes: passForm.notes.trim() || null,
+          closeCurrentRound: true,
+        }),
       })
       toast({ title: "Jar passed!", description: `Now with ${passForm.holderName.trim()}` })
       setPassJarOpen(false)
-      setPassForm({ holderName: "", location: "", notes: "" })
+      setPassForm({ holderName: "", squadMemberId: "", location: "", notes: "" })
       await load()
     } catch (err) {
       toast({ title: (err as Error).message || "Failed", variant: "destructive" })
@@ -403,67 +535,127 @@ export default function LegoJar() {
 
       {/* GUESSES TAB */}
       {activeTab === "guesses" && (
-        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/30 text-xs text-muted-foreground uppercase border-b border-border">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold">Guesser</th>
-                  <th className="px-6 py-3 text-left font-semibold">Email</th>
-                  <th className="px-6 py-3 text-right font-semibold">Guess #</th>
-                  <th className="px-6 py-3 text-left font-semibold">Round / Holder</th>
-                  <th className="px-6 py-3 text-left font-semibold">Payment</th>
-                  <th className="px-6 py-3 text-left font-semibold">Paid</th>
-                  <th className="px-6 py-3 text-left font-semibold">Date</th>
-                  <th className="px-6 py-3 text-right font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {loading ? (
-                  <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading…</td></tr>
-                ) : guesses.length === 0 ? (
-                  <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">No guesses yet.</td></tr>
-                ) : (
-                  guesses.map((g) => {
-                    const round = rounds.find((r) => r.id === g.roundId)
-                    return (
-                      <tr key={g.id} className="hover:bg-muted/10 group">
-                        <td className="px-6 py-3 font-medium">{g.guesserName}</td>
-                        <td className="px-6 py-3 text-muted-foreground text-xs">{g.guesserEmail ?? "—"}</td>
-                        <td className="px-6 py-3 text-right font-mono font-bold">{g.guessNumber.toLocaleString()}</td>
-                        <td className="px-6 py-3 text-muted-foreground text-xs">{round ? round.holderName : "—"}</td>
-                        <td className="px-6 py-3">
-                          {g.paymentMethod ? (
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PM_COLORS[g.paymentMethod] ?? "bg-gray-100 text-gray-600"}`}>
-                              {PM_LABELS[g.paymentMethod] ?? g.paymentMethod}
-                            </span>
-                          ) : "—"}
-                        </td>
-                        <td className="px-6 py-3">
-                          <button
-                            onClick={() => togglePaid(g)}
-                            className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
-                              g.paid ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-emerald-50"
-                            }`}
-                          >
-                            {g.paid ? "✓ Paid" : "Unpaid"}
-                          </button>
-                        </td>
-                        <td className="px-6 py-3 text-muted-foreground text-xs">{format(parseISO(g.createdAt), "d MMM yyyy")}</td>
-                        <td className="px-6 py-3 text-right">
-                          <button
-                            onClick={() => setDeleteGuessId(g.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive rounded transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
+        <div className="space-y-4">
+          {/* Search + filter controls */}
+          <div className="flex flex-wrap gap-3 bg-white rounded-xl border border-border p-4 shadow-sm">
+            <div className="relative flex-1 min-w-52">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={guessSearch}
+                onChange={(e) => setGuessSearch(e.target.value)}
+                placeholder="Search by name or email…"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-input bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              />
+            </div>
+            <select
+              value={guessFilterPm}
+              onChange={(e) => setGuessFilterPm(e.target.value)}
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">All payment methods</option>
+              <option value="payme">PayMe</option>
+              <option value="wise">Wise</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cash">Cash</option>
+            </select>
+            <select
+              value={guessFilterPaid}
+              onChange={(e) => setGuessFilterPaid(e.target.value)}
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">Paid & unpaid</option>
+              <option value="paid">Paid only</option>
+              <option value="unpaid">Unpaid only</option>
+            </select>
+            <select
+              value={guessFilterRound}
+              onChange={(e) => setGuessFilterRound(e.target.value)}
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="all">All rounds</option>
+              {rounds.map((r) => (
+                <option key={r.id} value={String(r.id)}>
+                  {r.holderName}{r.isCurrent ? " (current)" : ""}
+                </option>
+              ))}
+            </select>
+            {(guessSearch || guessFilterPm !== "all" || guessFilterPaid !== "all" || guessFilterRound !== "all") && (
+              <button
+                onClick={() => { setGuessSearch(""); setGuessFilterPm("all"); setGuessFilterPaid("all"); setGuessFilterRound("all") }}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground px-2"
+              >
+                <X className="w-3.5 h-3.5" /> Clear filters
+              </button>
+            )}
+            <span className="ml-auto self-center text-xs text-muted-foreground">{filteredGuesses.length} of {totalGuesses}</span>
+          </div>
+
+          {/* Guesses table */}
+          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/30 text-xs text-muted-foreground uppercase border-b border-border">
+                  <tr>
+                    <th className="px-6 py-3 text-left font-semibold">Guesser</th>
+                    <th className="px-6 py-3 text-left font-semibold">Email</th>
+                    <th className="px-6 py-3 text-right font-semibold">Guess #</th>
+                    <th className="px-6 py-3 text-left font-semibold">Round / Holder</th>
+                    <th className="px-6 py-3 text-left font-semibold">Payment</th>
+                    <th className="px-6 py-3 text-left font-semibold">Paid</th>
+                    <th className="px-6 py-3 text-left font-semibold">Date</th>
+                    <th className="px-6 py-3 text-right font-semibold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {loading ? (
+                    <tr><td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading…</td></tr>
+                  ) : filteredGuesses.length === 0 ? (
+                    <tr><td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                      {totalGuesses === 0 ? "No guesses yet." : "No guesses match your filters."}
+                    </td></tr>
+                  ) : (
+                    filteredGuesses.map((g) => {
+                      const round = rounds.find((r) => r.id === g.roundId)
+                      return (
+                        <tr key={g.id} className="hover:bg-muted/10 group">
+                          <td className="px-6 py-3 font-medium">{g.guesserName}</td>
+                          <td className="px-6 py-3 text-muted-foreground text-xs">{g.guesserEmail ?? "—"}</td>
+                          <td className="px-6 py-3 text-right font-mono font-bold">{g.guessNumber.toLocaleString()}</td>
+                          <td className="px-6 py-3 text-muted-foreground text-xs">{round ? round.holderName : "—"}</td>
+                          <td className="px-6 py-3">
+                            {g.paymentMethod ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PM_COLORS[g.paymentMethod] ?? "bg-gray-100 text-gray-600"}`}>
+                                {PM_LABELS[g.paymentMethod] ?? g.paymentMethod}
+                              </span>
+                            ) : "—"}
+                          </td>
+                          <td className="px-6 py-3">
+                            <button
+                              onClick={() => togglePaid(g)}
+                              className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
+                                g.paid ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-emerald-50"
+                              }`}
+                            >
+                              {g.paid ? "✓ Paid" : "Unpaid"}
+                            </button>
+                          </td>
+                          <td className="px-6 py-3 text-muted-foreground text-xs">{format(parseISO(g.createdAt), "d MMM yyyy")}</td>
+                          <td className="px-6 py-3 text-right">
+                            <button
+                              onClick={() => setDeleteGuessId(g.id)}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive rounded transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -484,7 +676,7 @@ export default function LegoJar() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1.5">
-                Actual LEGO count <span className="font-normal text-muted-foreground">(enter when you're ready to reveal)</span>
+                Actual LEGO count <span className="font-normal text-muted-foreground">(enter when ready to reveal)</span>
               </label>
               <Input
                 type="number"
@@ -495,7 +687,9 @@ export default function LegoJar() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-foreground mb-1.5">Jar image URL <span className="font-normal text-muted-foreground">(optional)</span></label>
+              <label className="block text-sm font-semibold text-foreground mb-1.5">
+                Jar image URL <span className="font-normal text-muted-foreground">(optional — shown on public Support page)</span>
+              </label>
               <Input
                 type="url"
                 placeholder="https://..."
@@ -525,11 +719,7 @@ export default function LegoJar() {
       )}
 
       {/* Pass the Jar dialog */}
-      <Modal
-        isOpen={passJarOpen}
-        onClose={() => setPassJarOpen(false)}
-        title="Pass the Jar"
-      >
+      <Modal isOpen={passJarOpen} onClose={() => setPassJarOpen(false)} title="Pass the Jar">
         <div className="space-y-4 p-1">
           <p className="text-sm text-muted-foreground">
             {currentRound
@@ -543,6 +733,23 @@ export default function LegoJar() {
               value={passForm.holderName}
               onChange={(e) => setPassForm((f) => ({ ...f, holderName: e.target.value }))}
               autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">
+              Link to squad member <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <p className="text-xs text-muted-foreground mb-1.5">If the holder is on the squad, link them here.</p>
+            <SquadCombobox
+              squad={squad}
+              selectedId={passForm.squadMemberId}
+              onSelect={(id, name) => {
+                setPassForm((f) => ({
+                  ...f,
+                  squadMemberId: id,
+                  holderName: id && !f.holderName ? name : f.holderName,
+                }))
+              }}
             />
           </div>
           <div>
@@ -571,11 +778,7 @@ export default function LegoJar() {
       </Modal>
 
       {/* Log Guess dialog */}
-      <Modal
-        isOpen={guessOpen}
-        onClose={() => setGuessOpen(false)}
-        title="Log a Guess"
-      >
+      <Modal isOpen={guessOpen} onClose={() => setGuessOpen(false)} title="Log a Guess">
         <div className="space-y-4 p-1">
           {currentRound && (
             <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
@@ -645,11 +848,7 @@ export default function LegoJar() {
       </Modal>
 
       {/* Delete confirm */}
-      <Modal
-        isOpen={deleteGuessId !== null}
-        onClose={() => setDeleteGuessId(null)}
-        title="Delete Guess"
-      >
+      <Modal isOpen={deleteGuessId !== null} onClose={() => setDeleteGuessId(null)} title="Delete Guess">
         <div className="space-y-4 p-1">
           <p className="text-sm text-muted-foreground">Are you sure you want to delete this guess? This cannot be undone.</p>
           <div className="flex gap-3">
