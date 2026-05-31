@@ -118,6 +118,101 @@ function useLegoJarStats() {
   return { stats, error };
 }
 
+const PRIZES = [
+  {
+    rank: 1,
+    badge: "1st Prize",
+    badgeColor: "bg-amber-400 text-amber-900",
+    title: "7 Nights in a 4-Bedroom Bali Villa",
+    description: "Stay at The Starling Villa in Bali — a stunning 4-bedroom private villa with its own pool, open-plan living areas, and lush tropical gardens. Perfect for a family holiday or a group getaway.",
+    image: "/bali-villa.jpg",
+    imageAlt: "The Starling Villa, Bali — private pool and tropical gardens",
+    zoomable: true,
+  },
+  {
+    rank: 2,
+    badge: "2nd Prize",
+    badgeColor: "bg-gray-200 text-gray-700",
+    title: "To be announced",
+    description: "Watch this space — we're lining up something great for second place.",
+    image: null,
+    imageAlt: null,
+    zoomable: false,
+  },
+  {
+    rank: 3,
+    badge: "3rd Prize",
+    badgeColor: "bg-orange-100 text-orange-700",
+    title: "To be announced",
+    description: "A special prize for the runner-up. Stay tuned!",
+    image: null,
+    imageAlt: null,
+    zoomable: false,
+  },
+];
+
+function PrizesSection({ onZoom }) {
+  const [first, ...rest] = PRIZES;
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <span className="text-lg">🏆</span>
+        <h3 className="font-bold text-gray-900">What you could win</h3>
+      </div>
+
+      {/* Hero prize — 1st place */}
+      <div className="p-4">
+        <div className="relative rounded-xl overflow-hidden border border-gray-100">
+          {first.image && (
+            <button
+              type="button"
+              onClick={() => onZoom(first.image, first.imageAlt)}
+              className="relative group block w-full h-52 focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40 cursor-zoom-in"
+              aria-label="Expand villa photo"
+            >
+              <img
+                src={first.image}
+                alt={first.imageAlt}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-103"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <svg className="w-5 h-5 text-white drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zm-6-3v6m-3-3h6" />
+                  </svg>
+                </span>
+              </span>
+              <span className={`absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${first.badgeColor} shadow-sm`}>
+                {first.badge}
+              </span>
+            </button>
+          )}
+
+          <div className="p-4">
+            <p className="font-bold text-gray-900 text-base leading-snug mb-1">{first.title}</p>
+            <p className="text-sm text-gray-600 leading-relaxed">{first.description}</p>
+          </div>
+        </div>
+
+        {/* 2nd + 3rd prizes side by side */}
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          {rest.map((prize) => (
+            <div key={prize.rank} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-2 ${prize.badgeColor}`}>
+                {prize.badge}
+              </span>
+              <p className="font-semibold text-gray-800 text-sm leading-snug mb-1">{prize.title}</p>
+              <p className="text-xs text-gray-500 leading-relaxed">{prize.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LegoJarSection() {
   const { stats, error } = useLegoJarStats();
 
@@ -131,16 +226,17 @@ export default function LegoJarSection() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
 
-  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+  // Shared lightbox — stores { src, alt } or null when closed
+  const [lightbox, setLightbox] = useState(null);
+  const closeLightbox = useCallback(() => setLightbox(null), []);
 
   useEffect(() => {
-    if (!lightboxOpen) return;
+    if (!lightbox) return;
     const onKey = (e) => { if (e.key === "Escape") closeLightbox(); };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [lightboxOpen, closeLightbox]);
+  }, [lightbox, closeLightbox]);
 
   const pricePerGuess = stats?.config?.pricePerGuess ?? 50;
   const totalGuesses = stats?.totalGuesses ?? 0;
@@ -242,7 +338,7 @@ export default function LegoJarSection() {
                 {jarImageUrl ? (
                   <button
                     type="button"
-                    onClick={() => setLightboxOpen(true)}
+                    onClick={() => setLightbox({ src: jarImageUrl, alt: "The LEGO jar — enlarged" })}
                     className="relative group w-20 h-20 shrink-0 rounded-xl overflow-hidden border border-gray-200 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40"
                     aria-label="Expand jar photo"
                   >
@@ -301,6 +397,9 @@ export default function LegoJarSection() {
                 ))}
               </ul>
             </div>
+
+            {/* Prizes */}
+            <PrizesSection onZoom={(src, alt) => setLightbox({ src, alt })} />
 
             {/* Round history table */}
             {pastRounds.length > 0 && (
@@ -458,14 +557,14 @@ export default function LegoJarSection() {
         </div>
       </div>
 
-      {/* Lightbox overlay */}
-      {lightboxOpen && jarImageUrl && (
+      {/* Shared lightbox overlay — handles both jar photo and villa photo */}
+      {lightbox && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={closeLightbox}
           role="dialog"
           aria-modal="true"
-          aria-label="Jar photo enlarged"
+          aria-label="Photo enlarged"
         >
           <button
             type="button"
@@ -478,8 +577,8 @@ export default function LegoJarSection() {
             </svg>
           </button>
           <img
-            src={jarImageUrl}
-            alt="The LEGO jar — enlarged"
+            src={lightbox.src}
+            alt={lightbox.alt}
             className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
