@@ -7,13 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { Modal } from "@/components/ui/modal"
 import {
   CheckCircle, XCircle, Clock, FileText, Image, FileImage,
-  ChevronDown, ChevronUp, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink, RotateCcw, AlertTriangle,
+  ChevronDown, ChevronUp, Lock, Trash2, ArrowUp, ArrowDown, Wrench, ExternalLink, RotateCcw, AlertTriangle, Upload,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
 const SESSION_KEY = "hkm_admin_session"
 const PUBLIC_SITE_URL = ((import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) ?? "/hk-masters-web").replace(/\/$/, "")
+
+const CLOUDINARY_CLOUD_NAME = "djyvdrhal"
+const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned"
 
 function getStoredToken(): string | null {
   try { return localStorage.getItem(SESSION_KEY) } catch { return null }
@@ -221,6 +224,7 @@ export default function Journal() {
   const [showTrash, setShowTrash] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteReason, setDeleteReason] = useState("")
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false)
 
   useEffect(() => {
     const token = getStoredToken()
@@ -422,6 +426,47 @@ export default function Journal() {
 
   const toggleSection = (status: Status) => {
     setExpandedSections((prev) => ({ ...prev, [status]: !prev[status] }))
+  }
+
+  const handleAddPhotos = () => {
+    if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
+      toast({ title: "Upload service not ready yet — try again in a moment", variant: "destructive" })
+      return
+    }
+    if (isUploadingPhotos) return
+    setIsUploadingPhotos(true)
+    window.cloudinary.openUploadWidget(
+      {
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ["local", "camera"],
+        multiple: true,
+        resourceType: "image",
+        accessMode: "public",
+        clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
+        maxFileSize: 10000000,
+        folder: "journal-photos",
+        cropping: false,
+        showAdvancedOptions: false,
+        showPoweredBy: false,
+      },
+      (error, result) => {
+        if (error) {
+          setIsUploadingPhotos(false)
+          toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" })
+          return
+        }
+        if (result.event === "close") {
+          setIsUploadingPhotos(false)
+          return
+        }
+        if (result.event !== "success") return
+        const url = result.info?.secure_url
+        if (url) {
+          setEditPhotoUrls((prev) => [...prev, url])
+        }
+      },
+    )
   }
 
   const handleDecision = (status: "approved" | "declined") => {
@@ -887,6 +932,20 @@ export default function Journal() {
                 )}
               </div>
             )}
+
+            <div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isUploadingPhotos}
+                onClick={handleAddPhotos}
+                className="gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {isUploadingPhotos ? "Uploading..." : "Add photos"}
+              </Button>
+            </div>
 
             {selectedContribution.adminNote && selectedContribution.status !== "pending" && (
               <div className="bg-muted/20 rounded-xl p-3 border border-border">
