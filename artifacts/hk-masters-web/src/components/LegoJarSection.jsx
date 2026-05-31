@@ -138,7 +138,7 @@ export default function LegoJarSection() {
   const currentRound = stats?.currentRound ?? null;
   const rounds = stats?.rounds ?? [];
   const pastRounds = rounds.filter((r) => r.endedAt !== null);
-  const jarImageUrl = stats?.config?.imageUrl ?? null;
+  const jarImageUrl = stats?.config?.imageUrl ?? "/lego-jar.jpg";
 
   function validate() {
     const errs = {};
