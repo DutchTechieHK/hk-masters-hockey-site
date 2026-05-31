@@ -71,6 +71,8 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     dietaryRequirements: player.dietaryRequirements,
     medicalNotes: player.medicalNotes,
     notes: player.notes,
+    instagramHandle: player.instagramHandle,
+    facebookHandle: player.facebookHandle,
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
     feeReminderSentAt: player.feeReminderSentAt?.toISOString() ?? null,
     onboardingInviteSentAt: player.onboardingInviteSentAt?.toISOString() ?? null,
@@ -162,6 +164,8 @@ const SELF_EDITABLE_FIELDS = [
   "goalieSmockSize",
   "dietaryRequirements",
   "medicalNotes",
+  "instagramHandle",
+  "facebookHandle",
 ] as const;
 
 function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
@@ -199,6 +203,8 @@ function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: stri
     goalieSmockSize: player.goalieSmockSize ?? undefined,
     dietaryRequirements: player.dietaryRequirements ?? undefined,
     medicalNotes: player.medicalNotes ?? undefined,
+    instagramHandle: player.instagramHandle ?? undefined,
+    facebookHandle: player.facebookHandle ?? undefined,
     feePaid: player.feePaid,
     paymentAmountDue: amountDue,
     paymentAmountPaid: amountPaid,

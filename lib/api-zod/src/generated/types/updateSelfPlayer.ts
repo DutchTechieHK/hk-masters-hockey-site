@@ -32,4 +32,6 @@ export interface UpdateSelfPlayer {
   goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
 }

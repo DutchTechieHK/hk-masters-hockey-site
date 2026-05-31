@@ -142,6 +142,8 @@ const playerSchema = z.object({
   dietaryRequirements: z.string().optional(),
   medicalNotes: z.string().optional(),
   notes: z.string().optional(),
+  instagramHandle: z.string().optional(),
+  facebookHandle: z.string().optional(),
 })
 
 type PlayerFormValues = z.infer<typeof playerSchema>
@@ -265,6 +267,7 @@ export default function Players() {
     feePaid: false, passportCopyReviewed: false,
     paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
+    instagramHandle: "", facebookHandle: "",
   })
 
   const openAddModal = () => {
@@ -313,6 +316,8 @@ export default function Players() {
       dietaryRequirements: player.dietaryRequirements || "",
       medicalNotes: player.medicalNotes || "",
       notes: player.notes || "",
+      instagramHandle: player.instagramHandle || "",
+      facebookHandle: player.facebookHandle || "",
     })
     setIsModalOpen(true)
   }
@@ -1081,6 +1086,18 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">General Notes</label>
               <Input {...register("notes")} placeholder="Any other information..." />
+            </div>
+          </div>
+
+          <SectionHeading>Social Media</SectionHeading>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Instagram Handle</label>
+              <Input {...register("instagramHandle")} placeholder="@username" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Facebook Handle</label>
+              <Input {...register("facebookHandle")} placeholder="username or profile URL" />
             </div>
           </div>
 

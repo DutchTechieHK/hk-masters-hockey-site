@@ -194,6 +194,8 @@ export const ListPlayersResponseItem = zod.object({
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
   onboardingInviteSentAt: zod.string().nullish(),
@@ -243,6 +245,8 @@ export const CreatePlayerBody = zod.object({
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
 });
 
 /**
@@ -338,6 +342,8 @@ export const GetSelfPlayerResponse = zod.object({
   goalieSmockSize: zod.string().optional(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
   feePaid: zod.boolean(),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
@@ -383,6 +389,8 @@ export const UpdateSelfPlayerBody = zod.object({
   goalieSmockSize: zod.string().optional(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
 });
 
 export const UpdateSelfPlayerResponse = zod.object({
@@ -416,6 +424,8 @@ export const UpdateSelfPlayerResponse = zod.object({
   goalieSmockSize: zod.string().optional(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
   feePaid: zod.boolean(),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
@@ -539,6 +549,8 @@ export const UpdatePlayerBody = zod.object({
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
 });
 
 export const UpdatePlayerResponse = zod.object({
@@ -583,6 +595,8 @@ export const UpdatePlayerResponse = zod.object({
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  instagramHandle: zod.string().optional(),
+  facebookHandle: zod.string().optional(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
   onboardingInviteSentAt: zod.string().nullish(),

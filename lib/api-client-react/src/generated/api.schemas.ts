@@ -155,6 +155,8 @@ export interface Player {
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
   onboardingInviteSentAt?: string | null;
@@ -200,6 +202,8 @@ export interface CreatePlayer {
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
 }
 
 export interface SelfPlayer {
@@ -233,6 +237,8 @@ export interface SelfPlayer {
   goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
   feePaid: boolean;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;
@@ -267,6 +273,8 @@ export interface UpdateSelfPlayer {
   goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
 }
 
 export interface PlayerPayment {

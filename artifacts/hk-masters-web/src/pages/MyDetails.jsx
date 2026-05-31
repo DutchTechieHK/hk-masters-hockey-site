@@ -74,6 +74,13 @@ const SECTIONS = [
       { key: "medicalNotes", label: "Medical notes", type: "textarea", placeholder: "Allergies, conditions, medication..." },
     ],
   },
+  {
+    title: "Social media",
+    fields: [
+      { key: "instagramHandle", label: "Instagram handle", type: "text", placeholder: "@username" },
+      { key: "facebookHandle", label: "Facebook handle", type: "text", placeholder: "username or profile URL" },
+    ],
+  },
 ];
 
 const ALL_FIELDS = SECTIONS.flatMap((s) => s.fields.map((f) => f.key));

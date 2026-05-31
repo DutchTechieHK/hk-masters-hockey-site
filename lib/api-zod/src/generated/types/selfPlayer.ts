@@ -37,6 +37,8 @@ export interface SelfPlayer {
   goalieSmockSize?: string;
   dietaryRequirements?: string;
   medicalNotes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
   feePaid: boolean;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;

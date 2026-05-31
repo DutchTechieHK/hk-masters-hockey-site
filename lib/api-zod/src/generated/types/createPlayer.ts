@@ -44,4 +44,6 @@ export interface CreatePlayer {
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
 }

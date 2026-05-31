@@ -48,6 +48,8 @@ export interface Player {
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
+  instagramHandle?: string;
+  facebookHandle?: string;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
   onboardingInviteSentAt?: string | null;
