@@ -217,10 +217,10 @@ function PrizesSection({ prizes, onZoom }) {
                   <button
                     type="button"
                     onClick={() => onZoom(prize.imageUrl, prize.imageAlt)}
-                    className="block w-full mb-2 rounded-lg overflow-hidden cursor-zoom-in"
+                    className="block w-full mb-2 rounded-lg overflow-hidden cursor-zoom-in bg-white"
                     aria-label={`Expand ${prize.badge} photo`}
                   >
-                    <img src={prize.imageUrl} alt={prize.imageAlt ?? prize.title} className="w-full h-24 object-cover" />
+                    <img src={prize.imageUrl} alt={prize.imageAlt ?? prize.title} className="w-full h-56 object-contain p-2" />
                   </button>
                 )}
                 <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-2 ${prize.badgeColor}`}>
