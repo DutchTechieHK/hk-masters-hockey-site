@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { fundraisingTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 import { sendNewPledgeEmail, sendPledgeConfirmationEmail } from "../utils/email";
 
 const router = Router();
 
-// Public endpoint — returns donor names only (no emails) for all pledges
+// Public endpoint — returns donor names only (no emails) for confirmed payments only.
+// Names only appear on the supporters wall once admin has marked payment as received.
 router.get("/public", async (_req, res) => {
   const pledges = await db
     .select({
@@ -15,6 +17,7 @@ router.get("/public", async (_req, res) => {
       createdAt: fundraisingTable.createdAt,
     })
     .from(fundraisingTable)
+    .where(eq(fundraisingTable.status, "received"))
     .orderBy(fundraisingTable.createdAt);
   res.json(
     pledges.map((p) => ({
