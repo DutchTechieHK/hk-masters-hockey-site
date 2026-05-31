@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, index, boolean } from "drizzle-orm/pg-core";
 
 export const emailBlastsTable = pgTable("email_blasts", {
   id: serial("id").primaryKey(),
@@ -17,3 +17,17 @@ export const emailBlastsTable = pgTable("email_blasts", {
 }));
 
 export type EmailBlast = typeof emailBlastsTable.$inferSelect;
+
+export const emailBlastRecipientsTable = pgTable("email_blast_recipients", {
+  id: serial("id").primaryKey(),
+  blastId: integer("blast_id").notNull().references(() => emailBlastsTable.id, { onDelete: "cascade" }),
+  playerId: integer("player_id"),
+  playerName: text("player_name").notNull(),
+  playerEmail: text("player_email").notNull(),
+  sent: boolean("sent").notNull(),
+  errorMessage: text("error_message"),
+}, (t) => ({
+  blastIdIdx: index("email_blast_recipients_blast_id_idx").on(t.blastId),
+}));
+
+export type EmailBlastRecipient = typeof emailBlastRecipientsTable.$inferSelect;

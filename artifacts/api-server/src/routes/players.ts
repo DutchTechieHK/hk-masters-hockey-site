@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable, playerSessionsTable } from "@workspace/db/schema";
+import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable, emailBlastRecipientsTable, playerSessionsTable } from "@workspace/db/schema";
 import { eq, isNull, isNotNull, or, and, inArray, desc, sql } from "drizzle-orm";
 import {
   CreatePlayerBody,
@@ -647,6 +647,9 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
 
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+  type RecipientResult = { playerId: number | null; playerName: string; playerEmail: string; sent: boolean };
+  const recipientResults: RecipientResult[] = [];
+
   for (const player of players) {
     if (!player.email) { skipped++; continue; }
     const ok = await sendBulkAnnouncementEmail({
@@ -657,6 +660,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
       attachments: attachments.length > 0 ? attachments : undefined,
     });
     if (ok) sent++; else failed++;
+    recipientResults.push({ playerId: player.id, playerName: player.name, playerEmail: player.email, sent: ok });
     // Resend rate-limit: 2 req/s. Wait 600 ms between sends to stay safely under.
     await sleep(600);
   }
@@ -673,8 +677,40 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     sentByEmail: null,
   }).returning();
 
+  // Record per-recipient delivery status
+  if (recipientResults.length > 0) {
+    await db.insert(emailBlastRecipientsTable).values(
+      recipientResults.map((r) => ({
+        blastId: blast.id,
+        playerId: r.playerId,
+        playerName: r.playerName,
+        playerEmail: r.playerEmail,
+        sent: r.sent,
+        errorMessage: r.sent ? null : "rate_limit_exceeded",
+      }))
+    );
+  }
+
   console.log(`[bulk-email] audienceType=${audienceType} sent=${sent} failed=${failed} skipped=${skipped} blastId=${blast.id}`);
   res.json({ sent, failed, skipped, total: recipientCount, blastId: blast.id });
+});
+
+router.get("/email-blasts/:id/recipients", requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const rows = await db
+    .select()
+    .from(emailBlastRecipientsTable)
+    .where(eq(emailBlastRecipientsTable.blastId, id))
+    .orderBy(emailBlastRecipientsTable.sent, emailBlastRecipientsTable.playerName);
+  res.json(rows.map((r) => ({
+    id: r.id,
+    playerId: r.playerId,
+    playerName: r.playerName,
+    playerEmail: r.playerEmail,
+    sent: r.sent,
+    errorMessage: r.errorMessage ?? null,
+  })));
 });
 
 router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {

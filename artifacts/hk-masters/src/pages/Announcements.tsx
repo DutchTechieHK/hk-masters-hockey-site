@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, Edit2, Pin, PinOff, Megaphone, Mail, Send, Clock, Users, CheckSquare, ChevronDown, ChevronUp, Paperclip, X } from "lucide-react"
+import { Plus, Trash2, Edit2, Pin, PinOff, Megaphone, Mail, Send, Clock, Users, CheckSquare, ChevronDown, ChevronUp, Paperclip, X, CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import { useRef } from "react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -41,6 +41,15 @@ type EmailBlast = {
   failedCount: number
   sentByEmail: string | null
   sentAt: string
+}
+
+type BlastRecipient = {
+  id: number
+  playerId: number | null
+  playerName: string
+  playerEmail: string
+  sent: boolean
+  errorMessage: string | null
 }
 
 type AudienceType = "all" | "teams" | "individuals"
@@ -105,6 +114,9 @@ export default function Announcements() {
   const [blasts, setBlasts] = useState<EmailBlast[]>([])
   const [blastsLoading, setBlastsLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [expandedBlastId, setExpandedBlastId] = useState<number | null>(null)
+  const [blastRecipients, setBlastRecipients] = useState<Record<number, BlastRecipient[]>>({})
+  const [blastRecipientsLoading, setBlastRecipientsLoading] = useState<number | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -131,6 +143,27 @@ export default function Announcements() {
       setBlastsLoading(false)
     }
   }, [])
+
+  const toggleBlastExpanded = useCallback(async (blast: EmailBlast) => {
+    if (expandedBlastId === blast.id) {
+      setExpandedBlastId(null)
+      return
+    }
+    setExpandedBlastId(blast.id)
+    if (blastRecipients[blast.id]) return // already loaded
+    if (blast.recipientCount === 0 || blast.sentCount + blast.failedCount === 0) return // no recipient data
+    setBlastRecipientsLoading(blast.id)
+    try {
+      const res = await fetch(`/api/players/email-blasts/${blast.id}/recipients`, { headers: authHeaders() })
+      if (!res.ok) throw new Error("Failed to load recipients")
+      const data: BlastRecipient[] = await res.json()
+      setBlastRecipients((prev) => ({ ...prev, [blast.id]: data }))
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setBlastRecipientsLoading(null)
+    }
+  }, [expandedBlastId, blastRecipients])
 
   useEffect(() => { refresh() }, [refresh])
   useEffect(() => {
@@ -628,37 +661,91 @@ export default function Announcements() {
                 <p className="text-sm text-muted-foreground">No emails sent yet</p>
               </div>
             ) : (
-              <div className="bg-white rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/30 border-b border-border">
-                    <tr>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Date</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Subject</th>
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-muted-foreground">Audience</th>
-                      <th className="text-right px-4 py-3 text-xs font-semibold text-muted-foreground">Sent / Total</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {blasts.map((b) => (
-                      <tr key={b.id} className="hover:bg-muted/10">
-                        <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                          {format(new Date(b.sentAt), "d MMM yyyy HH:mm")}
-                        </td>
-                        <td className="px-4 py-3 font-medium max-w-xs truncate">{b.subject}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{audienceLabel(b)}</td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
-                          <span className={b.failedCount > 0 ? "text-amber-700" : "text-green-700"}>
-                            {b.sentCount}
-                          </span>
-                          <span className="text-muted-foreground"> / {b.recipientCount}</span>
-                          {b.failedCount > 0 && (
-                            <span className="ml-2 text-xs text-rose-600">({b.failedCount} failed)</span>
+              <div className="bg-white rounded-xl border border-border overflow-hidden divide-y divide-border">
+                {blasts.map((b) => {
+                  const isExpanded = expandedBlastId === b.id
+                  const isLoadingRecipients = blastRecipientsLoading === b.id
+                  const recipients = blastRecipients[b.id] ?? []
+                  const failedRecipients = recipients.filter((r) => !r.sent)
+                  const sentRecipients = recipients.filter((r) => r.sent)
+                  const hasRecipientData = recipients.length > 0
+                  return (
+                    <div key={b.id}>
+                      <button
+                        className="w-full text-left hover:bg-muted/10 transition-colors"
+                        onClick={() => toggleBlastExpanded(b)}
+                      >
+                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center px-4 py-3 text-sm">
+                          <div className="text-muted-foreground whitespace-nowrap text-xs">
+                            {format(new Date(b.sentAt), "d MMM yyyy HH:mm")}
+                          </div>
+                          <div className="font-medium truncate">{b.subject}</div>
+                          <div className="text-muted-foreground text-xs whitespace-nowrap">{audienceLabel(b)}</div>
+                          <div className="text-right whitespace-nowrap">
+                            <span className={b.failedCount > 0 ? "text-amber-700" : "text-green-700"}>
+                              {b.sentCount}
+                            </span>
+                            <span className="text-muted-foreground"> / {b.recipientCount}</span>
+                            {b.failedCount > 0 && (
+                              <span className="ml-2 text-xs text-rose-600">({b.failedCount} failed)</span>
+                            )}
+                          </div>
+                          <div className="text-muted-foreground">
+                            {isLoadingRecipients
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : isExpanded
+                                ? <ChevronUp className="w-3.5 h-3.5" />
+                                : <ChevronDown className="w-3.5 h-3.5" />
+                            }
+                          </div>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t border-border bg-muted/10 px-4 py-3">
+                          {isLoadingRecipients ? (
+                            <p className="text-xs text-muted-foreground">Loading recipients…</p>
+                          ) : !hasRecipientData ? (
+                            <p className="text-xs text-muted-foreground italic">No per-recipient data recorded for this blast (sent before tracking was added).</p>
+                          ) : (
+                            <div className="space-y-3">
+                              {failedRecipients.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-rose-600 mb-1.5 flex items-center gap-1">
+                                    <XCircle className="w-3.5 h-3.5" /> {failedRecipients.length} failed to deliver
+                                  </p>
+                                  <div className="space-y-1">
+                                    {failedRecipients.map((r) => (
+                                      <div key={r.id} className="flex items-center gap-2 text-xs">
+                                        <span className="font-medium text-foreground">{r.playerName}</span>
+                                        <span className="text-muted-foreground">{r.playerEmail}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {sentRecipients.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-emerald-600 mb-1.5 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5" /> {sentRecipients.length} delivered
+                                  </p>
+                                  <div className="space-y-1">
+                                    {sentRecipients.map((r) => (
+                                      <div key={r.id} className="flex items-center gap-2 text-xs">
+                                        <span className="font-medium text-foreground">{r.playerName}</span>
+                                        <span className="text-muted-foreground">{r.playerEmail}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
