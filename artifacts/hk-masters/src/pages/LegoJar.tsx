@@ -160,7 +160,7 @@ function SquadCombobox({
         )}
       </div>
       {open && (
-        <div className="absolute z-50 w-full mt-1 bg-popover rounded-md border border-border shadow-lg max-h-52 overflow-y-auto">
+        <div className="w-full mt-1 bg-popover rounded-md border border-border shadow-lg max-h-52 overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="px-4 py-3 text-sm text-muted-foreground text-center">No players found</div>
           ) : (
