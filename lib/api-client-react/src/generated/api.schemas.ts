@@ -615,6 +615,7 @@ export interface EmailBlastItem {
   failedCount: number;
   sentByEmail?: string | null;
   sentAt: string;
+  recipientNames?: string[];
 }
 
 export interface EmailTemplate {

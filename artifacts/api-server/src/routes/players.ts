@@ -772,9 +772,31 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     .from(emailBlastsTable)
     .orderBy(desc(emailBlastsTable.sentAt));
 
+  const individualBlastIds = rows
+    .filter((r) => r.audienceType === "individuals")
+    .map((r) => r.id);
+
+  const recipientNamesByBlastId = new Map<number, string[]>();
+  if (individualBlastIds.length > 0) {
+    const recipientRows = await db
+      .select({
+        blastId: emailBlastRecipientsTable.blastId,
+        playerName: emailBlastRecipientsTable.playerName,
+      })
+      .from(emailBlastRecipientsTable)
+      .where(inArray(emailBlastRecipientsTable.blastId, individualBlastIds));
+
+    for (const row of recipientRows) {
+      const existing = recipientNamesByBlastId.get(row.blastId) ?? [];
+      existing.push(row.playerName);
+      recipientNamesByBlastId.set(row.blastId, existing);
+    }
+  }
+
   res.json(rows.map((r) => ({
     ...r,
     sentAt: r.sentAt.toISOString(),
+    recipientNames: recipientNamesByBlastId.get(r.id) ?? [],
   })));
 });
 
