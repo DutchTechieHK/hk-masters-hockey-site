@@ -492,14 +492,17 @@ export default function LegoJarSection() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center justify-center gap-2">
-                    {tier === "3" ? "3 guesses submitted!" : "Guess submitted!"} <LegoBrickIcon className="w-8 h-6" />
+                    {tier === "3" ? "3 guesses received!" : "Guess received!"} <LegoBrickIcon className="w-8 h-6" />
                   </h3>
                   <p className="text-gray-600 text-sm leading-relaxed max-w-sm mx-auto">
                     {tier === "3" ? (
-                      <>Your guesses of <span className="font-bold text-[#1E3A6E]">{form.guessNumbers.filter(Boolean).map((n) => Number(n).toLocaleString()).join(", ")}</span> are in. Good luck!</>
+                      <>Your guesses of <span className="font-bold text-[#1E3A6E]">{form.guessNumbers.filter(Boolean).map((n) => Number(n).toLocaleString()).join(", ")}</span> are saved.</>
                     ) : (
-                      <>Your guess of <span className="font-bold text-[#1E3A6E]">{Number(form.guessNumbers[0]).toLocaleString()}</span> is in. Good luck!</>
+                      <>Your guess of <span className="font-bold text-[#1E3A6E]">{Number(form.guessNumbers[0]).toLocaleString()}</span> is saved.</>
                     )}
+                  </p>
+                  <p className="text-gray-500 text-xs leading-relaxed max-w-sm mx-auto mt-2">
+                    Complete your payment below to confirm your entry — your {tier === "3" ? "guesses" : "guess"} will be counted once we've received it. Good luck!
                   </p>
                 </div>
                 <PaymentPanel method={form.paymentMethod} guesserName={form.guesserName.trim()} totalAmount={tierTotal} />

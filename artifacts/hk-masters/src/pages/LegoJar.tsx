@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X, Pencil } from "lucide-react"
+import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X, Pencil, Globe, Clock } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
@@ -53,6 +53,7 @@ type Round = {
   startedAt: string
   endedAt: string | null
   notes: string | null
+  isWebsite: boolean
   guessCount: number
   paidCount: number
   amountRaised: number
@@ -68,6 +69,7 @@ type Guess = {
   guessNumber: number
   paymentMethod: string | null
   paid: boolean
+  paidAt: string | null
   amountPaid: number | null
   createdAt: string
 }
@@ -221,7 +223,7 @@ export default function LegoJar() {
   // Log guess dialog
   const [guessOpen, setGuessOpen] = useState(false)
   const [guessForm, setGuessForm] = useState({
-    guesserName: "", guesserEmail: "", guesserPhone: "", paymentMethod: "cash", paid: true
+    guesserName: "", guesserEmail: "", guesserPhone: "", paymentMethod: "cash", paid: false
   })
   const [guessMode, setGuessMode] = useState<"tier1" | "tier3" | "custom">("tier1")
   const [guessNumbers, setGuessNumbers] = useState<string[]>([""])
@@ -323,6 +325,26 @@ export default function LegoJar() {
     }
   }
 
+  // Reassign all of a guesser's guesses to the Website designation
+  const moveGroupToWebsite = async (group: GuesserGroup) => {
+    const wr = rounds.find((r) => r.isWebsite)
+    if (!wr) { toast({ title: "Website designation not available yet", variant: "destructive" }); return }
+    const toMove = group.guesses.filter((g) => g.roundId !== wr.id)
+    if (toMove.length === 0) { toast({ title: "Already on Website" }); return }
+    try {
+      await Promise.all(
+        toMove.map((g) => apiFetch(`/api/admin/lego-jar/guesses/${g.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ roundId: wr.id }),
+        }))
+      )
+      setGuesses((prev) => prev.map((g) => toMove.find((t) => t.id === g.id) ? { ...g, roundId: wr.id } : g))
+      toast({ title: "Moved to Website", description: group.guesserName })
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed", variant: "destructive" })
+    }
+  }
+
   // Guess search/filter state
   const [guessSearch, setGuessSearch] = useState("")
   const [guessFilterPm, setGuessFilterPm] = useState("all")
@@ -371,9 +393,11 @@ export default function LegoJar() {
   useEffect(() => { load() }, [load])
 
   const currentRound = rounds.find((r) => r.isCurrent) ?? null
-  const pastRounds = rounds.filter((r) => !r.isCurrent)
+  const websiteRound = rounds.find((r) => r.isWebsite) ?? null
+  const pastRounds = rounds.filter((r) => !r.isCurrent && !r.isWebsite)
   const totalGuesses = guesses.length
   const paidGuesses = guesses.filter((g) => g.paid).length
+  const pendingGuesses = totalGuesses - paidGuesses
   const pricePerGuess = Number(config?.pricePerGuess ?? 50)
   const totalRaised = Math.round(guesses
     .filter((g) => g.paid)
@@ -476,7 +500,7 @@ export default function LegoJar() {
   }
 
   function resetGuessDialog() {
-    setGuessForm({ guesserName: "", guesserEmail: "", guesserPhone: "", paymentMethod: "cash", paid: true })
+    setGuessForm({ guesserName: "", guesserEmail: "", guesserPhone: "", paymentMethod: "cash", paid: false })
     setGuessMode("tier1")
     setGuessNumbers([""])
     setGuessAmountPaid("50")
@@ -618,8 +642,8 @@ export default function LegoJar() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Raised", value: formatHKD(totalRaised), icon: DollarSign, color: "text-emerald-600" },
-          { label: "Guesses Sold", value: String(totalGuesses), icon: Users, color: "text-blue-600" },
-          { label: "Paid Guesses", value: String(paidGuesses), icon: CheckCircle2, color: "text-emerald-600" },
+          { label: "Verified Guesses", value: String(paidGuesses), icon: CheckCircle2, color: "text-emerald-600" },
+          { label: "Pending Payment", value: String(pendingGuesses), icon: Clock, color: pendingGuesses > 0 ? "text-amber-600" : "text-gray-400" },
           { label: "Price / Guess", value: formatHKD(pricePerGuess), icon: DollarSign, color: "text-gray-600" },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl border border-border p-4 flex items-center gap-3 shadow-sm">
@@ -703,12 +727,12 @@ export default function LegoJar() {
                         )}
                         <button
                           onClick={() => togglePaid(g)}
-                          title={g.paid ? "Mark unpaid" : "Mark paid"}
+                          title={g.paid ? "Mark as pending" : "Mark payment received"}
                           className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
-                            g.paid ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-emerald-50"
+                            g.paid ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200 hover:bg-emerald-50"
                           }`}
                         >
-                          {g.paid ? "Paid" : "Unpaid"}
+                          {g.paid ? "Received" : "Pending"}
                         </button>
                       </div>
                     </div>
@@ -722,6 +746,33 @@ export default function LegoJar() {
               </div>
             )}
           </div>
+
+          {/* Website designation */}
+          {websiteRound && (
+            <div className="rounded-2xl border-2 border-blue-200 bg-blue-50/40 p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Website (online submissions)</p>
+                    <p className="text-sm text-muted-foreground">
+                      Guesses submitted through the public website are tracked here, separate from the jar holders.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <span className="font-semibold text-blue-700">{websiteRound.paidCount} verified guess{websiteRound.paidCount !== 1 ? "es" : ""}</span>
+                      {websiteRound.guessCount > websiteRound.paidCount && (
+                        <span className="text-amber-600"> · {websiteRound.guessCount - websiteRound.paidCount} pending</span>
+                      )}
+                      {" · "}
+                      <span className="font-semibold text-blue-700">{formatHKD(websiteRound.amountRaised)} raised</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Past rounds */}
           {pastRounds.length > 0 && (
@@ -790,9 +841,9 @@ export default function LegoJar() {
               onChange={(e) => setGuessFilterPaid(e.target.value)}
               className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
             >
-              <option value="all">Paid & unpaid</option>
-              <option value="paid">Paid only</option>
-              <option value="unpaid">Unpaid only</option>
+              <option value="all">All payments</option>
+              <option value="paid">Payment received</option>
+              <option value="unpaid">Pending payment</option>
             </select>
             <select
               value={guessFilterRound}
@@ -802,7 +853,7 @@ export default function LegoJar() {
               <option value="all">All rounds</option>
               {rounds.map((r) => (
                 <option key={r.id} value={String(r.id)}>
-                  {r.holderName}{r.isCurrent ? " (current)" : ""}
+                  {r.holderName}{r.isCurrent ? " (current)" : r.isWebsite ? " (online)" : ""}
                 </option>
               ))}
             </select>
@@ -829,7 +880,7 @@ export default function LegoJar() {
                     <th className="px-4 py-3 text-left font-semibold">Email</th>
                     <th className="px-4 py-3 text-left font-semibold">Phone</th>
                     <th className="px-4 py-3 text-left font-semibold">Guesses</th>
-                    <th className="px-4 py-3 text-left font-semibold">Paid</th>
+                    <th className="px-4 py-3 text-left font-semibold">Verified</th>
                     <th className="px-4 py-3 text-right font-semibold">Total</th>
                     <th className="px-4 py-3 text-left font-semibold">Payment</th>
                     <th className="px-4 py-3 text-left font-semibold">Holder</th>
@@ -859,7 +910,7 @@ export default function LegoJar() {
                                 <div key={g.id} className="group/chip flex items-center gap-0.5">
                                   <button
                                     onClick={() => togglePaid(g)}
-                                    title={g.paid ? "Mark unpaid" : "Mark paid"}
+                                    title={g.paid ? "Mark as pending" : "Mark payment received"}
                                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-semibold border transition-colors ${
                                       g.paid
                                         ? "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-50"
@@ -889,7 +940,7 @@ export default function LegoJar() {
                                 <button
                                   onClick={() => toggleAllPaid(group)}
                                   className="text-xs text-muted-foreground hover:text-emerald-700 underline underline-offset-2 transition-colors"
-                                  title="Mark all as paid"
+                                  title="Mark all payments received"
                                 >
                                   all
                                 </button>
@@ -912,7 +963,16 @@ export default function LegoJar() {
                           <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
                             {format(parseISO(group.earliestDate), "d MMM yyyy")}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            {websiteRound && group.guesses.some((g) => g.roundId !== websiteRound.id) && (
+                              <button
+                                onClick={() => moveGroupToWebsite(group)}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-blue-600 rounded transition-all"
+                                title="Move to Website designation"
+                              >
+                                <Globe className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => openEditGroup(group)}
                               className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded transition-all"

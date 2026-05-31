@@ -29,6 +29,7 @@ export const legoJarRoundsTable = pgTable("lego_jar_rounds", {
   startedAt: timestamp("started_at").defaultNow().notNull(),
   endedAt: timestamp("ended_at"),
   notes: text("notes"),
+  isWebsite: boolean("is_website").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -41,6 +42,7 @@ export const legoJarGuessesTable = pgTable("lego_jar_guesses", {
   guessNumber: integer("guess_number").notNull(),
   paymentMethod: text("payment_method"),
   paid: boolean("paid").notNull().default(false),
+  paidAt: timestamp("paid_at"),
   amountPaid: numeric("amount_paid", { precision: 10, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

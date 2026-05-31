@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { legoJarConfigTable, legoJarRoundsTable, legoJarGuessesTable, legoJarPrizesTable } from "@workspace/db/schema";
-import { eq, isNull, desc, sql, asc } from "drizzle-orm";
+import { eq, isNull, desc, sql, asc, and } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { sendLegoJarGuessConfirmationEmail, sendLegoJarGuessAdminNotificationEmail } from "../utils/email";
 
@@ -18,13 +18,33 @@ async function getConfig() {
 }
 
 async function getCurrentRound() {
+  // The "current holder" is the latest open round that is NOT the special
+  // Website designation (the Website round is permanently open but is not a
+  // physical jar holder).
   const [round] = await db
     .select()
     .from(legoJarRoundsTable)
-    .where(isNull(legoJarRoundsTable.endedAt))
+    .where(and(isNull(legoJarRoundsTable.endedAt), eq(legoJarRoundsTable.isWebsite, false)))
     .orderBy(desc(legoJarRoundsTable.startedAt))
     .limit(1);
   return round ?? null;
+}
+
+// Find (or lazily create) the single permanent "Website" round that online
+// submissions are attributed to, kept separate from the physical jar holders.
+async function getWebsiteRound() {
+  const [existing] = await db
+    .select()
+    .from(legoJarRoundsTable)
+    .where(eq(legoJarRoundsTable.isWebsite, true))
+    .orderBy(asc(legoJarRoundsTable.id))
+    .limit(1);
+  if (existing) return existing;
+  const [created] = await db
+    .insert(legoJarRoundsTable)
+    .values({ holderName: "Website", isWebsite: true })
+    .returning();
+  return created;
 }
 
 function serializeRound(r: typeof legoJarRoundsTable.$inferSelect & { guessCount?: number; paidCount?: number; amountRaised?: number }) {
@@ -36,10 +56,11 @@ function serializeRound(r: typeof legoJarRoundsTable.$inferSelect & { guessCount
     startedAt: r.startedAt.toISOString(),
     endedAt: r.endedAt?.toISOString() ?? null,
     notes: (r as any).notes ?? null,
+    isWebsite: r.isWebsite,
     guessCount: (r as any).guessCount ?? 0,
     paidCount: (r as any).paidCount ?? 0,
     amountRaised: (r as any).amountRaised ?? 0,
-    isCurrent: r.endedAt === null,
+    isCurrent: r.endedAt === null && !r.isWebsite,
   };
 }
 
@@ -53,6 +74,7 @@ function serializeGuess(g: typeof legoJarGuessesTable.$inferSelect) {
     guessNumber: g.guessNumber,
     paymentMethod: g.paymentMethod ?? null,
     paid: g.paid,
+    paidAt: g.paidAt?.toISOString() ?? null,
     amountPaid: g.amountPaid != null ? Number(g.amountPaid) : null,
     createdAt: g.createdAt.toISOString(),
   };
@@ -122,23 +144,28 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
   const currentRound = await getCurrentRound();
   const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
+  // Public counts reflect only verified (paid) guesses — pending guesses are
+  // not yet active participations.
   const [totals] = await db
     .select({
-      totalGuesses: sql<number>`COUNT(*)`,
+      totalGuesses: sql<number>`COUNT(*) FILTER (WHERE paid)`,
       totalRaised: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
     })
     .from(legoJarGuessesTable);
 
+  // The Website designation is excluded from the public holder journey (it is
+  // not a physical jar holder); its paid guesses still count in the totals above.
   const allRounds = await db
     .select()
     .from(legoJarRoundsTable)
+    .where(eq(legoJarRoundsTable.isWebsite, false))
     .orderBy(desc(legoJarRoundsTable.startedAt));
 
   const roundStats = await Promise.all(
     allRounds.map(async (r) => {
       const [s] = await db
         .select({
-          guessCount: sql<number>`COUNT(*)`,
+          guessCount: sql<number>`COUNT(*) FILTER (WHERE paid)`,
           amountRaised: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
         })
         .from(legoJarGuessesTable)
@@ -219,7 +246,9 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
     return;
   }
 
-  const currentRound = await getCurrentRound();
+  // Online submissions are attributed to the dedicated "Website" designation,
+  // not to whoever is physically holding the jar right now.
+  const websiteRound = await getWebsiteRound();
   const config = await getConfig();
   const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
@@ -236,7 +265,7 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
     .insert(legoJarGuessesTable)
     .values(
       parsedNumbers.map((num, i) => ({
-        roundId: currentRound?.id ?? null,
+        roundId: websiteRound.id,
         guesserName: (guesserName as string).trim(),
         guesserEmail: guesserEmail?.trim() || null,
         guesserPhone: guesserPhone?.trim() || null,
@@ -383,6 +412,9 @@ legoJarAdminRouter.put("/config", async (req, res) => {
 
 // GET /api/admin/lego-jar/rounds
 legoJarAdminRouter.get("/rounds", async (_req, res) => {
+  // Make sure the Website designation always exists so the admin can see/use it.
+  await getWebsiteRound();
+
   const rounds = await db
     .select()
     .from(legoJarRoundsTable)
@@ -409,10 +441,11 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
         startedAt: r.startedAt.toISOString(),
         endedAt: r.endedAt?.toISOString() ?? null,
         notes: r.notes ?? null,
+        isWebsite: r.isWebsite,
         guessCount: Number(s.guessCount),
         paidCount: Number(s.paidCount),
         amountRaised: Number(s.amountRaised),
-        isCurrent: r.endedAt === null,
+        isCurrent: r.endedAt === null && !r.isWebsite,
       };
     })
   );
@@ -542,6 +575,7 @@ legoJarAdminRouter.post("/guesses", async (req, res) => {
         guessNumber: num,
         paymentMethod: paymentMethod || null,
         paid: !!paid,
+        paidAt: paid ? new Date() : null,
         amountPaid: perRowAmounts[i],
       }))
     )
@@ -555,15 +589,29 @@ legoJarAdminRouter.patch("/guesses/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { paid, guesserName, guesserEmail, guesserPhone, guessNumber, paymentMethod, amountPaid } = req.body ?? {};
+  const { paid, guesserName, guesserEmail, guesserPhone, guessNumber, paymentMethod, amountPaid, roundId } = req.body ?? {};
   const updateData: Record<string, unknown> = {};
-  if (paid !== undefined) updateData.paid = !!paid;
+  if (paid !== undefined) {
+    // Verification toggle — stamp the received time when marking paid, clear it otherwise.
+    updateData.paid = !!paid;
+    updateData.paidAt = paid ? new Date() : null;
+  }
   if (guesserName !== undefined) updateData.guesserName = String(guesserName).trim();
   if (guesserEmail !== undefined) updateData.guesserEmail = guesserEmail?.trim() || null;
   if (guesserPhone !== undefined) updateData.guesserPhone = guesserPhone?.trim() || null;
   if (guessNumber !== undefined) updateData.guessNumber = parseInt(guessNumber, 10);
   if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod || null;
   if (amountPaid !== undefined) updateData.amountPaid = amountPaid != null && amountPaid !== "" ? String(Number(amountPaid)) : null;
+  // Allow reassigning a guess to a different round / the Website designation.
+  if (roundId !== undefined) {
+    if (roundId === null) {
+      updateData.roundId = null;
+    } else {
+      const parsedRoundId = parseInt(roundId, 10);
+      if (isNaN(parsedRoundId)) { res.status(400).json({ error: "Invalid roundId" }); return; }
+      updateData.roundId = parsedRoundId;
+    }
+  }
 
   const [guess] = await db
     .update(legoJarGuessesTable)

@@ -18,3 +18,20 @@ The **dev database is empty** — all real LEGO jar / fundraising data lives in 
 To write production data, call the **deployed admin API** at `https://masters-world-hub.replit.app/api/...` with header `x-admin-key: $ADMIN_API_KEY` (env var present in the workspace shell; do not print it). The PATCH endpoint `/api/admin/lego-jar/guesses/:id` accepts `amountPaid` and stores it as-is, independent of whatever code version is deployed.
 
 **Why:** There is no `PROD_DATABASE_URL` and no psql access to prod; the authenticated deployed API is the only write path. `process.env` is NOT exposed in the code_execution sandbox, so use bash/curl where `$ADMIN_API_KEY` is available.
+
+# Payment verification & Website designation
+
+A guess counts as **active participation only when paid** (verified). Public
+`/stats` counts paid guesses only (`COUNT(*) FILTER (WHERE paid)`); `paid_at` is
+stamped when an admin toggles paid. Manual admin entries default to PENDING.
+
+Online website submissions attach to a **permanent special round** with
+`is_website=true` (holderName "Website", never closed), via `getWebsiteRound()`
+(find-or-create). `getCurrentRound()` excludes website rounds, so the Website
+round is never the "current holder". The Website round is excluded from the
+public holder journey (`rounds` list) but its **paid** guesses still count in the
+global `totalRaised`/`totalGuesses`. Admin "Move to Website" reassigns a
+guesser's guesses by PATCHing `roundId`.
+
+**Why:** Online buyers shouldn't be credited to whoever physically holds the jar.
+Keep website attribution out of holder stats but inside fundraising totals.
