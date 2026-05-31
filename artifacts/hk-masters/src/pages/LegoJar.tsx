@@ -82,6 +82,7 @@ type GuesserGroup = {
   paidCount: number
   dominantPaymentMethod: string | null
   earliestDate: string
+  roundHolders: string[]
 }
 
 type SquadPlayer = {
@@ -372,15 +373,17 @@ export default function LegoJar() {
     return true
   })
 
-  // Group filtered guesses by guesser name (case-insensitive)
+  // Group ALL guesses by guesser name, then apply filters at group level
+  // (so that matching a filter shows the full person row, not just matching guesses)
   const guesserGroups: GuesserGroup[] = (() => {
+    // Step 1: build groups from every guess in the DB
     const map = new Map<string, Guess[]>()
-    for (const g of filteredGuesses) {
+    for (const g of guesses) {
       const key = g.guesserName.trim().toLowerCase()
       if (!map.has(key)) map.set(key, [])
       map.get(key)!.push(g)
     }
-    return Array.from(map.entries()).map(([key, gs]): GuesserGroup => {
+    const allGroups = Array.from(map.entries()).map(([key, gs]): GuesserGroup => {
       const sorted = [...gs].sort((a, b) => a.guessNumber - b.guessNumber)
       const email = gs.find((g) => g.guesserEmail)?.guesserEmail ?? null
       const phone = gs.find((g) => g.guesserPhone)?.guesserPhone ?? null
@@ -390,8 +393,35 @@ export default function LegoJar() {
       for (const g of gs) { if (g.paymentMethod) pmCounts[g.paymentMethod] = (pmCounts[g.paymentMethod] ?? 0) + 1 }
       const dominantPm = Object.entries(pmCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
       const earliestDate = gs.reduce((min, g) => g.createdAt < min ? g.createdAt : min, gs[0].createdAt)
-      return { key, guesserName: sorted[0].guesserName, guesserEmail: email, guesserPhone: phone, guesses: sorted, totalAmountPaid, paidCount, dominantPaymentMethod: dominantPm, earliestDate }
+      const roundCounts: Record<number, number> = {}
+      for (const g of gs) { if (g.roundId != null) roundCounts[g.roundId] = (roundCounts[g.roundId] ?? 0) + 1 }
+      const roundHolders = Object.entries(roundCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([rId]) => rounds.find((r) => r.id === parseInt(rId, 10))?.holderName)
+        .filter((h): h is string => !!h)
+      return { key, guesserName: sorted[0].guesserName, guesserEmail: email, guesserPhone: phone, guesses: sorted, totalAmountPaid, paidCount, dominantPaymentMethod: dominantPm, earliestDate, roundHolders }
     }).sort((a, b) => a.earliestDate.localeCompare(b.earliestDate))
+
+    // Step 2: filter at group level — include group if any guess in it matches the criteria
+    return allGroups.filter((group) => {
+      const q = guessSearch.trim().toLowerCase()
+      if (q) {
+        const anyMatch = group.guesses.some((g) =>
+          g.guesserName.toLowerCase().includes(q) ||
+          (g.guesserEmail?.toLowerCase().includes(q) ?? false) ||
+          (g.guesserPhone?.toLowerCase().includes(q) ?? false)
+        )
+        if (!anyMatch) return false
+      }
+      if (guessFilterPm !== "all" && !group.guesses.some((g) => g.paymentMethod === guessFilterPm)) return false
+      if (guessFilterPaid === "paid" && !group.guesses.some((g) => g.paid)) return false
+      if (guessFilterPaid === "unpaid" && !group.guesses.some((g) => !g.paid)) return false
+      if (guessFilterRound !== "all") {
+        const rId = guessFilterRound === "none" ? null : parseInt(guessFilterRound, 10)
+        if (!group.guesses.some((g) => g.roundId === rId)) return false
+      }
+      return true
+    })
   })()
 
   // Pass the Jar
@@ -760,7 +790,7 @@ export default function LegoJar() {
               </button>
             )}
             <span className="ml-auto self-center text-xs text-muted-foreground">
-              {guesserGroups.length} {guesserGroups.length === 1 ? "guesser" : "guessers"} · {filteredGuesses.length} of {totalGuesses} guesses
+              {guesserGroups.length} {guesserGroups.length === 1 ? "guesser" : "guessers"} · {totalGuesses} guesses
             </span>
           </div>
 
@@ -777,15 +807,16 @@ export default function LegoJar() {
                     <th className="px-4 py-3 text-left font-semibold">Paid</th>
                     <th className="px-4 py-3 text-right font-semibold">Total</th>
                     <th className="px-4 py-3 text-left font-semibold">Payment</th>
+                    <th className="px-4 py-3 text-left font-semibold">Holder</th>
                     <th className="px-4 py-3 text-left font-semibold">Date</th>
                     <th className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {loading ? (
-                    <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
+                    <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
                   ) : guesserGroups.length === 0 ? (
-                    <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                    <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
                       {totalGuesses === 0 ? "No guesses yet." : "No guesses match your filters."}
                     </td></tr>
                   ) : (
@@ -849,6 +880,9 @@ export default function LegoJar() {
                                 {PM_LABELS[group.dominantPaymentMethod] ?? group.dominantPaymentMethod}
                               </span>
                             ) : "—"}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                            {group.roundHolders.length === 0 ? "—" : group.roundHolders.length === 1 ? group.roundHolders[0] : `${group.roundHolders[0]} +${group.roundHolders.length - 1}`}
                           </td>
                           <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
                             {format(parseISO(group.earliestDate), "d MMM yyyy")}
