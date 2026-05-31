@@ -22,6 +22,7 @@ import EmailHistory from "@/pages/EmailHistory";
 import Documents from "@/pages/Documents";
 import Auction from "@/pages/Auction";
 import LegoJar from "@/pages/LegoJar";
+import FunRun from "@/pages/FunRun";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate } from "@/components/AdminAuthGate";
 
@@ -56,6 +57,7 @@ function Router() {
       <Route path="/documents" component={Documents} />
       <Route path="/auction" component={Auction} />
       <Route path="/lego-jar" component={LegoJar} />
+      <Route path="/fun-run" component={FunRun} />
       <Route component={NotFound} />
     </Switch>
   );
