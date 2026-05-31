@@ -227,7 +227,7 @@ export default function LegoJarSection() {
 
             {/* Current holder + optional jar photo */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">The jar right now</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Who has the jar right now</p>
               <div className="flex items-start gap-4">
                 {jarImageUrl ? (
                   <img
