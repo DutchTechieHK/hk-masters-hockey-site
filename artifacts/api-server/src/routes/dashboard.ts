@@ -49,9 +49,15 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     .from(legoJarGuessesTable);
   const legoJarTotal = Number(legoTotals?.total ?? 0);
 
-  // Sponsors: sum of contribution_amount for active sponsors
-  const sponsorRows = await db.select({ contributionAmount: sponsorsTable.contributionAmount }).from(sponsorsTable).where(eq(sponsorsTable.active, true));
+  // Sponsors: sum of contribution_amount for active sponsors, with tier breakdown
+  const sponsorRows = await db.select({ contributionAmount: sponsorsTable.contributionAmount, tier: sponsorsTable.tier }).from(sponsorsTable).where(eq(sponsorsTable.active, true));
   const sponsorsTotal = sponsorRows.reduce((sum, s) => sum + (s.contributionAmount != null ? Number(s.contributionAmount) : 0), 0);
+  const sponsorCount = sponsorRows.length;
+  const sponsorTierBreakdown = {
+    gold: sponsorRows.filter((s) => s.tier?.toLowerCase() === "gold").length,
+    silver: sponsorRows.filter((s) => s.tier?.toLowerCase() === "silver").length,
+    bronze: sponsorRows.filter((s) => s.tier?.toLowerCase() === "bronze").length,
+  };
 
   // Fun Run: sum of pledge_per_km * distance_km for completed participants only
   const [funRunTotals] = await db
@@ -146,6 +152,11 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     fundraisingBreakdown,
     upcomingDeadlines,
     documentCounts,
+    sponsorStats: {
+      count: sponsorCount,
+      contributionTotal: sponsorsTotal,
+      tierBreakdown: sponsorTierBreakdown,
+    },
     auctionStats: {
       itemCount: auctionItemCount,
       itemsWithBids: auctionItemsWithBids,

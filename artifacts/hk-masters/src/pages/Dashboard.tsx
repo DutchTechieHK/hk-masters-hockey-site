@@ -1,6 +1,6 @@
 import { useGetDashboard, useListPlayers, useListKits, useGetFunRunSummary } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText, Gavel, Footprints } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText, Gavel, Footprints, Building2 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -320,6 +320,64 @@ export default function Dashboard() {
                   </div>
                   <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
                     Manage auction <ArrowRight className="w-3 h-3" />
+                  </p>
+                </div>
+              </button>
+            )
+          })()}
+
+          {/* Sponsors card */}
+          {(() => {
+            const sponsorStats = (stats as unknown as { sponsorStats?: { count: number; contributionTotal: number; tierBreakdown: { gold: number; silver: number; bronze: number } } }).sponsorStats
+            if (!sponsorStats || sponsorStats.count === 0) return null
+            return (
+              <button
+                className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+                onClick={() => navigate("/sponsors")}
+              >
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <h2 className="text-xl font-display font-bold">Sponsors</h2>
+                  <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                    <Building2 className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-end gap-2 mb-1">
+                    <p className="text-3xl font-bold text-foreground">{hkdPrecise.format(sponsorStats.contributionTotal)}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">total contributions from {sponsorStats.count} active sponsor{sponsorStats.count !== 1 ? "s" : ""}</p>
+                  <div className="space-y-2">
+                    {sponsorStats.tierBreakdown.gold > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />
+                          Gold
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">{sponsorStats.tierBreakdown.gold}</span>
+                      </div>
+                    )}
+                    {sponsorStats.tierBreakdown.silver > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-slate-400 inline-block" />
+                          Silver
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">{sponsorStats.tierBreakdown.silver}</span>
+                      </div>
+                    )}
+                    {sponsorStats.tierBreakdown.bronze > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-700 inline-block" />
+                          Bronze
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">{sponsorStats.tierBreakdown.bronze}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
+                    Manage sponsors <ArrowRight className="w-3 h-3" />
                   </p>
                 </div>
               </button>
