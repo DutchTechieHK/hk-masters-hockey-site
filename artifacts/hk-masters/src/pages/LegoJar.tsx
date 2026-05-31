@@ -365,9 +365,9 @@ export default function LegoJar() {
   const totalGuesses = guesses.length
   const paidGuesses = guesses.filter((g) => g.paid).length
   const pricePerGuess = Number(config?.pricePerGuess ?? 50)
-  const totalRaised = guesses
+  const totalRaised = Math.round(guesses
     .filter((g) => g.paid)
-    .reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0)
+    .reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0))
 
   // Filtered guesses for guesses tab
   const filteredGuesses = guesses.filter((g) => {
