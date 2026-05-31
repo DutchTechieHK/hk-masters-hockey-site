@@ -204,7 +204,7 @@ export default function LegoJarSection() {
           <p className="text-gray-600 max-w-2xl leading-relaxed">
             How many LEGO bricks are in the jar? Guess the exact number for{" "}
             <span className="font-semibold text-[#1E3A6E]">HK${Number(pricePerGuess).toLocaleString()}</span> — the closest guess wins!
-            The jar travels with the team raising funds for Rotterdam 2026.
+            The LEGO jar rotates between members of the squad to raise funds for our 2026 World Cup in Rotterdam.
           </p>
         </div>
 
