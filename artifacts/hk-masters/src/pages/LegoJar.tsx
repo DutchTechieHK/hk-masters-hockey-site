@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X } from "lucide-react"
+import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
@@ -225,6 +225,53 @@ export default function LegoJar() {
 
   // Delete confirm
   const [deleteGuessId, setDeleteGuessId] = useState<number | null>(null)
+
+  // Edit guess
+  const [editGuess, setEditGuess] = useState<Guess | null>(null)
+  const [editForm, setEditForm] = useState({ guesserName: "", guesserEmail: "", guesserPhone: "", guessNumber: "", paymentMethod: "cash", paid: false, amountPaid: "" })
+  const [editSaving, setEditSaving] = useState(false)
+
+  function openEditGuess(g: Guess) {
+    setEditForm({
+      guesserName: g.guesserName,
+      guesserEmail: g.guesserEmail ?? "",
+      guesserPhone: g.guesserPhone ?? "",
+      guessNumber: String(g.guessNumber),
+      paymentMethod: g.paymentMethod ?? "cash",
+      paid: g.paid,
+      amountPaid: g.amountPaid != null ? String(g.amountPaid) : "",
+    })
+    setEditGuess(g)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editGuess) return
+    if (!editForm.guesserName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return }
+    const parsedNum = parseInt(editForm.guessNumber, 10)
+    if (isNaN(parsedNum) || parsedNum < 1) { toast({ title: "Guess number must be a positive integer", variant: "destructive" }); return }
+    setEditSaving(true)
+    try {
+      const updated = await apiFetch(`/api/admin/lego-jar/guesses/${editGuess.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          guesserName: editForm.guesserName.trim(),
+          guesserEmail: editForm.guesserEmail.trim() || null,
+          guesserPhone: editForm.guesserPhone.trim() || null,
+          guessNumber: parsedNum,
+          paymentMethod: editForm.paymentMethod || null,
+          paid: editForm.paid,
+          amountPaid: editForm.amountPaid.trim() ? Number(editForm.amountPaid) : null,
+        }),
+      })
+      setGuesses((prev) => prev.map((g) => g.id === editGuess.id ? updated : g))
+      toast({ title: "Guess updated" })
+      setEditGuess(null)
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to save", variant: "destructive" })
+    } finally {
+      setEditSaving(false)
+    }
+  }
 
   // Guess search/filter state
   const [guessSearch, setGuessSearch] = useState("")
@@ -726,12 +773,22 @@ export default function LegoJar() {
                           </td>
                           <td className="px-4 py-3 text-muted-foreground text-xs">{format(parseISO(g.createdAt), "d MMM yyyy")}</td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => setDeleteGuessId(g.id)}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive rounded transition-all"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => openEditGuess(g)}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded transition-all"
+                                title="Edit guess"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setDeleteGuessId(g.id)}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive rounded transition-all"
+                                title="Delete guess"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       )
@@ -1082,6 +1139,88 @@ export default function LegoJar() {
             <Button variant="outline" className="flex-1" onClick={() => { setGuessOpen(false); resetGuessDialog() }}>Cancel</Button>
             <Button className="flex-1" onClick={handleLogGuess} disabled={guessSaving}>
               {guessSaving ? "Saving…" : guessNumbers.filter(Boolean).length > 1 ? `Log ${guessNumbers.filter(Boolean).length} guesses` : "Log guess"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit guess */}
+      <Modal isOpen={editGuess !== null} onClose={() => setEditGuess(null)} title="Edit Guess">
+        <div className="space-y-4 p-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold mb-1.5">Guesser name *</label>
+              <Input
+                value={editForm.guesserName}
+                onChange={(e) => setEditForm((f) => ({ ...f, guesserName: e.target.value }))}
+                placeholder="Jane Smith"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold mb-1.5">Email <span className="font-normal text-muted-foreground">(optional)</span></label>
+              <Input
+                type="email"
+                placeholder="jane@example.com"
+                value={editForm.guesserEmail}
+                onChange={(e) => setEditForm((f) => ({ ...f, guesserEmail: e.target.value }))}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold mb-1.5">Phone <span className="font-normal text-muted-foreground">(optional)</span></label>
+              <Input
+                type="tel"
+                placeholder="+852 XXXX XXXX"
+                value={editForm.guesserPhone}
+                onChange={(e) => setEditForm((f) => ({ ...f, guesserPhone: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1.5">Guess number *</label>
+              <Input
+                type="number"
+                min="1"
+                placeholder="e.g. 342"
+                value={editForm.guessNumber}
+                onChange={(e) => setEditForm((f) => ({ ...f, guessNumber: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1.5">Amount paid (HK$)</label>
+              <Input
+                type="number"
+                min="0"
+                placeholder="50"
+                value={editForm.amountPaid}
+                onChange={(e) => setEditForm((f) => ({ ...f, amountPaid: e.target.value }))}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold mb-1.5">Payment method</label>
+              <select
+                value={editForm.paymentMethod}
+                onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))}
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="cash">Cash</option>
+                <option value="payme">PayMe</option>
+                <option value="wise">Wise</option>
+                <option value="bank_transfer">Bank Transfer</option>
+              </select>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={editForm.paid}
+              onChange={(e) => setEditForm((f) => ({ ...f, paid: e.target.checked }))}
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <span className="text-sm font-medium">Payment received</span>
+          </label>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setEditGuess(null)}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSaveEdit} disabled={editSaving}>
+              {editSaving ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </div>
