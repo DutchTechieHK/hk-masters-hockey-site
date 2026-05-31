@@ -9,6 +9,14 @@ import type { DashboardStatsDocumentCounts } from "./dashboardStatsDocumentCount
 import type { DashboardStatsTeamStatsItem } from "./dashboardStatsTeamStatsItem";
 import type { DashboardStatsUpcomingDeadlinesItem } from "./dashboardStatsUpcomingDeadlinesItem";
 
+export type DashboardStatsFundraisingBreakdown = {
+  onlinePledges: number;
+  legoJar: number;
+  sponsors: number;
+  funRun: number;
+  auction: number;
+};
+
 export interface DashboardStats {
   totalPlayers: number;
   playersPaidCount: number;
@@ -24,5 +32,6 @@ export interface DashboardStats {
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
+  fundraisingBreakdown: DashboardStatsFundraisingBreakdown;
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
 }

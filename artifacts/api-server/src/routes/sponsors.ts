@@ -25,6 +25,7 @@ router.get("/", async (_req, res) => {
     websiteUrl: s.websiteUrl ?? undefined,
     tier: s.tier,
     active: s.active,
+    contributionAmount: s.contributionAmount != null ? Number(s.contributionAmount) : null,
     createdAt: s.createdAt?.toISOString(),
   })));
 });
@@ -37,6 +38,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     websiteUrl: body.websiteUrl || null,
     tier: body.tier,
     active: body.active,
+    contributionAmount: body.contributionAmount != null ? String(body.contributionAmount) : null,
   }).returning();
   res.status(201).json({
     id: sponsor.id,
@@ -45,6 +47,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     websiteUrl: sponsor.websiteUrl ?? undefined,
     tier: sponsor.tier,
     active: sponsor.active,
+    contributionAmount: sponsor.contributionAmount != null ? Number(sponsor.contributionAmount) : null,
     createdAt: sponsor.createdAt?.toISOString(),
   });
 });
@@ -58,6 +61,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     websiteUrl: body.websiteUrl || null,
     tier: body.tier,
     active: body.active,
+    contributionAmount: body.contributionAmount != null ? String(body.contributionAmount) : null,
   }).where(eq(sponsorsTable.id, id)).returning();
   if (!sponsor) {
     res.status(404).json({ error: "Sponsor not found" });
@@ -70,6 +74,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     websiteUrl: sponsor.websiteUrl ?? undefined,
     tier: sponsor.tier,
     active: sponsor.active,
+    contributionAmount: sponsor.contributionAmount != null ? Number(sponsor.contributionAmount) : null,
     createdAt: sponsor.createdAt?.toISOString(),
   });
 });

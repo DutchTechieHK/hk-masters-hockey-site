@@ -46,6 +46,10 @@ const sponsorSchema = z.object({
   websiteUrl: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   tier: z.enum(["Gold", "Silver", "Bronze"]),
   active: z.boolean(),
+  contributionAmount: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined ? null : Number(v)),
+    z.number().positive("Must be a positive number").nullable().optional()
+  ),
 })
 
 type SponsorFormValues = z.infer<typeof sponsorSchema>
@@ -173,7 +177,7 @@ export default function Sponsors() {
 
   const openAddModal = () => {
     setEditingSponsor(null)
-    reset({ name: "", logoUrl: "", websiteUrl: "", tier: "Bronze", active: true })
+    reset({ name: "", logoUrl: "", websiteUrl: "", tier: "Bronze", active: true, contributionAmount: null })
     setIsModalOpen(true)
   }
 
@@ -185,6 +189,7 @@ export default function Sponsors() {
       websiteUrl: sponsor.websiteUrl || "",
       tier: sponsor.tier as "Gold" | "Silver" | "Bronze",
       active: sponsor.active,
+      contributionAmount: sponsor.contributionAmount ?? null,
     })
     setIsModalOpen(true)
   }
@@ -208,6 +213,7 @@ export default function Sponsors() {
         websiteUrl: data.websiteUrl || undefined,
         tier: data.tier,
         active: data.active,
+        contributionAmount: data.contributionAmount ?? null,
       }
       if (editingSponsor) {
         await updateMutation.mutateAsync({ id: editingSponsor.id, data: payload })
@@ -463,6 +469,19 @@ export default function Sponsors() {
             <label className="text-sm font-semibold">Website URL</label>
             <Input {...register("websiteUrl")} placeholder="https://example.com" />
             {errors.websiteUrl && <p className="text-xs text-destructive">{errors.websiteUrl.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Contribution Amount (HKD) <span className="font-normal text-muted-foreground">— optional</span></label>
+            <Input
+              {...register("contributionAmount")}
+              type="number"
+              min="0"
+              step="any"
+              placeholder="e.g. 10000"
+            />
+            {errors.contributionAmount && <p className="text-xs text-destructive">{errors.contributionAmount.message}</p>}
+            <p className="text-xs text-muted-foreground">Enter the total HKD amount this sponsor has contributed. Used for the fundraising dashboard breakdown.</p>
           </div>
 
           <div className="flex items-center gap-3">

@@ -156,7 +156,35 @@ export default function Dashboard() {
           {/* Fundraising Progress */}
           <div className="bg-white rounded-2xl shadow-sm border border-border p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-            <h2 className="text-xl font-display font-bold mb-6">Fundraising Goal</h2>
+            <h2 className="text-xl font-display font-bold mb-5">Fundraising Goal</h2>
+
+            {stats.fundraisingBreakdown && (() => {
+              const bd = stats.fundraisingBreakdown
+              const auction = (stats as unknown as { auctionStats?: { itemCount: number } }).auctionStats
+              const auctionNotStarted = !auction || auction.itemCount === 0
+              const sources = [
+                { label: "Online Pledges", value: bd.onlinePledges, notStarted: false },
+                { label: "Lego Jar", value: bd.legoJar, notStarted: false },
+                { label: "Sponsors", value: bd.sponsors, notStarted: false },
+                { label: "Fun Run", value: bd.funRun, notStarted: false },
+                { label: "Auction", value: bd.auction, notStarted: auctionNotStarted },
+              ]
+              return (
+                <div className="divide-y divide-border mb-5 rounded-xl border border-border overflow-hidden">
+                  {sources.map((src) => (
+                    <div key={src.label} className="flex items-center justify-between px-4 py-3 bg-muted/20 hover:bg-muted/40 transition-colors">
+                      <span className="text-sm font-medium text-foreground">{src.label}</span>
+                      {src.notStarted ? (
+                        <span className="text-xs font-medium text-muted-foreground italic">Not started</span>
+                      ) : (
+                        <span className="text-sm font-semibold text-foreground tabular-nums">{hkdPrecise.format(src.value)}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
+
             <div className="mb-2 flex justify-between items-end">
               <div>
                 <p className="text-4xl font-bold text-foreground">{formatCurrency(stats.totalFundsRaised)}</p>

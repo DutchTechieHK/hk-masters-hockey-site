@@ -14,5 +14,6 @@ export interface Sponsor {
   websiteUrl?: string;
   tier: SponsorTier;
   active: boolean;
+  contributionAmount?: number | null;
   createdAt?: string;
 }

@@ -15,6 +15,7 @@ psql "$DATABASE_URL" -f lib/db/migrations/add_announcements_table.sql
 psql "$DATABASE_URL" -f lib/db/migrations/add_team_public_fields.sql
 psql "$DATABASE_URL" -f lib/db/migrations/add_fundraising_payment_method.sql
 psql "$DATABASE_URL" -f lib/db/migrations/add_lego_jar_tables.sql
+psql "$DATABASE_URL" -f lib/db/migrations/add_sponsors_contribution_amount.sql
 
 # Sync any remaining schema changes
 pnpm --filter db push-force

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable } from "@workspace/db/schema";
+import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunParticipantsTable } from "@workspace/db/schema";
 import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -35,8 +35,33 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     return sum + Math.max(0, due - paid);
   }, 0);
 
+  // Online pledges
   const fundraisingRows = await db.select().from(fundraisingTable);
-  const totalFundsRaised = fundraisingRows.reduce((sum, f) => sum + parseFloat(f.amountReceived ?? "0"), 0);
+  const onlinePledges = fundraisingRows.reduce((sum, f) => sum + parseFloat(f.amountReceived ?? "0"), 0);
+
+  // Lego Jar: sum of amountPaid for paid guesses (fallback to pricePerGuess from config)
+  const [legoConfig] = await db.select().from(legoJarConfigTable).where(eq(legoJarConfigTable.id, 1));
+  const pricePerGuess = Number(legoConfig?.pricePerGuess ?? 50);
+  const [legoTotals] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
+    })
+    .from(legoJarGuessesTable);
+  const legoJarTotal = Number(legoTotals?.total ?? 0);
+
+  // Sponsors: sum of contribution_amount for active sponsors
+  const sponsorRows = await db.select({ contributionAmount: sponsorsTable.contributionAmount }).from(sponsorsTable).where(eq(sponsorsTable.active, true));
+  const sponsorsTotal = sponsorRows.reduce((sum, s) => sum + (s.contributionAmount != null ? Number(s.contributionAmount) : 0), 0);
+
+  // Fun Run: sum of pledge_per_km * distance_km for completed participants only
+  const [funRunTotals] = await db
+    .select({
+      total: sql<string>`COALESCE(SUM(pledge_per_km * distance_km), 0)`,
+    })
+    .from(funRunParticipantsTable)
+    .where(eq(funRunParticipantsTable.status, "completed"));
+  const funRunTotal = Number(funRunTotals?.total ?? 0);
+
   const fundraisingTarget = 300000;
 
   const upcomingTasks = await db
@@ -95,6 +120,15 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const auctionItemsWithBids = topBidRows.rows.length;
   const auctionTotalBidValue = topBidRows.rows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
 
+  const fundraisingBreakdown = {
+    onlinePledges,
+    legoJar: legoJarTotal,
+    sponsors: sponsorsTotal,
+    funRun: funRunTotal,
+    auction: auctionTotalBidValue,
+  };
+  const totalFundsRaised = onlinePledges + legoJarTotal + sponsorsTotal + funRunTotal + auctionTotalBidValue;
+
   res.json({
     upcomingEventCount,
     nextEventStartsAt,
@@ -109,6 +143,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     teamStats,
     totalFundsRaised,
     fundraisingTarget,
+    fundraisingBreakdown,
     upcomingDeadlines,
     documentCounts,
     auctionStats: {

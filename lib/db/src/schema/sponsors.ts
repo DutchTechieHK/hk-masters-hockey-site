@@ -1,4 +1,4 @@
-import { pgTable, serial, text, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, boolean, timestamp, decimal } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -9,6 +9,7 @@ export const sponsorsTable = pgTable("sponsors", {
   websiteUrl: text("website_url"),
   tier: text("tier").notNull().default("Bronze"),
   active: boolean("active").notNull().default(true),
+  contributionAmount: decimal("contribution_amount", { precision: 12, scale: 2 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -46,6 +46,13 @@ export const GetDashboardResponse = zod.object({
   ),
   totalFundsRaised: zod.number(),
   fundraisingTarget: zod.number(),
+  fundraisingBreakdown: zod.object({
+    onlinePledges: zod.number(),
+    legoJar: zod.number(),
+    sponsors: zod.number(),
+    funRun: zod.number(),
+    auction: zod.number(),
+  }),
   upcomingDeadlines: zod.array(
     zod.object({
       title: zod.string(),
@@ -1087,6 +1094,7 @@ export const CreateSponsorBody = zod.object({
   websiteUrl: zod.string().optional(),
   tier: zod.enum(["Gold", "Silver", "Bronze"]),
   active: zod.boolean(),
+  contributionAmount: zod.number().nullable().optional(),
 });
 
 /**

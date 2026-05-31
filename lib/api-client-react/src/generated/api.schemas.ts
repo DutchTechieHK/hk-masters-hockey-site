@@ -65,6 +65,14 @@ export type DashboardStatsUpcomingDeadlinesItem = {
   category: string;
 };
 
+export type DashboardStatsFundraisingBreakdown = {
+  onlinePledges: number;
+  legoJar: number;
+  sponsors: number;
+  funRun: number;
+  auction: number;
+};
+
 export interface DashboardStats {
   totalPlayers: number;
   playersPaidCount: number;
@@ -80,6 +88,7 @@ export interface DashboardStats {
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
+  fundraisingBreakdown: DashboardStatsFundraisingBreakdown;
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
 }
 
@@ -528,6 +537,7 @@ export interface Sponsor {
   websiteUrl?: string;
   tier: SponsorTier;
   active: boolean;
+  contributionAmount?: number | null;
   createdAt?: string;
 }
 
