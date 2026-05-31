@@ -638,7 +638,7 @@ export default function Players() {
                 filteredPlayers.map(player => {
                   const pStatus = passportStatus(player.passportExpiry)
                   return (
-                    <tr key={player.id} className="hover:bg-muted/10 transition-colors group">
+                    <tr key={player.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={() => openEditModal(player)}>
                       {/* Shirt Number */}
                       <td className="px-4 py-4">
                         {player.shirtNumber != null ? (
@@ -739,7 +739,7 @@ export default function Players() {
                               View copy
                             </a>
                             <button
-                              onClick={() => handleToggleReviewed(player)}
+                              onClick={(e) => { e.stopPropagation(); handleToggleReviewed(player) }}
                               title={player.passportCopyReviewed ? "Reviewed — click to unmark" : "Not yet reviewed — click to mark as reviewed"}
                               className={`inline-flex items-center gap-1 text-xs font-medium rounded px-1.5 py-0.5 border transition-colors ${
                                 player.passportCopyReviewed
@@ -759,7 +759,7 @@ export default function Players() {
                       <td className="px-4 py-4 text-right">
                         <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
-                            onClick={() => handleSendInvite(player)}
+                            onClick={(e) => { e.stopPropagation(); handleSendInvite(player) }}
                             disabled={sendInvitesMutation.isPending}
                             title={player.onboardingInviteSentAt
                               ? `Onboarding invite sent ${new Date(player.onboardingInviteSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} — click to re-send`
@@ -773,23 +773,23 @@ export default function Players() {
                             <Mail className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleCopyLink(player)}
+                            onClick={(e) => { e.stopPropagation(); handleCopyLink(player) }}
                             title="Copy self-service link (admin)"
                             className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
                           >
                             <LinkIcon className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleRotateLink(player)}
+                            onClick={(e) => { e.stopPropagation(); handleRotateLink(player) }}
                             title="Rotate self-service link (revokes old one)"
                             className="p-2 text-muted-foreground hover:text-amber-600 rounded bg-background hover:bg-amber-50 border shadow-sm transition-all"
                           >
                             <RefreshCw className="w-4 h-4" />
                           </button>
-                          <button onClick={() => openEditModal(player)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
+                          <button onClick={(e) => { e.stopPropagation(); openEditModal(player) }} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button onClick={() => handleDelete(player.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background hover:bg-rose-50 border shadow-sm transition-all">
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id) }} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background hover:bg-rose-50 border shadow-sm transition-all">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
