@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { API_BASE } from "../utils/api";
 
 function LegoBrickIcon({ className = "w-7 h-7" }) {
@@ -131,6 +131,16 @@ export default function LegoJarSection() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  const closeLightbox = useCallback(() => setLightboxOpen(false), []);
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e) => { if (e.key === "Escape") closeLightbox(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lightboxOpen, closeLightbox]);
 
   const pricePerGuess = stats?.config?.pricePerGuess ?? 50;
   const totalGuesses = stats?.totalGuesses ?? 0;
@@ -230,11 +240,23 @@ export default function LegoJarSection() {
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Who has the jar right now</p>
               <div className="flex items-start gap-4">
                 {jarImageUrl ? (
-                  <img
-                    src={jarImageUrl}
-                    alt="The LEGO jar"
-                    className="w-20 h-20 object-cover rounded-xl border border-gray-200 shrink-0"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => setLightboxOpen(true)}
+                    className="relative group w-20 h-20 shrink-0 rounded-xl overflow-hidden border border-gray-200 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40"
+                    aria-label="Expand jar photo"
+                  >
+                    <img
+                      src={jarImageUrl}
+                      alt="The LEGO jar"
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                    />
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/25 transition-colors duration-200">
+                      <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zm-6-3v6m-3-3h6" />
+                      </svg>
+                    </span>
+                  </button>
                 ) : (
                   <div className="w-20 h-20 bg-[#1E3A6E]/8 rounded-xl flex items-center justify-center shrink-0">
                     <LegoBrickIcon className="w-12 h-9" />
@@ -435,6 +457,34 @@ export default function LegoJarSection() {
           </div>
         </div>
       </div>
+
+      {/* Lightbox overlay */}
+      {lightboxOpen && jarImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={closeLightbox}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Jar photo enlarged"
+        >
+          <button
+            type="button"
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={jarImageUrl}
+            alt="The LEGO jar — enlarged"
+            className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </section>
   );
 }
