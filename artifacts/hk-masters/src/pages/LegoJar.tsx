@@ -72,6 +72,18 @@ type Guess = {
   createdAt: string
 }
 
+type GuesserGroup = {
+  key: string
+  guesserName: string
+  guesserEmail: string | null
+  guesserPhone: string | null
+  guesses: Guess[]
+  totalAmountPaid: number
+  paidCount: number
+  dominantPaymentMethod: string | null
+  earliestDate: string
+}
+
 type SquadPlayer = {
   id: number
   name: string
@@ -226,50 +238,62 @@ export default function LegoJar() {
   // Delete confirm
   const [deleteGuessId, setDeleteGuessId] = useState<number | null>(null)
 
-  // Edit guess
-  const [editGuess, setEditGuess] = useState<Guess | null>(null)
-  const [editForm, setEditForm] = useState({ guesserName: "", guesserEmail: "", guesserPhone: "", guessNumber: "", paymentMethod: "cash", paid: false, amountPaid: "" })
-  const [editSaving, setEditSaving] = useState(false)
+  // Edit guesser (group-level contact info)
+  const [editGroup, setEditGroup] = useState<GuesserGroup | null>(null)
+  const [editContactForm, setEditContactForm] = useState({ guesserName: "", guesserEmail: "", guesserPhone: "" })
+  const [editGroupSaving, setEditGroupSaving] = useState(false)
 
-  function openEditGuess(g: Guess) {
-    setEditForm({
-      guesserName: g.guesserName,
-      guesserEmail: g.guesserEmail ?? "",
-      guesserPhone: g.guesserPhone ?? "",
-      guessNumber: String(g.guessNumber),
-      paymentMethod: g.paymentMethod ?? "cash",
-      paid: g.paid,
-      amountPaid: g.amountPaid != null ? String(g.amountPaid) : "",
+  function openEditGroup(group: GuesserGroup) {
+    setEditContactForm({
+      guesserName: group.guesserName,
+      guesserEmail: group.guesserEmail ?? "",
+      guesserPhone: group.guesserPhone ?? "",
     })
-    setEditGuess(g)
+    setEditGroup(group)
   }
 
-  const handleSaveEdit = async () => {
-    if (!editGuess) return
-    if (!editForm.guesserName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return }
-    const parsedNum = parseInt(editForm.guessNumber, 10)
-    if (isNaN(parsedNum) || parsedNum < 1) { toast({ title: "Guess number must be a positive integer", variant: "destructive" }); return }
-    setEditSaving(true)
+  const handleSaveEditGroup = async () => {
+    if (!editGroup) return
+    if (!editContactForm.guesserName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return }
+    setEditGroupSaving(true)
     try {
-      const updated = await apiFetch(`/api/admin/lego-jar/guesses/${editGuess.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          guesserName: editForm.guesserName.trim(),
-          guesserEmail: editForm.guesserEmail.trim() || null,
-          guesserPhone: editForm.guesserPhone.trim() || null,
-          guessNumber: parsedNum,
-          paymentMethod: editForm.paymentMethod || null,
-          paid: editForm.paid,
-          amountPaid: editForm.amountPaid.trim() ? Number(editForm.amountPaid) : null,
-        }),
+      const results: Guess[] = await Promise.all(
+        editGroup.guesses.map((g) => apiFetch(`/api/admin/lego-jar/guesses/${g.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            guesserName: editContactForm.guesserName.trim(),
+            guesserEmail: editContactForm.guesserEmail.trim() || null,
+            guesserPhone: editContactForm.guesserPhone.trim() || null,
+          }),
+        }))
+      )
+      setGuesses((prev) => {
+        const byId = new Map(results.map((r) => [r.id, r]))
+        return prev.map((g) => byId.has(g.id) ? byId.get(g.id)! : g)
       })
-      setGuesses((prev) => prev.map((g) => g.id === editGuess.id ? updated : g))
-      toast({ title: "Guess updated" })
-      setEditGuess(null)
+      toast({ title: "Guesser updated" })
+      setEditGroup(null)
     } catch (err) {
       toast({ title: (err as Error).message || "Failed to save", variant: "destructive" })
     } finally {
-      setEditSaving(false)
+      setEditGroupSaving(false)
+    }
+  }
+
+  const toggleAllPaid = async (group: GuesserGroup) => {
+    const allPaid = group.paidCount === group.guesses.length
+    const toToggle = allPaid ? group.guesses : group.guesses.filter((g) => !g.paid)
+    const newPaid = !allPaid
+    try {
+      await Promise.all(
+        toToggle.map((g) => apiFetch(`/api/admin/lego-jar/guesses/${g.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ paid: newPaid }),
+        }))
+      )
+      setGuesses((prev) => prev.map((g) => toToggle.find((t) => t.id === g.id) ? { ...g, paid: newPaid } : g))
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed", variant: "destructive" })
     }
   }
 
@@ -347,6 +371,28 @@ export default function LegoJar() {
     }
     return true
   })
+
+  // Group filtered guesses by guesser name (case-insensitive)
+  const guesserGroups: GuesserGroup[] = (() => {
+    const map = new Map<string, Guess[]>()
+    for (const g of filteredGuesses) {
+      const key = g.guesserName.trim().toLowerCase()
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(g)
+    }
+    return Array.from(map.entries()).map(([key, gs]): GuesserGroup => {
+      const sorted = [...gs].sort((a, b) => a.guessNumber - b.guessNumber)
+      const email = gs.find((g) => g.guesserEmail)?.guesserEmail ?? null
+      const phone = gs.find((g) => g.guesserPhone)?.guesserPhone ?? null
+      const paidCount = gs.filter((g) => g.paid).length
+      const totalAmountPaid = gs.filter((g) => g.paid).reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0)
+      const pmCounts: Record<string, number> = {}
+      for (const g of gs) { if (g.paymentMethod) pmCounts[g.paymentMethod] = (pmCounts[g.paymentMethod] ?? 0) + 1 }
+      const dominantPm = Object.entries(pmCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+      const earliestDate = gs.reduce((min, g) => g.createdAt < min ? g.createdAt : min, gs[0].createdAt)
+      return { key, guesserName: sorted[0].guesserName, guesserEmail: email, guesserPhone: phone, guesses: sorted, totalAmountPaid, paidCount, dominantPaymentMethod: dominantPm, earliestDate }
+    }).sort((a, b) => a.earliestDate.localeCompare(b.earliestDate))
+  })()
 
   // Pass the Jar
   const handlePassJar = async () => {
@@ -713,10 +759,12 @@ export default function LegoJar() {
                 <X className="w-3.5 h-3.5" /> Clear filters
               </button>
             )}
-            <span className="ml-auto self-center text-xs text-muted-foreground">{filteredGuesses.length} of {totalGuesses}</span>
+            <span className="ml-auto self-center text-xs text-muted-foreground">
+              {guesserGroups.length} {guesserGroups.length === 1 ? "guesser" : "guessers"} · {filteredGuesses.length} of {totalGuesses} guesses
+            </span>
           </div>
 
-          {/* Guesses table */}
+          {/* Guesses table — one row per guesser */}
           <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -724,71 +772,95 @@ export default function LegoJar() {
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold">Guesser</th>
                     <th className="px-4 py-3 text-left font-semibold">Email</th>
-                    <th className="px-4 py-3 text-right font-semibold">Guess #</th>
-                    <th className="px-4 py-3 text-right font-semibold">Amt</th>
-                    <th className="px-4 py-3 text-left font-semibold">Round / Holder</th>
                     <th className="px-4 py-3 text-left font-semibold">Phone</th>
-                    <th className="px-4 py-3 text-left font-semibold">Payment</th>
+                    <th className="px-4 py-3 text-left font-semibold">Guesses</th>
                     <th className="px-4 py-3 text-left font-semibold">Paid</th>
+                    <th className="px-4 py-3 text-right font-semibold">Total</th>
+                    <th className="px-4 py-3 text-left font-semibold">Payment</th>
                     <th className="px-4 py-3 text-left font-semibold">Date</th>
                     <th className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {loading ? (
-                    <tr><td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
-                  ) : filteredGuesses.length === 0 ? (
-                    <tr><td colSpan={10} className="px-4 py-12 text-center text-muted-foreground">
+                    <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
+                  ) : guesserGroups.length === 0 ? (
+                    <tr><td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                       {totalGuesses === 0 ? "No guesses yet." : "No guesses match your filters."}
                     </td></tr>
                   ) : (
-                    filteredGuesses.map((g) => {
-                      const round = rounds.find((r) => r.id === g.roundId)
+                    guesserGroups.map((group) => {
+                      const allPaid = group.paidCount === group.guesses.length
+                      const nonePaid = group.paidCount === 0
                       return (
-                        <tr key={g.id} className="hover:bg-muted/10 group">
-                          <td className="px-4 py-3 font-medium">{g.guesserName}</td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">{g.guesserEmail ?? "—"}</td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">{g.guesserPhone ?? "—"}</td>
-                          <td className="px-4 py-3 text-right font-mono font-bold">{g.guessNumber.toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right text-xs font-mono text-muted-foreground">
-                            {g.amountPaid != null ? `HK$${Number(g.amountPaid).toFixed(0)}` : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">{round ? round.holderName : "—"}</td>
+                        <tr key={group.key} className="hover:bg-muted/10 group align-top">
+                          <td className="px-4 py-3 font-medium whitespace-nowrap">{group.guesserName}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs">{group.guesserEmail ?? "—"}</td>
+                          <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">{group.guesserPhone ?? "—"}</td>
                           <td className="px-4 py-3">
-                            {g.paymentMethod ? (
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PM_COLORS[g.paymentMethod] ?? "bg-gray-100 text-gray-600"}`}>
-                                {PM_LABELS[g.paymentMethod] ?? g.paymentMethod}
+                            <div className="flex flex-wrap gap-1.5">
+                              {group.guesses.map((g) => (
+                                <div key={g.id} className="group/chip flex items-center gap-0.5">
+                                  <button
+                                    onClick={() => togglePaid(g)}
+                                    title={g.paid ? "Mark unpaid" : "Mark paid"}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-semibold border transition-colors ${
+                                      g.paid
+                                        ? "bg-emerald-100 text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+                                        : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200"
+                                    }`}
+                                  >
+                                    <span>{g.paid ? "✓" : "·"}</span>
+                                    <span>{g.guessNumber.toLocaleString()}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteGuessId(g.id)}
+                                    title="Delete this guess"
+                                    className="opacity-0 group-hover/chip:opacity-100 p-0.5 text-muted-foreground hover:text-destructive rounded transition-all"
+                                  >
+                                    <X className="w-2.5 h-2.5" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-semibold ${allPaid ? "text-emerald-700" : nonePaid ? "text-gray-400" : "text-amber-600"}`}>
+                                {group.paidCount} / {group.guesses.length}
+                              </span>
+                              {!allPaid && (
+                                <button
+                                  onClick={() => toggleAllPaid(group)}
+                                  className="text-xs text-muted-foreground hover:text-emerald-700 underline underline-offset-2 transition-colors"
+                                  title="Mark all as paid"
+                                >
+                                  all
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right text-xs font-mono text-muted-foreground whitespace-nowrap">
+                            {group.totalAmountPaid > 0 ? `HK$${group.totalAmountPaid.toLocaleString()}` : "—"}
+                          </td>
+                          <td className="px-4 py-3">
+                            {group.dominantPaymentMethod ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PM_COLORS[group.dominantPaymentMethod] ?? "bg-gray-100 text-gray-600"}`}>
+                                {PM_LABELS[group.dominantPaymentMethod] ?? group.dominantPaymentMethod}
                               </span>
                             ) : "—"}
                           </td>
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => togglePaid(g)}
-                              className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
-                                g.paid ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-emerald-50"
-                              }`}
-                            >
-                              {g.paid ? "✓ Paid" : "Unpaid"}
-                            </button>
+                          <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                            {format(parseISO(group.earliestDate), "d MMM yyyy")}
                           </td>
-                          <td className="px-4 py-3 text-muted-foreground text-xs">{format(parseISO(g.createdAt), "d MMM yyyy")}</td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <button
-                                onClick={() => openEditGuess(g)}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded transition-all"
-                                title="Edit guess"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setDeleteGuessId(g.id)}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-destructive rounded transition-all"
-                                title="Delete guess"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => openEditGroup(group)}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded transition-all"
+                              title="Edit contact info"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
                           </td>
                         </tr>
                       )
@@ -1144,83 +1216,45 @@ export default function LegoJar() {
         </div>
       </Modal>
 
-      {/* Edit guess */}
-      <Modal isOpen={editGuess !== null} onClose={() => setEditGuess(null)} title="Edit Guess">
+      {/* Edit guesser contact info */}
+      <Modal isOpen={editGroup !== null} onClose={() => setEditGroup(null)} title="Edit Guesser">
         <div className="space-y-4 p-1">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2">
-              <label className="block text-sm font-semibold mb-1.5">Guesser name *</label>
-              <Input
-                value={editForm.guesserName}
-                onChange={(e) => setEditForm((f) => ({ ...f, guesserName: e.target.value }))}
-                placeholder="Jane Smith"
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-semibold mb-1.5">Email <span className="font-normal text-muted-foreground">(optional)</span></label>
-              <Input
-                type="email"
-                placeholder="jane@example.com"
-                value={editForm.guesserEmail}
-                onChange={(e) => setEditForm((f) => ({ ...f, guesserEmail: e.target.value }))}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-semibold mb-1.5">Phone <span className="font-normal text-muted-foreground">(optional)</span></label>
-              <Input
-                type="tel"
-                placeholder="+852 XXXX XXXX"
-                value={editForm.guesserPhone}
-                onChange={(e) => setEditForm((f) => ({ ...f, guesserPhone: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1.5">Guess number *</label>
-              <Input
-                type="number"
-                min="1"
-                placeholder="e.g. 342"
-                value={editForm.guessNumber}
-                onChange={(e) => setEditForm((f) => ({ ...f, guessNumber: e.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold mb-1.5">Amount paid (HK$)</label>
-              <Input
-                type="number"
-                min="0"
-                placeholder="50"
-                value={editForm.amountPaid}
-                onChange={(e) => setEditForm((f) => ({ ...f, amountPaid: e.target.value }))}
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-sm font-semibold mb-1.5">Payment method</label>
-              <select
-                value={editForm.paymentMethod}
-                onChange={(e) => setEditForm((f) => ({ ...f, paymentMethod: e.target.value }))}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-              >
-                <option value="cash">Cash</option>
-                <option value="payme">PayMe</option>
-                <option value="wise">Wise</option>
-                <option value="bank_transfer">Bank Transfer</option>
-              </select>
-            </div>
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={editForm.paid}
-              onChange={(e) => setEditForm((f) => ({ ...f, paid: e.target.checked }))}
-              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+          {editGroup && editGroup.guesses.length > 1 && (
+            <p className="text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+              Updates name, email and phone for all {editGroup.guesses.length} guesses by this person.
+            </p>
+          )}
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Name *</label>
+            <Input
+              value={editContactForm.guesserName}
+              onChange={(e) => setEditContactForm((f) => ({ ...f, guesserName: e.target.value }))}
+              placeholder="Jane Smith"
+              autoFocus
             />
-            <span className="text-sm font-medium">Payment received</span>
-          </label>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Email <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <Input
+              type="email"
+              placeholder="jane@example.com"
+              value={editContactForm.guesserEmail}
+              onChange={(e) => setEditContactForm((f) => ({ ...f, guesserEmail: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Phone <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <Input
+              type="tel"
+              placeholder="+852 XXXX XXXX"
+              value={editContactForm.guesserPhone}
+              onChange={(e) => setEditContactForm((f) => ({ ...f, guesserPhone: e.target.value }))}
+            />
+          </div>
           <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setEditGuess(null)}>Cancel</Button>
-            <Button className="flex-1" onClick={handleSaveEdit} disabled={editSaving}>
-              {editSaving ? "Saving…" : "Save changes"}
+            <Button variant="outline" className="flex-1" onClick={() => setEditGroup(null)}>Cancel</Button>
+            <Button className="flex-1" onClick={handleSaveEditGroup} disabled={editGroupSaving}>
+              {editGroupSaving ? "Saving…" : "Save"}
             </Button>
           </div>
         </div>
