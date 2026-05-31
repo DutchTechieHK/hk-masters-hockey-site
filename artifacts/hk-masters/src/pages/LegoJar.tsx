@@ -415,6 +415,29 @@ export default function LegoJar() {
     .filter((g) => g.paid)
     .reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0))
 
+  // Keep the per-round/holder summary cards (guess count, paid count, amount
+  // raised) in sync with the in-memory guesses list. Without this, toggling a
+  // payment received or editing a guesser only updated those cards after a full
+  // reload. Formulas mirror the admin rounds endpoint: guessCount counts every
+  // guess in the round; paidCount and amountRaised count only paid guesses.
+  useEffect(() => {
+    setRounds((prev) => {
+      let changed = false
+      const next = prev.map((r) => {
+        const rGss = guesses.filter((g) => g.roundId === r.id)
+        const guessCount = rGss.length
+        const paidCount = rGss.filter((g) => g.paid).length
+        const amountRaised = rGss
+          .filter((g) => g.paid)
+          .reduce((sum, g) => sum + (g.amountPaid != null ? Number(g.amountPaid) : pricePerGuess), 0)
+        if (r.guessCount === guessCount && r.paidCount === paidCount && r.amountRaised === amountRaised) return r
+        changed = true
+        return { ...r, guessCount, paidCount, amountRaised }
+      })
+      return changed ? next : prev
+    })
+  }, [guesses, pricePerGuess])
+
   // Filtered guesses for guesses tab
   const filteredGuesses = guesses.filter((g) => {
     const q = guessSearch.trim().toLowerCase()
