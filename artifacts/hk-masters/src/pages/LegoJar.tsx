@@ -376,7 +376,7 @@ export default function LegoJar() {
       description="Track guesses, jar location, and funds raised."
       action={
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <Button variant="outline" onClick={load} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} /> Refresh
           </Button>
           <Button variant="outline" onClick={() => setGuessOpen(true)}>
