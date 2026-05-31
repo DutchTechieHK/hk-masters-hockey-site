@@ -14,6 +14,7 @@ const FUNDRAISING_CHILDREN = [
   { href: "/fundraising", label: "Pledges", icon: HandCoins },
   { href: "/fun-run", label: "Fun Run", icon: Footprints },
   { href: "/lego-jar", label: "LEGO Jar", icon: Package },
+  { href: "/auction", label: "Auction", icon: Gavel },
   { href: "/sponsors", label: "Sponsors", icon: Star },
 ]
 
@@ -34,7 +35,6 @@ const NAV_ITEMS = [
   { href: "/travel", label: "Travel", icon: Luggage },
   { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/documents", label: "Documents", icon: FolderOpen },
-  { href: "/auction", label: "Auction", icon: Gavel },
 ]
 
 async function handleSignOut() {

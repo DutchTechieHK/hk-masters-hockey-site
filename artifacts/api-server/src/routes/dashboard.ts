@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable } from "@workspace/db/schema";
+import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable } from "@workspace/db/schema";
 import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -82,6 +82,19 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     information: allDocuments.filter((d) => d.category === "information").length,
   };
 
+  // Auction stats: sum top bids per item
+  const auctionItems = await db.select({ id: auctionItemsTable.id }).from(auctionItemsTable);
+  const auctionSettings = await db.select().from(auctionSettingsTable).limit(1);
+  const auctionIsLive = auctionSettings[0]?.isLive ?? false;
+  const topBidRows = await db.execute<{ item_id: number; amount: string }>(sql`
+    SELECT DISTINCT ON (item_id) item_id, amount::text
+    FROM auction_bids
+    ORDER BY item_id, amount DESC, placed_at DESC
+  `);
+  const auctionItemCount = auctionItems.length;
+  const auctionItemsWithBids = topBidRows.rows.length;
+  const auctionTotalBidValue = topBidRows.rows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+
   res.json({
     upcomingEventCount,
     nextEventStartsAt,
@@ -98,6 +111,12 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     fundraisingTarget,
     upcomingDeadlines,
     documentCounts,
+    auctionStats: {
+      itemCount: auctionItemCount,
+      itemsWithBids: auctionItemsWithBids,
+      totalBidValue: auctionTotalBidValue,
+      isLive: auctionIsLive,
+    },
   });
 });
 

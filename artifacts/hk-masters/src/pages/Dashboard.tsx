@@ -1,6 +1,6 @@
 import { useGetDashboard, useListPlayers, useListKits } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText, Gavel } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -255,6 +255,47 @@ export default function Dashboard() {
               </div>
             </button>
           )}
+
+          {/* Auction card */}
+          {(() => {
+            const auction = (stats as unknown as { auctionStats?: { itemCount: number; itemsWithBids: number; totalBidValue: number; isLive: boolean } }).auctionStats
+            if (!auction || auction.itemCount === 0) return null
+            return (
+              <button
+                className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+                onClick={() => navigate("/auction")}
+              >
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-display font-bold">Auction</h2>
+                    {auction.isLive && (
+                      <span className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                        Live
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                    <Gavel className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-end gap-2 mb-1">
+                    <p className="text-3xl font-bold text-foreground">{formatCurrency(auction.totalBidValue)}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">current top bids across {auction.itemCount} item{auction.itemCount !== 1 ? "s" : ""}</p>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>{auction.itemsWithBids} item{auction.itemsWithBids !== 1 ? "s" : ""} with bids</span>
+                    <span>{auction.itemCount - auction.itemsWithBids} without bids</span>
+                  </div>
+                  <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
+                    Manage auction <ArrowRight className="w-3 h-3" />
+                  </p>
+                </div>
+              </button>
+            )
+          })()}
 
           {/* Readiness summary card */}
           <button
