@@ -126,15 +126,15 @@ export default function MyDocuments() {
                   {cat.items.map((doc) => (
                     <li
                       key={doc.id}
-                      className={`bg-white rounded-2xl shadow-sm border p-4 sm:p-5 flex items-start justify-between gap-4 ${
+                      className={`bg-white rounded-2xl shadow-sm border p-4 sm:p-5 flex flex-col gap-3 ${
                         cat.key === "mandatory-form"
                           ? "border-red-200 border-l-4 border-l-red-500"
                           : "border-gray-100"
                       }`}
                     >
-                      <div className="min-w-0">
+                      <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-gray-900 truncate">{doc.title}</p>
+                          <p className="font-medium text-gray-900">{doc.title}</p>
                           {cat.key === "mandatory-form" && (
                             <span className="inline-flex items-center text-xs font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-700 shrink-0">
                               Required
@@ -151,21 +151,23 @@ export default function MyDocuments() {
                           )}
                         </div>
                       </div>
-                      <a
-                        href={doc.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex-shrink-0 inline-flex items-center gap-1.5 px-4 py-2 text-white text-sm font-medium rounded-xl transition ${
-                          cat.key === "mandatory-form"
-                            ? "bg-red-600 hover:bg-red-700"
-                            : "bg-green-700 hover:bg-green-800"
-                        }`}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
-                        </svg>
-                        Download
-                      </a>
+                      <div className="flex justify-end">
+                        <a
+                          href={doc.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-1.5 px-4 py-2 text-white text-sm font-medium rounded-xl transition ${
+                            cat.key === "mandatory-form"
+                              ? "bg-red-600 hover:bg-red-700"
+                              : "bg-green-700 hover:bg-green-800"
+                          }`}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V4" />
+                          </svg>
+                          Download
+                        </a>
+                      </div>
                     </li>
                   ))}
                 </ul>
