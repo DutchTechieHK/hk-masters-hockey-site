@@ -258,6 +258,7 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
   sendLegoJarGuessAdminNotificationEmail({
     guesserName: firstGuess.guesserName,
     guesserEmail: firstGuess.guesserEmail ?? null,
+    guesserPhone: firstGuess.guesserPhone ?? null,
     guessNumber: firstGuess.guessNumber,
     paymentMethod: firstGuess.paymentMethod ?? paymentMethod,
     guessId: firstGuess.id,

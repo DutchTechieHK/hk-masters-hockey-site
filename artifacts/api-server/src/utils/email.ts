@@ -1234,12 +1234,14 @@ The HK Masters Hockey Team`;
 export async function sendLegoJarGuessAdminNotificationEmail(opts: {
   guesserName: string;
   guesserEmail?: string | null;
+  guesserPhone?: string | null;
   guessNumber: number;
   paymentMethod: string;
   guessId: number;
 }): Promise<boolean> {
   const safeName = escapeHtml(opts.guesserName);
   const safeEmail = opts.guesserEmail ? escapeHtml(opts.guesserEmail) : null;
+  const safePhone = opts.guesserPhone ? escapeHtml(opts.guesserPhone) : null;
   const adminLegoJarUrl = `${ADMIN_APP_URL}/lego-jar`;
 
   const paymentMethodLabel: Record<string, string> = {
@@ -1263,6 +1265,10 @@ export async function sendLegoJarGuessAdminNotificationEmail(opts: {
         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Email</td>
         <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${safeEmail ?? '<span style="color:#9ca3af;">—</span>'}</td>
       </tr>
+      ${safePhone ? `<tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Phone</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${safePhone}</td>
+      </tr>` : ""}
       <tr style="background-color:#f9fafb;">
         <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Guess</td>
         <td style="padding:10px 16px;font-size:18px;font-weight:700;color:#1E3A6E;border-top:1px solid #e5e7eb;">${opts.guessNumber.toLocaleString()}</td>
@@ -1281,7 +1287,7 @@ export async function sendLegoJarGuessAdminNotificationEmail(opts: {
   const text = `New LEGO Jar Guess
 
 Name:            ${opts.guesserName}
-Email:           ${opts.guesserEmail ?? "—"}
+Email:           ${opts.guesserEmail ?? "—"}${opts.guesserPhone ? `\nPhone:           ${opts.guesserPhone}` : ""}
 Guess:           ${opts.guessNumber.toLocaleString()}
 Payment Method:  ${methodLabel}
 
