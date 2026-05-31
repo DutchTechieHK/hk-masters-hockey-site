@@ -223,15 +223,13 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
   const config = await getConfig();
   const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
-  // Distribute amountPaid across rows — last row absorbs the rounding remainder
-  // so that SUM(amount_paid) always equals the total paid (avoids e.g. 3×33.33=99.99 for $100)
+  // Single-item model: store the full bet amount on the first row and 0 on the
+  // rest, so SUM(amount_paid) equals the total exactly with no rounding/decimals
+  // (a 3-guess bet is one $100 item, a 1-guess bet is one $50 item).
   const totalPaid = totalAmountPaid != null ? Number(totalAmountPaid) : null;
   const perRowAmounts: (string | null)[] = parsedNumbers.map((_, i) => {
     if (totalPaid == null) return null;
-    const n = parsedNumbers.length;
-    const base = Math.floor((totalPaid / n) * 100) / 100;
-    if (i < n - 1) return String(base);
-    return String(+(totalPaid - base * (n - 1)).toFixed(2));
+    return i === 0 ? String(totalPaid) : "0";
   });
 
   const insertedGuesses = await db
@@ -524,15 +522,13 @@ legoJarAdminRouter.post("/guesses", async (req, res) => {
     parsedNumbers.push(parsed);
   }
 
-  // Distribute amountPaid across rows — last row absorbs the rounding remainder
-  // so that SUM(amount_paid) always equals the total paid (avoids e.g. 3×33.33=99.99 for $100)
+  // Single-item model: store the full bet amount on the first row and 0 on the
+  // rest, so SUM(amount_paid) equals the total exactly with no rounding/decimals
+  // (a 3-guess bet is one $100 item, a 1-guess bet is one $50 item).
   const totalPaid = amountPaid != null && amountPaid !== "" ? Number(amountPaid) : null;
   const perRowAmounts: (string | null)[] = parsedNumbers.map((_, i) => {
     if (totalPaid == null) return null;
-    const n = parsedNumbers.length;
-    const base = Math.floor((totalPaid / n) * 100) / 100;
-    if (i < n - 1) return String(base);
-    return String(+(totalPaid - base * (n - 1)).toFixed(2));
+    return i === 0 ? String(totalPaid) : "0";
   });
 
   const insertedGuesses = await db

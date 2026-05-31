@@ -267,15 +267,12 @@ export default function LegoJar() {
     if (!editContactForm.guesserName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return }
     setEditGroupSaving(true)
     try {
-      // Distribute total amount across rows using same splitting logic as Log Guess
-      // Last row absorbs rounding remainder so SUM(amount_paid) is always exact
+      // Single-item model: store the full total on the first row and 0 on the
+      // rest, so SUM(amount_paid) equals the total exactly (no rounding/decimals).
       const totalPaid = editGroupAmountPaid.trim() ? Number(editGroupAmountPaid) : null
-      const n = editGroup.guesses.length
       const perRowAmounts: (number | null)[] = editGroup.guesses.map((_, i) => {
         if (totalPaid == null) return null
-        const base = Math.floor((totalPaid / n) * 100) / 100
-        if (i < n - 1) return base
-        return +(totalPaid - base * (n - 1)).toFixed(2)
+        return i === 0 ? totalPaid : 0
       })
 
       const results: Guess[] = await Promise.all(
