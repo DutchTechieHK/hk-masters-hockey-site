@@ -1,6 +1,6 @@
-import { useGetDashboard, useListPlayers, useListKits } from "@workspace/api-client-react"
+import { useGetDashboard, useListPlayers, useListKits, useGetFunRunSummary } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText, Gavel } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText, Gavel, Footprints } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -18,6 +18,7 @@ export default function Dashboard() {
   const { data: stats, isLoading, error } = useGetDashboard()
   const { data: players = [] } = useListPlayers()
   const { data: kitOrders = [] } = useListKits()
+  const { data: funRunSummary } = useGetFunRunSummary({ refetchInterval: 15000 })
   const [, navigate] = useLocation()
 
   const readinessStats = useMemo(() => {
@@ -296,6 +297,45 @@ export default function Dashboard() {
               </button>
             )
           })()}
+
+          {/* Fun Run summary card */}
+          {funRunSummary && (
+            <button
+              className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+              onClick={() => navigate("/fun-run")}
+            >
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h2 className="text-xl font-display font-bold">Fun Run</h2>
+                <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                  <Footprints className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="flex items-end gap-2 mb-1">
+                  <p className="text-3xl font-bold text-foreground">{hkdPrecise.format(funRunSummary.totalRaised)}</p>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4">raised across {funRunSummary.count} participant{funRunSummary.count !== 1 ? "s" : ""}</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Registered</span>
+                    <span className="text-sm font-semibold text-foreground">{funRunSummary.count}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Completed</span>
+                    <span className="text-sm font-semibold text-emerald-600">{funRunSummary.completedCount}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Total raised</span>
+                    <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.totalRaised)}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
+                  View fun run <ArrowRight className="w-3 h-3" />
+                </p>
+              </div>
+            </button>
+          )}
 
           {/* Readiness summary card */}
           <button
