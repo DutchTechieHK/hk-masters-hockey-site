@@ -1231,6 +1231,66 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendLegoJarGuessAdminNotificationEmail(opts: {
+  guesserName: string;
+  guessNumber: number;
+  paymentMethod: string;
+  guessId: number;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.guesserName);
+  const adminLegoJarUrl = `${ADMIN_APP_URL}/lego-jar`;
+
+  const paymentMethodLabel: Record<string, string> = {
+    payme: "PayMe",
+    wise: "Wise",
+    bank_transfer: "Bank Transfer",
+    cash: "Cash",
+  };
+  const methodLabel = paymentMethodLabel[opts.paymentMethod] ?? opts.paymentMethod;
+
+  const html = emailShell(
+    "#1E3A6E",
+    "New LEGO Jar guess",
+    `<p style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:#1f2937;">New LEGO Jar Guess</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:140px;">Name</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;font-weight:600;">${safeName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Guess</td>
+        <td style="padding:10px 16px;font-size:18px;font-weight:700;color:#1E3A6E;border-top:1px solid #e5e7eb;">${opts.guessNumber.toLocaleString()}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Payment Method</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${methodLabel}</td>
+      </tr>
+    </table>
+    <p style="margin:0 0 20px 0;text-align:center;">
+      <a href="${adminLegoJarUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">View in Admin Panel</a>
+    </p>
+    <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">Guess #${opts.guessId}</p>`
+  );
+
+  const text = `New LEGO Jar Guess
+
+Name:            ${opts.guesserName}
+Guess:           ${opts.guessNumber.toLocaleString()}
+Payment Method:  ${methodLabel}
+
+View all guesses in the admin panel:
+${adminLegoJarUrl}
+
+Guess #${opts.guessId}`;
+
+  return sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[LEGO Jar] New guess: ${opts.guessNumber.toLocaleString()} by ${opts.guesserName}`,
+    html,
+    text,
+  });
+}
+
 export async function sendLegoJarGuessConfirmationEmail(opts: {
   guesserName: string;
   guesserEmail: string;

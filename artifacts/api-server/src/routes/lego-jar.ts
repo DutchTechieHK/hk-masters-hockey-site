@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { legoJarConfigTable, legoJarRoundsTable, legoJarGuessesTable } from "@workspace/db/schema";
 import { eq, isNull, desc, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { sendLegoJarGuessConfirmationEmail } from "../utils/email";
+import { sendLegoJarGuessConfirmationEmail, sendLegoJarGuessAdminNotificationEmail } from "../utils/email";
 
 export const legoJarPublicRouter = Router();
 export const legoJarAdminRouter = Router();
@@ -171,6 +171,13 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
       pricePerGuess: config ? Number(config.pricePerGuess) : 50,
     }).catch((err) => console.error("[lego-jar] Failed to send confirmation email:", err));
   }
+
+  sendLegoJarGuessAdminNotificationEmail({
+    guesserName: guess.guesserName,
+    guessNumber: guess.guessNumber,
+    paymentMethod: guess.paymentMethod ?? paymentMethod,
+    guessId: guess.id,
+  }).catch((err) => console.error("[lego-jar] Failed to send admin notification email:", err));
 
   res.status(201).json({
     id: guess.id,
