@@ -242,7 +242,8 @@ export default function LegoJar() {
   // Edit guesser (group-level contact info + per-guess fields)
   const [editGroup, setEditGroup] = useState<GuesserGroup | null>(null)
   const [editContactForm, setEditContactForm] = useState({ guesserName: "", guesserEmail: "", guesserPhone: "" })
-  const [editGuessRows, setEditGuessRows] = useState<{ id: number; guessNumber: string; paymentMethod: string; amountPaid: string }[]>([])
+  const [editGuessRows, setEditGuessRows] = useState<{ id: number; guessNumber: string; paymentMethod: string }[]>([])
+  const [editGroupAmountPaid, setEditGroupAmountPaid] = useState("")
   const [editGroupSaving, setEditGroupSaving] = useState(false)
 
   function openEditGroup(group: GuesserGroup) {
@@ -255,8 +256,9 @@ export default function LegoJar() {
       id: g.id,
       guessNumber: String(g.guessNumber),
       paymentMethod: g.paymentMethod ?? "cash",
-      amountPaid: g.amountPaid != null ? String(Math.round(Number(g.amountPaid))) : "",
     })))
+    // Use the already-rounded group total — avoids writing 33+33+33=99 back to DB
+    setEditGroupAmountPaid(group.totalAmountPaid > 0 ? String(group.totalAmountPaid) : "")
     setEditGroup(group)
   }
 
@@ -265,6 +267,17 @@ export default function LegoJar() {
     if (!editContactForm.guesserName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return }
     setEditGroupSaving(true)
     try {
+      // Distribute total amount across rows using same splitting logic as Log Guess
+      // Last row absorbs rounding remainder so SUM(amount_paid) is always exact
+      const totalPaid = editGroupAmountPaid.trim() ? Number(editGroupAmountPaid) : null
+      const n = editGroup.guesses.length
+      const perRowAmounts: (number | null)[] = editGroup.guesses.map((_, i) => {
+        if (totalPaid == null) return null
+        const base = Math.floor((totalPaid / n) * 100) / 100
+        if (i < n - 1) return base
+        return +(totalPaid - base * (n - 1)).toFixed(2)
+      })
+
       const results: Guess[] = await Promise.all(
         editGroup.guesses.map((g, i) => {
           const row = editGuessRows[i]
@@ -277,7 +290,7 @@ export default function LegoJar() {
               ...(row ? {
                 guessNumber: parseInt(row.guessNumber, 10) || g.guessNumber,
                 paymentMethod: row.paymentMethod || null,
-                amountPaid: row.amountPaid !== "" ? Number(row.amountPaid) : null,
+                amountPaid: perRowAmounts[i],
               } : {}),
             }),
           })
@@ -1308,23 +1321,13 @@ export default function LegoJar() {
                     <p className="text-xs font-semibold text-muted-foreground">Guess {i + 1}</p>
                   )}
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <div className="col-span-2">
                       <label className="block text-xs font-semibold mb-1">Guess number *</label>
                       <Input
                         type="number"
                         min="1"
                         value={row.guessNumber}
                         onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, guessNumber: e.target.value } : r))}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold mb-1">Amount paid (HK$)</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="e.g. 50"
-                        value={row.amountPaid}
-                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, amountPaid: e.target.value } : r))}
                       />
                     </div>
                     <div className="col-span-2">
@@ -1343,6 +1346,22 @@ export default function LegoJar() {
                   </div>
                 </div>
               ))}
+              {/* Single total amount field — distributed across rows on save to avoid rounding errors */}
+              <div>
+                <label className="block text-xs font-semibold mb-1">
+                  Total amount paid (HK$)
+                  {editGuessRows.length > 1 && (
+                    <span className="font-normal text-muted-foreground ml-1">— split evenly across {editGuessRows.length} guesses on save</span>
+                  )}
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder={editGuessRows.length === 1 ? "e.g. 50" : "e.g. 100"}
+                  value={editGroupAmountPaid}
+                  onChange={(e) => setEditGroupAmountPaid(e.target.value)}
+                />
+              </div>
             </div>
           )}
 
