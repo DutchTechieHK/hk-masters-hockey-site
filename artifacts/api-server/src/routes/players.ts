@@ -645,6 +645,8 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
   let failed = 0;
   let skipped = 0;
 
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
   for (const player of players) {
     if (!player.email) { skipped++; continue; }
     const ok = await sendBulkAnnouncementEmail({
@@ -655,6 +657,8 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
       attachments: attachments.length > 0 ? attachments : undefined,
     });
     if (ok) sent++; else failed++;
+    // Resend rate-limit: 2 req/s. Wait 600 ms between sends to stay safely under.
+    await sleep(600);
   }
 
   const [blast] = await db.insert(emailBlastsTable).values({

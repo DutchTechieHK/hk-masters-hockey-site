@@ -750,11 +750,16 @@ export default function Announcements() {
             </div>
           )}
           {emailError && <p className="text-sm text-rose-600">{emailError}</p>}
+          {sending && (
+            <p className="text-xs text-muted-foreground text-center">
+              Sending — this may take up to {Math.ceil(recipients.length * 0.6 / 5) * 5} seconds. Please keep this page open.
+            </p>
+          )}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={sending}>Cancel</Button>
             <Button onClick={handleSendEmail} disabled={sending} className="gap-2">
               <Send className="w-4 h-4" />
-              {sending ? "Sending…" : "Send emails"}
+              {sending ? `Sending (${recipients.length} emails)…` : "Send emails"}
             </Button>
           </div>
         </div>
