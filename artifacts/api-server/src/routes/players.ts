@@ -1,4 +1,5 @@
 import { Router } from "express";
+import multer from "multer";
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable, playerSessionsTable } from "@workspace/db/schema";
@@ -24,6 +25,11 @@ import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
+
+const emailUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+});
 
 export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null, lastSessionAt?: string | null) {
   const t1 = player.lastPortalAccessAt?.toISOString() ?? null;
@@ -602,13 +608,24 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   res.status(204).send();
 });
 
-router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
-  const parseResult = SendBulkEmailBody.safeParse(req.body ?? {});
+router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachments", 5), async (req, res) => {
+  // Fields arrive as strings from multipart/form-data
+  const rawBody = {
+    audienceType: req.body.audienceType,
+    teamIds: req.body.teamIds ? JSON.parse(req.body.teamIds) : undefined,
+    playerIds: req.body.playerIds ? JSON.parse(req.body.playerIds) : undefined,
+    subject: req.body.subject,
+    body: req.body.body,
+  };
+  const parseResult = SendBulkEmailBody.safeParse(rawBody);
   if (!parseResult.success) {
     res.status(400).json({ error: "Invalid request", details: parseResult.error.flatten() });
     return;
   }
   const { audienceType, teamIds, playerIds, subject, body } = parseResult.data;
+
+  const files = req.files as Express.Multer.File[] | undefined;
+  const attachments = (files ?? []).map((f) => ({ filename: f.originalname, content: f.buffer }));
 
   let players: Array<typeof playersTable.$inferSelect>;
 
@@ -635,6 +652,7 @@ router.post("/send-bulk-email", requireAdminAccess, async (req, res) => {
       playerEmail: player.email,
       subject,
       body,
+      attachments: attachments.length > 0 ? attachments : undefined,
     });
     if (ok) sent++; else failed++;
   }

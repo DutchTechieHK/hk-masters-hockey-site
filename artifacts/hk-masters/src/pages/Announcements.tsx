@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, Edit2, Pin, PinOff, Megaphone, Mail, Send, Clock, Users, CheckSquare, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Trash2, Edit2, Pin, PinOff, Megaphone, Mail, Send, Clock, Users, CheckSquare, ChevronDown, ChevronUp, Paperclip, X } from "lucide-react"
+import { useRef } from "react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -50,6 +51,7 @@ type EmailFormState = {
   playerIds: number[]
   subject: string
   body: string
+  attachments: File[]
 }
 
 const EMPTY_EMAIL_FORM: EmailFormState = {
@@ -58,7 +60,11 @@ const EMPTY_EMAIL_FORM: EmailFormState = {
   playerIds: [],
   subject: "",
   body: "",
+  attachments: [],
 }
+
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
+const MAX_ATTACHMENTS = 5
 
 const EMPTY_FORM: FormState = { title: "", body: "", teamId: "", pinned: false, sendPush: true }
 
@@ -236,22 +242,52 @@ export default function Announcements() {
     }))
   }
 
+  const attachmentInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? [])
+    e.target.value = ""
+    const combined = [...emailForm.attachments, ...picked]
+    const oversized = combined.filter((f) => f.size > MAX_ATTACHMENT_SIZE)
+    if (oversized.length > 0) {
+      toast({ title: `Files must be under 10 MB each (${oversized.map((f) => f.name).join(", ")})`, variant: "destructive" })
+      return
+    }
+    if (combined.length > MAX_ATTACHMENTS) {
+      toast({ title: `Maximum ${MAX_ATTACHMENTS} attachments allowed`, variant: "destructive" })
+      return
+    }
+    setEmailForm((f) => ({ ...f, attachments: combined }))
+  }
+
+  const removeAttachment = (index: number) => {
+    setEmailForm((f) => ({ ...f, attachments: f.attachments.filter((_, i) => i !== index) }))
+  }
+
   const handleSendEmail = async () => {
     setEmailError(null)
     setSending(true)
     setShowConfirm(false)
     try {
-      const payload = {
-        audienceType: emailForm.audienceType,
-        teamIds: emailForm.audienceType === "teams" ? emailForm.teamIds : undefined,
-        playerIds: emailForm.audienceType === "individuals" ? emailForm.playerIds : undefined,
-        subject: emailForm.subject.trim(),
-        body: emailForm.body.trim(),
+      const token = getStoredAdminToken()
+      const formData = new FormData()
+      formData.append("audienceType", emailForm.audienceType)
+      formData.append("subject", emailForm.subject.trim())
+      formData.append("body", emailForm.body.trim())
+      if (emailForm.audienceType === "teams") {
+        formData.append("teamIds", JSON.stringify(emailForm.teamIds))
       }
+      if (emailForm.audienceType === "individuals") {
+        formData.append("playerIds", JSON.stringify(emailForm.playerIds))
+      }
+      for (const file of emailForm.attachments) {
+        formData.append("attachments", file)
+      }
+      const headers: Record<string, string> = token ? { "x-session-token": token } : {}
       const res = await fetch("/api/players/send-bulk-email", {
         method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(payload),
+        headers,
+        body: formData,
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Failed to send emails")
@@ -507,6 +543,48 @@ export default function Announcements() {
               />
             </div>
 
+            {/* Attachments */}
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Attachments <span className="font-normal text-muted-foreground">(optional)</span></label>
+              {emailForm.attachments.length > 0 && (
+                <ul className="space-y-1.5">
+                  {emailForm.attachments.map((file, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm bg-muted/30 rounded-lg px-3 py-2 border border-border">
+                      <Paperclip className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="flex-1 min-w-0 truncate text-foreground">{file.name}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(i)}
+                        className="p-0.5 rounded text-muted-foreground hover:text-rose-600 transition-colors"
+                        aria-label="Remove attachment"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {emailForm.attachments.length < MAX_ATTACHMENTS && (
+                <button
+                  type="button"
+                  onClick={() => attachmentInputRef.current?.click()}
+                  className="flex items-center gap-2 text-sm text-primary font-medium hover:underline"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  Add file
+                </button>
+              )}
+              <p className="text-xs text-muted-foreground">Up to {MAX_ATTACHMENTS} files, 10 MB each</p>
+              <input
+                ref={attachmentInputRef}
+                type="file"
+                multiple
+                className="sr-only"
+                onChange={handleAttachmentChange}
+              />
+            </div>
+
             {/* Recipient preview */}
             {recipients.length > 0 && (
               <div className="rounded-xl border border-border bg-muted/20 p-4">
@@ -661,6 +739,16 @@ export default function Announcements() {
               </div>
             ))}
           </div>
+          {emailForm.attachments.length > 0 && (
+            <div className="rounded-lg border border-border bg-muted/10 px-3 py-2 space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                <Paperclip className="w-3.5 h-3.5" /> {emailForm.attachments.length} attachment{emailForm.attachments.length !== 1 ? "s" : ""}
+              </p>
+              {emailForm.attachments.map((f, i) => (
+                <p key={i} className="text-xs text-foreground truncate pl-5">{f.name}</p>
+              ))}
+            </div>
+          )}
           {emailError && <p className="text-sm text-rose-600">{emailError}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowConfirm(false)} disabled={sending}>Cancel</Button>

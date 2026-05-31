@@ -23,6 +23,7 @@ async function sendEmail(opts: {
   subject: string;
   html: string;
   text: string;
+  attachments?: Array<{ filename: string; content: Buffer }>;
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -38,12 +39,18 @@ async function sendEmail(opts: {
   const { Resend } = await import("resend");
   const resend = new Resend(apiKey);
 
+  const attachments = opts.attachments?.map((a) => ({
+    filename: a.filename,
+    content: a.content,
+  }));
+
   let { error } = await resend.emails.send({
     from: VERIFIED_FROM,
     to: actualTo,
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
   });
 
   if (error && (error as { statusCode?: number }).statusCode === 403) {
@@ -54,6 +61,7 @@ async function sendEmail(opts: {
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
+      ...(attachments && attachments.length > 0 ? { attachments } : {}),
     }));
   }
 
@@ -1199,6 +1207,7 @@ export async function sendBulkAnnouncementEmail(opts: {
   playerEmail: string;
   subject: string;
   body: string;
+  attachments?: Array<{ filename: string; content: Buffer }>;
 }): Promise<boolean> {
   const safeName = escapeHtml(opts.playerName);
   const safeBody = escapeHtml(opts.body).replace(/\n/g, "<br>");
@@ -1228,6 +1237,7 @@ The HK Masters Hockey Team`;
     subject: opts.subject,
     html,
     text,
+    attachments: opts.attachments,
   });
 }
 
