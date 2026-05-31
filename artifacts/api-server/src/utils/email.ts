@@ -1230,3 +1230,138 @@ The HK Masters Hockey Team`;
     text,
   });
 }
+
+export async function sendLegoJarGuessConfirmationEmail(opts: {
+  guesserName: string;
+  guesserEmail: string;
+  guessNumber: number;
+  paymentMethod: string;
+  pricePerGuess?: number;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.guesserName);
+  const amount = opts.pricePerGuess ?? 50;
+  const legoJarUrl = `${PUBLIC_URL}/#lego-jar`;
+
+  const paymentMethodLabel: Record<string, string> = {
+    payme: "PayMe",
+    wise: "Wise",
+    bank_transfer: "Bank Transfer",
+    cash: "Cash",
+  };
+  const methodLabel = paymentMethodLabel[opts.paymentMethod] ?? opts.paymentMethod;
+
+  let paymentInstructionsHtml = "";
+  let paymentInstructionsText = "";
+
+  if (opts.paymentMethod === "payme") {
+    paymentInstructionsHtml = `
+    <p style="margin:0 0 12px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Open the <strong>PayMe</strong> app and scan the QR code on our website to send <strong>HK$${amount}</strong>.
+    </p>
+    <p style="margin:0 0 0 0;text-align:center;">
+      <a href="${legoJarUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:10px 24px;border-radius:6px;">View PayMe QR code</a>
+    </p>`;
+    paymentInstructionsText = `Open the PayMe app and scan the QR code on our website to send HK$${amount}.\n\nView QR code: ${legoJarUrl}`;
+  } else if (opts.paymentMethod === "wise") {
+    paymentInstructionsHtml = `
+    <p style="margin:0 0 12px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Scan the <strong>Wise</strong> QR code on our website to send <strong>HK$${amount}</strong>. Use your name (<strong>${safeName}</strong>) as the payment reference.
+    </p>
+    <p style="margin:0 0 0 0;text-align:center;">
+      <a href="${legoJarUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none;padding:10px 24px;border-radius:6px;">View Wise QR code</a>
+    </p>`;
+    paymentInstructionsText = `Scan the Wise QR code on our website to send HK$${amount}. Use your name (${opts.guesserName}) as the payment reference.\n\nView QR code: ${legoJarUrl}`;
+  } else if (opts.paymentMethod === "bank_transfer") {
+    paymentInstructionsHtml = `
+    <p style="margin:0 0 12px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Transfer <strong>HK$${amount}</strong> to the account below and use your name as the reference.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 0 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;width:140px;">Bank</td>
+        <td style="padding:9px 14px;font-size:14px;color:#1f2937;font-family:monospace;">Citibank Hong Kong</td>
+      </tr>
+      <tr>
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Account Name</td>
+        <td style="padding:9px 14px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-family:monospace;">Rene Theil</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Bank Code</td>
+        <td style="padding:9px 14px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-family:monospace;">250</td>
+      </tr>
+      <tr>
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Branch Code</td>
+        <td style="padding:9px 14px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-family:monospace;">390</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Account Number</td>
+        <td style="padding:9px 14px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-family:monospace;">0046103724</td>
+      </tr>
+      <tr>
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">SWIFT / BIC</td>
+        <td style="padding:9px 14px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-family:monospace;">CITIHKAXXXX</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:9px 14px;font-size:12px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Reference</td>
+        <td style="padding:9px 14px;font-size:14px;font-weight:700;color:#1E3A6E;border-top:1px solid #e5e7eb;font-family:monospace;">${safeName}</td>
+      </tr>
+    </table>`;
+    paymentInstructionsText = `Transfer HK$${amount} to:\n  Bank: Citibank Hong Kong\n  Account Name: Rene Theil\n  Bank Code: 250\n  Branch Code: 390\n  Account Number: 0046103724\n  SWIFT / BIC: CITIHKAXXXX\n  Reference: ${opts.guesserName}`;
+  } else {
+    paymentInstructionsHtml = `
+    <p style="margin:0 0 0 0;font-size:15px;color:#374151;line-height:1.7;">
+      Please pay <strong>HK$${amount} cash</strong> directly to the jar holder. Your guess is reserved — just make sure you settle up in person!
+    </p>`;
+    paymentInstructionsText = `Please pay HK$${amount} cash directly to the jar holder. Your guess is reserved — just make sure you settle up in person!`;
+  }
+
+  const html = emailShell(
+    "#1E3A6E",
+    "LEGO Jar guess confirmed",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Your LEGO Jar guess has been received! Here's a summary:
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:140px;">Your Guess</td>
+        <td style="padding:10px 16px;font-size:18px;font-weight:700;color:#1E3A6E;">${opts.guessNumber.toLocaleString()}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Amount Due</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;font-weight:600;">HK$${amount}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Payment Method</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${methodLabel}</td>
+      </tr>
+    </table>
+    <p style="margin:0 0 16px 0;font-size:15px;font-weight:700;color:#1f2937;">Payment instructions</p>
+    ${paymentInstructionsHtml}
+    <p style="margin:24px 0 0 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.guesserName},
+
+Your LEGO Jar guess has been received!
+
+Your Guess:      ${opts.guessNumber.toLocaleString()}
+Amount Due:      HK$${amount}
+Payment Method:  ${methodLabel}
+
+Payment instructions:
+${paymentInstructionsText}
+
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.guesserEmail,
+    subject: `LEGO Jar guess confirmed — you guessed ${opts.guessNumber.toLocaleString()}!`,
+    html,
+    text,
+  });
+}

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { legoJarConfigTable, legoJarRoundsTable, legoJarGuessesTable } from "@workspace/db/schema";
 import { eq, isNull, desc, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { sendLegoJarGuessConfirmationEmail } from "../utils/email";
 
 export const legoJarPublicRouter = Router();
 export const legoJarAdminRouter = Router();
@@ -147,6 +148,8 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
 
   const currentRound = await getCurrentRound();
 
+  const config = await getConfig();
+
   const [guess] = await db
     .insert(legoJarGuessesTable)
     .values({
@@ -158,6 +161,16 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
       paid: false,
     })
     .returning();
+
+  if (guess.guesserEmail) {
+    sendLegoJarGuessConfirmationEmail({
+      guesserName: guess.guesserName,
+      guesserEmail: guess.guesserEmail,
+      guessNumber: guess.guessNumber,
+      paymentMethod: guess.paymentMethod ?? paymentMethod,
+      pricePerGuess: config ? Number(config.pricePerGuess) : 50,
+    }).catch((err) => console.error("[lego-jar] Failed to send confirmation email:", err));
+  }
 
   res.status(201).json({
     id: guess.id,
