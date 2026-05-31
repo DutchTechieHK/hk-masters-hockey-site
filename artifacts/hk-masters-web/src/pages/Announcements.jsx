@@ -3,6 +3,17 @@ import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 
+const URL_REGEX = /(https?:\/\/[^\s]+)/g;
+
+function linkify(text) {
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, i) =>
+    URL_REGEX.test(part)
+      ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-green-700 underline break-all">{part}</a>
+      : part
+  );
+}
+
 function formatRelative(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -104,7 +115,7 @@ export default function Announcements() {
                   </div>
                   <span className="text-xs text-gray-500 whitespace-nowrap">{formatRelative(a.createdAt)}</span>
                 </div>
-                <p className="mt-3 text-sm text-gray-700 whitespace-pre-line leading-relaxed">{a.body}</p>
+                <p className="mt-3 text-sm text-gray-700 whitespace-pre-line leading-relaxed">{linkify(a.body)}</p>
                 <div className="mt-3 flex items-center gap-2 text-xs text-gray-500">
                   <span>{a.teamName ? `For ${a.teamName}` : "All squads"}</span>
                 </div>
