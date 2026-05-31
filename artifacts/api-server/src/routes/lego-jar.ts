@@ -223,14 +223,21 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
   const config = await getConfig();
   const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
-  // Distribute amountPaid equally across all rows
+  // Distribute amountPaid across rows — last row absorbs the rounding remainder
+  // so that SUM(amount_paid) always equals the total paid (avoids e.g. 3×33.33=99.99 for $100)
   const totalPaid = totalAmountPaid != null ? Number(totalAmountPaid) : null;
-  const perRowAmount = totalPaid != null ? +(totalPaid / parsedNumbers.length).toFixed(2) : null;
+  const perRowAmounts: (string | null)[] = parsedNumbers.map((_, i) => {
+    if (totalPaid == null) return null;
+    const n = parsedNumbers.length;
+    const base = Math.floor((totalPaid / n) * 100) / 100;
+    if (i < n - 1) return String(base);
+    return String(+(totalPaid - base * (n - 1)).toFixed(2));
+  });
 
   const insertedGuesses = await db
     .insert(legoJarGuessesTable)
     .values(
-      parsedNumbers.map((num) => ({
+      parsedNumbers.map((num, i) => ({
         roundId: currentRound?.id ?? null,
         guesserName: (guesserName as string).trim(),
         guesserEmail: guesserEmail?.trim() || null,
@@ -238,7 +245,7 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
         guessNumber: num,
         paymentMethod,
         paid: false,
-        amountPaid: perRowAmount != null ? String(perRowAmount) : null,
+        amountPaid: perRowAmounts[i],
       }))
     )
     .returning();
@@ -517,14 +524,21 @@ legoJarAdminRouter.post("/guesses", async (req, res) => {
     parsedNumbers.push(parsed);
   }
 
-  // Distribute amountPaid equally across all rows
+  // Distribute amountPaid across rows — last row absorbs the rounding remainder
+  // so that SUM(amount_paid) always equals the total paid (avoids e.g. 3×33.33=99.99 for $100)
   const totalPaid = amountPaid != null && amountPaid !== "" ? Number(amountPaid) : null;
-  const perRowAmount = totalPaid != null ? +(totalPaid / parsedNumbers.length).toFixed(2) : null;
+  const perRowAmounts: (string | null)[] = parsedNumbers.map((_, i) => {
+    if (totalPaid == null) return null;
+    const n = parsedNumbers.length;
+    const base = Math.floor((totalPaid / n) * 100) / 100;
+    if (i < n - 1) return String(base);
+    return String(+(totalPaid - base * (n - 1)).toFixed(2));
+  });
 
   const insertedGuesses = await db
     .insert(legoJarGuessesTable)
     .values(
-      parsedNumbers.map((num) => ({
+      parsedNumbers.map((num, i) => ({
         roundId: roundId ? parseInt(roundId, 10) : null,
         guesserName: (guesserName as string).trim(),
         guesserEmail: guesserEmail?.trim() || null,
@@ -532,7 +546,7 @@ legoJarAdminRouter.post("/guesses", async (req, res) => {
         guessNumber: num,
         paymentMethod: paymentMethod || null,
         paid: !!paid,
-        amountPaid: perRowAmount != null ? String(perRowAmount) : null,
+        amountPaid: perRowAmounts[i],
       }))
     )
     .returning();
