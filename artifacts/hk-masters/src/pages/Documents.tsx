@@ -71,8 +71,8 @@ export default function Documents() {
       toast({ title: "Only PDF files are allowed", variant: "destructive" })
       return
     }
-    if (file.size > 20 * 1024 * 1024) {
-      toast({ title: "File too large — max 20 MB", variant: "destructive" })
+    if (file.size > 25 * 1024 * 1024) {
+      toast({ title: "File too large — max 25 MB", variant: "destructive" })
       return
     }
 
@@ -296,7 +296,7 @@ export default function Documents() {
                 ) : (
                   <>
                     <span className="text-sm text-muted-foreground">Click to upload PDF</span>
-                    <span className="text-xs text-muted-foreground/60">PDF only — up to 20 MB</span>
+                    <span className="text-xs text-muted-foreground/60">PDF only — up to 25 MB</span>
                   </>
                 )}
                 <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" className="sr-only" disabled={uploading} onChange={handleFileChange} />

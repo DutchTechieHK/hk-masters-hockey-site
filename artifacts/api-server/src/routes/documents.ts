@@ -9,7 +9,7 @@ import { requirePlayerSession } from "../middleware/playerSession";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 const VALID_CATEGORIES = ["mandatory-form", "regulation", "information"] as const;
 type DocCategory = typeof VALID_CATEGORIES[number];
