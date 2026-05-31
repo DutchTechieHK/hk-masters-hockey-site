@@ -49,6 +49,7 @@ function serializeGuess(g: typeof legoJarGuessesTable.$inferSelect) {
     roundId: g.roundId,
     guesserName: g.guesserName,
     guesserEmail: g.guesserEmail ?? null,
+    guesserPhone: g.guesserPhone ?? null,
     guessNumber: g.guessNumber,
     paymentMethod: g.paymentMethod ?? null,
     paid: g.paid,
@@ -185,7 +186,7 @@ legoJarPublicRouter.get("/prizes", async (_req, res) => {
 
 // POST /api/lego-jar/guesses  (public submission)
 legoJarPublicRouter.post("/guesses", async (req, res) => {
-  const { guesserName, guesserEmail, guessNumbers, guessNumber, paymentMethod, totalAmountPaid } = req.body ?? {};
+  const { guesserName, guesserEmail, guesserPhone, guessNumbers, guessNumber, paymentMethod, totalAmountPaid } = req.body ?? {};
 
   const errors: string[] = [];
   if (typeof guesserName !== "string" || !guesserName.trim()) errors.push("guesserName is required");
@@ -233,6 +234,7 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
         roundId: currentRound?.id ?? null,
         guesserName: (guesserName as string).trim(),
         guesserEmail: guesserEmail?.trim() || null,
+        guesserPhone: guesserPhone?.trim() || null,
         guessNumber: num,
         paymentMethod,
         paid: false,
@@ -486,7 +488,7 @@ legoJarAdminRouter.get("/guesses", async (req, res) => {
 
 // POST /api/admin/lego-jar/guesses  (manual entry — supports batch)
 legoJarAdminRouter.post("/guesses", async (req, res) => {
-  const { roundId, guesserName, guesserEmail, guessNumbers, guessNumber, paymentMethod, paid, amountPaid } = req.body ?? {};
+  const { roundId, guesserName, guesserEmail, guesserPhone, guessNumbers, guessNumber, paymentMethod, paid, amountPaid } = req.body ?? {};
 
   if (typeof guesserName !== "string" || !guesserName.trim()) {
     res.status(400).json({ error: "guesserName is required" });
@@ -525,6 +527,7 @@ legoJarAdminRouter.post("/guesses", async (req, res) => {
         roundId: roundId ? parseInt(roundId, 10) : null,
         guesserName: (guesserName as string).trim(),
         guesserEmail: guesserEmail?.trim() || null,
+        guesserPhone: guesserPhone?.trim() || null,
         guessNumber: num,
         paymentMethod: paymentMethod || null,
         paid: !!paid,
@@ -541,11 +544,12 @@ legoJarAdminRouter.patch("/guesses/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { paid, guesserName, guesserEmail, guessNumber, paymentMethod, amountPaid } = req.body ?? {};
+  const { paid, guesserName, guesserEmail, guesserPhone, guessNumber, paymentMethod, amountPaid } = req.body ?? {};
   const updateData: Record<string, unknown> = {};
   if (paid !== undefined) updateData.paid = !!paid;
   if (guesserName !== undefined) updateData.guesserName = String(guesserName).trim();
   if (guesserEmail !== undefined) updateData.guesserEmail = guesserEmail?.trim() || null;
+  if (guesserPhone !== undefined) updateData.guesserPhone = guesserPhone?.trim() || null;
   if (guessNumber !== undefined) updateData.guessNumber = parseInt(guessNumber, 10);
   if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod || null;
   if (amountPaid !== undefined) updateData.amountPaid = amountPaid != null && amountPaid !== "" ? String(Number(amountPaid)) : null;

@@ -37,6 +37,7 @@ export const legoJarGuessesTable = pgTable("lego_jar_guesses", {
   roundId: integer("round_id").references(() => legoJarRoundsTable.id),
   guesserName: text("guesser_name").notNull(),
   guesserEmail: text("guesser_email"),
+  guesserPhone: text("guesser_phone"),
   guessNumber: integer("guess_number").notNull(),
   paymentMethod: text("payment_method"),
   paid: boolean("paid").notNull().default(false),

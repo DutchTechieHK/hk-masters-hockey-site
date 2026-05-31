@@ -244,6 +244,7 @@ export default function LegoJarSection() {
   const [form, setForm] = useState({
     guesserName: "",
     guesserEmail: "",
+    guesserPhone: "",
     guessNumbers: [""],
     paymentMethod: "",
   });
@@ -325,6 +326,7 @@ export default function LegoJarSection() {
         body: JSON.stringify({
           guesserName: form.guesserName.trim(),
           guesserEmail: form.guesserEmail.trim() || undefined,
+          guesserPhone: form.guesserPhone.trim() || undefined,
           guessNumbers: parsedNumbers,
           paymentMethod: form.paymentMethod,
           totalAmountPaid: tierTotal,
@@ -544,6 +546,22 @@ export default function LegoJarSection() {
                     />
                     {errors.guesserEmail && <p className="text-xs text-red-600 mt-1">{errors.guesserEmail}</p>}
                   </div>
+                </div>
+
+                <div>
+                  <label htmlFor="lj-phone" className="block text-sm font-semibold text-gray-700 mb-1.5">
+                    Phone <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="lj-phone"
+                    name="guesserPhone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.guesserPhone}
+                    onChange={handleChange}
+                    placeholder="+852 XXXX XXXX"
+                    className="w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/20 focus:border-[#1E3A6E]/40 transition-colors border-gray-300"
+                  />
                 </div>
 
                 {/* Tier selector */}
