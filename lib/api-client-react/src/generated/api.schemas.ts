@@ -616,6 +616,7 @@ export interface EmailBlastItem {
   sentByEmail?: string | null;
   sentAt: string;
   recipientNames?: string[];
+  teamNames?: string[];
 }
 
 export interface EmailTemplate {

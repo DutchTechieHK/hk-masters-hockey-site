@@ -793,11 +793,44 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     }
   }
 
-  res.json(rows.map((r) => ({
-    ...r,
-    sentAt: r.sentAt.toISOString(),
-    recipientNames: recipientNamesByBlastId.get(r.id) ?? [],
-  })));
+  const teamBlastRows = rows.filter((r) => r.audienceType === "teams");
+  const allTeamIds = new Set<number>();
+  for (const r of teamBlastRows) {
+    try {
+      const ids: number[] = JSON.parse(r.teamIds ?? "[]");
+      ids.forEach((id) => allTeamIds.add(id));
+    } catch {
+    }
+  }
+
+  const teamNamesById = new Map<number, string>();
+  if (allTeamIds.size > 0) {
+    const teamRows = await db
+      .select({ id: teamsTable.id, name: teamsTable.name })
+      .from(teamsTable)
+      .where(inArray(teamsTable.id, [...allTeamIds]));
+    for (const t of teamRows) {
+      teamNamesById.set(t.id, t.name);
+    }
+  }
+
+  res.json(rows.map((r) => {
+    let teamNames: string[] | undefined;
+    if (r.audienceType === "teams") {
+      try {
+        const ids: number[] = JSON.parse(r.teamIds ?? "[]");
+        teamNames = ids.map((id) => teamNamesById.get(id) ?? String(id));
+      } catch {
+        teamNames = [];
+      }
+    }
+    return {
+      ...r,
+      sentAt: r.sentAt.toISOString(),
+      recipientNames: recipientNamesByBlastId.get(r.id) ?? [],
+      teamNames,
+    };
+  }));
 });
 
 export default router;

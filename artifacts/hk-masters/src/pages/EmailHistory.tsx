@@ -17,6 +17,10 @@ function audienceLabel(blast: EmailBlastItem): string {
   }
   if (blast.audienceType === "all") return "All players"
   if (blast.audienceType === "teams") {
+    const names = blast.teamNames ?? []
+    if (names.length === 1) return names[0]
+    if (names.length === 2) return `${names[0]}, ${names[1]}`
+    if (names.length > 2) return `${names[0]} + ${names.length - 1} more`
     try {
       const ids: number[] = JSON.parse(blast.teamIds ?? "[]")
       return `Teams: ${ids.length}`
