@@ -415,6 +415,9 @@ export default function LegoJarSection() {
                   {currentRound ? (
                     <>
                       <p className="font-bold text-gray-900 text-lg leading-tight">{currentRound.holderName}</p>
+                      {currentRound.company && (
+                        <p className="text-sm font-medium text-gray-600 mt-0.5">{currentRound.company}</p>
+                      )}
                       {currentRound.location && (
                         <p className="text-xs text-gray-500 mt-0.5">{currentRound.location}</p>
                       )}

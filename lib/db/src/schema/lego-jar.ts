@@ -24,6 +24,7 @@ export const legoJarConfigTable = pgTable("lego_jar_config", {
 export const legoJarRoundsTable = pgTable("lego_jar_rounds", {
   id: serial("id").primaryKey(),
   holderName: text("holder_name").notNull(),
+  company: text("company"),
   squadMemberId: integer("squad_member_id"),
   location: text("location"),
   startedAt: timestamp("started_at").defaultNow().notNull(),

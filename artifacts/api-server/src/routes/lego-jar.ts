@@ -51,6 +51,7 @@ function serializeRound(r: typeof legoJarRoundsTable.$inferSelect & { guessCount
   return {
     id: r.id,
     holderName: r.holderName,
+    company: (r as any).company ?? null,
     squadMemberId: r.squadMemberId ?? null,
     location: r.location ?? null,
     startedAt: r.startedAt.toISOString(),
@@ -195,6 +196,7 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
       ? {
           id: currentRound.id,
           holderName: currentRound.holderName,
+          company: currentRound.company ?? null,
           location: currentRound.location ?? null,
           startedAt: currentRound.startedAt.toISOString(),
         }
@@ -433,20 +435,12 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
         })
         .from(legoJarGuessesTable)
         .where(eq(legoJarGuessesTable.roundId, r.id));
-      return {
-        id: r.id,
-        holderName: r.holderName,
-        squadMemberId: r.squadMemberId ?? null,
-        location: r.location ?? null,
-        startedAt: r.startedAt.toISOString(),
-        endedAt: r.endedAt?.toISOString() ?? null,
-        notes: r.notes ?? null,
-        isWebsite: r.isWebsite,
+      return serializeRound({
+        ...r,
         guessCount: Number(s.guessCount),
         paidCount: Number(s.paidCount),
         amountRaised: Number(s.amountRaised),
-        isCurrent: r.endedAt === null && !r.isWebsite,
-      };
+      });
     })
   );
 
@@ -455,11 +449,20 @@ legoJarAdminRouter.get("/rounds", async (_req, res) => {
 
 // POST /api/admin/lego-jar/rounds  (start a new round / pass the jar)
 legoJarAdminRouter.post("/rounds", async (req, res) => {
-  const { holderName, squadMemberId, location, notes, closeCurrentRound } = req.body ?? {};
+  const { holderName, company, squadMemberId, location, notes, closeCurrentRound } = req.body ?? {};
 
   if (typeof holderName !== "string" || !holderName.trim()) {
     res.status(400).json({ error: "holderName is required" });
     return;
+  }
+
+  let squadMemberIdValue: number | null = null;
+  if (squadMemberId) {
+    squadMemberIdValue = parseInt(squadMemberId, 10);
+    if (isNaN(squadMemberIdValue)) {
+      res.status(400).json({ error: "squadMemberId must be a number" });
+      return;
+    }
   }
 
   if (closeCurrentRound) {
@@ -476,7 +479,8 @@ legoJarAdminRouter.post("/rounds", async (req, res) => {
     .insert(legoJarRoundsTable)
     .values({
       holderName: holderName.trim(),
-      squadMemberId: squadMemberId ? parseInt(squadMemberId, 10) : null,
+      company: company?.trim() || null,
+      squadMemberId: squadMemberIdValue,
       location: location?.trim() || null,
       notes: notes?.trim() || null,
     })
@@ -485,6 +489,7 @@ legoJarAdminRouter.post("/rounds", async (req, res) => {
   res.status(201).json({
     id: round.id,
     holderName: round.holderName,
+    company: round.company ?? null,
     squadMemberId: round.squadMemberId ?? null,
     location: round.location ?? null,
     startedAt: round.startedAt.toISOString(),
@@ -495,6 +500,53 @@ legoJarAdminRouter.post("/rounds", async (req, res) => {
     amountRaised: 0,
     isCurrent: true,
   });
+});
+
+// PATCH /api/admin/lego-jar/rounds/:id  (edit holder info)
+legoJarAdminRouter.patch("/rounds/:id", async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { holderName, company, squadMemberId, location, notes } = req.body ?? {};
+
+  const updates: Partial<typeof legoJarRoundsTable.$inferInsert> = {};
+
+  if (holderName !== undefined) {
+    if (typeof holderName !== "string" || !holderName.trim()) {
+      res.status(400).json({ error: "holderName cannot be empty" });
+      return;
+    }
+    updates.holderName = holderName.trim();
+  }
+  if (company !== undefined) updates.company = company?.trim() || null;
+  if (location !== undefined) updates.location = location?.trim() || null;
+  if (notes !== undefined) updates.notes = notes?.trim() || null;
+  if (squadMemberId !== undefined) {
+    if (squadMemberId) {
+      const parsed = parseInt(squadMemberId, 10);
+      if (isNaN(parsed)) {
+        res.status(400).json({ error: "squadMemberId must be a number" });
+        return;
+      }
+      updates.squadMemberId = parsed;
+    } else {
+      updates.squadMemberId = null;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+
+  const [round] = await db
+    .update(legoJarRoundsTable)
+    .set(updates)
+    .where(eq(legoJarRoundsTable.id, id))
+    .returning();
+
+  if (!round) { res.status(404).json({ error: "Round not found" }); return; }
+  res.json(serializeRound(round));
 });
 
 // POST /api/admin/lego-jar/rounds/:id/close

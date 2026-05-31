@@ -48,6 +48,7 @@ type Prize = {
 type Round = {
   id: number
   holderName: string
+  company: string | null
   squadMemberId: number | null
   location: string | null
   startedAt: string
@@ -217,8 +218,13 @@ export default function LegoJar() {
 
   // Pass jar dialog
   const [passJarOpen, setPassJarOpen] = useState(false)
-  const [passForm, setPassForm] = useState({ holderName: "", squadMemberId: "", location: "", notes: "" })
+  const [passForm, setPassForm] = useState({ holderName: "", company: "", squadMemberId: "", location: "", notes: "" })
   const [passSaving, setPassSaving] = useState(false)
+
+  // Edit holder dialog
+  const [editRound, setEditRound] = useState<Round | null>(null)
+  const [editRoundForm, setEditRoundForm] = useState({ holderName: "", company: "", squadMemberId: "", location: "", notes: "" })
+  const [editRoundSaving, setEditRoundSaving] = useState(false)
 
   // Log guess dialog
   const [guessOpen, setGuessOpen] = useState(false)
@@ -517,6 +523,7 @@ export default function LegoJar() {
         method: "POST",
         body: JSON.stringify({
           holderName: passForm.holderName.trim(),
+          company: passForm.company.trim() || null,
           squadMemberId: passForm.squadMemberId || null,
           location: passForm.location.trim() || null,
           notes: passForm.notes.trim() || null,
@@ -525,12 +532,49 @@ export default function LegoJar() {
       })
       toast({ title: "Jar passed!", description: `Now with ${passForm.holderName.trim()}` })
       setPassJarOpen(false)
-      setPassForm({ holderName: "", squadMemberId: "", location: "", notes: "" })
+      setPassForm({ holderName: "", company: "", squadMemberId: "", location: "", notes: "" })
       await load()
     } catch (err) {
       toast({ title: (err as Error).message || "Failed", variant: "destructive" })
     } finally {
       setPassSaving(false)
+    }
+  }
+
+  // Edit holder info (current or past round)
+  function openEditRound(round: Round) {
+    setEditRound(round)
+    setEditRoundForm({
+      holderName: round.holderName,
+      company: round.company ?? "",
+      squadMemberId: round.squadMemberId ? String(round.squadMemberId) : "",
+      location: round.location ?? "",
+      notes: round.notes ?? "",
+    })
+  }
+
+  const handleEditRound = async () => {
+    if (!editRound) return
+    if (!editRoundForm.holderName.trim()) { toast({ title: "Holder name is required", variant: "destructive" }); return }
+    setEditRoundSaving(true)
+    try {
+      await apiFetch(`/api/admin/lego-jar/rounds/${editRound.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          holderName: editRoundForm.holderName.trim(),
+          company: editRoundForm.company.trim() || null,
+          squadMemberId: editRoundForm.squadMemberId || null,
+          location: editRoundForm.location.trim() || null,
+          notes: editRoundForm.notes.trim() || null,
+        }),
+      })
+      toast({ title: "Holder updated" })
+      setEditRound(null)
+      await load()
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed", variant: "destructive" })
+    } finally {
+      setEditRoundSaving(false)
     }
   }
 
@@ -723,6 +767,9 @@ export default function LegoJar() {
                 {currentRound ? (
                   <>
                     <h2 className="text-2xl font-bold text-foreground">{currentRound.holderName}</h2>
+                    {currentRound.company && (
+                      <p className="text-sm font-medium text-muted-foreground mt-0.5">{currentRound.company}</p>
+                    )}
                     {currentRound.location && (
                       <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
                         <MapPin className="w-3.5 h-3.5" /> {currentRound.location}
@@ -740,10 +787,17 @@ export default function LegoJar() {
                   <p className="text-muted-foreground text-sm mt-1">No one has the jar yet. Use "Pass the Jar" to start the first round.</p>
                 )}
               </div>
-              <Button onClick={() => setPassJarOpen(true)} variant={currentRound ? "default" : "outline"}>
-                <PackageOpen className="w-4 h-4 mr-1.5" />
-                {currentRound ? "Pass the Jar" : "Start first round"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {currentRound && (
+                  <Button variant="outline" onClick={() => openEditRound(currentRound)}>
+                    <Pencil className="w-4 h-4 mr-1.5" /> Edit
+                  </Button>
+                )}
+                <Button onClick={() => setPassJarOpen(true)} variant={currentRound ? "default" : "outline"}>
+                  <PackageOpen className="w-4 h-4 mr-1.5" />
+                  {currentRound ? "Pass the Jar" : "Start first round"}
+                </Button>
+              </div>
             </div>
 
             {currentRound && currentGuesses.length > 0 && (
@@ -824,18 +878,31 @@ export default function LegoJar() {
                     <th className="px-6 py-3 text-left font-semibold">Dates</th>
                     <th className="px-6 py-3 text-right font-semibold">Guesses</th>
                     <th className="px-6 py-3 text-right font-semibold">Raised</th>
+                    <th className="px-6 py-3 text-right font-semibold"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {pastRounds.map((r) => (
                     <tr key={r.id} className="hover:bg-muted/10">
-                      <td className="px-6 py-3 font-medium">{r.holderName}</td>
+                      <td className="px-6 py-3 font-medium">
+                        {r.holderName}
+                        {r.company && <span className="block text-xs font-normal text-muted-foreground">{r.company}</span>}
+                      </td>
                       <td className="px-6 py-3 text-muted-foreground">{r.location ?? "—"}</td>
                       <td className="px-6 py-3 text-muted-foreground text-xs">
                         {format(parseISO(r.startedAt), "d MMM")} → {r.endedAt ? format(parseISO(r.endedAt), "d MMM yyyy") : "ongoing"}
                       </td>
                       <td className="px-6 py-3 text-right font-medium">{r.guessCount}</td>
                       <td className="px-6 py-3 text-right font-bold text-emerald-600">{formatHKD(r.amountRaised)}</td>
+                      <td className="px-6 py-3 text-right">
+                        <button
+                          onClick={() => openEditRound(r)}
+                          title="Edit holder"
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1167,6 +1234,14 @@ export default function LegoJar() {
             />
           </div>
           <div>
+            <label className="block text-sm font-semibold mb-1.5">Company <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <Input
+              placeholder="e.g. KPMG"
+              value={passForm.company}
+              onChange={(e) => setPassForm((f) => ({ ...f, company: e.target.value }))}
+            />
+          </div>
+          <div>
             <label className="block text-sm font-semibold mb-1">
               Link to squad member <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
@@ -1203,6 +1278,68 @@ export default function LegoJar() {
             <Button variant="outline" className="flex-1" onClick={() => setPassJarOpen(false)}>Cancel</Button>
             <Button className="flex-1" onClick={handlePassJar} disabled={passSaving || !passForm.holderName.trim()}>
               {passSaving ? "Saving…" : currentRound ? "Pass the Jar" : "Start round"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Holder dialog */}
+      <Modal isOpen={editRound !== null} onClose={() => setEditRound(null)} title="Edit Holder">
+        <div className="space-y-4 p-1">
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Holder name *</label>
+            <Input
+              placeholder="e.g. John Smith"
+              value={editRoundForm.holderName}
+              onChange={(e) => setEditRoundForm((f) => ({ ...f, holderName: e.target.value }))}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Company <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <Input
+              placeholder="e.g. KPMG"
+              value={editRoundForm.company}
+              onChange={(e) => setEditRoundForm((f) => ({ ...f, company: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1">
+              Link to squad member <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <p className="text-xs text-muted-foreground mb-1.5">If the holder is on the squad, link them here.</p>
+            <SquadCombobox
+              squad={squad}
+              selectedId={editRoundForm.squadMemberId}
+              onSelect={(id, name) => {
+                setEditRoundForm((f) => ({
+                  ...f,
+                  squadMemberId: id,
+                  holderName: id && !f.holderName ? name : f.holderName,
+                }))
+              }}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Location / Event <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <Input
+              placeholder="e.g. KPMG Office, Family BBQ"
+              value={editRoundForm.location}
+              onChange={(e) => setEditRoundForm((f) => ({ ...f, location: e.target.value }))}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold mb-1.5">Notes <span className="font-normal text-muted-foreground">(optional)</span></label>
+            <Input
+              placeholder="Any extra context"
+              value={editRoundForm.notes}
+              onChange={(e) => setEditRoundForm((f) => ({ ...f, notes: e.target.value }))}
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" className="flex-1" onClick={() => setEditRound(null)}>Cancel</Button>
+            <Button className="flex-1" onClick={handleEditRound} disabled={editRoundSaving || !editRoundForm.holderName.trim()}>
+              {editRoundSaving ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </div>
