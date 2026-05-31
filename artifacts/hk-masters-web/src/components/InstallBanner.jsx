@@ -97,28 +97,52 @@ export default function InstallBanner() {
       return;
     }
 
-    // Chrome / Edge / Firefox (Android / desktop) — listen for the native install prompt
-    const handler = (e) => {
-      e.preventDefault();
+    // Android / Chromium. The `beforeinstallprompt` event is captured globally in
+    // index.html (it usually fires before React mounts), so check that first and
+    // show a working Install button immediately if it's already available.
+    // Declared up front so `usePrompt` can safely cancel it on any code path.
+    let fallbackTimer = null;
+
+    const usePrompt = (e) => {
       setDeferredPrompt(e);
       setMode("android-prompt");
       setShow(true);
-      clearTimeout(fallbackTimer);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
     };
-    window.addEventListener("beforeinstallprompt", handler);
 
-    // Fallback: if the prompt hasn't fired within 1.5 s show a manual guide.
+    if (window.__deferredInstallPrompt) {
+      usePrompt(window.__deferredInstallPrompt);
+      return;
+    }
+
+    // The global capture re-broadcasts this custom event; the native event is
+    // also listened to directly as a belt-and-braces fallback.
+    const onAvailable = () => {
+      if (window.__deferredInstallPrompt) usePrompt(window.__deferredInstallPrompt);
+    };
+    const nativeHandler = (e) => {
+      e.preventDefault();
+      window.__deferredInstallPrompt = e;
+      usePrompt(e);
+    };
+    window.addEventListener("pwa-install-available", onAvailable);
+    window.addEventListener("beforeinstallprompt", nativeHandler);
+
+    // Fallback: if the prompt hasn't fired within 2 s show a manual guide.
     // This covers:
     //   • Android Chrome when the app is already installed (prompt suppressed)
     //   • Any mobile browser that doesn't support beforeinstallprompt
-    let fallbackTimer = setTimeout(() => {
+    // If the prompt arrives later, `onAvailable` upgrades the guide to a real
+    // Install button.
+    fallbackTimer = setTimeout(() => {
       setMode("android-guide");
       setShow(true);
-    }, 1500);
+    }, 2000);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handler);
-      clearTimeout(fallbackTimer);
+      window.removeEventListener("pwa-install-available", onAvailable);
+      window.removeEventListener("beforeinstallprompt", nativeHandler);
+      if (fallbackTimer) clearTimeout(fallbackTimer);
     };
   }, []);
 
@@ -128,9 +152,11 @@ export default function InstallBanner() {
   };
 
   const install = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
+    const promptEvent = deferredPrompt || window.__deferredInstallPrompt;
+    if (!promptEvent) return;
+    promptEvent.prompt();
+    try { await promptEvent.userChoice; } catch {}
+    window.__deferredInstallPrompt = null;
     setDeferredPrompt(null);
     setShow(false);
   };

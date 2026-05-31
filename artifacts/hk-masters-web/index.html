@@ -24,6 +24,25 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="HK Masters" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!--
+      Capture the PWA install prompt as early as possible.
+      Chrome fires `beforeinstallprompt` once, very early — usually before the
+      React bundle has mounted the InstallBanner component. If we waited for React
+      to attach a listener we'd miss the event and could never show a working
+      "Install" button. So we stash the event on `window` here and re-broadcast a
+      custom event the banner can react to whenever it mounts.
+    -->
+    <script>
+      window.__deferredInstallPrompt = null;
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        window.__deferredInstallPrompt = e;
+        window.dispatchEvent(new Event("pwa-install-available"));
+      });
+      window.addEventListener("appinstalled", function () {
+        window.__deferredInstallPrompt = null;
+      });
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
