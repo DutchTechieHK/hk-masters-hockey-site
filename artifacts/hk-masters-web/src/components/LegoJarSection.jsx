@@ -288,9 +288,12 @@ export default function LegoJarSection() {
   function validate() {
     const errs = {};
     if (!form.guesserName.trim()) errs.guesserName = "Your name is required";
-    if (form.guesserEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.guesserEmail.trim())) {
+    if (!form.guesserEmail.trim()) {
+      errs.guesserEmail = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.guesserEmail.trim())) {
       errs.guesserEmail = "Enter a valid email address";
     }
+    if (!form.guesserPhone.trim()) errs.guesserPhone = "Phone is required";
     const filled = form.guessNumbers.filter((n) => n.trim() !== "");
     if (filled.length === 0) {
       errs.guessNumbers = tier === "3" ? "Enter all 3 guess numbers" : "Enter your guess";
@@ -325,8 +328,8 @@ export default function LegoJarSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           guesserName: form.guesserName.trim(),
-          guesserEmail: form.guesserEmail.trim() || undefined,
-          guesserPhone: form.guesserPhone.trim() || undefined,
+          guesserEmail: form.guesserEmail.trim(),
+          guesserPhone: form.guesserPhone.trim(),
           guessNumbers: parsedNumbers,
           paymentMethod: form.paymentMethod,
           totalAmountPaid: tierTotal,
@@ -533,7 +536,7 @@ export default function LegoJarSection() {
 
                   <div>
                     <label htmlFor="lj-email" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                      Email <span className="text-gray-400 font-normal">(optional)</span>
+                      Email <span className="text-[#DE2910]">*</span>
                     </label>
                     <input
                       id="lj-email"
@@ -553,7 +556,7 @@ export default function LegoJarSection() {
 
                 <div>
                   <label htmlFor="lj-phone" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                    Phone <span className="text-gray-400 font-normal">(optional)</span>
+                    Phone <span className="text-[#DE2910]">*</span>
                   </label>
                   <input
                     id="lj-phone"
@@ -563,8 +566,11 @@ export default function LegoJarSection() {
                     value={form.guesserPhone}
                     onChange={handleChange}
                     placeholder="+852 XXXX XXXX"
-                    className="w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/20 focus:border-[#1E3A6E]/40 transition-colors border-gray-300"
+                    className={`w-full px-4 py-3 rounded-xl border-2 text-sm bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/20 focus:border-[#1E3A6E]/40 transition-colors ${
+                      errors.guesserPhone ? "border-red-400 bg-red-50" : "border-gray-300"
+                    }`}
                   />
+                  {errors.guesserPhone && <p className="text-xs text-red-600 mt-1">{errors.guesserPhone}</p>}
                 </div>
 
                 {/* Tier selector */}

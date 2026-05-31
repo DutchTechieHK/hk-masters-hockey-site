@@ -219,10 +219,10 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
   if (typeof guesserName !== "string" || !guesserName.trim()) errors.push("guesserName is required");
   else if (guesserName.trim().length > 200) errors.push("guesserName is too long");
 
-  if (guesserEmail !== undefined && guesserEmail !== null && guesserEmail !== "") {
-    if (typeof guesserEmail !== "string") errors.push("guesserEmail must be a string");
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guesserEmail.trim())) errors.push("guesserEmail is invalid");
-  }
+  if (typeof guesserEmail !== "string" || !guesserEmail.trim()) errors.push("guesserEmail is required");
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guesserEmail.trim())) errors.push("guesserEmail is invalid");
+
+  if (typeof guesserPhone !== "string" || !guesserPhone.trim()) errors.push("guesserPhone is required");
 
   // Accept either guessNumbers array or single guessNumber
   const rawNumbers: unknown[] = Array.isArray(guessNumbers) ? guessNumbers : guessNumber != null ? [guessNumber] : [];
