@@ -187,6 +187,73 @@ router.get("/:id", requireAdminAccess, async (req, res) => {
   });
 });
 
+// ── Admin: edit poll ─────────────────────────────────────────────────────────
+
+router.patch("/:id", requireAdminAccess, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  const [poll] = await db.select().from(pollsTable).where(eq(pollsTable.id, id));
+  if (!poll) return res.status(404).json({ error: "Not found" });
+
+  const b = req.body as Record<string, unknown>;
+
+  const updates: Partial<typeof pollsTable.$inferInsert> = {};
+  if (typeof b.title === "string") {
+    const title = b.title.trim();
+    if (!title) return res.status(400).json({ error: "title required" });
+    updates.title = title;
+  }
+  if ("description" in b) {
+    updates.description = typeof b.description === "string" ? b.description.trim() || null : null;
+  }
+  if (typeof b.audience === "string" && VALID_AUDIENCES.includes(b.audience as Audience)) {
+    updates.audience = b.audience as Audience;
+  }
+  if ("deadline" in b) {
+    if (b.deadline && typeof b.deadline === "string") {
+      const d = new Date(b.deadline);
+      updates.deadline = isNaN(d.getTime()) ? null : d;
+    } else {
+      updates.deadline = null;
+    }
+  }
+
+  // Check if any votes exist — if not, allow option edits too
+  const [voteCheck] = await db
+    .select({ count: sql<number>`count(*)::int`.as("count") })
+    .from(pollVotesTable)
+    .where(eq(pollVotesTable.pollId, id));
+  const hasVotes = (voteCheck?.count ?? 0) > 0;
+
+  if (Array.isArray(b.options) && !hasVotes) {
+    const rawOptions = b.options as unknown[];
+    const labels = rawOptions.map((l) => (typeof l === "string" ? l.trim() : "")).filter(Boolean);
+    if (labels.length < 2) return res.status(400).json({ error: "At least 2 options required" });
+    if (labels.length > 5) return res.status(400).json({ error: "Maximum 5 options allowed" });
+    await db.delete(pollOptionsTable).where(eq(pollOptionsTable.pollId, id));
+    await db.insert(pollOptionsTable).values(labels.map((label, i) => ({ pollId: id, label, sortOrder: i })));
+  } else if (Array.isArray(b.options) && hasVotes) {
+    return res.status(400).json({ error: "Options cannot be changed once votes have been cast" });
+  }
+
+  const [updated] = Object.keys(updates).length > 0
+    ? await db.update(pollsTable).set(updates).where(eq(pollsTable.id, id)).returning()
+    : [poll];
+
+  const options = await db.select().from(pollOptionsTable).where(eq(pollOptionsTable.pollId, id)).orderBy(pollOptionsTable.sortOrder);
+  const voteCounts = await db
+    .select({ optionId: pollVotesTable.optionId, count: sql<number>`count(*)::int`.as("count") })
+    .from(pollVotesTable)
+    .where(eq(pollVotesTable.pollId, id))
+    .groupBy(pollVotesTable.optionId);
+  const countMap = new Map(voteCounts.map(v => [v.optionId, v.count]));
+
+  res.json({
+    ...serializePoll(updated),
+    options: options.map(o => ({ ...serializeOption(o), voteCount: countMap.get(o.id) ?? 0 })),
+  });
+});
+
 // ── Admin: close / reopen poll ───────────────────────────────────────────────
 
 router.patch("/:id/close", requireAdminAccess, async (req, res) => {

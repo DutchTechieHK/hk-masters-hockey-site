@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import {
-  Plus, Trash2, BarChart2, Mail, Link2, Lock, Unlock, Users, ChevronDown, ChevronUp, Loader2, CheckCircle2
+  Plus, Trash2, BarChart2, Mail, Link2, Lock, Unlock, Users, ChevronDown, ChevronUp, Loader2, CheckCircle2, Pencil
 } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -99,6 +99,11 @@ export default function Polls() {
   const [emailing, setEmailing] = useState<number | null>(null)
   const [closing, setClosing] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [editingPoll, setEditingPoll] = useState<Poll | null>(null)
+  const [editForm, setEditForm] = useState<CreateForm>(EMPTY_FORM)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -226,6 +231,60 @@ export default function Polls() {
     }
   }
 
+  const openEdit = (poll: Poll) => {
+    setEditingPoll(poll)
+    const deadlineValue = poll.deadline
+      ? format(new Date(poll.deadline), "yyyy-MM-dd'T'HH:mm")
+      : ""
+    setEditForm({
+      title: poll.title,
+      description: poll.description ?? "",
+      audience: poll.audience,
+      allowMultiple: poll.allowMultiple,
+      deadline: deadlineValue,
+      options: poll.options.map(o => o.label),
+    })
+    setEditError(null)
+    setIsEditOpen(true)
+  }
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingPoll) return
+    setEditError(null)
+    setEditSaving(true)
+    try {
+      const hasVotes = editingPoll.options.reduce((s, o) => s + o.voteCount, 0) > 0
+      const payload: Record<string, unknown> = {
+        title: editForm.title.trim(),
+        description: editForm.description.trim() || null,
+        audience: editForm.audience,
+        deadline: editForm.deadline || null,
+      }
+      if (!hasVotes) {
+        const labels = editForm.options.map(o => o.trim()).filter(Boolean)
+        payload.options = labels
+      }
+      const res = await fetch(`/api/polls/${editingPoll.id}`, {
+        method: "PATCH",
+        headers: authHeaders(),
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to update poll")
+      toast({ title: "Poll updated" })
+      setIsEditOpen(false)
+      setEditingPoll(null)
+      // Clear cached detail so it reloads fresh
+      setDetailData(prev => { const n = { ...prev }; delete n[editingPoll.id]; return n })
+      refresh()
+    } catch (err) {
+      setEditError((err as Error).message)
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
   const copyLink = (poll: Poll) => {
     const url = `${PUBLIC_URL}/polls/${poll.id}`
     navigator.clipboard.writeText(url).then(() => {
@@ -303,6 +362,14 @@ export default function Polls() {
                     </div>
                     {/* Actions */}
                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                      <button
+                        onClick={() => openEdit(poll)}
+                        disabled={totalVotes > 0}
+                        title={totalVotes > 0 ? "Cannot edit — votes have already been cast" : "Edit poll"}
+                        className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-transparent"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => copyLink(poll)}
                         title="Copy poll link"
@@ -452,6 +519,109 @@ export default function Polls() {
             )
           })}
         </div>
+      )}
+
+      {/* Edit modal */}
+      {editingPoll && (
+        <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit poll">
+          {(() => {
+            const hasVotes = editingPoll.options.reduce((s, o) => s + o.voteCount, 0) > 0
+            return (
+              <form onSubmit={handleEdit} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Question / Title *</label>
+                  <Input
+                    value={editForm.title}
+                    onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="e.g. Which training weekend works for you?"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">Description <span className="text-muted-foreground font-normal">(optional)</span></label>
+                  <Textarea
+                    value={editForm.description}
+                    onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Add context or instructions for players…"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-semibold">
+                    Options <span className="text-muted-foreground font-normal">(2–5)</span>
+                    {hasVotes && <span className="ml-2 text-xs font-normal text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">Locked — votes exist</span>}
+                  </label>
+                  <div className="space-y-2">
+                    {editForm.options.map((opt, i) => (
+                      <div key={i} className="flex gap-2">
+                        <Input
+                          value={opt}
+                          onChange={e => {
+                            const opts = [...editForm.options]; opts[i] = e.target.value
+                            setEditForm(f => ({ ...f, options: opts }))
+                          }}
+                          placeholder={`Option ${i + 1}`}
+                          disabled={hasVotes}
+                        />
+                        {!hasVotes && editForm.options.length > 2 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const opts = [...editForm.options]; opts.splice(i, 1)
+                              setEditForm(f => ({ ...f, options: opts }))
+                            }}
+                            className="text-muted-foreground hover:text-rose-600 px-1"
+                          >×</button>
+                        )}
+                      </div>
+                    ))}
+                    {!hasVotes && editForm.options.length < 5 && (
+                      <button
+                        type="button"
+                        onClick={() => setEditForm(f => ({ ...f, options: [...f.options, ""] }))}
+                        className="text-sm text-primary hover:underline"
+                      >+ Add option</button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold">Audience</label>
+                    <select
+                      value={editForm.audience}
+                      onChange={e => setEditForm(f => ({ ...f, audience: e.target.value }))}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      {AUDIENCES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-semibold">Deadline <span className="text-muted-foreground font-normal">(optional)</span></label>
+                    <Input
+                      type="datetime-local"
+                      value={editForm.deadline}
+                      onChange={e => setEditForm(f => ({ ...f, deadline: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {editError && (
+                  <p className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">{editError}</p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-1">
+                  <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={editSaving}>
+                    {editSaving ? "Saving…" : "Save changes"}
+                  </Button>
+                </div>
+              </form>
+            )
+          })()}
+        </Modal>
       )}
 
       {/* Create modal */}
