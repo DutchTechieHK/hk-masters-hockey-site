@@ -357,7 +357,7 @@ export default function LegoJarSection() {
           <span className="inline-block bg-[#1E3A6E] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
             Fundraiser
           </span>
-          <h2 className="text-3xl font-extrabold text-gray-900 mb-3 flex items-center gap-3">
+          <h2 id="legochallenge" className="text-3xl font-extrabold text-gray-900 mb-3 flex items-center gap-3">
             <LegoBrickIcon className="w-10 h-7 shrink-0" /> LEGO Jar Challenge
           </h2>
           <p className="text-gray-600 max-w-2xl leading-relaxed">
