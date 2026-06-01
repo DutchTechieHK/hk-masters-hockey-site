@@ -59,7 +59,8 @@ export default function Poll() {
   }, [pollId, token]);
 
   const toggleOption = (id) => {
-    if (voted) return;
+    if (isClosed) return;
+    if (!token) return;
     if (poll?.allowMultiple) {
       setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
     } else {

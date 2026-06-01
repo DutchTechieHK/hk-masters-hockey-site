@@ -280,6 +280,15 @@ router.post("/vote/:id", async (req, res) => {
   if (!poll) return res.status(404).json({ error: "Poll not found" });
   if (poll.closedAt) return res.status(400).json({ error: "This poll is closed" });
   if (poll.deadline && new Date() > poll.deadline) return res.status(400).json({ error: "The deadline for this poll has passed" });
+  // Enforce audience membership
+  if (poll.audience !== "all") {
+    const [teamRow] = await db.select({ category: teamsTable.category }).from(teamsTable).where(eq(teamsTable.id, player.teamId));
+    const category = teamRow?.category ?? null;
+    const allowed = poll.audience === "both"
+      ? (category === "MO40" || category === "MO50")
+      : category === poll.audience;
+    if (!allowed) return res.status(403).json({ error: "You are not in the audience for this poll" });
+  }
   const rawOptionIds: number[] = Array.isArray(req.body?.optionIds)
     ? (req.body.optionIds as unknown[]).map(Number).filter(n => Number.isFinite(n) && n > 0)
     : typeof req.body?.optionId === "number" ? [req.body.optionId]
