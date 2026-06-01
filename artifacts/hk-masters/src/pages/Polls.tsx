@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import {
-  Plus, Trash2, BarChart2, Mail, Link2, Lock, Unlock, Users, ChevronDown, ChevronUp, Loader2, CheckCircle2, Pencil
+  Plus, Trash2, BarChart2, Mail, Link2, Lock, Unlock, Users, ChevronDown, ChevronUp, Loader2, CheckCircle2, Pencil, BellRing
 } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -97,6 +97,7 @@ export default function Polls() {
   const [detailLoading, setDetailLoading] = useState<number | null>(null)
   const [detailData, setDetailData] = useState<Record<number, Poll>>({})
   const [emailing, setEmailing] = useState<number | null>(null)
+  const [reminding, setReminding] = useState<number | null>(null)
   const [closing, setClosing] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -228,6 +229,22 @@ export default function Polls() {
       toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
       setEmailing(null)
+    }
+  }
+
+  const handleRemind = async (poll: Poll, nonResponderCount: number) => {
+    if (!confirm(`Send a reminder to ${nonResponderCount} player${nonResponderCount !== 1 ? "s" : ""} who haven't voted yet?`)) return
+    setReminding(poll.id)
+    try {
+      const res = await fetch(`/api/polls/${poll.id}/remind`, { method: "POST", headers: authHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to send reminders")
+      toast({ title: `Reminder sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${data.failed > 0 ? ` (${data.failed} failed)` : ""}` })
+      await refreshDetail(poll.id)
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setReminding(null)
     }
   }
 
@@ -481,9 +498,24 @@ export default function Polls() {
                     {/* Non-responders */}
                     {detail.nonResponders && detail.nonResponders.length > 0 && (
                       <div>
-                        <h3 className="text-sm font-semibold text-foreground mb-3">
-                          Non-responders ({detail.nonResponders.length})
-                        </h3>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-semibold text-foreground">
+                            Non-responders ({detail.nonResponders.length})
+                          </h3>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-xs h-8"
+                            disabled={reminding === poll.id}
+                            onClick={() => handleRemind(poll, detail.nonResponders!.length)}
+                          >
+                            {reminding === poll.id
+                              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              : <BellRing className="w-3.5 h-3.5" />
+                            }
+                            Remind {detail.nonResponders.length} player{detail.nonResponders.length !== 1 ? "s" : ""} who haven't voted
+                          </Button>
+                        </div>
                         <div className="bg-white rounded-lg border border-border divide-y divide-border">
                           {detail.nonResponders.map(p => (
                             <div key={p.id} className="px-4 py-2.5 flex items-center justify-between gap-3">

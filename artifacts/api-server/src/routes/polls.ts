@@ -296,6 +296,29 @@ router.post("/:id/email", requireAdminAccess, async (req, res) => {
   res.json({ sent, failed, total: playersWithToken.length });
 });
 
+// ── Admin: remind non-responders ─────────────────────────────────────────────
+
+router.post("/:id/remind", requireAdminAccess, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  const [poll] = await db.select().from(pollsTable).where(eq(pollsTable.id, id));
+  if (!poll) return res.status(404).json({ error: "Not found" });
+  const eligible = await getEligiblePlayers(poll.audience as Audience);
+  const votes = await db.select({ playerId: pollVotesTable.playerId }).from(pollVotesTable).where(eq(pollVotesTable.pollId, id));
+  const voterIds = new Set(votes.map(v => v.playerId));
+  const nonResponders = eligible.filter(p => !voterIds.has(p.id) && p.accessToken && p.email);
+  let sent = 0; let failed = 0;
+  for (const player of nonResponders) {
+    const voteUrl = `${PUBLIC_URL}/polls/${id}?t=${player.accessToken}`;
+    const { html, text } = pollEmailHtml({ playerName: player.name, pollTitle: poll.title, pollDescription: poll.description, deadline: poll.deadline, voteUrl });
+    const ok = await sendEmail({ to: player.email, subject: `Reminder: Vote on ${poll.title}`, html, text });
+    if (ok) sent++; else failed++;
+    await new Promise(r => setTimeout(r, 500));
+  }
+  console.log(`[polls] Remind non-responders for poll ${id}: sent=${sent} failed=${failed}`);
+  res.json({ sent, failed, total: nonResponders.length });
+});
+
 // ── Public: get poll for voting ──────────────────────────────────────────────
 
 router.get("/vote/:id", async (req, res) => {
