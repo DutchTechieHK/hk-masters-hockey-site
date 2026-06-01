@@ -32,7 +32,20 @@ import Poll from "./pages/Poll";
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
-    window.scrollTo(0, 0);
+    const hash = window.location.hash;
+    if (hash) {
+      // Give the page a moment to render before scrolling to the anchor
+      setTimeout(() => {
+        const el = document.getElementById(hash.slice(1));
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+          return;
+        }
+        window.scrollTo(0, 0);
+      }, 50);
+    } else {
+      window.scrollTo(0, 0);
+    }
   }, [location]);
   return null;
 }
