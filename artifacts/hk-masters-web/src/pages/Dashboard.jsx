@@ -67,6 +67,7 @@ export default function Dashboard() {
   const [rsvpCounts, setRsvpCounts] = useState({ yes: 0, no: 0, maybe: 0 });
   const [rsvpSaving, setRsvpSaving] = useState(false);
   const [rsvpError, setRsvpError] = useState(false);
+  const [activePolls, setActivePolls] = useState([]);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -123,6 +124,22 @@ export default function Dashboard() {
           setMyRsvp(next.myRsvp ?? null);
           setRsvpCounts(next.rsvpCounts ?? { yes: 0, no: 0, maybe: 0 });
         }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const token = getPlayerToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/player-auth/polls`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : { polls: [] })
+      .then(({ polls }) => {
+        if (cancelled) return;
+        setActivePolls(Array.isArray(polls) ? polls : []);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -296,6 +313,45 @@ export default function Dashboard() {
             </div>
             <span className="text-red-400 group-hover:text-red-600 text-sm font-medium self-center shrink-0">View →</span>
           </button>
+        )}
+
+        {/* Active polls */}
+        {activePolls.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-3">Open polls</h2>
+            <div className="flex flex-col gap-3">
+              {activePolls.map((poll) => {
+                const href = `/polls/${poll.id}${player?.accessToken ? `?t=${player.accessToken}` : ""}`;
+                return (
+                  <a
+                    key={poll.id}
+                    href={href}
+                    className="flex items-center gap-4 bg-white rounded-2xl shadow-sm px-5 py-4 border border-gray-100 hover:shadow-md hover:border-green-200 transition group"
+                  >
+                    <span className="text-2xl shrink-0">{poll.hasVoted ? "✅" : "🗳️"}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 leading-snug">{poll.title}</p>
+                      {poll.description && (
+                        <p className="text-sm text-gray-500 mt-0.5 truncate">{poll.description}</p>
+                      )}
+                      {poll.deadline && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Closes {new Date(poll.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}
+                        </p>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {poll.hasVoted ? (
+                        <span className="text-xs font-medium text-emerald-600">Voted</span>
+                      ) : (
+                        <span className="text-xs font-medium text-green-700 group-hover:text-green-900">Vote →</span>
+                      )}
+                    </div>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
         )}
 
         {/* Card grid */}

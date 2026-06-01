@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { Router, type IRouter } from "express";
-import { eq, and, isNull, gt, sql } from "drizzle-orm";
-import { db, playersTable, playerLoginCodesTable, playerPaymentsTable } from "@workspace/db";
+import { eq, and, isNull, gt, sql, inArray } from "drizzle-orm";
+import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, pollsTable, pollVotesTable, teamsTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
@@ -205,6 +205,62 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     roommate,
     sameDayArrivals,
     accessToken: player.accessToken ?? null,
+  });
+});
+
+router.get("/polls", requirePlayerSession, async (req, res) => {
+  const player = req.player!;
+  const now = new Date();
+
+  // Determine the player's team category so we can filter by audience
+  let teamCategory: string | null = null;
+  if (player.teamId) {
+    const [teamRow] = await db
+      .select({ category: teamsTable.category })
+      .from(teamsTable)
+      .where(eq(teamsTable.id, player.teamId));
+    teamCategory = teamRow?.category ?? null;
+  }
+
+  // Fetch all polls that are open (not closed, deadline not passed)
+  const allPolls = await db.select().from(pollsTable).orderBy(pollsTable.id);
+  const openPolls = allPolls.filter((p) => {
+    if (p.closedAt) return false;
+    if (p.deadline && now > p.deadline) return false;
+    return true;
+  });
+
+  // Filter by audience
+  const eligible = openPolls.filter((p) => {
+    const aud = p.audience;
+    if (aud === "all") return true;
+    if (aud === "both") return teamCategory === "MO40" || teamCategory === "MO50";
+    return teamCategory === aud;
+  });
+
+  if (eligible.length === 0) {
+    return res.json({ polls: [] });
+  }
+
+  // Find which polls this player has already voted on
+  const pollIds = eligible.map((p) => p.id);
+  const myVotes = await db
+    .select({ pollId: pollVotesTable.pollId })
+    .from(pollVotesTable)
+    .where(and(
+      eq(pollVotesTable.playerId, player.id),
+      inArray(pollVotesTable.pollId, pollIds),
+    ));
+  const votedPollIds = new Set(myVotes.map((v) => v.pollId));
+
+  res.json({
+    polls: eligible.map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description ?? null,
+      deadline: p.deadline?.toISOString() ?? null,
+      hasVoted: votedPollIds.has(p.id),
+    })),
   });
 });
 
