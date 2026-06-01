@@ -38,7 +38,10 @@ function ScrollToTop() {
       setTimeout(() => {
         const el = document.getElementById(hash.slice(1));
         if (el) {
-          el.scrollIntoView({ behavior: "smooth" });
+          const header = document.querySelector("header");
+          const offset = header ? header.offsetHeight + 16 : 80;
+          const top = el.getBoundingClientRect().top + window.scrollY - offset;
+          window.scrollTo({ top, behavior: "smooth" });
           return;
         }
         window.scrollTo(0, 0);
