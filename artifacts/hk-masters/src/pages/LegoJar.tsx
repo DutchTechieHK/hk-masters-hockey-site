@@ -876,7 +876,7 @@ export default function LegoJar() {
               <table className="w-full text-sm">
                 <thead className="bg-muted/30 text-xs text-muted-foreground uppercase">
                   <tr>
-                    <th className="px-6 py-3 text-left font-semibold">Team Contribution</th>
+                    <th className="px-6 py-3 text-left font-semibold">Jar Holder</th>
                     <th className="px-6 py-3 text-left font-semibold">Location</th>
                     <th className="px-6 py-3 text-left font-semibold">Dates</th>
                     <th className="px-6 py-3 text-right font-semibold">Guesses</th>
