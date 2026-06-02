@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { API_BASE } from "../utils/api";
 
 function LegoBrickIcon({ className = "w-7 h-7" }) {
@@ -678,8 +679,8 @@ export default function LegoJarSection() {
         </div>
       </div>
 
-      {/* Shared lightbox overlay — handles both jar photo and villa photo */}
-      {lightbox && (
+      {/* Shared lightbox overlay — rendered via portal to escape any CSS transforms on ancestors */}
+      {lightbox && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={closeLightbox}
@@ -703,7 +704,8 @@ export default function LegoJarSection() {
             className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
