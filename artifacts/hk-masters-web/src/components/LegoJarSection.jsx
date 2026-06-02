@@ -390,23 +390,28 @@ export default function LegoJarSection() {
               <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Who has the jar right now</p>
               <div className="flex items-start gap-4">
                 {jarImageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => setLightbox({ src: jarImageUrl, alt: "The LEGO jar — enlarged" })}
-                    className="relative group w-20 h-20 shrink-0 rounded-xl overflow-hidden border border-gray-200 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40"
-                    aria-label="Expand jar photo"
-                  >
-                    <img
-                      src={jarImageUrl}
-                      alt="The LEGO jar"
-                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                    />
-                    <span className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/25 transition-colors duration-200">
-                      <svg className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zm-6-3v6m-3-3h6" />
-                      </svg>
-                    </span>
-                  </button>
+                  <div className="flex flex-col items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setLightbox({ src: jarImageUrl, alt: "The LEGO jar — enlarged" })}
+                      className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40"
+                      aria-label="Expand jar photo"
+                    >
+                      <img
+                        src={jarImageUrl}
+                        alt="The LEGO jar"
+                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      />
+                      <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
+                      {/* Always-visible zoom badge */}
+                      <span className="absolute bottom-1 right-1 flex items-center justify-center w-6 h-6 rounded-full bg-black/50 group-hover:bg-black/70 transition-colors duration-200">
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zm-6-3v6m-3-3h6" />
+                        </svg>
+                      </span>
+                    </button>
+                    <span className="text-[10px] text-gray-400 leading-none">Tap to enlarge</span>
+                  </div>
                 ) : (
                   <div className="w-20 h-20 bg-[#1E3A6E]/8 rounded-xl flex items-center justify-center shrink-0">
                     <LegoBrickIcon className="w-12 h-9" />
