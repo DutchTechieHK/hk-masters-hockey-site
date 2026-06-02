@@ -353,7 +353,7 @@ export default function Layout({ children }) {
             <div>
               <h3 className="font-semibold text-white mb-3">Quick Links</h3>
               <div className="grid grid-cols-2 gap-x-4">
-                {[BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).slice(0, 5), BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).slice(5)].map((col, ci) => (
+                {(() => { const links = BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive); const mid = Math.ceil(links.length / 2); return [links.slice(0, mid), links.slice(mid)]; })().map((col, ci) => (
                   <ul key={ci} className="space-y-1">
                     {col.map((link) => (
                       <li key={link.href}>
