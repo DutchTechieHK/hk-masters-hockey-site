@@ -490,7 +490,7 @@ export default function LegoJar() {
         .map(([rId]) => rounds.find((r) => r.id === parseInt(rId, 10))?.holderName)
         .filter((h): h is string => !!h)
       return { key, guesserName: sorted[0].guesserName, guesserEmail: email, guesserPhone: phone, guesses: sorted, totalAmountPaid, paidCount, dominantPaymentMethod: dominantPm, earliestDate, roundHolders }
-    }).sort((a, b) => a.earliestDate.localeCompare(b.earliestDate))
+    }).sort((a, b) => b.earliestDate.localeCompare(a.earliestDate))
 
     // Step 2: filter at group level — include group if any guess in it matches the criteria
     return allGroups.filter((group) => {
