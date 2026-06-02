@@ -255,6 +255,7 @@ export default function LegoJar() {
   const [editGroupPaid, setEditGroupPaid] = useState(false)
   const [editGroupPaidTouched, setEditGroupPaidTouched] = useState(false)
   const [editGroupAmountPaid, setEditGroupAmountPaid] = useState("")
+  const [editGroupRoundId, setEditGroupRoundId] = useState<number | null>(null)
   const [editGroupSaving, setEditGroupSaving] = useState(false)
 
   function openEditGroup(group: GuesserGroup) {
@@ -274,6 +275,7 @@ export default function LegoJar() {
     setEditGroupPaidTouched(false)
     // Use the already-rounded group total — avoids writing 33+33+33=99 back to DB
     setEditGroupAmountPaid(group.totalAmountPaid > 0 ? String(group.totalAmountPaid) : "")
+    setEditGroupRoundId(group.guesses[0]?.roundId ?? null)
     setEditGroup(group)
   }
 
@@ -304,6 +306,7 @@ export default function LegoJar() {
               // toggled it, so saving unrelated edits never clears the existing
               // received status of a partially-paid bet.
               paymentMethod: editGroupPaymentMethod || null,
+              roundId: editGroupRoundId,
               ...(editGroupPaidTouched ? { paid: editGroupPaid } : {}),
               ...(row ? {
                 guessNumber: parseInt(row.guessNumber, 10) || g.guessNumber,
@@ -1536,6 +1539,23 @@ export default function LegoJar() {
               value={editContactForm.guesserPhone}
               onChange={(e) => setEditContactForm((f) => ({ ...f, guesserPhone: e.target.value }))}
             />
+          </div>
+
+          {/* Holder assignment */}
+          <div className="border-t border-border pt-4">
+            <label className="block text-sm font-semibold mb-1.5">Jar Holder</label>
+            <select
+              value={editGroupRoundId ?? ""}
+              onChange={(e) => setEditGroupRoundId(e.target.value === "" ? null : Number(e.target.value))}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">— Unassigned —</option>
+              {rounds.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.holderName}{r.isWebsite ? " (Website)" : ""}{r.isCurrent ? " (Current)" : ""}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Per-guess rows */}
