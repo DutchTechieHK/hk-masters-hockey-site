@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { fundraisingTable, teamsTable } from "@workspace/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, desc } from "drizzle-orm";
 import {
   CreateFundraisingBody,
   UpdateFundraisingBody,
@@ -82,7 +82,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     .select({ f: fundraisingTable, teamName: teamsTable.name })
     .from(fundraisingTable)
     .leftJoin(teamsTable, eq(fundraisingTable.teamId, teamsTable.id))
-    .orderBy(fundraisingTable.id);
+    .orderBy(desc(fundraisingTable.id));
   res.json(entries.map(({ f, teamName }) => ({
     id: f.id,
     donorName: f.donorName,
