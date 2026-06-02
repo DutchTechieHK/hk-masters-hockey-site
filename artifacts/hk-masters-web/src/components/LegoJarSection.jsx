@@ -272,6 +272,7 @@ export default function LegoJarSection() {
   const rounds = stats?.rounds ?? [];
   const pastRounds = rounds.filter((r) => r.endedAt !== null);
   const jarImageUrl = stats?.config?.imageUrl ?? "/lego-jar.jpg";
+  const jarVideoUrl = "/lego-jar.mp4";
 
   const tierTotal = tier === "3" ? 100 : 50;
 
@@ -393,24 +394,27 @@ export default function LegoJarSection() {
                   <div className="flex flex-col items-center gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => setLightbox({ src: jarImageUrl, alt: "The LEGO jar — enlarged" })}
-                      className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40"
-                      aria-label="Expand jar photo"
+                      onClick={() => setLightbox({ src: jarVideoUrl, type: "video" })}
+                      className="relative group w-20 h-20 rounded-xl overflow-hidden border border-gray-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1E3A6E]/40"
+                      aria-label="Play jar video"
                     >
-                      <img
-                        src={jarImageUrl}
-                        alt="The LEGO jar"
-                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                      <video
+                        src={jarVideoUrl}
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        className="w-full h-full object-cover"
                       />
                       <span className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
-                      {/* Always-visible zoom badge */}
+                      {/* Always-visible play badge */}
                       <span className="absolute bottom-1 right-1 flex items-center justify-center w-6 h-6 rounded-full bg-black/50 group-hover:bg-black/70 transition-colors duration-200">
-                        <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0zm-6-3v6m-3-3h6" />
+                        <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
                         </svg>
                       </span>
                     </button>
-                    <span className="text-[10px] text-gray-400 leading-none">Tap to enlarge</span>
+                    <span className="text-[10px] text-gray-400 leading-none">Tap to watch</span>
                   </div>
                 ) : (
                   <div className="w-20 h-20 bg-[#1E3A6E]/8 rounded-xl flex items-center justify-center shrink-0">
@@ -703,12 +707,23 @@ export default function LegoJarSection() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <img
-            src={lightbox.src}
-            alt={lightbox.alt}
-            className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {lightbox.type === "video" ? (
+            <video
+              src={lightbox.src}
+              controls
+              autoPlay
+              playsInline
+              className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <img
+              src={lightbox.src}
+              alt={lightbox.alt}
+              className="max-h-[90vh] max-w-full rounded-2xl shadow-2xl object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>,
         document.body
       )}
