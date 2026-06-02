@@ -186,6 +186,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     status: body.status,
     notes: body.notes,
     beneficiary: body.beneficiary,
+    paymentMethod: body.paymentMethod ?? undefined,
     paidAt,
   }).where(eq(fundraisingTable.id, id)).returning();
 

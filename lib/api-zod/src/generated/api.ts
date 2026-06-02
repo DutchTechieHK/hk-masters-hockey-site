@@ -870,6 +870,7 @@ export const UpdateFundraisingBody = zod.object({
   paidAt: zod.string().nullish(),
   notes: zod.string().optional(),
   beneficiary: zod.string().optional(),
+  paymentMethod: zod.string().optional().nullable(),
 });
 
 export const UpdateFundraisingResponse = zod.object({

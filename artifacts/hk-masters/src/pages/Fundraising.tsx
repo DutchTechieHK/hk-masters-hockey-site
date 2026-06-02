@@ -52,7 +52,8 @@ const fundSchema = z.object({
   status: z.enum(["pending", "confirmed", "received"]),
   notes: z.string().optional(),
   beneficiary: z.string().optional(),
-  paidAt: z.string().optional()
+  paidAt: z.string().optional(),
+  paymentMethod: z.string().optional().nullable(),
 })
 
 type FundFormValues = z.infer<typeof fundSchema>
@@ -223,7 +224,8 @@ export default function Fundraising() {
       status: entry.status,
       notes: entry.notes || "",
       beneficiary: entry.beneficiary || "",
-      paidAt: entry.paidAt ? entry.paidAt.split('T')[0] : ""
+      paidAt: entry.paidAt ? entry.paidAt.split('T')[0] : "",
+      paymentMethod: entry.paymentMethod || ""
     })
     setIsModalOpen(true)
   }
@@ -823,13 +825,25 @@ export default function Fundraising() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold">Status</label>
-            <Select {...register("status")}>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="received">Received</option>
-            </Select>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Status</label>
+              <Select {...register("status")}>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="received">Received</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Payment Method</label>
+              <Select {...register("paymentMethod")}>
+                <option value="">— Not specified —</option>
+                <option value="payme">PayMe</option>
+                <option value="wise">Wise</option>
+                <option value="bank_transfer">Bank Transfer</option>
+                <option value="cash">Cash</option>
+              </Select>
+            </div>
           </div>
 
           <div className={editingEntry ? "grid grid-cols-2 gap-4" : ""}>
