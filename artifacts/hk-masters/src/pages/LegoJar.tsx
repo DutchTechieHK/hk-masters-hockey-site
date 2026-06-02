@@ -1551,12 +1551,30 @@ export default function LegoJar() {
                     <label className="block text-xs font-semibold mb-1">
                       {editGuessRows.length === 1 ? "Guess number *" : `Guess ${i + 1} number *`}
                     </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={row.guessNumber}
-                      onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, guessNumber: e.target.value } : r))}
-                    />
+                    <div className="flex gap-1.5">
+                      <Input
+                        type="number"
+                        min="1"
+                        value={row.guessNumber}
+                        onChange={(e) => setEditGuessRows((prev) => prev.map((r, j) => j === i ? { ...r, guessNumber: e.target.value } : r))}
+                      />
+                      {editGuessRows.length > 1 && (
+                        <button
+                          type="button"
+                          title="Delete this guess"
+                          onClick={async () => {
+                            await apiFetch(`/api/admin/lego-jar/guesses/${row.id}`, { method: "DELETE" });
+                            setEditGuessRows((prev) => prev.filter((r) => r.id !== row.id));
+                            setEditGroup((prev) => prev ? { ...prev, guesses: prev.guesses.filter((g) => g.id !== row.id) } : null);
+                          }}
+                          className="shrink-0 w-8 h-10 flex items-center justify-center rounded-md border border-red-300 text-red-500 hover:bg-red-500 hover:text-white hover:border-red-500 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
