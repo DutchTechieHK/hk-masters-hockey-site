@@ -520,31 +520,6 @@ export default function Home() {
       {/* Latest Journal Article */}
       <LatestJournalCard />
 
-      {/* ── Get the App CTA ───────────────────────────────────── */}
-      <section className="bg-[#1E3A6E] py-12 sm:py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-white/10 mb-5">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 8.25h3m-3 3h3m-3 3h3" />
-            </svg>
-          </div>
-          <h2 className="reveal text-2xl sm:text-3xl font-extrabold text-white mb-3">
-            Get the App on Your Phone
-          </h2>
-          <p className="reveal text-[#BFD9F5] max-w-xl mx-auto mb-7 leading-relaxed">
-            Install the HK Masters player portal straight to your home screen — no App Store needed. Works on iPhone &amp; Android in seconds.
-          </p>
-          <Link
-            href="/get-the-app"
-            className="btn-shimmer inline-flex items-center gap-2 bg-white text-[#1E3A6E] font-semibold px-7 py-3 rounded-lg hover:bg-[#EEF4FB] transition-colors duration-150"
-          >
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            How to install the app &rarr;
-          </Link>
-        </div>
-      </section>
 
       {/* Sponsor Logos Strip */}
       <SponsorStrip />
