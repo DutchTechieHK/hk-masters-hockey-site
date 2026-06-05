@@ -11,15 +11,34 @@ import { API_BASE } from "../utils/api";
 export default function Rotterdam2026() {
   const teamManagementUrl = "https://app.hkmastershockey.com";
   const [expandedSquad, setExpandedSquad] = useState(null);
-  const [liveShirtNumbers, setLiveShirtNumbers] = useState(new Map());
+  // Map from teamCategory → sorted player array from the live API
+  const [liveSquads, setLiveSquads] = useState(new Map());
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/squad`)
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
+        if (!Array.isArray(rows)) return;
         const map = new Map();
-        if (Array.isArray(rows)) rows.forEach(p => { if (p.name && p.shirtNumber != null) map.set(p.name, p.shirtNumber); });
-        setLiveShirtNumbers(map);
+        const staffRoles = /coach|manager|physio|medic|official/i;
+        rows.forEach(p => {
+          if (!p.teamCategory) return;
+          // Exclude non-playing staff
+          if (p.position && staffRoles.test(p.position)) return;
+          if (!map.has(p.teamCategory)) map.set(p.teamCategory, []);
+          map.get(p.teamCategory).push(p);
+        });
+        // Sort each category by shirt number (nulls last), then name
+        map.forEach((players, cat) => {
+          players.sort((a, b) => {
+            const an = a.shirtNumber ?? 999;
+            const bn = b.shirtNumber ?? 999;
+            if (an !== bn) return an - bn;
+            return a.name.localeCompare(b.name);
+          });
+          map.set(cat, players);
+        });
+        setLiveSquads(map);
       })
       .catch(() => {});
   }, []);
@@ -85,7 +104,15 @@ export default function Rotterdam2026() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {content.squads.map((squad) => {
               const teamData = teamsContent.squads.find(t => t.short_name === squad.category);
-              const players = squad.player_list || [];
+              // Use live API players if available, otherwise fall back to static JSON
+              const livePlayers = liveSquads.get(squad.category);
+              const players = livePlayers
+                ? livePlayers.map(p => ({
+                    name: p.name,
+                    shirt_number: p.shirtNumber ?? null,
+                    role: p.position ?? "",
+                  }))
+                : (squad.player_list || []);
               const squadPlayers = players.filter(p => !p.role || p.role.toLowerCase() !== "reserve");
               const reserves = players.filter(p => p.role && p.role.toLowerCase() === "reserve");
               const isExpanded = expandedSquad === squad.category;
@@ -146,7 +173,7 @@ export default function Rotterdam2026() {
                                 {squadPlayers.map((player, i) => (
                                   <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-[#1E3A6E]/4 transition-colors group">
                                     <span className="w-8 h-8 bg-[#1E3A6E] text-white rounded-lg flex items-center justify-center text-xs font-bold shrink-0 shadow-sm">
-                                      {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
+                                      {player.shirt_number ?? "—"}
                                     </span>
                                     <span className="flex-1 text-sm font-semibold text-gray-900">{player.name}</span>
                                     {player.role && player.role.toLowerCase() !== "reserve" && (
@@ -166,7 +193,7 @@ export default function Rotterdam2026() {
                                 {reserves.map((player, i) => (
                                   <div key={i} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-amber-50 transition-colors">
                                     <span className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">
-                                      {player.shirt_number ?? liveShirtNumbers.get(player.name) ?? "—"}
+                                      {player.shirt_number ?? "—"}
                                     </span>
                                     <span className="text-sm font-semibold text-gray-600 flex-1">{player.name}</span>
                                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold shrink-0">Reserve</span>
