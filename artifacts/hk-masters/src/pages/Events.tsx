@@ -808,21 +808,35 @@ export default function Events() {
               const list = roster.responses.filter((r) => r.status === status)
               if (list.length === 0) return null
               const labels = { yes: "✅ Going", maybe: "🤔 Maybe", no: "❌ Not going" } as const
+              // Group by team
+              const teamOrder: string[] = []
+              const byTeam: Record<string, typeof list> = {}
+              list.forEach((r) => {
+                const key = r.teamName ?? "Unknown"
+                if (!byTeam[key]) { byTeam[key] = []; teamOrder.push(key) }
+                byTeam[key].push(r)
+              })
               return (
                 <div key={status}>
                   <h4 className="text-sm font-semibold mb-2">{labels[status]} ({list.length})</h4>
-                  <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
-                    {list.map((r) => (
-                      <li key={r.playerId} className="px-3 py-2 text-sm flex justify-between items-center bg-white">
-                        <span>
-                          {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
-                          <span className="font-medium">{r.playerName}</span>
-                          {r.teamName && <span className="text-muted-foreground"> · {r.teamName}</span>}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
-                      </li>
+                  <div className="space-y-3">
+                    {teamOrder.map((teamName) => (
+                      <div key={teamName}>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 px-1">{teamName}</p>
+                        <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+                          {byTeam[teamName].map((r) => (
+                            <li key={r.playerId} className="px-3 py-2 text-sm flex justify-between items-center bg-white">
+                              <span>
+                                {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
+                                <span className="font-medium">{r.playerName}</span>
+                              </span>
+                              <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )
             })}
@@ -847,15 +861,32 @@ export default function Events() {
                     )}
                   </button>
                 </div>
-                <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
-                  {roster.noResponse.map((p) => (
-                    <li key={p.playerId} className="px-3 py-2 text-sm bg-white">
-                      {p.shirtNumber != null && <span className="text-muted-foreground mr-2">#{p.shirtNumber}</span>}
-                      <span className="font-medium">{p.playerName}</span>
-                      {p.teamName && <span className="text-muted-foreground"> · {p.teamName}</span>}
-                    </li>
-                  ))}
-                </ul>
+                {(() => {
+                  const teamOrder: string[] = []
+                  const byTeam: Record<string, typeof roster.noResponse> = {}
+                  roster.noResponse.forEach((p) => {
+                    const key = p.teamName ?? "Unknown"
+                    if (!byTeam[key]) { byTeam[key] = []; teamOrder.push(key) }
+                    byTeam[key].push(p)
+                  })
+                  return (
+                    <div className="space-y-3">
+                      {teamOrder.map((teamName) => (
+                        <div key={teamName}>
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 px-1">{teamName}</p>
+                          <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
+                            {byTeam[teamName].map((p) => (
+                              <li key={p.playerId} className="px-3 py-2 text-sm bg-white">
+                                {p.shirtNumber != null && <span className="text-muted-foreground mr-2">#{p.shirtNumber}</span>}
+                                <span className="font-medium">{p.playerName}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })()}
               </div>
             )}
 
