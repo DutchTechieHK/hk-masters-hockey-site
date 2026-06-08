@@ -18,6 +18,23 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li>/gi, "• ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 async function sendEmail(opts: {
   to: string;
   subject: string;
@@ -1210,13 +1227,13 @@ export async function sendBulkAnnouncementEmail(opts: {
   attachments?: Array<{ filename: string; content: Buffer }>;
 }): Promise<boolean> {
   const safeName = escapeHtml(opts.playerName);
-  const safeBody = escapeHtml(opts.body).replace(/\n/g, "<br>");
+  const plainBody = stripHtmlToText(opts.body);
 
   const html = emailShell(
     "#1E3A6E",
     opts.subject,
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
-    <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${safeBody}</div>
+    <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${opts.body}</div>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
     <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
       Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
@@ -1225,7 +1242,7 @@ export async function sendBulkAnnouncementEmail(opts: {
 
   const text = `Hi ${opts.playerName},
 
-${opts.body}
+${plainBody}
 
 ---
 Questions? Email us at ${ADMIN_EMAIL}.

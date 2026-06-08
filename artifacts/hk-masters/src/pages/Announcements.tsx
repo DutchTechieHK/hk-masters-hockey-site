@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/RichTextEditor"
 import { Modal } from "@/components/ui/modal"
 import { Plus, Trash2, Edit2, Pin, PinOff, Megaphone, Mail, Send, Clock, Users, CheckSquare, ChevronDown, ChevronUp, Paperclip, X, CheckCircle2, XCircle, Loader2 } from "lucide-react"
 import { useRef } from "react"
@@ -342,7 +343,7 @@ export default function Announcements() {
   }
 
   const canSend = emailForm.subject.trim().length > 0 &&
-    emailForm.body.trim().length > 0 &&
+    emailForm.body.length > 0 &&
     recipients.length > 0 &&
     !sending
 
@@ -568,11 +569,10 @@ export default function Announcements() {
             {/* Body */}
             <div className="space-y-2">
               <label className="text-sm font-semibold">Message</label>
-              <Textarea
+              <RichTextEditor
                 value={emailForm.body}
-                onChange={(e) => setEmailForm((f) => ({ ...f, body: e.target.value }))}
-                placeholder="Write your message here…"
-                rows={7}
+                onChange={(html) => setEmailForm((f) => ({ ...f, body: html }))}
+                minHeight={160}
               />
             </div>
 
