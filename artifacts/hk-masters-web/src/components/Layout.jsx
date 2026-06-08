@@ -365,6 +365,11 @@ export default function Layout({ children }) {
                   </ul>
                 ))}
               </div>
+              <div className="mt-3">
+                <Link href="/privacy" className="text-[#8FBDE8] text-sm hover:text-white transition-colors duration-150">
+                  Privacy
+                </Link>
+              </div>
             </div>
 
             {/* Contact & Social */}
