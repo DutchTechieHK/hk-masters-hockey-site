@@ -28,6 +28,23 @@ function serialize(row: typeof announcementsTable.$inferSelect, teamName?: strin
   };
 }
 
+function stripHtml(html: string): string {
+  return html
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li>/gi, "• ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function parseBody(body: unknown): {
   title: string;
   body: string;
@@ -40,7 +57,8 @@ function parseBody(body: unknown): {
   const title = typeof b.title === "string" ? b.title.trim() : "";
   if (!title) return { error: "title required" };
   if (title.length > 200) return { error: "title too long (max 200)" };
-  const messageBody = typeof b.body === "string" ? b.body.trim() : "";
+  const rawBody = typeof b.body === "string" ? b.body.trim() : "";
+  const messageBody = stripHtml(rawBody);
   if (!messageBody) return { error: "body required" };
   let teamId: number | null = null;
   if (b.teamId !== null && b.teamId !== undefined && b.teamId !== "") {

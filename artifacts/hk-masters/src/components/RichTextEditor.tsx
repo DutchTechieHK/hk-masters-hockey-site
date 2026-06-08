@@ -29,6 +29,9 @@ export function RichTextEditor({ value, onChange, placeholder = "Write your mess
         class: "focus:outline-none text-sm text-foreground",
         style: `min-height: ${minHeight}px; padding: 10px 12px;`,
       },
+      transformPastedHTML(html) {
+        return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+      },
     },
     onUpdate({ editor }) {
       onChange(editor.isEmpty ? "" : editor.getHTML())
