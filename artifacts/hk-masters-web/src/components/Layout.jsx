@@ -362,13 +362,15 @@ export default function Layout({ children }) {
                         </Link>
                       </li>
                     ))}
+                    {ci === 1 && (
+                      <li>
+                        <Link href="/privacy" className="text-[#8FBDE8] text-sm hover:text-white transition-colors duration-150">
+                          Privacy
+                        </Link>
+                      </li>
+                    )}
                   </ul>
                 ))}
-              </div>
-              <div className="mt-3">
-                <Link href="/privacy" className="text-[#8FBDE8] text-sm hover:text-white transition-colors duration-150">
-                  Privacy
-                </Link>
               </div>
             </div>
 
