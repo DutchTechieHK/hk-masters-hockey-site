@@ -158,6 +158,24 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
     ? ` · ${formatTimeRangeRtm(ev.startsAt, ev.endsAt)}`
     : ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
 
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [noteText, setNoteText] = useState(ev.myNote ?? "");
+
+  const handleOption = (key) => {
+    if (key === "maybe") {
+      setNoteText(ev.myNote ?? "");
+      setShowNoteForm(true);
+    } else {
+      setShowNoteForm(false);
+      submitRsvp(ev.id, key, null);
+    }
+  };
+
+  const confirmMaybe = () => {
+    submitRsvp(ev.id, "maybe", noteText.trim() || null);
+    setShowNoteForm(false);
+  };
+
   return (
     <li className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
       <div className="flex items-start justify-between gap-4">
@@ -201,7 +219,7 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
                   key={opt.key}
                   type="button"
                   disabled={!!rsvpSaving[ev.id]}
-                  onClick={() => submitRsvp(ev.id, opt.key)}
+                  onClick={() => handleOption(opt.key)}
                   className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
                 >
                   {opt.emoji} {opt.label}
@@ -213,6 +231,41 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
             {ev.rsvpCounts?.yes ?? 0} going · {ev.rsvpCounts?.maybe ?? 0} maybe · {ev.rsvpCounts?.no ?? 0} no
           </div>
         </div>
+
+        {/* Maybe note form */}
+        {showNoteForm && (
+          <div className="mt-3">
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              placeholder="What's your situation? (optional)"
+              rows={2}
+              autoFocus
+              className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 bg-amber-50"
+            />
+            <div className="flex items-center gap-3 mt-2">
+              <button
+                type="button"
+                onClick={confirmMaybe}
+                disabled={!!rsvpSaving[ev.id]}
+                className="text-xs font-medium px-3 py-1.5 rounded-full bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
+              >
+                🤔 Confirm Maybe
+              </button>
+              <button type="button" onClick={() => setShowNoteForm(false)} className="text-xs text-gray-500 hover:text-gray-700">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Show existing maybe note when not editing */}
+        {!showNoteForm && ev.myRsvp === "maybe" && ev.myNote && (
+          <div className="mt-2 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+            <span className="flex-1">🤔 {ev.myNote}</span>
+            <button type="button" onClick={() => { setNoteText(ev.myNote ?? ""); setShowNoteForm(true); }} className="underline shrink-0">Edit</button>
+          </div>
+        )}
       </div>
     </li>
   );
@@ -231,7 +284,7 @@ export default function MySchedule() {
 
   const countdown = useCountdown(TOURNAMENT_START_ISO);
 
-  const submitRsvp = async (eventId, status) => {
+  const submitRsvp = async (eventId, status, note = null) => {
     const token = getPlayerToken();
     if (!token) { setLocation("/login"); return; }
     setRsvpSaving((s) => ({ ...s, [eventId]: true }));
@@ -242,13 +295,13 @@ export default function MySchedule() {
       const counts = { yes: 0, no: 0, maybe: 0, ...(ev.rsvpCounts || {}) };
       if (ev.myRsvp && counts[ev.myRsvp] > 0) counts[ev.myRsvp]--;
       counts[status] = (counts[status] || 0) + 1;
-      return { ...ev, myRsvp: status, rsvpCounts: counts };
+      return { ...ev, myRsvp: status, myNote: note, rsvpCounts: counts };
     }));
     try {
       const res = await fetch(`${API_BASE}/api/player-auth/events/${eventId}/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(note ? { note } : {}) }),
       });
       if (res.status === 401) { setLocation("/login"); return; }
       if (!res.ok) {

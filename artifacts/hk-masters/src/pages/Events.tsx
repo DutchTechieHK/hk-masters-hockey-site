@@ -34,6 +34,7 @@ type RsvpResponse = {
   teamId: number | null
   teamName: string | null
   status: "yes" | "no" | "maybe"
+  note: string | null
   respondedAt: string
 }
 
@@ -825,12 +826,17 @@ export default function Events() {
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 px-1">{teamName}</p>
                         <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
                           {byTeam[teamName].map((r) => (
-                            <li key={r.playerId} className="px-3 py-2 text-sm flex justify-between items-center bg-white">
-                              <span>
-                                {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
-                                <span className="font-medium">{r.playerName}</span>
-                              </span>
-                              <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                            <li key={r.playerId} className="px-3 py-2 text-sm bg-white">
+                              <div className="flex justify-between items-center">
+                                <span>
+                                  {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
+                                  <span className="font-medium">{r.playerName}</span>
+                                </span>
+                                <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                              </div>
+                              {r.note && (
+                                <p className="mt-0.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">{r.note}</p>
+                              )}
                             </li>
                           ))}
                         </ul>

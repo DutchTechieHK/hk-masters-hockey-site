@@ -67,6 +67,8 @@ export default function Dashboard() {
   const [rsvpCounts, setRsvpCounts] = useState({ yes: 0, no: 0, maybe: 0 });
   const [rsvpSaving, setRsvpSaving] = useState(false);
   const [rsvpError, setRsvpError] = useState(false);
+  const [showMaybeNote, setShowMaybeNote] = useState(false);
+  const [maybeNoteText, setMaybeNoteText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
 
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function Dashboard() {
     return () => { cancelled = true; };
   }, []);
 
-  const submitRsvp = async (status) => {
+  const submitRsvp = async (status, note = null) => {
     if (!nextSession) return;
     const token = getPlayerToken();
     if (!token) { setLocation("/login"); return; }
@@ -162,7 +164,7 @@ export default function Dashboard() {
       const res = await fetch(`${API_BASE}/api/player-auth/events/${nextSession.id}/rsvp`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...(note ? { note } : {}) }),
       });
       if (res.status === 401) { setLocation("/login"); return; }
       if (!res.ok) throw new Error("Could not save");
@@ -262,10 +264,11 @@ export default function Dashboard() {
             <div className="mt-3 pt-3 border-t border-white/15 pl-9">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="text-xs text-blue-200 shrink-0">Will you attend?</span>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {[
-                    { key: "yes", label: "Going",     on: "bg-emerald-500 text-white border-emerald-500", off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
-                    { key: "no",  label: "Not going", on: "bg-rose-500 text-white border-rose-500",       off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
+                    { key: "yes",   label: "Going",     on: "bg-emerald-500 text-white border-emerald-500", off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
+                    { key: "maybe", label: "Maybe",     on: "bg-amber-400 text-white border-amber-400",     off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
+                    { key: "no",    label: "Not going", on: "bg-rose-500 text-white border-rose-500",       off: "bg-white/10 text-white border-white/25 hover:bg-white/20" },
                   ].map((opt) => {
                     const selected = myRsvp === opt.key;
                     return (
@@ -273,7 +276,10 @@ export default function Dashboard() {
                         key={opt.key}
                         type="button"
                         disabled={rsvpSaving}
-                        onClick={() => submitRsvp(opt.key)}
+                        onClick={() => {
+                          if (opt.key === "maybe") { setMaybeNoteText(""); setShowMaybeNote(true); }
+                          else { setShowMaybeNote(false); submitRsvp(opt.key); }
+                        }}
                         className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
                       >
                         {opt.label}
@@ -281,12 +287,35 @@ export default function Dashboard() {
                     );
                   })}
                 </div>
-                {(rsvpCounts.yes > 0 || rsvpCounts.no > 0) && (
+                {(rsvpCounts.yes > 0 || rsvpCounts.no > 0 || rsvpCounts.maybe > 0) && (
                   <span className="text-xs text-blue-200 whitespace-nowrap">
-                    {rsvpCounts.yes} going · {rsvpCounts.no} not going
+                    {rsvpCounts.yes} going · {rsvpCounts.maybe > 0 ? `${rsvpCounts.maybe} maybe · ` : ""}{rsvpCounts.no} not going
                   </span>
                 )}
               </div>
+              {showMaybeNote && (
+                <div className="mt-2">
+                  <textarea
+                    value={maybeNoteText}
+                    onChange={(e) => setMaybeNoteText(e.target.value)}
+                    placeholder="What's your situation? (optional)"
+                    rows={2}
+                    autoFocus
+                    className="w-full text-xs text-gray-900 border border-amber-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white/90"
+                  />
+                  <div className="flex items-center gap-3 mt-1.5">
+                    <button
+                      type="button"
+                      disabled={rsvpSaving}
+                      onClick={() => { submitRsvp("maybe", maybeNoteText.trim() || null); setShowMaybeNote(false); }}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-amber-400 text-white hover:bg-amber-500 transition disabled:opacity-50"
+                    >
+                      🤔 Confirm Maybe
+                    </button>
+                    <button type="button" onClick={() => setShowMaybeNote(false)} className="text-xs text-blue-200 hover:text-white">Cancel</button>
+                  </div>
+                </div>
+              )}
               {rsvpError && (
                 <p className="mt-1.5 text-xs text-red-300">Couldn't save — please try again.</p>
               )}

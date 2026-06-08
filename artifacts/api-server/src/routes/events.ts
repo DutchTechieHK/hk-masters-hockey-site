@@ -30,7 +30,7 @@ function emptyCounts(): RsvpCounts {
 function serialize(
   row: typeof eventsTable.$inferSelect,
   teamName?: string | null,
-  extras?: { rsvpCounts?: RsvpCounts; myRsvp?: RsvpStatus | null },
+  extras?: { rsvpCounts?: RsvpCounts; myRsvp?: RsvpStatus | null; myNote?: string | null },
 ) {
   return {
     id: row.id,
@@ -46,6 +46,7 @@ function serialize(
     createdAt: row.createdAt.toISOString(),
     rsvpCounts: extras?.rsvpCounts ?? emptyCounts(),
     myRsvp: extras?.myRsvp ?? null,
+    myNote: extras?.myNote ?? null,
   };
 }
 
@@ -120,16 +121,16 @@ async function loadRsvpCounts(eventIds: number[]): Promise<Map<number, RsvpCount
   return map;
 }
 
-async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<number, RsvpStatus>> {
-  const map = new Map<number, RsvpStatus>();
+async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<number, { status: RsvpStatus; note: string | null }>> {
+  const map = new Map<number, { status: RsvpStatus; note: string | null }>();
   if (eventIds.length === 0) return map;
   const rows = await db
-    .select({ eventId: eventRsvpsTable.eventId, status: eventRsvpsTable.status })
+    .select({ eventId: eventRsvpsTable.eventId, status: eventRsvpsTable.status, note: eventRsvpsTable.note })
     .from(eventRsvpsTable)
     .where(and(eq(eventRsvpsTable.playerId, playerId), inArray(eventRsvpsTable.eventId, eventIds)));
   for (const r of rows) {
     if (r.status === "yes" || r.status === "no" || r.status === "maybe") {
-      map.set(r.eventId, r.status);
+      map.set(r.eventId, { status: r.status, note: r.note ?? null });
     }
   }
   return map;
@@ -215,6 +216,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
       teamId: playersTable.teamId,
       teamName: teamsTable.name,
       status: eventRsvpsTable.status,
+      note: eventRsvpsTable.note,
       respondedAt: eventRsvpsTable.respondedAt,
     })
     .from(eventRsvpsTable)
@@ -243,6 +245,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     teamId: r.teamId,
     teamName: r.teamName ?? null,
     status: r.status,
+    note: r.note ?? null,
     respondedAt: r.respondedAt.toISOString(),
   }));
 
@@ -338,6 +341,8 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
   if (!RSVP_STATUSES.includes(status as RsvpStatus)) {
     res.status(400).json({ error: "status must be yes, no or maybe" }); return;
   }
+  const rawNote = (req.body as { note?: unknown })?.note;
+  const note: string | null = typeof rawNote === "string" ? (rawNote.trim() || null) : null;
   const player = req.player!;
 
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
@@ -348,13 +353,13 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
 
   const now = new Date();
   await db.insert(eventRsvpsTable)
-    .values({ eventId: id, playerId: player.id, status, respondedAt: now })
+    .values({ eventId: id, playerId: player.id, status, note, respondedAt: now })
     .onConflictDoUpdate({
       target: [eventRsvpsTable.eventId, eventRsvpsTable.playerId],
-      set: { status, respondedAt: now },
+      set: { status, note, respondedAt: now },
     });
 
-  res.json({ eventId: id, status, respondedAt: now.toISOString() });
+  res.json({ eventId: id, status, note, respondedAt: now.toISOString() });
 }
 
 export const playerRsvpHandler = upsertOwnRsvp;
@@ -373,12 +378,13 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
 
   const ids = rows.map((r) => r.event.id);
   const counts = await loadRsvpCounts(ids);
-  const mine = playerId != null ? await loadMyRsvps(playerId, ids) : new Map<number, RsvpStatus>();
+  const mine = playerId != null ? await loadMyRsvps(playerId, ids) : new Map<number, { status: RsvpStatus; note: string | null }>();
 
   return rows.map(({ event, teamName }) =>
     serialize(event, teamName, {
       rsvpCounts: counts.get(event.id) ?? emptyCounts(),
-      myRsvp: mine.get(event.id) ?? null,
+      myRsvp: mine.get(event.id)?.status ?? null,
+      myNote: mine.get(event.id)?.note ?? null,
     }),
   );
 }

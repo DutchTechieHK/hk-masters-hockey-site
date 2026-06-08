@@ -8,6 +8,7 @@ export const eventRsvpsTable = pgTable("event_rsvps", {
   eventId: integer("event_id").references(() => eventsTable.id, { onDelete: "cascade" }).notNull(),
   playerId: integer("player_id").references(() => playersTable.id, { onDelete: "cascade" }).notNull(),
   status: text("status").notNull(),
+  note: text("note"),
   respondedAt: timestamp("responded_at").defaultNow().notNull(),
 }, (t) => ({
   uniqEventPlayer: uniqueIndex("event_rsvps_event_player_uniq").on(t.eventId, t.playerId),
