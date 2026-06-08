@@ -764,7 +764,7 @@ export default function Events() {
       <Modal
         isOpen={rosterEventId !== null}
         onClose={() => { setRosterEventId(null); setRoster(null) }}
-        title={roster ? `RSVPs · ${roster.event.title}` : "RSVPs"}
+        title={roster ? `RSVPs · ${roster.event.title} · ${new Date(roster.event.startsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : "RSVPs"}
       >
         {rosterLoading || !roster ? (
           <div className="py-8 text-center text-muted-foreground">Loading…</div>
