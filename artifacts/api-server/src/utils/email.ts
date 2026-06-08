@@ -1219,6 +1219,15 @@ The HK Masters Hockey Team`;
   });
 }
 
+function inlineRichTextStyles(html: string): string {
+  return html
+    .replace(/<strong(\s[^>]*)?>/gi, (_, attrs = "") => `<strong${attrs} style="font-weight:600;">`)
+    .replace(/<em(\s[^>]*)?>/gi, (_, attrs = "") => `<em${attrs} style="font-style:italic;">`)
+    .replace(/<u(\s[^>]*)?>/gi, (_, attrs = "") => `<u${attrs} style="text-decoration:underline;">`)
+    .replace(/<ul(\s[^>]*)?>/gi, (_, attrs = "") => `<ul${attrs} style="margin:0 0 12px 0;padding-left:20px;">`)
+    .replace(/<li(\s[^>]*)?>/gi, (_, attrs = "") => `<li${attrs} style="margin-bottom:4px;">`);
+}
+
 export async function sendBulkAnnouncementEmail(opts: {
   playerName: string;
   playerEmail: string;
@@ -1228,12 +1237,13 @@ export async function sendBulkAnnouncementEmail(opts: {
 }): Promise<boolean> {
   const safeName = escapeHtml(opts.playerName);
   const plainBody = stripHtmlToText(opts.body);
+  const styledBody = inlineRichTextStyles(opts.body);
 
   const html = emailShell(
     "#1E3A6E",
     opts.subject,
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
-    <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${opts.body}</div>
+    <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${styledBody}</div>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
     <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
       Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
