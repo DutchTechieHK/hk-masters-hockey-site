@@ -423,6 +423,12 @@ export default function Layout({ children }) {
               </Link>
             </p>
           </div>
+
+          <div className="mt-6 pt-5 border-t border-[#2A5298]/50">
+            <p className="text-[#5A7FA8] text-xs leading-relaxed max-w-3xl mx-auto text-center">
+              This website is an independent initiative and is not endorsed by, affiliated with, or associated with Hong Kong Hockey, China (HHKC). Any references to Hong Kong Hockey, China, or to its names, logos, or trademarks, are for identification purposes only and remain the property of their respective owners. All views, information, and activities presented here are solely those of the organisers of this event and do not represent the official position of Hong Kong Hockey, China.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
