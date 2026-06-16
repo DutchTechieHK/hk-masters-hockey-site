@@ -521,15 +521,15 @@ export default function Fundraising() {
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-semibold w-[130px]">Donor / Sponsor</th>
-                  <th className="px-4 py-3 font-semibold w-[120px]">Email</th>
-                  <th className="px-4 py-3 font-semibold w-[100px]">Beneficiary</th>
-                  <th className="px-4 py-3 font-semibold">Payment</th>
-                  <th className="px-4 py-3 font-semibold text-right">Pledged</th>
-                  <th className="px-4 py-3 font-semibold text-right">Received</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Dates</th>
-                  <th className="px-4 py-3 font-semibold text-right sticky right-0 z-20 bg-muted border-l border-border">Actions</th>
+                  <th className="px-3 py-2 font-semibold">Donor / Sponsor</th>
+                  <th className="px-3 py-2 font-semibold">Email</th>
+                  <th className="px-3 py-2 font-semibold">Beneficiary</th>
+                  <th className="px-3 py-2 font-semibold">Payment</th>
+                  <th className="px-3 py-2 font-semibold text-right whitespace-nowrap">Pledged</th>
+                  <th className="px-3 py-2 font-semibold text-right whitespace-nowrap">Received</th>
+                  <th className="px-3 py-2 font-semibold">Status</th>
+                  <th className="px-3 py-2 font-semibold whitespace-nowrap">Dates</th>
+                  <th className="px-2 py-2 font-semibold text-right sticky right-0 z-20 bg-muted border-l border-border">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -540,23 +540,23 @@ export default function Fundraising() {
                 ) : (
                   entries.map(entry => (
                     <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
-                      <td className="px-4 py-3 max-w-[130px]">
-                        <div className="font-bold text-foreground truncate" title={entry.donorName}>{entry.donorName}</div>
-                        {entry.teamName && <div className="text-xs text-muted-foreground truncate">{entry.teamName}</div>}
+                      <td className="px-3 py-3">
+                        <div className="font-bold text-foreground">{entry.donorName}</div>
+                        {entry.teamName && <div className="text-xs text-muted-foreground">{entry.teamName}</div>}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground max-w-[120px]">
+                      <td className="px-3 py-3 text-muted-foreground max-w-[140px]">
                         {entry.donorEmail
                           ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors block truncate" title={entry.donorEmail}>{entry.donorEmail}</a>
                           : <span className="text-xs italic">—</span>
                         }
                       </td>
-                      <td className="px-4 py-3 max-w-[100px]">
+                      <td className="px-3 py-3">
                         {entry.beneficiary
-                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full block truncate" title={entry.beneficiary}>{entry.beneficiary}</span>
+                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">{entry.beneficiary}</span>
                           : <span className="text-xs italic text-muted-foreground">—</span>
                         }
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-3 py-3 whitespace-nowrap">
                         {entry.paymentMethod === "payme" && (
                           <span className="text-xs font-medium bg-green-100 text-green-800 px-2 py-0.5 rounded-full">PayMe</span>
                         )}
@@ -573,38 +573,36 @@ export default function Fundraising() {
                           <span className="text-xs italic text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-foreground whitespace-nowrap">{formatCurrency(entry.amountPledged)}</td>
-                      <td className="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(entry.amountReceived)}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-3 text-right font-medium text-foreground whitespace-nowrap">{formatCurrency(entry.amountPledged)}</td>
+                      <td className="px-3 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(entry.amountReceived)}</td>
+                      <td className="px-3 py-3 whitespace-nowrap">
                         <Badge className={STATUS_COLORS[entry.status] + " capitalize border-0 shadow-none"}>
                           {entry.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
+                      <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">
                         <div>{entry.date ? format(parseISO(entry.date), 'd MMM yy') : '—'}</div>
                         {entry.paidAt && (
                           <div className="text-xs text-emerald-600 font-medium">{format(parseISO(entry.paidAt), 'd MMM yy')} ✓</div>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right sticky right-0 z-10 bg-white border-l border-border">
-                        <div className="flex justify-end items-center space-x-2">
+                      <td className="px-2 py-3 text-right sticky right-0 z-10 bg-white border-l border-border">
+                        <div className="flex justify-end items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           {entry.status === "received" && !entry.donorEmail && (
                             <span
                               title="No email on file — receipt cannot be sent. Edit this record to add an email address."
-                              className="p-1.5 text-amber-500 cursor-help"
+                              className="p-1 text-amber-500 cursor-help"
                             >
-                              <AlertTriangle className="w-4 h-4" />
+                              <AlertTriangle className="w-3.5 h-3.5" />
                             </span>
                           )}
-                        </div>
-                        <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           {entry.status !== "received" && (
                             <button
                               onClick={() => handleMarkAsPaid(entry)}
                               title="Mark as paid"
-                              className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
+                              className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <CheckCircle2 className="w-3.5 h-3.5" />
                             </button>
                           )}
                           {entry.status === "received" && (
@@ -612,16 +610,16 @@ export default function Fundraising() {
                               onClick={() => entry.donorEmail ? handleResendReceipt(entry) : undefined}
                               title={entry.donorEmail ? "Resend receipt email" : "No email on file — cannot resend receipt"}
                               disabled={resendingId === entry.id || !entry.donorEmail}
-                              className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                             >
-                              <MailCheck className="w-4 h-4" />
+                              <MailCheck className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          <button onClick={() => openEditModal(entry)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
-                            <Edit2 className="w-4 h-4" />
+                          <button onClick={() => openEditModal(entry)} className="p-1.5 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => handleDelete(entry.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
-                            <Trash2 className="w-4 h-4" />
+                          <button onClick={() => handleDelete(entry.id)} className="p-1.5 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </td>
