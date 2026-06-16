@@ -521,9 +521,9 @@ export default function Fundraising() {
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Donor / Sponsor</th>
-                  <th className="px-4 py-3 font-semibold">Email</th>
-                  <th className="px-4 py-3 font-semibold">Beneficiary</th>
+                  <th className="px-4 py-3 font-semibold w-[130px]">Donor / Sponsor</th>
+                  <th className="px-4 py-3 font-semibold w-[120px]">Email</th>
+                  <th className="px-4 py-3 font-semibold w-[100px]">Beneficiary</th>
                   <th className="px-4 py-3 font-semibold">Payment</th>
                   <th className="px-4 py-3 font-semibold text-right">Pledged</th>
                   <th className="px-4 py-3 font-semibold text-right">Received</th>
@@ -540,19 +540,19 @@ export default function Fundraising() {
                 ) : (
                   entries.map(entry => (
                     <tr key={entry.id} className="hover:bg-muted/10 transition-colors group">
-                      <td className="px-4 py-3">
-                        <div className="font-bold text-foreground whitespace-nowrap">{entry.donorName}</div>
-                        {entry.teamName && <div className="text-xs text-muted-foreground">{entry.teamName}</div>}
+                      <td className="px-4 py-3 max-w-[130px]">
+                        <div className="font-bold text-foreground truncate" title={entry.donorName}>{entry.donorName}</div>
+                        {entry.teamName && <div className="text-xs text-muted-foreground truncate">{entry.teamName}</div>}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground max-w-[160px]">
+                      <td className="px-4 py-3 text-muted-foreground max-w-[120px]">
                         {entry.donorEmail
                           ? <a href={`mailto:${entry.donorEmail}`} className="hover:text-primary transition-colors block truncate" title={entry.donorEmail}>{entry.donorEmail}</a>
                           : <span className="text-xs italic">—</span>
                         }
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 max-w-[100px]">
                         {entry.beneficiary
-                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">{entry.beneficiary}</span>
+                          ? <span className="text-xs font-medium bg-primary/8 text-primary px-2 py-0.5 rounded-full block truncate" title={entry.beneficiary}>{entry.beneficiary}</span>
                           : <span className="text-xs italic text-muted-foreground">—</span>
                         }
                       </td>
