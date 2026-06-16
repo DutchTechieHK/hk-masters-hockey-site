@@ -566,6 +566,9 @@ export default function Fundraising() {
                         {entry.paymentMethod === "bank_transfer" && (
                           <span className="text-xs font-medium bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">Bank</span>
                         )}
+                        {entry.paymentMethod === "cash" && (
+                          <span className="text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Cash</span>
+                        )}
                         {!entry.paymentMethod && (
                           <span className="text-xs italic text-muted-foreground">—</span>
                         )}
