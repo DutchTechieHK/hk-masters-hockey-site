@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites } from "@workspace/api-client-react"
+import { useState, useEffect, useMemo } from "react"
+import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites, useListFundraising, getListFundraisingQueryKey } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -8,14 +8,15 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload, Download } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { Player } from "@workspace/api-client-react"
+import type { Player, FundraisingEntry } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
-import { getInitials } from "@/lib/utils"
+import { getInitials, formatCurrency } from "@/lib/utils"
 import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
+import { format, parseISO } from "date-fns"
 
 const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
@@ -164,6 +165,7 @@ export default function Players() {
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
   const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
+  const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
 
   const acknowledgePassport = (playerId: number) => {
     setPassportAck(playerId)
@@ -183,6 +185,9 @@ export default function Players() {
   }, [])
 
   const { data: teams = [] } = useListTeams()
+  const { data: fundraisingEntries = [] } = useListFundraising({
+    query: { queryKey: getListFundraisingQueryKey(), enabled: !!sessionToken, retry: false }
+  })
   const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
     selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined,
     { query: { queryKey: getListPlayersQueryKey(selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined), refetchInterval: 30_000 } }
@@ -406,6 +411,7 @@ export default function Players() {
     try {
       const token = await adminLogin(loginPassword)
       storeSession(token)
+      setSessionToken(token)
       setLoginModalOpen(false)
       setLoginPassword("")
       if (pendingPlayer) {
@@ -544,6 +550,42 @@ export default function Players() {
     } catch {
       toast({ title: "An error occurred", variant: "destructive" })
     }
+  }
+
+  const playerDonors = useMemo<FundraisingEntry[]>(() => {
+    if (!editingPlayer || fundraisingEntries.length === 0) return []
+    const name = editingPlayer.name.trim()
+    return fundraisingEntries
+      .filter((e) => e.beneficiary?.trim() === name)
+      .slice()
+      .sort((a, b) => b.amountPledged - a.amountPledged)
+  }, [editingPlayer, fundraisingEntries])
+
+  const exportPlayerDonorsCSV = (playerLabel: string, donors: FundraisingEntry[]) => {
+    const slug = playerLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const rows = [
+      ["Donor", "Email", "Pledged (HKD)", "Received (HKD)", "Status", "Date"].map(escape).join(","),
+      ...donors.map((d) => {
+        const dateStr = d.paidAt ?? d.date
+        const dateLabel = dateStr ? format(parseISO(dateStr), "d MMM yyyy") : ""
+        return [
+          escape(d.donorName ?? ""),
+          escape(d.donorEmail ?? ""),
+          escape(String(d.amountPledged ?? 0)),
+          escape(String(d.amountReceived ?? 0)),
+          escape(d.status ?? ""),
+          escape(dateLabel),
+        ].join(",")
+      }),
+    ]
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `donors-${slug}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (
@@ -1100,6 +1142,87 @@ export default function Players() {
               <Input {...register("facebookHandle")} placeholder="username or profile URL" />
             </div>
           </div>
+
+          {editingPlayer && (
+            <>
+              <div className="flex items-center justify-between border-b border-border pb-2 mt-6 mb-3">
+                <h4 className="text-xs font-bold text-primary uppercase tracking-wider">
+                  Supporters
+                </h4>
+                {playerDonors.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportPlayerDonorsCSV(editingPlayer.name, playerDonors)}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    Export CSV
+                  </Button>
+                )}
+              </div>
+
+              {!sessionToken ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Sign in as admin to view supporters.
+                </p>
+              ) : playerDonors.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No supporters recorded yet.</p>
+              ) : (
+                <>
+                  <div className="mb-3 flex gap-4 text-sm">
+                    <span className="text-muted-foreground">
+                      Total pledged:{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatCurrency(playerDonors.reduce((s, d) => s + d.amountPledged, 0))}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">
+                      Received:{" "}
+                      <span className="font-semibold text-emerald-700">
+                        {formatCurrency(playerDonors.reduce((s, d) => s + d.amountReceived, 0))}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-semibold text-xs text-muted-foreground">Donor</th>
+                          <th className="text-right px-3 py-2 font-semibold text-xs text-muted-foreground">Pledged</th>
+                          <th className="text-right px-3 py-2 font-semibold text-xs text-muted-foreground">Received</th>
+                          <th className="text-left px-3 py-2 font-semibold text-xs text-muted-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {playerDonors.map((d) => (
+                          <tr key={d.id} className="hover:bg-muted/20">
+                            <td className="px-3 py-2">
+                              <span className="font-medium">{d.donorName}</span>
+                              {d.donorEmail && (
+                                <span className="block text-xs text-muted-foreground">{d.donorEmail}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(d.amountPledged)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{formatCurrency(d.amountReceived)}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                d.status === "received" ? "bg-emerald-100 text-emerald-800" :
+                                d.status === "confirmed" ? "bg-blue-100 text-blue-800" :
+                                "bg-amber-100 text-amber-800"
+                              }`}>
+                                {d.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
 
           <div className="pt-6 flex justify-end gap-3 border-t mt-6">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
