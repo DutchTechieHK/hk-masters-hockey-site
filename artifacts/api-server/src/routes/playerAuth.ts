@@ -153,7 +153,7 @@ router.get("/my-supporters", requirePlayerSession, async (req, res) => {
     .select()
     .from(fundraisingTable)
     .where(sql`LOWER(TRIM(${fundraisingTable.beneficiary})) = LOWER(TRIM(${player.name}))`)
-    .orderBy(desc(fundraisingTable.amountPledged), desc(fundraisingTable.createdAt));
+    .orderBy(desc(fundraisingTable.createdAt));
   res.json({
     supporters: rows.map((r) => ({
       id: r.id,
