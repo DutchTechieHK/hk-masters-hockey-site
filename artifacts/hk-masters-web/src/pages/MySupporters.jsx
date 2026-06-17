@@ -150,7 +150,7 @@ export default function MySupporters() {
                       </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLES[d.status] || STATUS_STYLES.pending}`}>
-                          {d.status === "received" ? "Received ✓" : d.status === "confirmed" ? "Confirmed" : "Pending"}
+                          {d.status === "received" ? "Received" : d.status === "confirmed" ? "Confirmed" : "Pending"}
                         </span>
                       </td>
                     </tr>
