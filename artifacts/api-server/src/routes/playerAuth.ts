@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { Router, type IRouter } from "express";
 import { eq, and, isNull, gt, sql, inArray } from "drizzle-orm";
-import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, pollsTable, pollVotesTable, teamsTable } from "@workspace/db";
+import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, pollsTable, pollVotesTable, teamsTable, fundraisingTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
@@ -143,6 +143,27 @@ router.get("/my-fees", requirePlayerSession, async (req, res) => {
       paymentDate: p.paymentDate,
       method: p.method || null,
       notes: p.notes || null,
+    })),
+  });
+});
+
+router.get("/my-supporters", requirePlayerSession, async (req, res) => {
+  const player = req.player!;
+  const rows = await db
+    .select()
+    .from(fundraisingTable)
+    .where(sql`LOWER(TRIM(${fundraisingTable.beneficiary})) = LOWER(TRIM(${player.name}))`)
+    .orderBy(desc(fundraisingTable.amountPledged), desc(fundraisingTable.createdAt));
+  res.json({
+    supporters: rows.map((r) => ({
+      id: r.id,
+      donorName: r.donorName,
+      amountPledged: parseFloat(r.amountPledged ?? "0"),
+      amountReceived: parseFloat(r.amountReceived ?? "0"),
+      status: r.status,
+      paymentMethod: r.paymentMethod ?? null,
+      notes: r.notes ?? null,
+      createdAt: r.createdAt,
     })),
   });
 });

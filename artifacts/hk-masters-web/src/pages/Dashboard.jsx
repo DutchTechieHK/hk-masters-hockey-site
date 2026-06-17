@@ -9,6 +9,7 @@ const CARDS = [
   { key: "schedule", title: "My schedule", desc: "Training, meetings and team events with calendar download.", emoji: "📅", to: "schedule" },
   { key: "announcements", title: "Announcements", desc: "Latest news from the team and tournament.", emoji: "📣", to: "announcements" },
   { key: "documents", title: "Documents", desc: "Mandatory forms, regulations, and tournament information PDFs.", emoji: "📁", to: "documents" },
+  { key: "supporters", title: "My supporters", desc: "Everyone who has pledged to support your Rotterdam 2026 campaign.", emoji: "🤝", to: "supporters" },
   { key: "profile", title: "My profile", desc: "Passport, kit sizes, dietary needs, emergency contact.", emoji: "👤", to: "profile" },
 ];
 

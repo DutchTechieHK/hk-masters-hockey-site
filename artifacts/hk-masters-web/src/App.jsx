@@ -25,6 +25,7 @@ import MyFees from "./pages/MyFees";
 import MyTravel from "./pages/MyTravel";
 import Announcements from "./pages/Announcements";
 import MyDocuments from "./pages/MyDocuments";
+import MySupporters from "./pages/MySupporters";
 import Auction from "./pages/Auction";
 import GetTheApp from "./pages/GetTheApp";
 import Poll from "./pages/Poll";
@@ -81,6 +82,7 @@ function Router() {
         <Route path="/travel" component={MyTravel} />
         <Route path="/announcements" component={Announcements} />
         <Route path="/documents" component={MyDocuments} />
+        <Route path="/supporters" component={MySupporters} />
         <Route path="/auction" component={Auction} />
         <Route path="/get-the-app" component={GetTheApp} />
         <Route path="/polls/:pollId" component={Poll} />
