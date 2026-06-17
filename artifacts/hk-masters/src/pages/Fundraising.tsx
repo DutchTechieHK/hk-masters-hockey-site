@@ -77,6 +77,7 @@ type BreakdownResult = {
   teamRows: BreakdownRow[]
   playerRows: BreakdownRow[]
   teamEntries: Record<string, FundraisingEntry[]>
+  playerEntries: Record<string, FundraisingEntry[]>
 }
 
 function normaliseTeamBucket(b: string): "MO40" | "MO50" | null {
@@ -92,6 +93,7 @@ function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, 
   const general: BreakdownRow = { key: "general", label: "General", totalPledged: 0, totalReceived: 0, count: 0, isTeam: true }
   const playerMap = new Map<string, BreakdownRow>()
   const teamEntries: Record<string, FundraisingEntry[]> = { MO40: [], MO50: [], general: [] }
+  const playerEntries: Record<string, FundraisingEntry[]> = {}
 
   for (const e of entries) {
     const b = e.beneficiary?.trim()
@@ -121,6 +123,9 @@ function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, 
         row.totalReceived += e.amountReceived
         row.count++
 
+        if (!playerEntries[b]) playerEntries[b] = []
+        playerEntries[b].push(e)
+
         const teamCategory = playerTeamMap.get(b) ?? ""
         if (teamCategory.toLowerCase().includes("mo40")) {
           mo40.totalPledged += e.amountPledged
@@ -137,7 +142,7 @@ function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, 
 
   const playerRows = Array.from(playerMap.values()).sort((a, b) => b.totalPledged - a.totalPledged)
   const teamRows = [mo40, mo50, general].sort((a, b) => b.totalPledged - a.totalPledged)
-  return { teamRows, playerRows, teamEntries }
+  return { teamRows, playerRows, teamEntries, playerEntries }
 }
 
 export default function Fundraising() {
@@ -197,6 +202,7 @@ export default function Fundraising() {
   const [editingEntry, setEditingEntry] = useState<FundraisingEntry | null>(null)
   const [activeTab, setActiveTab] = useState<"records" | "breakdown">("records")
   const [expandedTeamKey, setExpandedTeamKey] = useState<string | null>(null)
+  const [expandedPlayerKey, setExpandedPlayerKey] = useState<string | null>(null)
 
   const createMutation = useCreateFundraising()
   const updateMutation = useUpdateFundraising()
@@ -403,7 +409,7 @@ export default function Fundraising() {
     URL.revokeObjectURL(url)
   }
 
-  const { teamRows, playerRows, teamEntries } = buildBreakdown(entries, playerTeamMap)
+  const { teamRows, playerRows, teamEntries, playerEntries } = buildBreakdown(entries, playerTeamMap)
 
   if (!sessionChecked) {
     return (
@@ -757,21 +763,76 @@ export default function Fundraising() {
                     <tbody className="divide-y divide-border">
                       {playerRows.map((row) => {
                         const pct = row.totalPledged > 0 ? (row.totalReceived / row.totalPledged) * 100 : 0
+                        const donors = (playerEntries[row.key] ?? []).slice().sort((a, b) => b.amountPledged - a.amountPledged)
+                        const isExpanded = expandedPlayerKey === row.key
                         return (
-                          <tr key={row.key} className="hover:bg-muted/10 transition-colors">
-                            <td className="px-6 py-3 font-medium text-foreground">{row.label}</td>
-                            <td className="px-6 py-3 text-center text-muted-foreground">{row.count}</td>
-                            <td className="px-6 py-3 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
-                            <td className="px-6 py-3 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
-                            <td className="px-6 py-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
-                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                          <>
+                            <tr
+                              key={row.key}
+                              className={`transition-colors ${donors.length > 0 ? "cursor-pointer hover:bg-muted/10" : ""}`}
+                              onClick={() => donors.length > 0 && setExpandedPlayerKey(isExpanded ? null : row.key)}
+                            >
+                              <td className="px-6 py-3 font-medium text-foreground">
+                                <div className="flex items-center gap-2">
+                                  {row.label}
+                                  {donors.length > 0 && (
+                                    isExpanded
+                                      ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+                                      : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+                                  )}
                                 </div>
-                                <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
-                              </div>
-                            </td>
-                          </tr>
+                              </td>
+                              <td className="px-6 py-3 text-center text-muted-foreground">{row.count}</td>
+                              <td className="px-6 py-3 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
+                              <td className="px-6 py-3 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
+                              <td className="px-6 py-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                                  </div>
+                                  <span className="text-xs text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+                                </div>
+                              </td>
+                            </tr>
+                            {isExpanded && donors.length > 0 && (
+                              <tr key={`${row.key}-donors`}>
+                                <td colSpan={5} className="px-0 py-0 bg-muted/5 border-t border-border">
+                                  <div className="px-6 py-3">
+                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                                      {donors.length} donor{donors.length !== 1 ? "s" : ""} · pledged to {row.label}
+                                    </p>
+                                    <table className="w-full text-xs">
+                                      <thead>
+                                        <tr className="text-muted-foreground border-b border-border">
+                                          <th className="py-1.5 pr-4 text-left font-semibold">Donor</th>
+                                          <th className="py-1.5 pr-4 text-right font-semibold">Pledged</th>
+                                          <th className="py-1.5 pr-4 text-right font-semibold">Received</th>
+                                          <th className="py-1.5 text-left font-semibold">Status</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-border/50">
+                                        {donors.map((d) => (
+                                          <tr key={d.id} className="hover:bg-muted/20 transition-colors">
+                                            <td className="py-1.5 pr-4 font-medium text-foreground">
+                                              {d.donorName}
+                                              {d.notes && <span className="ml-1.5 text-muted-foreground font-normal">· {d.notes}</span>}
+                                            </td>
+                                            <td className="py-1.5 pr-4 text-right text-foreground">{formatCurrency(d.amountPledged)}</td>
+                                            <td className="py-1.5 pr-4 text-right text-emerald-600 font-semibold">{formatCurrency(d.amountReceived)}</td>
+                                            <td className="py-1.5">
+                                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[d.status as keyof typeof STATUS_COLORS] ?? "bg-gray-100 text-gray-600"}`}>
+                                                {d.status}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </>
                         )
                       })}
                     </tbody>
