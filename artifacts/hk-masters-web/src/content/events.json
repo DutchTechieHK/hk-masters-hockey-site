@@ -1,6 +1,7 @@
 {
   "fun_run": {
     "enabled": true,
+    "past": true,
     "title": "Fun Run for Rotterdam",
     "subtitle": "Fundraiser for HK Masters Hockey",
     "description": "Join us for a Fun Run around the Happy Valley Running Track! All proceeds go towards the HK Masters Hockey team fund. Whether you're a serious runner or just want a great morning out with the team, all abilities welcome.",

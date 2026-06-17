@@ -130,7 +130,7 @@ function EventCard({ event, muted = false }) {
   );
 }
 
-function FunRunBanner({ data }) {
+function FunRunBanner({ data, muted = false }) {
   const handleRegister = () => {
     if (window.filloutPopupEmbed) {
       window.filloutPopupEmbed.openPopup(data.fillout_id);
@@ -138,6 +138,49 @@ function FunRunBanner({ data }) {
       window.open(`https://forms.fillout.com/t/${data.fillout_id}`, "_blank");
     }
   };
+
+  if (muted) {
+    return (
+      <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 mb-6 opacity-70">
+        <div className="flex flex-col sm:flex-row items-stretch">
+          <div className="w-full sm:w-2 bg-gray-300 shrink-0" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 px-6 py-5 flex-1">
+            <div className="hidden sm:flex w-12 h-12 rounded-2xl bg-gray-200 items-center justify-center shrink-0 text-2xl select-none grayscale">
+              🏃
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                <span className="bg-gray-200 text-gray-500 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">Fundraiser</span>
+                <span className="bg-gray-200 text-gray-500 text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">Past</span>
+                <span className="text-gray-400 text-xs font-medium hidden sm:inline">{data.subtitle}</span>
+              </div>
+              <h2 className="text-lg font-extrabold text-gray-500 leading-snug mb-1">{data.title}</h2>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {data.date && (
+                  <span className="inline-flex items-center gap-1.5 bg-gray-200 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    {data.date}
+                  </span>
+                )}
+                {data.time && (
+                  <span className="inline-flex items-center gap-1.5 bg-gray-200 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {data.time}
+                  </span>
+                )}
+                {data.location && (
+                  <span className="inline-flex items-center gap-1.5 bg-gray-200 text-gray-500 text-xs font-semibold px-3 py-1 rounded-full">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    {data.location}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-r from-[#1E3A6E] to-[#16305D] rounded-2xl overflow-hidden shadow-xl mb-8 border border-white/10">
@@ -332,7 +375,7 @@ export default function Events() {
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
-        {content.fun_run?.enabled && (tab === "All" || tab === "Social") && (
+        {content.fun_run?.enabled && !content.fun_run?.past && (tab === "All" || tab === "Social") && (
           <FunRunBanner data={content.fun_run} />
         )}
 
@@ -355,19 +398,24 @@ export default function Events() {
           </div>
         )}
 
-        {!loading && visiblePast.length > 0 && (
+        {(!loading && visiblePast.length > 0) || (content.fun_run?.enabled && content.fun_run?.past && (tab === "All" || tab === "Social")) ? (
           <section>
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Past Events</h2>
               <div className="flex-1 h-px bg-gray-200" />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
-              {visiblePast.map((e) => (
-                <EventCard key={e.id} event={e} muted />
-              ))}
-            </div>
+            {content.fun_run?.enabled && content.fun_run?.past && (tab === "All" || tab === "Social") && (
+              <FunRunBanner data={content.fun_run} muted />
+            )}
+            {visiblePast.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+                {visiblePast.map((e) => (
+                  <EventCard key={e.id} event={e} muted />
+                ))}
+              </div>
+            )}
           </section>
-        )}
+        ) : null}
 
         {content.tournament_archive.length > 0 && (
           <section>
