@@ -893,6 +893,87 @@ export default function Players() {
             )
           })()}
 
+          {editingPlayer && (
+            <>
+              <div className="flex items-center justify-between border-b border-border pb-2 mt-4 mb-3">
+                <h4 className="text-xs font-bold text-primary uppercase tracking-wider">
+                  Supporters
+                </h4>
+                {playerDonors.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => exportPlayerDonorsCSV(editingPlayer.name, playerDonors)}
+                  >
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
+                    Export CSV
+                  </Button>
+                )}
+              </div>
+
+              {!sessionToken ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Sign in as admin to view supporters.
+                </p>
+              ) : playerDonors.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No supporters recorded yet.</p>
+              ) : (
+                <>
+                  <div className="mb-3 flex gap-4 text-sm">
+                    <span className="text-muted-foreground">
+                      Total pledged:{" "}
+                      <span className="font-semibold text-foreground">
+                        {formatCurrency(playerDonors.reduce((s, d) => s + d.amountPledged, 0))}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">
+                      Received:{" "}
+                      <span className="font-semibold text-emerald-700">
+                        {formatCurrency(playerDonors.reduce((s, d) => s + d.amountReceived, 0))}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="rounded-xl border border-border overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40">
+                        <tr>
+                          <th className="text-left px-3 py-2 font-semibold text-xs text-muted-foreground">Donor</th>
+                          <th className="text-right px-3 py-2 font-semibold text-xs text-muted-foreground">Pledged</th>
+                          <th className="text-right px-3 py-2 font-semibold text-xs text-muted-foreground">Received</th>
+                          <th className="text-left px-3 py-2 font-semibold text-xs text-muted-foreground">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {playerDonors.map((d) => (
+                          <tr key={d.id} className="hover:bg-muted/20">
+                            <td className="px-3 py-2">
+                              <span className="font-medium">{d.donorName}</span>
+                              {d.donorEmail && (
+                                <span className="block text-xs text-muted-foreground">{d.donorEmail}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(d.amountPledged)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{formatCurrency(d.amountReceived)}</td>
+                            <td className="px-3 py-2">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                d.status === "received" ? "bg-emerald-100 text-emerald-800" :
+                                d.status === "confirmed" ? "bg-blue-100 text-blue-800" :
+                                "bg-amber-100 text-amber-800"
+                              }`}>
+                                {d.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+
           <SectionHeading>Basic Info</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2 md:col-span-2">
@@ -1142,87 +1223,6 @@ export default function Players() {
               <Input {...register("facebookHandle")} placeholder="username or profile URL" />
             </div>
           </div>
-
-          {editingPlayer && (
-            <>
-              <div className="flex items-center justify-between border-b border-border pb-2 mt-6 mb-3">
-                <h4 className="text-xs font-bold text-primary uppercase tracking-wider">
-                  Supporters
-                </h4>
-                {playerDonors.length > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => exportPlayerDonorsCSV(editingPlayer.name, playerDonors)}
-                  >
-                    <Download className="w-3.5 h-3.5 mr-1.5" />
-                    Export CSV
-                  </Button>
-                )}
-              </div>
-
-              {!sessionToken ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  Sign in as admin to view supporters.
-                </p>
-              ) : playerDonors.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-2">No supporters recorded yet.</p>
-              ) : (
-                <>
-                  <div className="mb-3 flex gap-4 text-sm">
-                    <span className="text-muted-foreground">
-                      Total pledged:{" "}
-                      <span className="font-semibold text-foreground">
-                        {formatCurrency(playerDonors.reduce((s, d) => s + d.amountPledged, 0))}
-                      </span>
-                    </span>
-                    <span className="text-muted-foreground">
-                      Received:{" "}
-                      <span className="font-semibold text-emerald-700">
-                        {formatCurrency(playerDonors.reduce((s, d) => s + d.amountReceived, 0))}
-                      </span>
-                    </span>
-                  </div>
-                  <div className="rounded-xl border border-border overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/40">
-                        <tr>
-                          <th className="text-left px-3 py-2 font-semibold text-xs text-muted-foreground">Donor</th>
-                          <th className="text-right px-3 py-2 font-semibold text-xs text-muted-foreground">Pledged</th>
-                          <th className="text-right px-3 py-2 font-semibold text-xs text-muted-foreground">Received</th>
-                          <th className="text-left px-3 py-2 font-semibold text-xs text-muted-foreground">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {playerDonors.map((d) => (
-                          <tr key={d.id} className="hover:bg-muted/20">
-                            <td className="px-3 py-2">
-                              <span className="font-medium">{d.donorName}</span>
-                              {d.donorEmail && (
-                                <span className="block text-xs text-muted-foreground">{d.donorEmail}</span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(d.amountPledged)}</td>
-                            <td className="px-3 py-2 text-right tabular-nums text-emerald-700">{formatCurrency(d.amountReceived)}</td>
-                            <td className="px-3 py-2">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                d.status === "received" ? "bg-emerald-100 text-emerald-800" :
-                                d.status === "confirmed" ? "bg-blue-100 text-blue-800" :
-                                "bg-amber-100 text-amber-800"
-                              }`}>
-                                {d.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </>
-          )}
 
           <div className="pt-6 flex justify-end gap-3 border-t mt-6">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
