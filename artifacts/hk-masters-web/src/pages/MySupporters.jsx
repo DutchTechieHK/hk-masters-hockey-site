@@ -106,15 +106,14 @@ export default function MySupporters() {
           <>
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col items-center justify-center text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Total pledged</p>
                 <p className="text-xl font-bold text-gray-900">{formatHKD(totalPledged)}</p>
                 <p className="mt-1 text-xs text-gray-400">{supporters.length} supporter{supporters.length !== 1 ? "s" : ""}</p>
               </div>
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex flex-col items-center justify-center text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Received</p>
                 <p className="text-xl font-bold text-emerald-700">{formatHKD(totalReceived)}</p>
-                <p className="mt-1 text-xs text-gray-400">confirmed payments</p>
               </div>
             </div>
 
