@@ -1481,6 +1481,7 @@ export async function sendDailyPledgeDigestEmail(opts: {
   playerEmail: string;
   pledges: Array<{
     donorName: string;
+    donorEmail?: string | null;
     amountPledged: number;
     paymentMethod: string | null;
     notes: string | null;
@@ -1502,8 +1503,11 @@ export async function sendDailyPledgeDigestEmail(opts: {
         ? p.paymentMethod.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
         : "—";
       const notes = p.notes ? `<br><span style="font-size:12px;color:#9ca3af;">${escapeHtml(p.notes)}</span>` : "";
+      const emailLink = p.donorEmail
+        ? `<br><a href="mailto:${escapeHtml(p.donorEmail)}" style="font-size:12px;color:#1E3A6E;text-decoration:none;">${escapeHtml(p.donorEmail)}</a>`
+        : "";
       return `<tr style="background-color:${bg};">
-        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${escapeHtml(p.donorName)}${notes}</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${escapeHtml(p.donorName)}${emailLink}${notes}</td>
         <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;text-align:right;font-weight:600;">HK$${p.amountPledged.toLocaleString()}</td>
         <td style="padding:10px 16px;font-size:14px;color:#6b7280;border-top:1px solid #e5e7eb;">${method}</td>
       </tr>`;
@@ -1514,7 +1518,8 @@ export async function sendDailyPledgeDigestEmail(opts: {
     .map((p) => {
       const method = p.paymentMethod ? p.paymentMethod.replace(/_/g, " ") : "—";
       const notes = p.notes ? ` (${p.notes})` : "";
-      return `• ${p.donorName}${notes} — HK$${p.amountPledged.toLocaleString()} via ${method}`;
+      const emailLine = p.donorEmail ? `\n  ${p.donorEmail}` : "";
+      return `• ${p.donorName}${emailLine}${notes} — HK$${p.amountPledged.toLocaleString()} via ${method}`;
     })
     .join("\n");
 

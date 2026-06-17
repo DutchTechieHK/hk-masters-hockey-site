@@ -93,6 +93,7 @@ async function runDailyPledgeDigest() {
         playerEmail: email,
         pledges: playerPledges.map((p) => ({
           donorName: p.donorName,
+          donorEmail: p.donorEmail ?? null,
           amountPledged: parseFloat(p.amountPledged ?? "0"),
           paymentMethod: p.paymentMethod ?? null,
           notes: p.notes ?? null,
