@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useListFundraising, useCreateFundraising, useUpdateFundraising, useDeleteFundraising, getListFundraisingQueryKey, useListTeams } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -766,9 +766,8 @@ export default function Fundraising() {
                         const donors = (playerEntries[row.key] ?? []).slice().sort((a, b) => b.amountPledged - a.amountPledged)
                         const isExpanded = expandedPlayerKey === row.key
                         return (
-                          <>
+                          <React.Fragment key={row.key}>
                             <tr
-                              key={row.key}
                               className={`transition-colors ${donors.length > 0 ? "cursor-pointer hover:bg-muted/10" : ""}`}
                               onClick={() => donors.length > 0 && setExpandedPlayerKey(isExpanded ? null : row.key)}
                             >
@@ -807,32 +806,34 @@ export default function Fundraising() {
                                           <th className="py-1.5 pr-4 text-left font-semibold">Donor</th>
                                           <th className="py-1.5 pr-4 text-right font-semibold">Pledged</th>
                                           <th className="py-1.5 pr-4 text-right font-semibold">Received</th>
-                                          <th className="py-1.5 text-left font-semibold">Status</th>
+                                          <th className="py-1.5 pr-4 text-left font-semibold">Method</th>
+                                          <th className="py-1.5 text-left font-semibold">Date</th>
                                         </tr>
                                       </thead>
                                       <tbody className="divide-y divide-border/50">
-                                        {donors.map((d) => (
-                                          <tr key={d.id} className="hover:bg-muted/20 transition-colors">
-                                            <td className="py-1.5 pr-4 font-medium text-foreground">
-                                              {d.donorName}
-                                              {d.notes && <span className="ml-1.5 text-muted-foreground font-normal">· {d.notes}</span>}
-                                            </td>
-                                            <td className="py-1.5 pr-4 text-right text-foreground">{formatCurrency(d.amountPledged)}</td>
-                                            <td className="py-1.5 pr-4 text-right text-emerald-600 font-semibold">{formatCurrency(d.amountReceived)}</td>
-                                            <td className="py-1.5">
-                                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[d.status as keyof typeof STATUS_COLORS] ?? "bg-gray-100 text-gray-600"}`}>
-                                                {d.status}
-                                              </span>
-                                            </td>
-                                          </tr>
-                                        ))}
+                                        {donors.map((d) => {
+                                          const dateStr = d.paidAt ?? d.date
+                                          const dateLabel = dateStr ? format(parseISO(dateStr), "d MMM yyyy") : "—"
+                                          return (
+                                            <tr key={d.id} className="hover:bg-muted/20 transition-colors">
+                                              <td className="py-1.5 pr-4 font-medium text-foreground">
+                                                {d.donorName}
+                                                {d.notes && <span className="ml-1.5 text-muted-foreground font-normal">· {d.notes}</span>}
+                                              </td>
+                                              <td className="py-1.5 pr-4 text-right text-foreground">{formatCurrency(d.amountPledged)}</td>
+                                              <td className="py-1.5 pr-4 text-right text-emerald-600 font-semibold">{formatCurrency(d.amountReceived)}</td>
+                                              <td className="py-1.5 pr-4 text-muted-foreground capitalize">{d.paymentMethod?.replace(/_/g, " ") ?? "—"}</td>
+                                              <td className="py-1.5 text-muted-foreground">{dateLabel}</td>
+                                            </tr>
+                                          )
+                                        })}
                                       </tbody>
                                     </table>
                                   </div>
                                 </td>
                               </tr>
                             )}
-                          </>
+                          </React.Fragment>
                         )
                       })}
                     </tbody>
