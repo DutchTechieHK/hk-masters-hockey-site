@@ -1475,3 +1475,106 @@ The HK Masters Hockey Team`;
     text,
   });
 }
+
+export async function sendDailyPledgeDigestEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  pledges: Array<{
+    donorName: string;
+    amountPledged: number;
+    paymentMethod: string | null;
+    notes: string | null;
+  }>;
+}) {
+  const safeName = escapeHtml(opts.playerName);
+  const totalAmount = opts.pledges.reduce((s, p) => s + p.amountPledged, 0);
+  const todayStr = new Date().toLocaleDateString("en-GB", {
+    timeZone: "Asia/Hong_Kong",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const rowsHtml = opts.pledges
+    .map((p, i) => {
+      const bg = i % 2 === 0 ? "#ffffff" : "#f9fafb";
+      const method = p.paymentMethod
+        ? p.paymentMethod.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+        : "—";
+      const notes = p.notes ? `<br><span style="font-size:12px;color:#9ca3af;">${escapeHtml(p.notes)}</span>` : "";
+      return `<tr style="background-color:${bg};">
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${escapeHtml(p.donorName)}${notes}</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;text-align:right;font-weight:600;">HK$${p.amountPledged.toLocaleString()}</td>
+        <td style="padding:10px 16px;font-size:14px;color:#6b7280;border-top:1px solid #e5e7eb;">${method}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  const rowsText = opts.pledges
+    .map((p) => {
+      const method = p.paymentMethod ? p.paymentMethod.replace(/_/g, " ") : "—";
+      const notes = p.notes ? ` (${p.notes})` : "";
+      return `• ${p.donorName}${notes} — HK$${p.amountPledged.toLocaleString()} via ${method}`;
+    })
+    .join("\n");
+
+  const count = opts.pledges.length;
+  const headline = `${count} new pledge${count !== 1 ? "s" : ""} today · HK$${totalAmount.toLocaleString()} total`;
+
+  const html = emailShell(
+    "#1E3A6E",
+    "New pledges received",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Great news — you received <strong>${count} new pledge${count !== 1 ? "s" : ""}</strong> today (${todayStr}) for the Rotterdam 2026 campaign. These supporters have specifically chosen to back you — it's worth reaching out personally to say thank you!
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background-color:#1E3A6E;">
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Donor</th>
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:right;text-transform:uppercase;letter-spacing:0.05em;">Amount</th>
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Method</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+      <tfoot>
+        <tr style="background-color:#f0f4fa;">
+          <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1E3A6E;border-top:2px solid #1E3A6E;">Total</td>
+          <td style="padding:10px 16px;font-size:13px;font-weight:700;color:#1E3A6E;border-top:2px solid #1E3A6E;text-align:right;">HK$${totalAmount.toLocaleString()}</td>
+          <td style="padding:10px 16px;border-top:2px solid #1E3A6E;"></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <p style="margin:0 0 8px 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Payment may still be pending — your team admin will confirm receipt once funds arrive.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      Questions? Contact us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+Great news — you received ${count} new pledge${count !== 1 ? "s" : ""} today (${todayStr}) for the Rotterdam 2026 campaign.
+
+${rowsText}
+
+Total: HK$${totalAmount.toLocaleString()}
+
+Payment may still be pending — your team admin will confirm receipt once funds arrive.
+
+Questions? Contact us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: `New pledge${count !== 1 ? "s" : ""} received today — ${headline}`,
+    html,
+    text,
+  });
+}

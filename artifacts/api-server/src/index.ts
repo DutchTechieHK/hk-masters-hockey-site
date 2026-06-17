@@ -2,6 +2,7 @@ import app from "./app";
 import { db } from "@workspace/db";
 import { playersTable } from "@workspace/db/schema";
 import { isNull, isNotNull, sql } from "drizzle-orm";
+import { scheduleDailyPledgeDigest } from "./jobs/dailyPledgeDigest";
 
 const rawPort = process.env["PORT"];
 
@@ -34,5 +35,6 @@ async function backfillPortalAccess() {
 backfillPortalAccess().then(() => {
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
+    scheduleDailyPledgeDigest();
   });
 });
