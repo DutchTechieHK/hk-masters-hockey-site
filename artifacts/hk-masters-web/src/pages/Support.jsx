@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import FundraisingThermometer from "../components/FundraisingThermometer";
 import PledgeForm from "../components/PledgeForm";
+import LegoJarSection from "../components/LegoJarSection";
 import { API_BASE } from "../utils/api";
 
 const TIER_THRESHOLDS = [
@@ -188,6 +189,9 @@ export default function Support() {
           </div>
         </section>
       )}
+
+      {/* LEGO Jar Challenge */}
+      <LegoJarSection />
 
       {/* Auction teaser */}
       {auctionLive && (

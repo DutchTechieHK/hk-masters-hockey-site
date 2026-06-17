@@ -467,34 +467,6 @@ export default function LegoJarSection() {
             {/* Prizes */}
             <PrizesSection prizes={prizes} onZoom={(src, alt) => setLightbox({ src, alt })} />
 
-            {/* Round history table */}
-            {pastRounds.length > 0 && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
-                  <h3 className="font-bold text-gray-900 text-sm">Jar journey so far</h3>
-                </div>
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
-                    <tr>
-                      <th className="px-4 py-2.5 text-left font-semibold">Holder</th>
-                      <th className="px-4 py-2.5 text-left font-semibold hidden sm:table-cell">Location</th>
-                      <th className="px-4 py-2.5 text-right font-semibold">Guesses</th>
-                      <th className="px-4 py-2.5 text-right font-semibold">Raised</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {pastRounds.map((r) => (
-                      <tr key={r.id}>
-                        <td className="px-4 py-3 font-medium text-gray-900">{r.holderName}</td>
-                        <td className="px-4 py-3 text-gray-500 text-xs hidden sm:table-cell">{r.location ?? "—"}</td>
-                        <td className="px-4 py-3 text-right font-medium text-gray-700">{r.guessCount}</td>
-                        <td className="px-4 py-3 text-right font-bold text-[#1E3A6E] whitespace-nowrap">HK${Math.round(r.amountRaised).toLocaleString()}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
 
           {/* Right: Form or success */}
