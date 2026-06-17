@@ -409,6 +409,33 @@ export default function Fundraising() {
     URL.revokeObjectURL(url)
   }
 
+  const exportPlayerDonorsCSV = (playerLabel: string, donors: FundraisingEntry[]) => {
+    const slug = playerLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+    const rows = [
+      ["Donor", "Email", "Pledged (HKD)", "Received (HKD)", "Status", "Date"].map(escape).join(","),
+      ...donors.map((d) => {
+        const dateStr = d.paidAt ?? d.date
+        const dateLabel = dateStr ? format(parseISO(dateStr), "d MMM yyyy") : ""
+        return [
+          escape(d.donorName ?? ""),
+          escape(d.donorEmail ?? ""),
+          escape(String(d.amountPledged ?? 0)),
+          escape(String(d.amountReceived ?? 0)),
+          escape(d.status ?? ""),
+          escape(dateLabel),
+        ].join(",")
+      }),
+    ]
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `donors-${slug}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const { teamRows, playerRows, teamEntries, playerEntries } = buildBreakdown(entries, playerTeamMap)
 
   if (!sessionChecked) {
@@ -797,9 +824,18 @@ export default function Fundraising() {
                               <tr key={`${row.key}-donors`}>
                                 <td colSpan={5} className="px-0 py-0 bg-muted/5 border-t border-border">
                                   <div className="px-6 py-3">
-                                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                                      {donors.length} donor{donors.length !== 1 ? "s" : ""} · pledged to {row.label}
-                                    </p>
+                                    <div className="flex items-center justify-between mb-2">
+                                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        {donors.length} donor{donors.length !== 1 ? "s" : ""} · pledged to {row.label}
+                                      </p>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); exportPlayerDonorsCSV(row.label, donors) }}
+                                        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 hover:bg-muted/30 transition-colors"
+                                      >
+                                        <Download className="w-3 h-3" />
+                                        Export CSV
+                                      </button>
+                                    </div>
                                     <table className="w-full text-xs">
                                       <thead>
                                         <tr className="text-muted-foreground border-b border-border">
