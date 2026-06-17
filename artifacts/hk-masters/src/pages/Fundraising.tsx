@@ -409,6 +409,56 @@ export default function Fundraising() {
     URL.revokeObjectURL(url)
   }
 
+  const exportTeamDonorsCSV = (teamLabel: string, teamKey: string) => {
+    const slug = teamLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
+
+    const directDonors: Array<FundraisingEntry & { playerName: string }> = (teamEntries[teamKey] ?? []).map((d) => ({ ...d, playerName: "" }))
+
+    const playerDonors: Array<FundraisingEntry & { playerName: string }> = []
+    for (const [playerName, teamCategory] of playerTeamMap.entries()) {
+      const matchesTeam =
+        teamKey === "MO40"
+          ? teamCategory.toLowerCase().includes("mo40")
+          : teamKey === "MO50"
+            ? teamCategory.toLowerCase().includes("mo50")
+            : false
+      if (matchesTeam && playerEntries[playerName]) {
+        for (const d of playerEntries[playerName]) {
+          playerDonors.push({ ...d, playerName })
+        }
+      }
+    }
+
+    const allDonors = [...directDonors, ...playerDonors].sort(
+      (a, b) => a.playerName.localeCompare(b.playerName) || b.amountPledged - a.amountPledged
+    )
+
+    const rows = [
+      ["Player", "Donor", "Email", "Pledged (HKD)", "Received (HKD)", "Status", "Date"].map(escape).join(","),
+      ...allDonors.map((d) => {
+        const dateStr = d.paidAt ?? d.date
+        const dateLabel = dateStr ? format(parseISO(dateStr), "d MMM yyyy") : ""
+        return [
+          escape(d.playerName),
+          escape(d.donorName ?? ""),
+          escape(d.donorEmail ?? ""),
+          escape(String(d.amountPledged ?? 0)),
+          escape(String(d.amountReceived ?? 0)),
+          escape(d.status ?? ""),
+          escape(dateLabel),
+        ].join(",")
+      }),
+    ]
+    const blob = new Blob([rows.join("\n")], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `donors-${slug}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const exportPlayerDonorsCSV = (playerLabel: string, donors: FundraisingEntry[]) => {
     const slug = playerLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
     const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
@@ -718,11 +768,22 @@ export default function Fundraising() {
                             <td className="px-6 py-3 text-right font-medium text-foreground">{formatCurrency(row.totalPledged)}</td>
                             <td className="px-6 py-3 text-right font-bold text-emerald-600">{formatCurrency(row.totalReceived)}</td>
                             <td className="px-6 py-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
-                                  <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                              <div className="flex items-center justify-end gap-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 bg-muted rounded-full h-1.5 overflow-hidden">
+                                    <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${Math.min(100, pct)}%` }} />
+                                  </div>
+                                  <span className="text-xs text-muted-foreground w-10 text-right">{row.count > 0 ? `${pct.toFixed(0)}%` : "—"}</span>
                                 </div>
-                                <span className="text-xs text-muted-foreground w-10 text-right">{row.count > 0 ? `${pct.toFixed(0)}%` : "—"}</span>
+                                {row.count > 0 && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); exportTeamDonorsCSV(row.label, row.key) }}
+                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 hover:bg-muted/30 transition-colors"
+                                  >
+                                    <Download className="w-3 h-3" />
+                                    Export CSV
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
