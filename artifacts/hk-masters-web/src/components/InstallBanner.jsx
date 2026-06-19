@@ -31,7 +31,10 @@ const RESET_DAYS = 7;
 const MS_PER_DAY = 86_400_000;
 
 function isIOS() {
-  return /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+  // iPadOS 13+ reports its user agent as "Macintosh", so the UA regex alone
+  // misses every modern iPad. Detect those via the Mac platform + touch points.
+  const iPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  return (/iPhone|iPad|iPod/.test(navigator.userAgent) || iPadOS) && !window.MSStream;
 }
 
 function isInStandaloneMode() {
@@ -42,11 +45,12 @@ function isInStandaloneMode() {
 }
 
 function isSafariOnIOS() {
-  return isIOS() && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent);
+  return isIOS() && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent);
 }
 
 function isMobile() {
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  // isIOS() also catches iPadOS-reporting-as-Macintosh, which the UA regex misses.
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || isIOS();
 }
 
 export function OfflineBanner() {
