@@ -1,19 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { PhoneFrame, AppHeader, Cursor } from '../PhoneFrame';
+import { motion, AnimatePresence } from 'framer-motion';
+import { PhoneFrame, Cursor } from '../PhoneFrame';
+
+// Chapter 3: Quick Polls
+// Real app: Polls page (separate nav item, BarChart2 icon).
+// "New poll" button opens a modal with: Title, Description, Audience (All/MO40/MO50/both),
+// Allow multiple checkbox, Deadline datetime, and up to 5 Options.
+// Submit button: "Create poll".
+// Poll list shows progress bars per option + "Show voters & non-responders".
 
 export function Scene3() {
   const [phase, setPhase] = useState(0);
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 3000),   // Admin Panel Polls title
-      setTimeout(() => setPhase(2), 7000),   // Type Question
-      setTimeout(() => setPhase(3), 10000),  // Add Options
-      setTimeout(() => setPhase(4), 13500),  // Set Deadline picker
-      setTimeout(() => setPhase(5), 17000),  // Player view votes
-      setTimeout(() => setPhase(6), 22000),  // Admin view results
-      setTimeout(() => setPhase(7), 27000),  // Summary
+      setTimeout(() => setPhase(1), 3000),   // Polls page appears
+      setTimeout(() => setPhase(2), 5500),   // Cursor clicks "New poll"
+      setTimeout(() => setPhase(3), 7000),   // Modal opens, fill in question
+      setTimeout(() => setPhase(4), 10000),  // Options filled, deadline set
+      setTimeout(() => setPhase(5), 14000),  // Click "Create poll"
+      setTimeout(() => setPhase(6), 15500),  // Modal closes, poll card appears with bars
+      setTimeout(() => setPhase(7), 20000),  // Results animate in
+      setTimeout(() => setPhase(8), 25000),  // Summary
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -21,7 +29,7 @@ export function Scene3() {
   return (
     <motion.div className="absolute inset-0 flex items-center justify-center w-full h-full"
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      
+
       {/* Intro Title */}
       <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center z-50 w-full"
         initial={{ opacity: 0, scale: 0.9 }}
@@ -32,209 +40,223 @@ export function Scene3() {
       </motion.div>
 
       <div className="flex items-center justify-between w-full max-w-6xl px-12">
+        {/* Left: Steps */}
         <div className="w-1/2 pr-12">
-          {phase >= 1 && phase < 7 && (
+          {phase >= 1 && phase < 8 && (
             <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
               <h2 className="text-4xl font-display font-bold text-white mb-6 leading-tight">
-                Stop the <span className="text-accent">chat spam.</span> <br/>Get clear answers.
+                Stop the <span className="text-accent">chat spam.</span><br />Get clear answers.
               </h2>
-              
               <div className="space-y-4">
-                <Step text="Create New Poll" active={phase >= 1 && phase < 3} done={phase >= 3} />
-                <Step text="Add Options" active={phase === 3} done={phase > 3} />
-                <Step text="Set deadline" active={phase === 4} done={phase > 4} />
-                <Step text="Players vote instantly" active={phase === 5} done={phase > 5} />
-                <Step text="See live results" active={phase === 6} done={false} />
+                <Step text="Open Polls" active={phase === 1} done={phase > 1} />
+                <Step text='Click "New poll"' active={phase === 2} done={phase > 2} />
+                <Step text="Add question, options & deadline" active={phase >= 3 && phase < 5} done={phase >= 5} />
+                <Step text='Click "Create poll"' active={phase === 5} done={phase > 5} />
+                <Step text="See live results" active={phase >= 6} done={false} />
               </div>
             </motion.div>
           )}
-
-          {phase >= 7 && (
+          {phase >= 8 && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-20">
               <h1 className="text-5xl font-display font-bold text-white leading-tight">
-                Fast answers, <br/>zero friction.
+                Fast answers,<br />zero friction.
               </h1>
             </motion.div>
           )}
         </div>
 
+        {/* Right: Phone */}
         <div className="w-1/2 flex justify-center">
           {phase >= 1 && (
             <PhoneFrame>
-              {phase < 4 ? (
-                <div className="h-full bg-slate-900">
-                  <AppHeader title="New Poll" showBack={true} />
-                  
-                  <div className="p-4 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-xs text-slate-400 uppercase font-mono">QUESTION</label>
-                      <div className="h-16 bg-slate-800 rounded-lg border border-slate-700 px-3 py-2">
-                        {phase >= 2 && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-white text-sm">Can you make training on Friday?</motion.span>}
-                      </div>
+              <div className="h-full flex flex-col bg-gray-50 relative overflow-hidden">
+
+                {/* Top nav bar */}
+                <div className="bg-indigo-900 px-3 py-2 flex items-center gap-2 shrink-0">
+                  <div className="w-5 h-5 rounded bg-white/10 flex items-center justify-center border border-white/20">
+                    <span className="text-white text-[8px] font-bold">HK</span>
+                  </div>
+                  <span className="text-white font-bold text-[10px]">HK Masters</span>
+                  <span className="text-white/50 text-[9px] ml-auto">Polls</span>
+                </div>
+
+                {/* Page content */}
+                <div className="flex-1 overflow-hidden p-2.5 space-y-2">
+
+                  {/* Page header row */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-gray-900">Polls</div>
+                      <div className="text-[7px] text-gray-500">Create scheduling polls & collect responses</div>
                     </div>
-                    
-                    {phase >= 3 && (
-                      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-                        <label className="text-xs text-slate-400 uppercase font-mono">OPTIONS</label>
-                        <div className="h-10 bg-slate-800 rounded border border-slate-700 px-3 flex items-center text-white text-sm">Yes</div>
-                        <div className="h-10 bg-slate-800 rounded border border-slate-700 px-3 flex items-center text-white text-sm">No</div>
-                        <div className="h-10 bg-slate-800/50 border border-dashed border-slate-600 rounded flex items-center justify-center text-slate-400 text-sm">
-                          + Add Option
+                    <motion.div
+                      className="bg-indigo-700 text-white text-[8px] font-bold px-2 py-1.5 rounded-lg flex items-center gap-1 shadow"
+                      animate={{ scale: phase === 2 ? 0.88 : 1 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                      <span className="text-base leading-none" style={{ lineHeight: 1 }}>+</span>
+                      <span>New poll</span>
+                    </motion.div>
+                  </div>
+
+                  {/* Poll card — appears after creation */}
+                  <AnimatePresence>
+                    {phase >= 6 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-xl border border-gray-200 p-3 shadow-sm space-y-2"
+                      >
+                        {/* Poll header */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1 mb-0.5">
+                              <span className="text-[7px] font-medium bg-blue-50 text-blue-700 border border-blue-200 px-1.5 py-0.5 rounded-full">All players</span>
+                            </div>
+                            <div className="text-[9px] font-bold text-gray-900">Can you make training on Friday?</div>
+                            <div className="text-[7px] text-gray-400 mt-0.5">Deadline: Fri 20 Jun · 12 votes</div>
+                          </div>
+                          <div className="flex gap-1 text-gray-400 text-[9px] shrink-0">
+                            <span>✉</span><span>🔒</span><span>🗑️</span>
+                          </div>
+                        </div>
+
+                        {/* Results bars — animated */}
+                        <div className="space-y-1.5">
+                          <div>
+                            <div className="flex justify-between text-[7px] mb-0.5">
+                              <span className="text-gray-800 font-medium">Yes</span>
+                              <span className="text-gray-500">9 (75%)</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-indigo-600 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: phase >= 7 ? '75%' : '10%' }}
+                                transition={{ duration: 1, delay: 0.3 }}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-[7px] mb-0.5">
+                              <span className="text-gray-800 font-medium">No</span>
+                              <span className="text-gray-500">3 (25%)</span>
+                            </div>
+                            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-indigo-300 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: phase >= 7 ? '25%' : '10%' }}
+                                transition={{ duration: 1, delay: 0.5 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="text-[7px] text-gray-400 flex items-center gap-1">
+                          <span>▾</span> Show voters &amp; non-responders
                         </div>
                       </motion.div>
                     )}
-                    
-                    <motion.div 
-                      className={`h-12 w-full bg-accent rounded-lg flex items-center justify-center mt-8 ${phase >= 3 ? 'opacity-100' : 'opacity-30'}`}
-                    >
-                      <span className="text-white font-bold">Next</span>
-                    </motion.div>
-                  </div>
-
-                  <Cursor 
-                    x={phase === 1 ? 150 : phase === 2 ? 100 : phase === 3 ? 160 : 160}
-                    y={phase === 1 ? 200 : phase === 2 ? 150 : phase === 3 ? 420 : 420}
-                    active={phase === 3}
-                  />
+                  </AnimatePresence>
                 </div>
-              ) : phase === 4 ? (
-                // Deadline Picker View
-                <div className="h-full bg-slate-900">
-                  <AppHeader title="Set Deadline" showBack={true} />
-                  <div className="p-4 space-y-4">
-                    <p className="text-slate-400 text-xs">When should this poll close?</p>
 
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-3"
-                    >
-                      <label className="text-xs text-slate-400 uppercase font-mono">CLOSE DATE</label>
-                      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-                        {/* Mini calendar header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-                          <span className="text-white font-bold text-sm">June 2026</span>
-                          <div className="flex gap-2">
-                            <span className="text-slate-400 text-xs px-2">‹</span>
-                            <span className="text-slate-400 text-xs px-2">›</span>
-                          </div>
-                        </div>
-                        {/* Day grid */}
-                        <div className="grid grid-cols-7 gap-0.5 p-2 text-center">
-                          {['S','M','T','W','T','F','S'].map((d, i) => (
-                            <div key={i} className="text-slate-500 text-xs py-1">{d}</div>
-                          ))}
-                          {[...Array(5)].map((_, i) => (
-                            <div key={`blank-${i}`} className="text-transparent text-xs py-1">0</div>
-                          ))}
-                          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30].map(d => (
-                            <motion.div
-                              key={d}
-                              className={`text-xs py-1 rounded-full cursor-pointer ${
-                                d === 20
-                                  ? 'bg-accent text-white font-bold'
-                                  : d < 20
-                                  ? 'text-slate-500'
-                                  : 'text-slate-300 hover:bg-slate-700'
-                              }`}
-                              animate={d === 20 ? { scale: [1, 1.15, 1] } : {}}
-                              transition={{ delay: 0.6, duration: 0.4 }}
-                            >
-                              {d}
-                            </motion.div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <label className="text-xs text-slate-400 uppercase font-mono">CLOSE TIME</label>
-                      <div className="h-11 bg-slate-800 rounded-lg border border-slate-700 px-3 flex items-center justify-between">
-                        <motion.span
-                          className="text-white text-sm font-mono"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.8 }}
-                        >
-                          11:59 PM
-                        </motion.span>
-                        <span className="text-accent text-xs">Fri, Jun 20</span>
-                      </div>
-                    </motion.div>
-
+                {/* Create poll modal */}
+                <AnimatePresence>
+                  {phase >= 3 && phase < 6 && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: 1 }}
-                      className="h-12 w-full bg-accent rounded-lg flex items-center justify-center"
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 bg-black/40 flex items-end justify-center z-20 pb-4"
                     >
-                      <span className="text-white font-bold">Create Poll</span>
-                    </motion.div>
-                  </div>
-                  <Cursor x={160} y={300} active={true} />
-                </div>
-              ) : phase === 5 ? (
-                // Player View Voting
-                <div className="h-full bg-slate-900 p-4">
-                  <AppHeader title="Polls" />
-                  <motion.div 
-                    className="mt-6 bg-slate-800 rounded-xl p-5 border border-slate-700"
-                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                  >
-                    <h3 className="text-white font-bold text-lg mb-1">Can you make training on Friday?</h3>
-                    <p className="text-slate-500 text-xs mb-4">Closes Jun 20 · 11:59 PM</p>
-                    <div className="space-y-3">
-                      <motion.div 
-                        className="h-12 rounded-lg border border-accent bg-accent/10 flex items-center px-4 relative overflow-hidden"
-                        initial={{ scale: 1 }} animate={{ scale: 1.02 }} transition={{ delay: 1 }}
+                      <motion.div
+                        initial={{ y: 80, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 40, opacity: 0 }}
+                        className="bg-white rounded-2xl shadow-2xl w-full mx-2 p-3.5 space-y-2.5"
                       >
-                        <div className="w-4 h-4 rounded-full border-2 border-accent mr-3 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-accent"></div>
+                        <div className="text-[11px] font-bold text-gray-900 border-b border-gray-100 pb-2">New poll</div>
+
+                        {/* Title */}
+                        <div className="space-y-1">
+                          <div className="text-[8px] font-semibold text-gray-700">Title</div>
+                          <div className="h-7 bg-gray-50 border border-gray-200 rounded-lg px-2 flex items-center">
+                            <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-gray-900 text-[8px]">
+                              Can you make training on Friday?
+                            </motion.span>
+                          </div>
                         </div>
-                        <span className="text-white font-medium relative z-10">Yes</span>
+
+                        {/* Audience */}
+                        <div className="space-y-1">
+                          <div className="text-[8px] font-semibold text-gray-700">Audience</div>
+                          <div className="flex gap-1">
+                            <div className="flex-1 bg-indigo-700 text-white text-[7px] font-semibold rounded-md py-1 text-center">All players</div>
+                            <div className="flex-1 bg-white border border-gray-200 text-gray-400 text-[7px] rounded-md py-1 text-center">MO40</div>
+                            <div className="flex-1 bg-white border border-gray-200 text-gray-400 text-[7px] rounded-md py-1 text-center">MO50</div>
+                          </div>
+                        </div>
+
+                        {/* Options */}
+                        <div className="space-y-1">
+                          <div className="text-[8px] font-semibold text-gray-700">Options</div>
+                          <AnimatePresence>
+                            {phase >= 4 ? (
+                              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-1">
+                                <div className="h-7 bg-gray-50 border border-gray-200 rounded-lg px-2 flex items-center">
+                                  <span className="text-gray-900 text-[8px]">Yes</span>
+                                </div>
+                                <div className="h-7 bg-gray-50 border border-gray-200 rounded-lg px-2 flex items-center">
+                                  <span className="text-gray-900 text-[8px]">No</span>
+                                </div>
+                                <div className="h-6 border border-dashed border-gray-300 rounded-lg flex items-center justify-center">
+                                  <span className="text-gray-400 text-[7px]">+ Add option</span>
+                                </div>
+                              </motion.div>
+                            ) : (
+                              <div className="space-y-1">
+                                <div className="h-7 bg-gray-50 border border-gray-200 rounded-lg px-2 flex items-center" />
+                                <div className="h-7 bg-gray-50 border border-gray-200 rounded-lg px-2 flex items-center" />
+                              </div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        {/* Deadline */}
+                        <div className="space-y-1">
+                          <div className="text-[8px] font-semibold text-gray-700">Deadline <span className="font-normal text-gray-400">(optional)</span></div>
+                          <div className="h-7 bg-gray-50 border border-gray-200 rounded-lg px-2 flex items-center">
+                            {phase >= 4 && (
+                              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-gray-700 text-[8px]">
+                                2026-06-20T23:59
+                              </motion.span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Create poll button */}
+                        <motion.div
+                          className="h-8 bg-indigo-700 rounded-lg flex items-center justify-center shadow"
+                          animate={{ scale: phase === 5 ? 0.94 : 1 }}
+                          transition={{ duration: 0.1 }}
+                        >
+                          <span className="text-white text-[10px] font-bold">Create poll</span>
+                        </motion.div>
                       </motion.div>
-                      <div className="h-12 rounded-lg border border-slate-700 bg-slate-800/50 flex items-center px-4">
-                        <div className="w-4 h-4 rounded-full border-2 border-slate-500 mr-3"></div>
-                        <span className="text-slate-300 font-medium">No</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                  
-                  <Cursor x={100} y={200} active={true} />
-                </div>
-              ) : (
-                // Admin View Results
-                <div className="h-full bg-slate-900 p-4">
-                  <AppHeader title="Live Results" showBack={true} />
-                  <motion.div 
-                    className="mt-6 bg-slate-800 rounded-xl p-5 border border-slate-700"
-                    initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-                  >
-                    <h3 className="text-white font-bold mb-1">Can you make training on Friday?</h3>
-                    <p className="text-slate-500 text-xs mb-4">Closes Jun 20 · 11:59 PM</p>
-                    
-                    <div className="space-y-6">
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-white font-medium">Yes</span>
-                          <span className="text-accent font-bold">12</span>
-                        </div>
-                        <div className="h-3 bg-slate-900 rounded-full overflow-hidden">
-                          <motion.div className="h-full bg-accent" initial={{ width: 0 }} animate={{ width: '75%' }} transition={{ duration: 1, delay: 0.5 }} />
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between text-sm mb-2">
-                          <span className="text-white font-medium">No</span>
-                          <span className="text-slate-400 font-bold">4</span>
-                        </div>
-                        <div className="h-3 bg-slate-900 rounded-full overflow-hidden">
-                          <motion.div className="h-full bg-slate-500" initial={{ width: 0 }} animate={{ width: '25%' }} transition={{ duration: 1, delay: 0.7 }} />
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Cursor */}
+                {phase >= 1 && phase < 6 && (
+                  <Cursor
+                    x={phase === 1 ? 150 : phase === 2 ? 220 : phase === 3 ? 130 : phase === 4 ? 130 : 150}
+                    y={phase === 1 ? 100 : phase === 2 ? 94 : phase === 3 ? 190 : phase === 4 ? 280 : 360}
+                    active={phase === 2 || phase === 5}
+                  />
+                )}
+              </div>
             </PhoneFrame>
           )}
         </div>
@@ -243,8 +265,8 @@ export function Scene3() {
   );
 }
 
-const Step = ({ text, active, done }: { text: string, active: boolean, done: boolean }) => (
-  <motion.div 
+const Step = ({ text, active, done }: { text: string; active: boolean; done: boolean }) => (
+  <motion.div
     className={`flex items-center gap-4 ${active ? 'opacity-100' : done ? 'opacity-50' : 'opacity-30'}`}
     animate={{ x: active ? 10 : 0 }}
   >
