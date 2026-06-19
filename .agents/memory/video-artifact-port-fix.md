@@ -15,7 +15,7 @@ description: Why a newly-added artifact's dev workflow can show FAILED even thou
 - `configureWorkflow` to drop `waitForPort` — **PROHIBITED_ACTION**: artifact-managed workflows cannot be overridden via setRunWorkflow.
 
 ## Real fixes (pick one)
-- **Remove the redundant artifact** (best when it's orphaned — grep shows nothing links to its base path, or its content is duplicated/inlined elsewhere). Destructive → confirm with the user first.
+- **Remove the redundant artifact** (best when it's orphaned — grep shows nothing links to its base path, or its content is duplicated/inlined elsewhere). Destructive → confirm with the user first. There is NO `deleteArtifact` callback, and `removeWorkflow`/`configureWorkflow` are PROHIBITED on artifact-managed workflows. To remove: `rm -rf artifacts/<slug>` then `pnpm install` (lockfile must update or frozen-lockfile deploys fail) — the platform auto-deregisters the managed workflow once the directory is gone.
 - **Port swap**: move the registered `localPort`/`PORT` from a lower-priority RUNNING artifact to the failing one by editing both `artifact.toml`s via the artifact skills (not `.replit` directly), then restart the donor first (it goes FAILED, acceptable) then the recipient.
 
 **Why:** only `[[ports]]`-registered ports are reachable by the dev external proxy; the artifact health check requires that reachability.
