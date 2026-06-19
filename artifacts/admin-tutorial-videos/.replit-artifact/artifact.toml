@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/admin-tutorial-videos/"
+title = "Admin Tutorial Videos"
+version = "1.0.0"
+id = "artifacts/admin-tutorial-videos"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/admin-tutorial-videos/" ]
+localPort = 3002
+
+[services.development]
+run = "pnpm --filter @workspace/admin-tutorial-videos run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/admin-tutorial-videos", "run", "build" ]
+publicDir = "artifacts/admin-tutorial-videos/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "3002"
+BASE_PATH = "/admin-tutorial-videos/"
