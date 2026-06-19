@@ -1,30 +1,88 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronUp, Repeat, Volume2, VolumeX } from 'lucide-react';
+import { ChevronDown, ChevronUp, Download, Repeat, Volume2, VolumeX, X } from 'lucide-react';
 import VideoTemplate, { SCENE_DURATIONS } from './VideoTemplate';
 import { useSceneControls } from './useSceneControls';
 
 const PROGRESS_TICK_MS = 60;
-
-interface ControlBarProps {
-  visible: boolean;
-  collapsed: boolean;
-  locked: boolean;
-  muted: boolean;
-  sceneKeys: string[];
-  activeIndex: number;
-  activeDuration: number;
-  tick: number;
-  onToggleLock: () => void;
-  onToggleMute: () => void;
-  onJumpTo: (index: number) => void;
-  onToggleCollapsed: () => void;
-}
 
 const SCENE_LABELS: Record<string, string> = {
   chapter1: 'In-App',
   chapter2: 'Email',
   chapter3: 'Polls',
 };
+
+const EXPORT_OPTIONS = [
+  { label: 'Full Video', subtitle: 'All 3 chapters', urlSuffix: '', duration: '~80s' },
+  { label: 'Chapter 1', subtitle: 'In-App announcements', urlSuffix: 'clip1', duration: '~25s' },
+  { label: 'Chapter 2', subtitle: 'Email campaigns', urlSuffix: 'clip2', duration: '~25s' },
+  { label: 'Chapter 3', subtitle: 'Polls & surveys', urlSuffix: 'clip3', duration: '~30s' },
+];
+
+function buildExportUrl(suffix: string): string {
+  const base = import.meta.env.BASE_URL as string;
+  if (!suffix) return window.location.origin + base;
+  const normalised = base.endsWith('/') ? base : base + '/';
+  return window.location.origin + normalised + suffix;
+}
+
+function ExportPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="bg-black/80 backdrop-blur-md border-b border-white/10 px-5 py-4">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-white font-semibold text-sm tracking-wide">Download MP4</span>
+        <button
+          onClick={onClose}
+          className="w-8 h-8 flex items-center justify-center text-white/50 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+          aria-label="Close export panel"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      <p className="text-white/40 text-xs mb-4 leading-relaxed">
+        Opens in a new window — the video plays once and records automatically.
+        When it finishes, use the browser&apos;s download prompt to save the MP4.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {EXPORT_OPTIONS.map(({ label, subtitle, urlSuffix, duration }) => {
+          const url = buildExportUrl(urlSuffix);
+          return (
+            <a
+              key={urlSuffix}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start gap-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg px-3 py-2.5 transition-colors group"
+            >
+              <Download className="w-4 h-4 text-white/50 group-hover:text-white/80 mt-0.5 shrink-0 transition-colors" />
+              <div className="min-w-0">
+                <div className="text-white text-sm font-medium leading-tight">{label}</div>
+                <div className="text-white/40 text-xs mt-0.5">{subtitle}</div>
+                <div className="text-white/25 text-xs font-mono mt-1">{duration}</div>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface ControlBarProps {
+  visible: boolean;
+  collapsed: boolean;
+  locked: boolean;
+  muted: boolean;
+  exportOpen: boolean;
+  sceneKeys: string[];
+  activeIndex: number;
+  activeDuration: number;
+  tick: number;
+  onToggleLock: () => void;
+  onToggleMute: () => void;
+  onToggleExport: () => void;
+  onJumpTo: (index: number) => void;
+  onToggleCollapsed: () => void;
+}
 
 function ProgressSegments({
   sceneKeys,
@@ -83,8 +141,8 @@ function ProgressSegments({
 }
 
 function ControlBar({
-  visible, collapsed, locked, muted, sceneKeys, activeIndex, activeDuration, tick,
-  onToggleLock, onToggleMute, onJumpTo, onToggleCollapsed,
+  visible, collapsed, locked, muted, exportOpen, sceneKeys, activeIndex, activeDuration, tick,
+  onToggleLock, onToggleMute, onToggleExport, onJumpTo, onToggleCollapsed,
 }: ControlBarProps) {
   return (
     <div
@@ -121,6 +179,20 @@ function ControlBar({
         aria-pressed={!muted}
       >
         {muted ? <VolumeX className="w-8 h-8" /> : <Volume2 className="w-8 h-8" />}
+      </button>
+
+      <button
+        onClick={onToggleExport}
+        className={`w-14 h-14 flex items-center justify-center transition-colors rounded-lg shrink-0 ${
+          exportOpen
+            ? 'text-white bg-white/15 hover:bg-white/25'
+            : 'text-white/60 hover:text-white hover:bg-white/10'
+        }`}
+        title="Download MP4"
+        aria-label="Download MP4"
+        aria-pressed={exportOpen}
+      >
+        <Download className="w-8 h-8" />
       </button>
 
       <div className="w-px self-stretch bg-white/15" aria-hidden="true" />
@@ -166,6 +238,7 @@ export default function VideoWithControls({
   const [collapsed, setCollapsed] = useState(false);
   const [hovering, setHovering] = useState(false);
   const [tapPinned, setTapPinned] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const sensorRef = useRef<HTMLDivElement | null>(null);
 
   const handlePointerEnter = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -183,6 +256,9 @@ export default function VideoWithControls({
       if (!c) { setHovering(false); setTapPinned(false); }
       return !c;
     });
+  }, []);
+  const handleToggleExport = useCallback(() => {
+    setExportOpen(o => !o);
   }, []);
 
   useEffect(() => {
@@ -212,23 +288,28 @@ export default function VideoWithControls({
       <div
         ref={sensorRef}
         className="absolute bottom-0 left-0 right-0 z-50 flex flex-col justify-end"
-        style={{ height: '25%' }}
+        style={{ height: '35%' }}
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
         onPointerDown={handlePointerDown}
       >
         <div className="flex-1 w-full" aria-hidden="true" />
+        {exportOpen && barVisible && (
+          <ExportPanel onClose={() => setExportOpen(false)} />
+        )}
         <ControlBar
           visible={barVisible}
           collapsed={collapsed}
           locked={locked}
           muted={muted}
+          exportOpen={exportOpen}
           sceneKeys={sceneKeys}
           activeIndex={activeIndex}
           activeDuration={activeDuration}
           tick={tick}
           onToggleLock={toggleLock}
           onToggleMute={() => setMuted(m => !m)}
+          onToggleExport={handleToggleExport}
           onJumpTo={jumpTo}
           onToggleCollapsed={handleToggleCollapsed}
         />
