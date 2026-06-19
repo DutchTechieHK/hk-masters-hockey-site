@@ -1,9 +1,11 @@
-import { useState } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Play, Megaphone, Mail, BarChart2 } from "lucide-react"
 
-const BASE = "/admin-video-series"
+// Build the video base URL from the current origin so it works in both
+// dev (Replit proxy) and production (same-domain deployment).
+function getVideoBase() {
+  return `${window.location.origin}/admin-video-series`
+}
 
 function Thumbnail1() {
   return (
@@ -180,7 +182,7 @@ const CLIPS = [
     icon: Megaphone,
     accent: "border-blue-200",
     Thumb: Thumbnail1,
-    url: `${BASE}/clip1`,
+    chapter: "Ch. 1",
   },
   {
     id: "clip2",
@@ -189,7 +191,7 @@ const CLIPS = [
     icon: Mail,
     accent: "border-violet-200",
     Thumb: Thumbnail2,
-    url: `${BASE}/clip2`,
+    chapter: "Ch. 2",
   },
   {
     id: "clip3",
@@ -198,12 +200,14 @@ const CLIPS = [
     icon: BarChart2,
     accent: "border-emerald-200",
     Thumb: Thumbnail3,
-    url: `${BASE}/clip3`,
+    chapter: "Ch. 3",
   },
 ]
 
 export default function Tutorials() {
-  const [activeClip, setActiveClip] = useState<(typeof CLIPS)[number] | null>(null)
+  function openVideo(clipId: string) {
+    window.open(`${getVideoBase()}/${clipId}`, "_blank", "noopener,noreferrer")
+  }
 
   return (
     <PageLayout title="Tutorials">
@@ -214,28 +218,24 @@ export default function Tutorials() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {CLIPS.map((clip) => {
-            const Icon = clip.icon
             const Thumb = clip.Thumb
             return (
               <button
                 key={clip.id}
-                onClick={() => setActiveClip(clip)}
+                onClick={() => openVideo(clip.id)}
                 className={`group text-left bg-white rounded-2xl border ${clip.accent} shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-primary`}
               >
                 {/* Thumbnail */}
                 <div className={`relative h-44 border-b ${clip.accent} overflow-hidden`}>
                   <Thumb />
-                  {/* Overlay dims on hover to make play button pop */}
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-200" />
-                  {/* Play button */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="flex items-center justify-center w-12 h-12 rounded-full bg-white/85 shadow-lg group-hover:scale-110 transition-transform duration-200">
                       <Play className="w-5 h-5 text-primary fill-primary ml-0.5" />
                     </span>
                   </div>
-                  {/* Chapter badge */}
                   <span className="absolute top-2.5 right-2.5 text-[10px] font-semibold uppercase tracking-wider bg-white/80 text-gray-600 px-2 py-0.5 rounded-full">
-                    {clip.id === "clip1" ? "Ch. 1" : clip.id === "clip2" ? "Ch. 2" : "Ch. 3"}
+                    {clip.chapter}
                   </span>
                 </div>
 
@@ -249,31 +249,6 @@ export default function Tutorials() {
           })}
         </div>
       </div>
-
-      <Dialog open={!!activeClip} onOpenChange={(open) => { if (!open) setActiveClip(null) }}>
-        <DialogContent className="max-w-3xl w-full p-0 overflow-hidden rounded-2xl">
-          <DialogHeader className="px-6 pt-5 pb-3 border-b">
-            <DialogTitle className="text-base font-semibold flex items-center gap-2">
-              {activeClip && (() => {
-                const Icon = activeClip.icon
-                return <Icon className="w-4 h-4 text-muted-foreground" />
-              })()}
-              {activeClip?.title}
-            </DialogTitle>
-          </DialogHeader>
-          {activeClip && (
-            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-              <iframe
-                key={activeClip.id}
-                src={activeClip.url}
-                className="absolute inset-0 w-full h-full border-0"
-                allow="autoplay"
-                title={activeClip.title}
-              />
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </PageLayout>
   )
 }
