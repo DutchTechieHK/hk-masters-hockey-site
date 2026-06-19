@@ -59,3 +59,21 @@ id = "rH9K8k2NOjK373R8nKXpz"
 uri = "file://artifacts/admin-tutorial-videos/public/audio/bg_music.mp3"
 type = "audio"
 title = "background music"
+
+[[outputs]]
+id = "mZfceHU_fZxwxXSF3qdyO"
+uri = "file://artifacts/admin-video-series/public/audio/vo_chapter2.mp3"
+type = "audio"
+title = "chapter 2 voiceover"
+
+[[outputs]]
+id = "jQWuooXSxTrrh_a8flMCC"
+uri = "file://artifacts/admin-video-series/public/audio/vo_chapter3.mp3"
+type = "audio"
+title = "chapter 3 voiceover"
+
+[[outputs]]
+id = "Ql4G967zJU4ng964xvM09"
+uri = "file://artifacts/admin-video-series/public/audio/vo_chapter1.mp3"
+type = "audio"
+title = "chapter 1 voiceover"

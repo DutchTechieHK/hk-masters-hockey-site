@@ -54,7 +54,7 @@ export default function VideoTemplate({
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.volume = 0.45;
+    audio.volume = 1.0;
     const targetTime = SCENE_START_SEC[baseSceneKey] ?? 0;
     if (Math.abs(audio.currentTime - targetTime) > AUDIO_SEEK_EPSILON_SEC) {
       audio.currentTime = targetTime;
@@ -88,7 +88,7 @@ export default function VideoTemplate({
       </div>
       <audio
         ref={audioRef}
-        src={`${import.meta.env.BASE_URL}audio/bg_music.mp3`}
+        src={`${import.meta.env.BASE_URL}audio/composite_audio.mp3`}
         preload="auto"
         autoPlay
         muted={muted}
