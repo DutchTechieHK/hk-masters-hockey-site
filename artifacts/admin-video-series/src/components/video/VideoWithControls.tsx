@@ -228,6 +228,13 @@ export default function VideoWithControls({
   sceneDurations?: Record<string, number>;
 } = {}) {
   const isIframed = typeof window !== 'undefined' && window.self !== window.top;
+  // Standalone viewing tabs (opened from the admin Tutorials page) pass
+  // `?view=1` to opt into the control bar. Export/recording URLs omit it so the
+  // captured MP4 stays chrome-free.
+  const wantsControls =
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('view');
+  const showControls = isIframed || wantsControls;
 
   const {
     sceneKeys, activeIndex, locked, mountKey, tick,
@@ -274,7 +281,7 @@ export default function VideoWithControls({
 
   const barVisible = !collapsed || hovering || tapPinned;
 
-  if (!isIframed) return <VideoTemplate durations={sceneDurations} />;
+  if (!showControls) return <VideoTemplate durations={sceneDurations} />;
 
   return (
     <div className="relative w-full h-screen">

@@ -206,7 +206,10 @@ const CLIPS = [
 
 export default function Tutorials() {
   function openVideo(clipId: string) {
-    window.open(`${getVideoBase()}/${clipId}`, "_blank", "noopener,noreferrer")
+    // `?view=1` tells the video app to show its playback controls (incl. the
+    // unmute button) in this standalone tab. Without it the clip renders
+    // chrome-free for clean MP4 export recording.
+    window.open(`${getVideoBase()}/${clipId}?view=1`, "_blank", "noopener,noreferrer")
   }
 
   return (
