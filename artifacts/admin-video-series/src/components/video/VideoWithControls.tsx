@@ -150,13 +150,17 @@ function ControlBar({
   );
 }
 
-export default function VideoWithControls() {
+export default function VideoWithControls({
+  sceneDurations = SCENE_DURATIONS,
+}: {
+  sceneDurations?: Record<string, number>;
+} = {}) {
   const isIframed = typeof window !== 'undefined' && window.self !== window.top;
 
   const {
     sceneKeys, activeIndex, locked, mountKey, tick,
     durations, activeDuration, onSceneChange, jumpTo, toggleLock,
-  } = useSceneControls(SCENE_DURATIONS);
+  } = useSceneControls(sceneDurations);
 
   const [muted, setMuted] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
@@ -194,7 +198,7 @@ export default function VideoWithControls() {
 
   const barVisible = !collapsed || hovering || tapPinned;
 
-  if (!isIframed) return <VideoTemplate />;
+  if (!isIframed) return <VideoTemplate durations={sceneDurations} />;
 
   return (
     <div className="relative w-full h-screen">

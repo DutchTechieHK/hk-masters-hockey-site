@@ -7,12 +7,13 @@ export function Scene3() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setPhase(1), 3000),  // Admin Panel Polls
-      setTimeout(() => setPhase(2), 7000),  // Type Question
-      setTimeout(() => setPhase(3), 10000), // Add Options
-      setTimeout(() => setPhase(4), 14000), // Player view votes
-      setTimeout(() => setPhase(5), 19000), // Admin view results
-      setTimeout(() => setPhase(6), 24000), // Summary
+      setTimeout(() => setPhase(1), 3000),   // Admin Panel Polls title
+      setTimeout(() => setPhase(2), 7000),   // Type Question
+      setTimeout(() => setPhase(3), 10000),  // Add Options
+      setTimeout(() => setPhase(4), 13500),  // Set Deadline picker
+      setTimeout(() => setPhase(5), 17000),  // Player view votes
+      setTimeout(() => setPhase(6), 22000),  // Admin view results
+      setTimeout(() => setPhase(7), 27000),  // Summary
     ];
     return () => timers.forEach(t => clearTimeout(t));
   }, []);
@@ -32,7 +33,7 @@ export function Scene3() {
 
       <div className="flex items-center justify-between w-full max-w-6xl px-12">
         <div className="w-1/2 pr-12">
-          {phase >= 1 && phase < 6 && (
+          {phase >= 1 && phase < 7 && (
             <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
               <h2 className="text-4xl font-display font-bold text-white mb-6 leading-tight">
                 Stop the <span className="text-accent">chat spam.</span> <br/>Get clear answers.
@@ -41,13 +42,14 @@ export function Scene3() {
               <div className="space-y-4">
                 <Step text="Create New Poll" active={phase >= 1 && phase < 3} done={phase >= 3} />
                 <Step text="Add Options" active={phase === 3} done={phase > 3} />
-                <Step text="Players vote instantly" active={phase === 4} done={phase > 4} />
-                <Step text="See live results" active={phase === 5} done={false} />
+                <Step text="Set deadline" active={phase === 4} done={phase > 4} />
+                <Step text="Players vote instantly" active={phase === 5} done={phase > 5} />
+                <Step text="See live results" active={phase === 6} done={false} />
               </div>
             </motion.div>
           )}
 
-          {phase >= 6 && (
+          {phase >= 7 && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-20">
               <h1 className="text-5xl font-display font-bold text-white leading-tight">
                 Fast answers, <br/>zero friction.
@@ -85,7 +87,7 @@ export function Scene3() {
                     <motion.div 
                       className={`h-12 w-full bg-accent rounded-lg flex items-center justify-center mt-8 ${phase >= 3 ? 'opacity-100' : 'opacity-30'}`}
                     >
-                      <span className="text-white font-bold">Create Poll</span>
+                      <span className="text-white font-bold">Next</span>
                     </motion.div>
                   </div>
 
@@ -96,6 +98,80 @@ export function Scene3() {
                   />
                 </div>
               ) : phase === 4 ? (
+                // Deadline Picker View
+                <div className="h-full bg-slate-900">
+                  <AppHeader title="Set Deadline" showBack={true} />
+                  <div className="p-4 space-y-4">
+                    <p className="text-slate-400 text-xs">When should this poll close?</p>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-3"
+                    >
+                      <label className="text-xs text-slate-400 uppercase font-mono">CLOSE DATE</label>
+                      <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                        {/* Mini calendar header */}
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                          <span className="text-white font-bold text-sm">June 2026</span>
+                          <div className="flex gap-2">
+                            <span className="text-slate-400 text-xs px-2">‹</span>
+                            <span className="text-slate-400 text-xs px-2">›</span>
+                          </div>
+                        </div>
+                        {/* Day grid */}
+                        <div className="grid grid-cols-7 gap-0.5 p-2 text-center">
+                          {['S','M','T','W','T','F','S'].map((d, i) => (
+                            <div key={i} className="text-slate-500 text-xs py-1">{d}</div>
+                          ))}
+                          {[...Array(5)].map((_, i) => (
+                            <div key={`blank-${i}`} className="text-transparent text-xs py-1">0</div>
+                          ))}
+                          {[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30].map(d => (
+                            <motion.div
+                              key={d}
+                              className={`text-xs py-1 rounded-full cursor-pointer ${
+                                d === 20
+                                  ? 'bg-accent text-white font-bold'
+                                  : d < 20
+                                  ? 'text-slate-500'
+                                  : 'text-slate-300 hover:bg-slate-700'
+                              }`}
+                              animate={d === 20 ? { scale: [1, 1.15, 1] } : {}}
+                              transition={{ delay: 0.6, duration: 0.4 }}
+                            >
+                              {d}
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <label className="text-xs text-slate-400 uppercase font-mono">CLOSE TIME</label>
+                      <div className="h-11 bg-slate-800 rounded-lg border border-slate-700 px-3 flex items-center justify-between">
+                        <motion.span
+                          className="text-white text-sm font-mono"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: 0.8 }}
+                        >
+                          11:59 PM
+                        </motion.span>
+                        <span className="text-accent text-xs">Fri, Jun 20</span>
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1 }}
+                      className="h-12 w-full bg-accent rounded-lg flex items-center justify-center"
+                    >
+                      <span className="text-white font-bold">Create Poll</span>
+                    </motion.div>
+                  </div>
+                  <Cursor x={160} y={300} active={true} />
+                </div>
+              ) : phase === 5 ? (
                 // Player View Voting
                 <div className="h-full bg-slate-900 p-4">
                   <AppHeader title="Polls" />
@@ -103,7 +179,8 @@ export function Scene3() {
                     className="mt-6 bg-slate-800 rounded-xl p-5 border border-slate-700"
                     initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
                   >
-                    <h3 className="text-white font-bold text-lg mb-4">Can you make training on Friday?</h3>
+                    <h3 className="text-white font-bold text-lg mb-1">Can you make training on Friday?</h3>
+                    <p className="text-slate-500 text-xs mb-4">Closes Jun 20 · 11:59 PM</p>
                     <div className="space-y-3">
                       <motion.div 
                         className="h-12 rounded-lg border border-accent bg-accent/10 flex items-center px-4 relative overflow-hidden"
@@ -131,7 +208,8 @@ export function Scene3() {
                     className="mt-6 bg-slate-800 rounded-xl p-5 border border-slate-700"
                     initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
                   >
-                    <h3 className="text-white font-bold mb-6">Can you make training on Friday?</h3>
+                    <h3 className="text-white font-bold mb-1">Can you make training on Friday?</h3>
+                    <p className="text-slate-500 text-xs mb-4">Closes Jun 20 · 11:59 PM</p>
                     
                     <div className="space-y-6">
                       <div>
