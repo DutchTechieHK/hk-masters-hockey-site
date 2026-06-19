@@ -12,7 +12,7 @@ version = "1.0.0"
 [[services]]
 name = "web"
 paths = [ "/pwa-install-video/" ]
-localPort = 26214
+localPort = 20234
 
 [services.development]
 run = "pnpm --filter @workspace/pwa-install-video run dev"
@@ -27,5 +27,5 @@ from = "/*"
 to = "/index.html"
 
 [services.env]
-PORT = "26214"
+PORT = "20234"
 BASE_PATH = "/pwa-install-video/"

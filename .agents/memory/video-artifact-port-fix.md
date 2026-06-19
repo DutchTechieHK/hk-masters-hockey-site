@@ -1,29 +1,39 @@
 ---
-name: Video artifact unregistered port fix
-description: When createArtifact allocates a port not in .replit [[ports]], the artifact-managed workflow health check fails. Workaround using configureWorkflow without waitForPort.
+name: Video artifact port registration
+description: createArtifact for video-js type may not register the new port in .replit [[ports]], making the artifact inaccessible externally. Real fix is a port swap with a lower-priority registered artifact.
 ---
 
 # Video Artifact Unregistered Port Fix
 
-## The Rule
+## The Problem
 
-When `createArtifact` allocates a new port for a video artifact but that port does NOT appear in `.replit [[ports]]`, the platform's `restart_workflow` health check will always fail ("didn't open port N") even though Vite binds successfully. Fix by creating a custom `configureWorkflow` without `waitForPort`, embedding `PORT` and `BASE_PATH` directly in the command string.
+`createArtifact` allocates a new port but does NOT always add it to `.replit [[ports]]`. Without a `[[ports]]` entry the external Replit proxy (canvas iframes, user browser) cannot reach the service — even though the internal `localhost:80` proxy (used by the screenshot tool) can. The artifact-managed workflow shows FAILED because the platform health-check times out waiting for the port to be registered. The cap appears to be 5 `[[ports]]` entries.
 
-**Why:** `.replit [[ports]]` controls which ports the external proxy recognizes. The artifact-managed workflow's health check requires the port to be reachable through that proxy. A custom workflow without `waitForPort` skips this check entirely, so it stays in RUNNING state as long as the process is alive.
+**Why:** `.replit [[ports]]` controls which ports the external proxy recognizes. The artifact-managed workflow health check requires the port to be reachable through that proxy.
 
-**How to apply:**
+## The Real Fix — Port Swap
 
-```javascript
-await configureWorkflow({
-  name: "Admin Tutorial Videos",
-  command: "PORT=20234 BASE_PATH=/admin-video-series/ pnpm --filter @workspace/admin-video-series run dev",
-  // No waitForPort — bypasses the .replit [[ports]] health check
-});
-```
+Swap ports with an existing registered artifact that is lower priority:
 
-- The artifact-managed workflow (`artifacts/<slug>: web`) will show FAILED — that's expected and harmless.
-- The custom workflow keeps the server running and the preview routes via `artifact.toml` paths.
-- Use the `artifact.toml`'s `PORT` and `BASE_PATH` values from `[services.env]`.
-- `validate-recording.sh` and `presentArtifact` work normally.
+1. Read both `artifact.toml` files.
+2. Write temp `.edit.toml` files swapping `localPort` and `PORT` env var.
+3. Call `verifyAndReplaceArtifactToml` for both (can run in parallel).
+4. `restart_workflow` the lower-priority artifact first — it releases the registered port (expected to show FAILED; that's acceptable).
+5. `restart_workflow` the higher-priority artifact — it claims the registered port and health check passes → RUNNING.
 
-**Context:** Confirmed working for `admin-video-series` artifact (port 20234, path `/admin-video-series/`). All 5 `.replit [[ports]]` slots were occupied by other services (api-server/8080, mockup-sandbox/8081, hk-masters/20336, hk-masters-web/22203, pwa-install-video/26214).
+**How to apply:** Any time a new video/artifact workflow shows FAILED due to port health check, and `.replit [[ports]]` has 5 entries, apply this swap with the least-needed running artifact. `pwa-install-video` (port 26214, externalPort 3000) is the designated donor — it can be rebuilt if needed.
+
+## Port Map (2026-06-19)
+- 8080 → api-server (required)
+- 8081 → mockup-sandbox (required for canvas)
+- 20336 → hk-masters main web (required, externalPort 80)
+- 22203 → hk-masters-web public site (required)
+- 26214 → **pwa-install-video** (donor; sacrificeable — now used by admin-video-series)
+
+## Old Workaround (insufficient)
+
+Custom `configureWorkflow` without `waitForPort` keeps the process alive but only via the internal proxy — canvas iframes and the user's browser (external proxy) still can't see it. Do NOT rely on this alone.
+
+## Stale Custom Workflow
+
+A "Admin Tutorial Videos" custom workflow may still be running on port 20234. It's harmless (serves via internal routing only) but wastes resources. Leave it or reconfigure to a no-op.
