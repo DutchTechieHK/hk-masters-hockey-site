@@ -26,9 +26,11 @@ const appShellHandler = createHandlerBoundToURL(
 registerRoute(
   new NavigationRoute(appShellHandler, {
     denylist: [
-      /^\/api\//,        // API calls
-      /^\/admin\//,      // Admin portal (separate SPA)
-      /^\/pwa-install-video\//,  // Video artifact
+      /^\/api(?:\/|$)/,        // API calls
+      /^\/admin(?:\/|$)/,      // Admin portal (separate SPA)
+      /^\/admin-video-series(?:\/|$)/,  // Admin tutorial video artifact
+      /^\/admin-tutorial-videos(?:\/|$)/,  // Admin tutorial video artifact
+      /^\/pwa-install-video(?:\/|$)/,  // Video artifact
     ],
   })
 );
