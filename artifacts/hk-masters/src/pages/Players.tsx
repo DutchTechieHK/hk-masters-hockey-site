@@ -16,9 +16,8 @@ import type { Player, FundraisingEntry } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getInitials, formatCurrency } from "@/lib/utils"
 import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
+import { passportStatus, PASSPORT_STATUS_LABEL, exportReportCSV, exportReportPDF, IDENTITY_COLUMNS } from "@/lib/reports"
 import { format, parseISO } from "date-fns"
-
-const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
 function cloudinaryViewUrl(url: string): string {
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
@@ -98,144 +97,6 @@ async function rotateAccessToken(playerId: number, sessionToken: string): Promis
   if (!res.ok) return { status: res.status, accessToken: null }
   const data = await res.json() as { accessToken: string | null }
   return { status: 200, accessToken: data.accessToken }
-}
-
-function passportStatus(expiry?: string | null) {
-  if (!expiry) return "missing"
-  const d = new Date(expiry)
-  return d > PASSPORT_WARN_DATE ? "ok" : "expiring"
-}
-
-const PASSPORT_STATUS_LABEL: Record<ReturnType<typeof passportStatus>, string> = {
-  ok: "OK",
-  expiring: "Expiring",
-  missing: "Missing",
-}
-
-function exportIdentityCSV(players: Player[], scopeLabel: string) {
-  const headers = [
-    "Name",
-    "Team",
-    "Nationality",
-    "Date of Birth",
-    "Passport Number",
-    "Passport Expiry",
-    "Passport Status",
-  ]
-  const rows = players.map(p => [
-    p.name,
-    p.teamName ?? "",
-    p.nationality ?? "",
-    p.dateOfBirth ?? "",
-    p.passportNumber ?? "",
-    p.passportExpiry ?? "",
-    PASSPORT_STATUS_LABEL[passportStatus(p.passportExpiry)],
-  ])
-
-  const csv = [headers, ...rows]
-    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
-    .join("\n")
-
-  const slug = scopeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "all-teams"
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = `player-identity-report-${slug}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
-}
-
-function exportIdentityPDF(players: Player[], scopeLabel: string) {
-  const generatedAt = format(new Date(), "d MMM yyyy 'at' HH:mm")
-  const headers = [
-    "Name",
-    "Team",
-    "Nationality",
-    "Date of Birth",
-    "Passport Number",
-    "Passport Expiry",
-    "Passport Status",
-  ]
-  const bodyRows = players.map(p => {
-    const status = passportStatus(p.passportExpiry)
-    const cells = [
-      p.name,
-      p.teamName ?? "",
-      p.nationality ?? "",
-      p.dateOfBirth ?? "",
-      p.passportNumber ?? "",
-      p.passportExpiry ?? "",
-      PASSPORT_STATUS_LABEL[status],
-    ]
-    const tds = cells
-      .map((c, i) => {
-        if (i === cells.length - 1) {
-          return `<td><span class="status status-${status}">${escapeHtml(String(c))}</span></td>`
-        }
-        return `<td>${escapeHtml(String(c))}</td>`
-      })
-      .join("")
-    return `<tr>${tds}</tr>`
-  }).join("")
-
-  const headHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")
-
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>Player Identity Report</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1a1a; margin: 32px; }
-  .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 20px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .meta { font-size: 11px; color: #555; }
-  .count { font-size: 12px; font-weight: 600; text-align: right; }
-  table { width: 100%; border-collapse: collapse; font-size: 11px; }
-  thead th { background: #f1f1f1; text-align: left; padding: 8px 10px; border-bottom: 1px solid #ccc; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
-  tbody td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
-  tbody tr:nth-child(even) td { background: #fafafa; }
-  .status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; }
-  .status-ok { background: #dcfce7; color: #166534; }
-  .status-expiring { background: #fef9c3; color: #854d0e; }
-  .status-missing { background: #fee2e2; color: #991b1b; }
-  .empty { padding: 24px; text-align: center; color: #777; font-size: 12px; }
-  @media print { body { margin: 12mm; } thead { display: table-header-group; } tr { page-break-inside: avoid; } }
-</style>
-</head>
-<body>
-  <div class="header">
-    <div>
-      <h1>Player Identity Report</h1>
-      <div class="meta">${escapeHtml(scopeLabel)} &middot; Generated ${escapeHtml(generatedAt)}</div>
-    </div>
-    <div class="count">${players.length} player${players.length === 1 ? "" : "s"}</div>
-  </div>
-  ${players.length === 0
-    ? `<div class="empty">No players to display.</div>`
-    : `<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyRows}</tbody></table>`}
-  <script>window.onload = function () { window.focus(); window.print(); };<\/script>
-</body>
-</html>`
-
-  const win = window.open("", "_blank")
-  if (!win) return
-  win.document.open()
-  win.document.write(html)
-  win.document.close()
 }
 
 const playerSchema = z.object({
@@ -352,27 +213,6 @@ export default function Players() {
       }
     } catch {
       toast({ title: "Failed to send invite", variant: "destructive" })
-    }
-  }
-
-  const handleSendBulkInvites = async () => {
-    const uninvited = players.filter(p => !p.onboardingInviteSentAt && p.email)
-    if (uninvited.length === 0) {
-      toast({ title: "All players with an email have been invited" })
-      return
-    }
-    const scopeLabel = selectedTeamFilter === "all" ? "across all teams" : "in the selected team"
-    if (!confirm(`Send onboarding invites to ${uninvited.length} uninvited player${uninvited.length === 1 ? "" : "s"} ${scopeLabel}?`)) return
-    try {
-      const result = await sendInvitesMutation.mutateAsync({ data: { playerIds: uninvited.map(p => p.id) } })
-      toast({
-        title: `Sent ${result.sent} of ${result.total} invites`,
-        description: result.failed > 0 ? `${result.failed} failed — check server logs` : undefined,
-        variant: result.failed > 0 ? "destructive" : "default",
-      })
-      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-    } catch {
-      toast({ title: "Failed to send invites", variant: "destructive" })
     }
   }
 
@@ -737,16 +577,7 @@ export default function Players() {
           </Button>
           <Button
             variant="outline"
-            onClick={handleSendBulkInvites}
-            disabled={sendInvitesMutation.isPending || players.length === 0}
-            title="Email a self-service onboarding link to every player who hasn't received one yet"
-          >
-            <Send className="w-4 h-4 mr-2" />
-            {sendInvitesMutation.isPending ? "Sending…" : "Invite uninvited"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => exportIdentityCSV(filteredPlayers, selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"))}
+            onClick={() => exportReportCSV({ players: filteredPlayers, columns: IDENTITY_COLUMNS, scopeLabel: selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"), filenameBase: "player-identity-report" })}
             disabled={filteredPlayers.length === 0}
             title="Download a CSV of players with date of birth, passport number and passport expiry (respects the current team filter)"
           >
@@ -754,7 +585,7 @@ export default function Players() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => exportIdentityPDF(filteredPlayers, selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"))}
+            onClick={() => exportReportPDF({ players: filteredPlayers, columns: IDENTITY_COLUMNS, title: `Player Identity Report — ${selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team")}`, scopeLabel: selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team") })}
             disabled={filteredPlayers.length === 0}
             title="Open a print-ready PDF of the identity report (respects the current filter) — use your browser's Save as PDF"
           >

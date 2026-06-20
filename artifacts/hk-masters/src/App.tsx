@@ -25,6 +25,7 @@ import LegoJar from "@/pages/LegoJar";
 import FunRun from "@/pages/FunRun";
 import Polls from "@/pages/Polls";
 import Tutorials from "@/pages/Tutorials";
+import Reports from "@/pages/Reports";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate } from "@/components/AdminAuthGate";
 
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/fun-run" component={FunRun} />
       <Route path="/polls" component={Polls} />
       <Route path="/tutorials" component={Tutorials} />
+      <Route path="/reports" component={Reports} />
       <Route component={NotFound} />
     </Switch>
   );
