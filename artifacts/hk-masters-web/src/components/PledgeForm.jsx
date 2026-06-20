@@ -210,6 +210,17 @@ function PaymentConfirmationPanel({ method, amount, donorName }) {
         alt="PayMe QR code"
         className="w-52 h-52 object-contain mx-auto rounded-xl"
       />
+      <p className="text-xs text-gray-500 mt-4">
+        On mobile?{" "}
+        <a
+          href="https://payme.hsbc/rtheil"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-[#1E3A6E] underline"
+        >
+          Tap here to open PayMe
+        </a>
+      </p>
     </div>
   );
 }
