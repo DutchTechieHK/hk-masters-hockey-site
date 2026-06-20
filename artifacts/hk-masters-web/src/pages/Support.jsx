@@ -79,6 +79,17 @@ export default function Support() {
       .catch(() => {});
   }, []);
 
+  // The Supporter Wall loads async and sits above the LEGO section, causing
+  // a layout shift that lands the browser at the wrong scroll position.
+  // Re-scroll to the hash once supporters data is settled (null → array).
+  useEffect(() => {
+    if (supporters === null) return;
+    if (!window.location.hash) return;
+    const id = window.location.hash.slice(1);
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  }, [supporters]);
+
   return (
     <div>
       {/* Page Header */}
