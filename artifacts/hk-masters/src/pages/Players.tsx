@@ -8,7 +8,7 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload, Download } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload, Download, FileText } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -145,6 +145,96 @@ function exportIdentityCSV(players: Player[]) {
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function exportIdentityPDF(players: Player[], scopeLabel: string) {
+  const generatedAt = format(new Date(), "d MMM yyyy 'at' HH:mm")
+  const headers = [
+    "Name",
+    "Team",
+    "Nationality",
+    "Date of Birth",
+    "Passport Number",
+    "Passport Expiry",
+    "Passport Status",
+  ]
+  const bodyRows = players.map(p => {
+    const status = passportStatus(p.passportExpiry)
+    const cells = [
+      p.name,
+      p.teamName ?? "",
+      p.nationality ?? "",
+      p.dateOfBirth ?? "",
+      p.passportNumber ?? "",
+      p.passportExpiry ?? "",
+      PASSPORT_STATUS_LABEL[status],
+    ]
+    const tds = cells
+      .map((c, i) => {
+        if (i === cells.length - 1) {
+          return `<td><span class="status status-${status}">${escapeHtml(String(c))}</span></td>`
+        }
+        return `<td>${escapeHtml(String(c))}</td>`
+      })
+      .join("")
+    return `<tr>${tds}</tr>`
+  }).join("")
+
+  const headHtml = headers.map(h => `<th>${escapeHtml(h)}</th>`).join("")
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Player Identity Report</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1a1a1a; margin: 32px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1a1a1a; padding-bottom: 12px; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .meta { font-size: 11px; color: #555; }
+  .count { font-size: 12px; font-weight: 600; text-align: right; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  thead th { background: #f1f1f1; text-align: left; padding: 8px 10px; border-bottom: 1px solid #ccc; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #fafafa; }
+  .status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; }
+  .status-ok { background: #dcfce7; color: #166534; }
+  .status-expiring { background: #fef9c3; color: #854d0e; }
+  .status-missing { background: #fee2e2; color: #991b1b; }
+  .empty { padding: 24px; text-align: center; color: #777; font-size: 12px; }
+  @media print { body { margin: 12mm; } thead { display: table-header-group; } tr { page-break-inside: avoid; } }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Player Identity Report</h1>
+      <div class="meta">${escapeHtml(scopeLabel)} &middot; Generated ${escapeHtml(generatedAt)}</div>
+    </div>
+    <div class="count">${players.length} player${players.length === 1 ? "" : "s"}</div>
+  </div>
+  ${players.length === 0
+    ? `<div class="empty">No players to display.</div>`
+    : `<table><thead><tr>${headHtml}</tr></thead><tbody>${bodyRows}</tbody></table>`}
+  <script>window.onload = function () { window.focus(); window.print(); };<\/script>
+</body>
+</html>`
+
+  const win = window.open("", "_blank")
+  if (!win) return
+  win.document.open()
+  win.document.write(html)
+  win.document.close()
 }
 
 const playerSchema = z.object({
@@ -660,6 +750,14 @@ export default function Players() {
             title="Download a CSV of players with date of birth, passport number and passport expiry (respects the current filter)"
           >
             <Download className="w-4 h-4 mr-2" /> Identity report
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => exportIdentityPDF(filteredPlayers, selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"))}
+            disabled={filteredPlayers.length === 0}
+            title="Open a print-ready PDF of the identity report (respects the current filter) — use your browser's Save as PDF"
+          >
+            <FileText className="w-4 h-4 mr-2" /> Identity PDF
           </Button>
           <Button onClick={openAddModal} disabled={teams.length === 0}>
             <Plus className="w-5 h-5 mr-2" /> Add Player
