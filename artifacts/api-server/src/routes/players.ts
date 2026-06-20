@@ -312,7 +312,7 @@ function mapPayment(p: typeof playerPaymentsTable.$inferSelect) {
   };
 }
 
-async function recomputePlayerAggregates(playerId: number) {
+async function recomputePlayerAggregates(playerId: number, opts: { feePaidOverride?: boolean } = {}) {
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
   if (!player) return;
   const payments = await db
@@ -323,7 +323,13 @@ async function recomputePlayerAggregates(playerId: number) {
   const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   const latestDate = payments.length > 0 ? payments[0].paymentDate : null;
   const due = player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null;
-  const feePaid = due != null ? totalPaid + 1e-6 >= due && totalPaid > 0 : totalPaid > 0;
+  let feePaid = due != null ? totalPaid + 1e-6 >= due && totalPaid > 0 : totalPaid > 0;
+  // Zero-fee participants (coaches, physios, staff) have no amount due and make
+  // no payments, so the payment ledger can never mark them paid. For them the
+  // admin's manual "Tournament Fee Fully Paid" checkbox is the source of truth.
+  if (!feePaid && totalPaid === 0 && (due == null || due <= 0) && opts.feePaidOverride === true) {
+    feePaid = true;
+  }
   await db
     .update(playersTable)
     .set({
@@ -550,10 +556,9 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   const {
     paymentAmountPaid: requestedPaid,
     paymentDate: requestedDate,
-    feePaid: _ignoredFeePaid,
+    feePaid: requestedFeePaid,
     ...directUpdate
   } = body;
-  void _ignoredFeePaid;
   // Admin-initiated passport upload: stamp passportCopyUploadedAt + isUpdate
   // so the file shows up correctly in passport timestamps. Unlike the player
   // self PATCH route we do NOT reset passportCopyReviewed (admin uploaded it
@@ -596,7 +601,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
       });
     }
   }
-  await recomputePlayerAggregates(id);
+  await recomputePlayerAggregates(id, { feePaidOverride: requestedFeePaid });
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   res.json(mapPlayer(player, team?.name));
