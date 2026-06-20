@@ -121,6 +121,9 @@ const playerSchema = z.object({
   returnArrivalDateTime: z.string().optional(),
   roomSharingPreference: z.string().optional(),
   roomSharingWith: z.string().optional(),
+  accommodationName: z.string().optional(),
+  accommodationAddress: z.string().optional(),
+  accommodationPhone: z.string().optional(),
   shirtSize: z.string().optional(),
   shortsSize: z.string().optional(),
   jacketSize: z.string().optional(),
@@ -240,6 +243,7 @@ export default function Players() {
     outboundFlightNumber: "", outboundDepartureDateTime: "",
     returnFlightNumber: "", returnArrivalDateTime: "",
     roomSharingPreference: "shared", roomSharingWith: "",
+    accommodationName: "", accommodationAddress: "", accommodationPhone: "",
     shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
     feePaid: false, passportCopyReviewed: false,
     paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
@@ -278,6 +282,9 @@ export default function Players() {
       returnArrivalDateTime: player.returnArrivalDateTime || "",
       roomSharingPreference: player.roomSharingPreference || "shared",
       roomSharingWith: player.roomSharingWith || "",
+      accommodationName: player.accommodationName || "",
+      accommodationAddress: player.accommodationAddress || "",
+      accommodationPhone: player.accommodationPhone || "",
       shirtSize: player.shirtSize || "",
       shortsSize: player.shortsSize || "",
       jacketSize: player.jacketSize || "",
@@ -1022,6 +1029,18 @@ export default function Players() {
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-semibold">Room Sharing With (Player Name)</label>
               <Input {...register("roomSharingWith")} placeholder="Preferred roommate" />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-semibold">Accommodation Name</label>
+              <Input {...register("accommodationName")} placeholder="e.g. Hotel Atlanta Rotterdam" />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-semibold">Accommodation Address</label>
+              <Input {...register("accommodationAddress")} placeholder="Street, city, postcode" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Accommodation Phone</label>
+              <Input {...register("accommodationPhone")} placeholder="+31 10 000 0000" />
             </div>
           </div>
 
