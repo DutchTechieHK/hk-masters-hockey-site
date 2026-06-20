@@ -37,7 +37,6 @@ VAPID_PUBLIC_KEY = "BENjY6mR0RhebZ3pCSZg8Z_6oxmuxWYdEOUo_lkya0oRE5LMi6jgAsmbaDzh
 VITE_PUBLIC_SITE_URL = "https://hkmastershockey.com"
 
 [userenv.development]
-EMAIL_OVERRIDE = "play@hkmastershockey.com"
 
 [[ports]]
 localPort = 8080
