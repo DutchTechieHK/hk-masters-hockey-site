@@ -112,7 +112,7 @@ const PASSPORT_STATUS_LABEL: Record<ReturnType<typeof passportStatus>, string> =
   missing: "Missing",
 }
 
-function exportIdentityCSV(players: Player[]) {
+function exportIdentityCSV(players: Player[], scopeLabel: string) {
   const headers = [
     "Name",
     "Team",
@@ -136,11 +136,12 @@ function exportIdentityCSV(players: Player[]) {
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
     .join("\n")
 
+  const slug = scopeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "all-teams"
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = "player-identity-report.csv"
+  a.download = `player-identity-report-${slug}.csv`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
@@ -745,9 +746,9 @@ export default function Players() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => exportIdentityCSV(filteredPlayers)}
+            onClick={() => exportIdentityCSV(filteredPlayers, selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"))}
             disabled={filteredPlayers.length === 0}
-            title="Download a CSV of players with date of birth, passport number and passport expiry (respects the current filter)"
+            title="Download a CSV of players with date of birth, passport number and passport expiry (respects the current team filter)"
           >
             <Download className="w-4 h-4 mr-2" /> Identity report
           </Button>
