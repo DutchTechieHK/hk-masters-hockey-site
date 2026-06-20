@@ -72,7 +72,7 @@ export default function Support() {
   const [auctionLive, setAuctionLive] = useState(false);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
+    if (!window.location.hash) window.scrollTo(0, 0);
     fetch(`${API_BASE}/api/public/auction`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setAuctionLive(!!d.isLive); })
