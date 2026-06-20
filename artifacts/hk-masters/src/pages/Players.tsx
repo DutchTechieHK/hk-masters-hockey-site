@@ -8,7 +8,7 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload, Download, FileText } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -16,7 +16,7 @@ import type { Player, FundraisingEntry } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getInitials, formatCurrency } from "@/lib/utils"
 import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
-import { passportStatus, PASSPORT_STATUS_LABEL, exportReportCSV, exportReportPDF, IDENTITY_COLUMNS } from "@/lib/reports"
+import { passportStatus, PASSPORT_STATUS_LABEL } from "@/lib/reports"
 import { format, parseISO } from "date-fns"
 
 function cloudinaryViewUrl(url: string): string {
@@ -574,22 +574,6 @@ export default function Players() {
           >
             <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             {isFetching ? "Refreshing…" : "Refresh"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => exportReportCSV({ players: filteredPlayers, columns: IDENTITY_COLUMNS, scopeLabel: selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"), filenameBase: "player-identity-report" })}
-            disabled={filteredPlayers.length === 0}
-            title="Download a CSV of players with date of birth, passport number and passport expiry (respects the current team filter)"
-          >
-            <Download className="w-4 h-4 mr-2" /> Identity report
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => exportReportPDF({ players: filteredPlayers, columns: IDENTITY_COLUMNS, title: `Player Identity Report — ${selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team")}`, scopeLabel: selectedTeamFilter === "all" ? "All teams" : (teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team") })}
-            disabled={filteredPlayers.length === 0}
-            title="Open a print-ready PDF of the identity report (respects the current filter) — use your browser's Save as PDF"
-          >
-            <FileText className="w-4 h-4 mr-2" /> Identity PDF
           </Button>
           <Button onClick={openAddModal} disabled={teams.length === 0}>
             <Plus className="w-5 h-5 mr-2" /> Add Player
