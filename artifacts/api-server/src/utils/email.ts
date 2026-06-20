@@ -859,7 +859,7 @@ export async function sendPledgeConfirmationEmail(opts: {
       </tr>
       <tr style="background-color:#f9fafb;">
         <td style="padding:12px 16px;font-size:13px;font-weight:600;color:#6b7280;border-top:1px solid #e5e7eb;">Status</td>
-        <td style="padding:12px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">Pending — a team member will be in touch</td>
+        <td style="padding:12px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">Pending — once transfer is confirmed</td>
       </tr>
     </table>
     ${noteSection}
@@ -877,7 +877,7 @@ Thank you for your generous support of the HK Masters Hockey 2026 World Cup! We'
 
 Pledge amount: ${formattedAmount}
 Reference: Pledge #${opts.pledgeId}
-Status: Pending — a team member will be in touch${opts.note ? `\n\nYour message: "${opts.note}"` : ""}
+Status: Pending — once transfer is confirmed${opts.note ? `\n\nYour message: "${opts.note}"` : ""}
 
 A member of our team will follow up with you shortly to arrange the next steps for your pledge.
 
