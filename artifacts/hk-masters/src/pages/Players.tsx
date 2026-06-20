@@ -106,6 +106,47 @@ function passportStatus(expiry?: string | null) {
   return d > PASSPORT_WARN_DATE ? "ok" : "expiring"
 }
 
+const PASSPORT_STATUS_LABEL: Record<ReturnType<typeof passportStatus>, string> = {
+  ok: "OK",
+  expiring: "Expiring",
+  missing: "Missing",
+}
+
+function exportIdentityCSV(players: Player[]) {
+  const headers = [
+    "Name",
+    "Team",
+    "Nationality",
+    "Date of Birth",
+    "Passport Number",
+    "Passport Expiry",
+    "Passport Status",
+  ]
+  const rows = players.map(p => [
+    p.name,
+    p.teamName ?? "",
+    p.nationality ?? "",
+    p.dateOfBirth ?? "",
+    p.passportNumber ?? "",
+    p.passportExpiry ?? "",
+    PASSPORT_STATUS_LABEL[passportStatus(p.passportExpiry)],
+  ])
+
+  const csv = [headers, ...rows]
+    .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = "player-identity-report.csv"
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
 const playerSchema = z.object({
   teamId: z.coerce.number().min(1, "Team selection is required"),
   name: z.string().min(1, "Name is required"),
@@ -611,6 +652,14 @@ export default function Players() {
           >
             <Send className="w-4 h-4 mr-2" />
             {sendInvitesMutation.isPending ? "Sending…" : "Invite uninvited"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => exportIdentityCSV(filteredPlayers)}
+            disabled={filteredPlayers.length === 0}
+            title="Download a CSV of players with date of birth, passport number and passport expiry (respects the current filter)"
+          >
+            <Download className="w-4 h-4 mr-2" /> Identity report
           </Button>
           <Button onClick={openAddModal} disabled={teams.length === 0}>
             <Plus className="w-5 h-5 mr-2" /> Add Player
