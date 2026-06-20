@@ -24,6 +24,9 @@ export interface UpdateSelfPlayer {
   returnFlightNumber?: string;
   returnArrivalDateTime?: string;
   roomSharingPreference?: string;
+  accommodationName?: string;
+  accommodationAddress?: string;
+  accommodationPhone?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;

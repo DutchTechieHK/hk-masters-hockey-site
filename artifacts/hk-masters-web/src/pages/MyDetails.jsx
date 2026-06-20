@@ -53,6 +53,14 @@ const SECTIONS = [
     ],
   },
   {
+    title: "Accommodation",
+    fields: [
+      { key: "accommodationName", label: "Hotel / accommodation name", type: "text", placeholder: "e.g. Marriott Rotterdam" },
+      { key: "accommodationAddress", label: "Address", type: "text", placeholder: "e.g. Weena 686, 3012 CN Rotterdam" },
+      { key: "accommodationPhone", label: "Phone number", type: "tel", placeholder: "+31 10 430 4300" },
+    ],
+  },
+  {
     title: "Kit sizes",
     fields: [
       { key: "shirtSize", label: "Shirt", type: "text", placeholder: "S / M / L / XL" },
