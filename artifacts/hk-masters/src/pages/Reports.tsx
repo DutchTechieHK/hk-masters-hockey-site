@@ -3,7 +3,7 @@ import { useListPlayers, useListTeams, getListPlayersQueryKey } from "@workspace
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
-import { Download, Printer, FileText, Plane, Phone, BedDouble, SlidersHorizontal } from "lucide-react"
+import { Download, Printer, FileText, Plane, Phone, BedDouble, SlidersHorizontal, Hotel } from "lucide-react"
 import {
   exportReportCSV,
   exportReportPDF,
@@ -11,6 +11,7 @@ import {
   FLIGHTS_COLUMNS,
   EMERGENCY_COLUMNS,
   ROOM_SHARING_COLUMNS,
+  ACCOMMODATION_COLUMNS,
   ALL_REPORT_COLUMNS,
   type ReportColumn,
 } from "@/lib/reports"
@@ -56,6 +57,14 @@ const PRESET_REPORTS: PresetReport[] = [
     icon: BedDouble,
     columns: ROOM_SHARING_COLUMNS,
     filenameBase: "player-room-sharing-report",
+  },
+  {
+    id: "accommodation",
+    title: "Accommodation",
+    description: "Hotel name, address and phone number for each player — useful for coaching staff in Rotterdam.",
+    icon: Hotel,
+    columns: ACCOMMODATION_COLUMNS,
+    filenameBase: "player-accommodation-report",
   },
 ]
 

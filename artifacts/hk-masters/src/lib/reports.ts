@@ -197,6 +197,14 @@ export const ROOM_SHARING_COLUMNS: ReportColumn[] = [
   { key: "roomSharingWith", header: "Room Sharing With", value: p => v(p.roomSharingWith) },
 ]
 
+export const ACCOMMODATION_COLUMNS: ReportColumn[] = [
+  NAME_COL,
+  TEAM_COL,
+  { key: "accommodationName", header: "Hotel Name", value: p => v(p.accommodationName) },
+  { key: "accommodationAddress", header: "Hotel Address", value: p => v(p.accommodationAddress) },
+  { key: "accommodationPhone", header: "Hotel Phone", value: p => v(p.accommodationPhone) },
+]
+
 /** Full catalogue of fields available to the build-your-own column picker. */
 export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   NAME_COL,
@@ -227,6 +235,9 @@ export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   { key: "travelDates", header: "Travel Dates", value: p => v(p.travelDates) },
   { key: "roomSharingPreference", header: "Room Sharing Preference", value: p => v(p.roomSharingPreference) },
   { key: "roomSharingWith", header: "Room Sharing With", value: p => v(p.roomSharingWith) },
+  { key: "accommodationName", header: "Hotel Name", value: p => v(p.accommodationName) },
+  { key: "accommodationAddress", header: "Hotel Address", value: p => v(p.accommodationAddress) },
+  { key: "accommodationPhone", header: "Hotel Phone", value: p => v(p.accommodationPhone) },
   { key: "shirtSize", header: "Shirt Size", value: p => v(p.shirtSize) },
   { key: "shortsSize", header: "Shorts Size", value: p => v(p.shortsSize) },
   { key: "jacketSize", header: "Jacket Size", value: p => v(p.jacketSize) },
