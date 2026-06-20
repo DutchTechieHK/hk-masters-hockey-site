@@ -105,7 +105,8 @@ export default function Reports() {
     <PageLayout
       title="Reports"
       description="Generate and export player reports for printing or sharing — filtered per team."
-      action={
+    >
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
         <Select
           className="sm:w-56 bg-white"
           value={selectedTeamFilter}
@@ -118,17 +119,16 @@ export default function Reports() {
             </option>
           ))}
         </Select>
-      }
-    >
-      <div className="mb-6 text-sm text-muted-foreground">
-        {isLoading ? (
-          "Loading players…"
-        ) : (
-          <>
-            Reporting on <span className="font-semibold text-foreground">{scopeLabel}</span> ·{" "}
-            {sortedPlayers.length} player{sortedPlayers.length === 1 ? "" : "s"}
-          </>
-        )}
+        <span className="text-sm text-muted-foreground">
+          {isLoading ? (
+            "Loading players…"
+          ) : (
+            <>
+              Reporting on <span className="font-semibold text-foreground">{scopeLabel}</span> ·{" "}
+              {sortedPlayers.length} player{sortedPlayers.length === 1 ? "" : "s"}
+            </>
+          )}
+        </span>
       </div>
 
       {/* Preset reports */}
