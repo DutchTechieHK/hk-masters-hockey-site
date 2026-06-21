@@ -64,6 +64,13 @@ export const GRID_CRITERIA: GridCriterion[] = [
     severity: "amber",
     pass: (p) => !!p.shirtSize && !!p.shortsSize && !!p.jacketSize && !!p.poloSize && !!p.trackTopSize,
   },
+  {
+    key: "insurance",
+    label: "Insurance coverage",
+    short: "Insurance",
+    severity: "amber",
+    pass: (p) => !!p.insuranceProvider && !!p.insurancePolicyNumber,
+  },
 ]
 
 export function computeReadiness(p: Player): Record<string, boolean> {
