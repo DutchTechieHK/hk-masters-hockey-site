@@ -3,7 +3,7 @@ import { useListPlayers, useListTeams, getListPlayersQueryKey } from "@workspace
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
-import { Download, Printer, FileText, Plane, Phone, BedDouble, SlidersHorizontal, Hotel } from "lucide-react"
+import { Download, Printer, FileText, Plane, Phone, BedDouble, SlidersHorizontal, Hotel, ShieldCheck } from "lucide-react"
 import {
   exportReportCSV,
   exportReportPDF,
@@ -12,6 +12,7 @@ import {
   EMERGENCY_COLUMNS,
   ROOM_SHARING_COLUMNS,
   ACCOMMODATION_COLUMNS,
+  INSURANCE_COLUMNS,
   ALL_REPORT_COLUMNS,
   type ReportColumn,
 } from "@/lib/reports"
@@ -65,6 +66,14 @@ const PRESET_REPORTS: PresetReport[] = [
     icon: Hotel,
     columns: ACCOMMODATION_COLUMNS,
     filenameBase: "player-accommodation-report",
+  },
+  {
+    id: "insurance",
+    title: "Insurance",
+    description: "Provider, policy number, 24/7 emergency phone, policy holder, expiry date and claims email.",
+    icon: ShieldCheck,
+    columns: INSURANCE_COLUMNS,
+    filenameBase: "player-insurance-report",
   },
 ]
 

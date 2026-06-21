@@ -205,6 +205,17 @@ export const ACCOMMODATION_COLUMNS: ReportColumn[] = [
   { key: "accommodationPhone", header: "Hotel Phone", value: p => v(p.accommodationPhone) },
 ]
 
+export const INSURANCE_COLUMNS: ReportColumn[] = [
+  NAME_COL,
+  TEAM_COL,
+  { key: "insuranceProvider", header: "Insurance Provider", value: p => v(p.insuranceProvider) },
+  { key: "insurancePolicyNumber", header: "Policy Number", value: p => v(p.insurancePolicyNumber) },
+  { key: "insuranceEmergencyPhone", header: "24/7 Emergency Phone", value: p => v(p.insuranceEmergencyPhone) },
+  { key: "insurancePolicyHolder", header: "Policy Holder", value: p => v(p.insurancePolicyHolder) },
+  { key: "insuranceExpiry", header: "Policy Expiry", value: p => v(p.insuranceExpiry) },
+  { key: "insuranceEmail", header: "Insurance Email", value: p => v(p.insuranceEmail) },
+]
+
 /** Full catalogue of fields available to the build-your-own column picker. */
 export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   NAME_COL,
@@ -252,4 +263,10 @@ export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   { key: "instagramHandle", header: "Instagram", value: p => v(p.instagramHandle) },
   { key: "facebookHandle", header: "Facebook", value: p => v(p.facebookHandle) },
   { key: "notes", header: "Notes", value: p => v(p.notes) },
+  { key: "insuranceProvider", header: "Insurance Provider", value: p => v(p.insuranceProvider) },
+  { key: "insurancePolicyNumber", header: "Policy Number", value: p => v(p.insurancePolicyNumber) },
+  { key: "insuranceEmergencyPhone", header: "24/7 Emergency Phone", value: p => v(p.insuranceEmergencyPhone) },
+  { key: "insurancePolicyHolder", header: "Policy Holder", value: p => v(p.insurancePolicyHolder) },
+  { key: "insuranceExpiry", header: "Policy Expiry", value: p => v(p.insuranceExpiry) },
+  { key: "insuranceEmail", header: "Insurance Email", value: p => v(p.insuranceEmail) },
 ]
