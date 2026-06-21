@@ -12,6 +12,7 @@ import {
   ListPlayersQueryParams,
   SendTravelRemindersBody,
   SendFeeRemindersBody,
+  SendInsuranceRemindersBody,
   SendOnboardingInvitesBody,
   UpdateSelfPlayerBody,
   CreatePlayerPaymentBody,
@@ -20,7 +21,7 @@ import {
   DeletePlayerPaymentParams,
   SendBulkEmailBody,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -568,6 +569,49 @@ router.post("/send-fee-reminders", requireSession, async (req, res) => {
   }
 
   console.log(`[fee-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
+  res.json({ sent, failed, total: players.length });
+});
+
+router.post("/send-insurance-reminders", requireSession, async (req, res) => {
+  const { playerIds } = SendInsuranceRemindersBody.parse(req.body ?? {});
+
+  const missingCondition = or(
+    isNull(playersTable.insuranceProvider),
+    eq(playersTable.insuranceProvider, "")
+  )!;
+
+  const whereClause = playerIds && playerIds.length > 0
+    ? and(inArray(playersTable.id, playerIds), missingCondition)
+    : missingCondition;
+
+  const players = await db
+    .select({ player: playersTable, teamName: teamsTable.name })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(whereClause);
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const { player, teamName } of players) {
+    if (!player.email) { failed++; continue; }
+    let accessToken = player.accessToken;
+    if (!accessToken) {
+      accessToken = crypto.randomUUID();
+      await db.update(playersTable).set({ accessToken }).where(eq(playersTable.id, player.id));
+    }
+    const portalUrl = `${process.env.PUBLIC_URL || "https://www.hkmastershockey.com"}/my-details/${encodeURIComponent(accessToken)}`;
+    const success = await sendInsuranceReminderEmail({
+      playerName: player.name,
+      playerEmail: player.email,
+      teamName: teamName ?? "your team",
+      portalUrl,
+    });
+    if (success) sent++; else failed++;
+    await new Promise((r) => setTimeout(r, 600));
+  }
+
+  console.log(`[insurance-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
   res.json({ sent, failed, total: players.length });
 });
 

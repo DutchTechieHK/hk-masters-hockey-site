@@ -312,6 +312,24 @@ export const SendFeeRemindersResponse = zod.object({
 });
 
 /**
+ * @summary Send insurance reminder emails to players missing insurance details
+ */
+export const SendInsuranceRemindersBody = zod.object({
+  playerIds: zod
+    .array(zod.number())
+    .optional()
+    .describe(
+      "Specific player IDs to email. If omitted, emails all players with no insuranceProvider set.",
+    ),
+});
+
+export const SendInsuranceRemindersResponse = zod.object({
+  sent: zod.number(),
+  failed: zod.number(),
+  total: zod.number(),
+});
+
+/**
  * @summary Get a player's editable details by access token (no auth)
  */
 export const GetSelfPlayerParams = zod.object({

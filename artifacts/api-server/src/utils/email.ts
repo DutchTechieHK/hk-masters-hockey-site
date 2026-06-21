@@ -666,6 +666,76 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendInsuranceReminderEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  teamName: string;
+  portalUrl?: string | null;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const safeTeam = escapeHtml(opts.teamName);
+  const detailsUrl = opts.portalUrl || PUBLIC_URL;
+
+  const html = emailShell(
+    "#006B3C",
+    "Insurance details needed",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      We're writing on behalf of <strong>${safeTeam}</strong> ahead of the <strong>HK 2026 Masters World Cup</strong>.
+    </p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Our records show that your <strong>travel insurance details have not yet been submitted</strong>. All players are required to hold valid travel and medical insurance for the tournament, and we need these details on file before we depart.
+    </p>
+    <p style="margin:0 0 8px 0;font-size:15px;color:#374151;line-height:1.7;">Please log in to your self-service portal and add your insurance information — you'll need:</p>
+    <ul style="margin:0 0 24px 0;padding-left:20px;font-size:15px;color:#374151;line-height:1.8;">
+      <li>Insurance provider name</li>
+      <li>Policy number</li>
+      <li>Policy holder name</li>
+      <li>Policy expiry date</li>
+      <li>24/7 emergency phone number</li>
+      <li>Insurance email / claims contact</li>
+    </ul>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="${detailsUrl}" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Add my insurance details</a>
+    </p>
+    <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;line-height:1.6;">
+      If you have any questions, just reply to this email and we'll help you out.
+    </p>
+    <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
+      We look forward to seeing you in Rotterdam!
+    </p>`
+  );
+
+  const text = `Hi ${opts.playerName},
+
+We're writing on behalf of ${opts.teamName} ahead of the HK 2026 Masters World Cup.
+
+Our records show that your travel insurance details have not yet been submitted. All players are required to hold valid travel and medical insurance for the tournament, and we need these details on file before we depart.
+
+Please log in to your self-service portal and add your insurance information — you'll need:
+- Insurance provider name
+- Policy number
+- Policy holder name
+- Policy expiry date
+- 24/7 emergency phone number
+- Insurance email / claims contact
+
+Add your details here: ${detailsUrl}
+
+If you have any questions, just reply to this email and we'll help you out.
+
+We look forward to seeing you in Rotterdam!
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject: `[Action Required] Please submit your insurance details – HK 2026 Masters World Cup`,
+    html,
+    text,
+  });
+}
+
 export async function sendFeeReminderEmail(opts: {
   playerName: string;
   playerEmail: string;

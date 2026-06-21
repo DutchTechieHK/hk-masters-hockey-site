@@ -185,6 +185,8 @@ export default function Players() {
   })
   const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
+  const [insuranceReminderModalOpen, setInsuranceReminderModalOpen] = useState(false)
+  const [insuranceReminderSending, setInsuranceReminderSending] = useState(false)
 
   const acknowledgePassport = (playerId: number) => {
     setPassportAck(playerId)
@@ -264,6 +266,37 @@ export default function Players() {
       ? a.name.localeCompare(b.name)
       : b.name.localeCompare(a.name)
     )
+
+  const playersWithoutInsurance = players.filter(p => !p.insuranceProvider)
+
+  const handleSendInsuranceReminders = async () => {
+    if (playersWithoutInsurance.length === 0) return
+    setInsuranceReminderSending(true)
+    try {
+      const token = sessionToken
+      const res = await fetch("/api/players/send-insurance-reminders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "x-session-token": token } : {}),
+        },
+        body: JSON.stringify({ playerIds: playersWithoutInsurance.map(p => p.id) }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error((data as { error?: string }).error || "Failed to send reminders")
+      const { sent, failed } = data as { sent: number; failed: number }
+      if (failed > 0) {
+        toast({ title: `Sent to ${sent} player${sent !== 1 ? "s" : ""} — ${failed} failed`, variant: "destructive" })
+      } else {
+        toast({ title: `Insurance reminder sent to ${sent} player${sent !== 1 ? "s" : ""}` })
+      }
+      setInsuranceReminderModalOpen(false)
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to send reminders", variant: "destructive" })
+    } finally {
+      setInsuranceReminderSending(false)
+    }
+  }
 
   const blankForm = (): Partial<PlayerFormValues> => ({
     teamId: teams.length > 0 ? teams[0].id : 0,
@@ -658,6 +691,15 @@ export default function Players() {
             <option value="missing">Missing Insurance</option>
             <option value="expired">Expired Insurance</option>
           </Select>
+          {playersWithoutInsurance.length > 0 && (
+            <button
+              onClick={() => setInsuranceReminderModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-medium border bg-amber-600 text-white border-amber-700 hover:bg-amber-700 transition-all shrink-0"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Remind {playersWithoutInsurance.length} player{playersWithoutInsurance.length !== 1 ? "s" : ""}
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -1274,6 +1316,49 @@ export default function Players() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Insurance reminder modal */}
+      <Modal
+        isOpen={insuranceReminderModalOpen}
+        onClose={() => setInsuranceReminderModalOpen(false)}
+        title="Send insurance reminder"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This will send a reminder email to{" "}
+            <strong className="text-foreground">{playersWithoutInsurance.length} player{playersWithoutInsurance.length !== 1 ? "s" : ""}</strong>{" "}
+            who have no insurance provider on file.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Each email will include a personal link directly to the player's My Details page so they can fill in their insurance information immediately.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <p className="text-xs font-semibold text-amber-800 mb-1">Players who will be emailed:</p>
+            <ul className="text-xs text-amber-700 space-y-0.5 max-h-32 overflow-y-auto">
+              {playersWithoutInsurance.map(p => (
+                <li key={p.id}>{p.name}{p.teamName ? ` — ${p.teamName}` : ""}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setInsuranceReminderModalOpen(false)}
+              disabled={insuranceReminderSending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSendInsuranceReminders}
+              disabled={insuranceReminderSending}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {insuranceReminderSending ? "Sending…" : `Send to ${playersWithoutInsurance.length} player${playersWithoutInsurance.length !== 1 ? "s" : ""}`}
+            </Button>
+          </div>
+        </div>
       </Modal>
     </PageLayout>
   )
