@@ -728,6 +728,7 @@ export default function Fundraising() {
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Team Totals</p>
                   <p className="text-xs text-muted-foreground mt-0.5">Team-level pledges plus pledges for individual players on each team</p>
                 </div>
+                <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
                     <tr>
@@ -838,6 +839,7 @@ export default function Fundraising() {
                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Individual Players</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Pledges designated for a specific player · sorted by total pledged</p>
                   </div>
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
                       <tr>
@@ -950,6 +952,7 @@ export default function Fundraising() {
                       </tr>
                     </tfoot>
                   </table>
+                  </div>
                 </div>
               )}
             </>
