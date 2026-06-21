@@ -8,7 +8,7 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
+import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, ShieldAlert, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -151,6 +151,15 @@ const playerSchema = z.object({
 
 type PlayerFormValues = z.infer<typeof playerSchema>
 
+function insuranceStatus(player: Player): "ok" | "missing" | "expired" {
+  if (!player.insuranceProvider) return "missing"
+  if (player.insuranceExpiry) {
+    const d = new Date(player.insuranceExpiry)
+    if (!isNaN(d.getTime()) && d < new Date()) return "expired"
+  }
+  return "ok"
+}
+
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <h4 className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border pb-2 mt-6 mb-3">
@@ -166,6 +175,14 @@ export default function Players() {
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
+  const [insuranceFilter, setInsuranceFilter] = useState<"all" | "missing" | "expired" | "issues">(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const v = params.get("insurance")
+      if (v === "missing" || v === "expired" || v === "issues") return v
+    } catch { /* noop */ }
+    return "all"
+  })
   const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
 
@@ -235,6 +252,14 @@ export default function Players() {
       p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (p.nationality || "").toLowerCase().includes(searchQuery.toLowerCase())
     )
+    .filter(p => {
+      if (insuranceFilter === "all") return true
+      const status = insuranceStatus(p)
+      if (insuranceFilter === "missing") return status === "missing"
+      if (insuranceFilter === "expired") return status === "expired"
+      if (insuranceFilter === "issues") return status === "missing" || status === "expired"
+      return true
+    })
     .sort((a, b) => sortOrder === "asc"
       ? a.name.localeCompare(b.name)
       : b.name.localeCompare(a.name)
@@ -605,8 +630,8 @@ export default function Players() {
       <div className="bg-white rounded-2xl shadow-sm border border-border flex flex-col min-h-[500px] overflow-hidden">
 
         {/* Filters */}
-        <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-4 bg-muted/20">
-          <div className="relative flex-1">
+        <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-4 bg-muted/20 flex-wrap">
+          <div className="relative flex-1 min-w-48">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by name, email or nationality..."
@@ -616,12 +641,22 @@ export default function Players() {
             />
           </div>
           <Select
-            className="sm:w-64 bg-white"
+            className="sm:w-52 bg-white"
             value={selectedTeamFilter}
             onChange={(e) => setSelectedTeamFilter(e.target.value)}
           >
             <option value="all">All Teams</option>
             {teams.map(t => <option key={t.id} value={t.id.toString()}>{t.name}</option>)}
+          </Select>
+          <Select
+            className="sm:w-52 bg-white"
+            value={insuranceFilter}
+            onChange={(e) => setInsuranceFilter(e.target.value as typeof insuranceFilter)}
+          >
+            <option value="all">All Insurance</option>
+            <option value="issues">⚠ Missing or Expired</option>
+            <option value="missing">Missing Insurance</option>
+            <option value="expired">Expired Insurance</option>
           </Select>
         </div>
 
@@ -645,6 +680,7 @@ export default function Players() {
                 <th className="px-4 py-4 font-semibold hidden lg:table-cell">Nationality</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
                 <th className="px-4 py-4 font-semibold">Fee</th>
+                <th className="px-4 py-4 font-semibold hidden xl:table-cell">Insurance</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Passport Expiry</th>
                 <th className="px-4 py-4 font-semibold text-right">Actions</th>
               </tr>
@@ -652,11 +688,11 @@ export default function Players() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading players...</td>
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">Loading players...</td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
                     {players.length === 0 ? "No players yet. Add your first player to get started." : "No players match your search."}
                   </td>
                 </tr>
@@ -734,6 +770,33 @@ export default function Players() {
                         ) : (
                           <Badge variant="destructive" className="gap-1 whitespace-nowrap bg-rose-100 text-rose-800"><XCircle className="w-3 h-3" /> Unpaid</Badge>
                         )}
+                      </td>
+                      {/* Insurance */}
+                      <td className="px-4 py-4 hidden xl:table-cell">
+                        {(() => {
+                          const status = insuranceStatus(player)
+                          if (status === "ok") return (
+                            <div className="flex items-center gap-1.5 text-emerald-700">
+                              <Shield className="w-4 h-4" />
+                              <span className="text-sm font-medium">{player.insuranceProvider}</span>
+                            </div>
+                          )
+                          if (status === "expired") return (
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5 text-rose-600">
+                                <ShieldAlert className="w-4 h-4" />
+                                <span className="text-sm font-medium">Expired</span>
+                              </div>
+                              <span className="text-[10px] text-rose-500">{player.insuranceExpiry}</span>
+                            </div>
+                          )
+                          return (
+                            <div className="flex items-center gap-1.5 text-amber-600">
+                              <ShieldAlert className="w-4 h-4" />
+                              <span className="text-sm font-medium">Missing</span>
+                            </div>
+                          )
+                        })()}
                       </td>
                       {/* Passport Expiry */}
                       <td className="px-4 py-4 hidden xl:table-cell">

@@ -1,6 +1,6 @@
 import { useGetDashboard, useListPlayers, useListKits, useGetFunRunSummary } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, Package, FileText, Gavel, Footprints, Building2 } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, ShieldAlert, Package, FileText, Gavel, Footprints, Building2 } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -24,6 +24,17 @@ export default function Dashboard() {
   const readinessStats = useMemo(() => {
     const ready = players.filter(isFullyReady).length
     return { ready, total: players.length }
+  }, [players])
+
+  const insuranceStats = useMemo(() => {
+    const today = new Date()
+    const missing = players.filter(p => !p.insuranceProvider).length
+    const expired = players.filter(p => {
+      if (!p.insuranceProvider || !p.insuranceExpiry) return false
+      const d = new Date(p.insuranceExpiry)
+      return !isNaN(d.getTime()) && d < today
+    }).length
+    return { missing, expired, issues: missing + expired }
   }, [players])
 
   const kitStats = useMemo(() => {
@@ -419,6 +430,62 @@ export default function Dashboard() {
                 <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
                   View fun run <ArrowRight className="w-3 h-3" />
                 </p>
+              </div>
+            </button>
+          )}
+
+          {/* Insurance summary card */}
+          {players.length > 0 && (
+            <button
+              className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+              onClick={() => navigate("/players?insurance=issues")}
+            >
+              <div className="p-6 border-b border-border flex items-center justify-between">
+                <h2 className="text-xl font-display font-bold">Insurance</h2>
+                <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                  <ShieldAlert className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="p-6">
+                {insuranceStats.issues === 0 ? (
+                  <div className="flex items-center gap-2 text-emerald-700">
+                    <ShieldCheck className="w-5 h-5" />
+                    <p className="text-sm font-medium">All players have valid insurance</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-end gap-2 mb-4">
+                      <p className="text-4xl font-bold text-rose-600">{insuranceStats.issues}</p>
+                      <p className="text-lg text-muted-foreground font-medium mb-1">
+                        {insuranceStats.issues === 1 ? "player needs attention" : "players need attention"}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {insuranceStats.missing > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
+                            No insurance on file
+                          </span>
+                          <span className="text-sm font-semibold text-amber-700">{insuranceStats.missing}</span>
+                        </div>
+                      )}
+                      {insuranceStats.expired > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                            Policy expired
+                          </span>
+                          <span className="text-sm font-semibold text-rose-700">{insuranceStats.expired}</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
+                      View affected players <ArrowRight className="w-3 h-3" />
+                    </p>
+                  </>
+                )}
               </div>
             </button>
           )}
