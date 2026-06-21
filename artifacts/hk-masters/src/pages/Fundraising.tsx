@@ -831,6 +831,7 @@ export default function Fundraising() {
                     })}
                   </tbody>
                 </table>
+                </div>
               </div>
 
               {playerRows.length > 0 && (
