@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { useListEmailBlasts, useListOnboardingInviteLog } from "@workspace/api-client-react"
 import type { OnboardingInviteLogItem } from "@workspace/api-client-react"
 import { format } from "date-fns"
-import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send, CheckCircle, LogIn } from "lucide-react"
+import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send, CheckCircle, LogIn, ShieldCheck } from "lucide-react"
 import type { EmailBlastItem } from "@workspace/api-client-react"
 
 function audienceLabel(blast: EmailBlastItem): string {
@@ -13,6 +13,14 @@ function audienceLabel(blast: EmailBlastItem): string {
       return `${ids.length} player${ids.length !== 1 ? "s" : ""} invited`
     } catch {
       return "Players invited"
+    }
+  }
+  if (blast.audienceType === "insurance-reminder") {
+    try {
+      const ids: number[] = JSON.parse(blast.playerIds ?? "[]")
+      return `${ids.length} player${ids.length !== 1 ? "s" : ""} reminded`
+    } catch {
+      return "Players reminded"
     }
   }
   if (blast.audienceType === "all") return "All players"
@@ -42,6 +50,7 @@ function audienceLabel(blast: EmailBlastItem): string {
 
 function AudienceIcon({ audienceType }: { audienceType: string }) {
   if (audienceType === "onboarding") return <Send className="w-3.5 h-3.5" />
+  if (audienceType === "insurance-reminder") return <ShieldCheck className="w-3.5 h-3.5" />
   if (audienceType === "all") return <Users className="w-3.5 h-3.5" />
   if (audienceType === "teams") return <Users className="w-3.5 h-3.5" />
   return <User className="w-3.5 h-3.5" />
@@ -201,6 +210,7 @@ export default function EmailHistory() {
               const hasFailed = blast.failedCount > 0
               const allSent = blast.failedCount === 0 && blast.sentCount > 0
               const isOnboarding = blast.audienceType === "onboarding"
+              const isInsuranceReminder = blast.audienceType === "insurance-reminder"
 
               return (
                 <div
@@ -229,6 +239,11 @@ export default function EmailHistory() {
                         {isOnboarding && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
                             <Send className="w-2.5 h-2.5" /> Onboarding
+                          </span>
+                        )}
+                        {isInsuranceReminder && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+                            <ShieldCheck className="w-2.5 h-2.5" /> Insurance Reminder
                           </span>
                         )}
                       </div>
@@ -272,7 +287,7 @@ export default function EmailHistory() {
                     <div className="px-5 pb-5 pt-0">
                       <div className="border-t border-border pt-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                          {isOnboarding ? "Delivery summary" : "Message body"}
+                          {isOnboarding || isInsuranceReminder ? "Delivery summary" : "Message body"}
                         </p>
                         <div className="bg-muted/30 rounded-xl border border-border px-4 py-3 text-sm text-foreground whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto">
                           {blast.body}
