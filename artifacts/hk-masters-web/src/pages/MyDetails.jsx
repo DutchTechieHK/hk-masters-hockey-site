@@ -18,23 +18,6 @@ function cloudinaryViewUrl(url) {
 
 const SECTIONS = [
   {
-    title: "Outbound flight (Hong Kong → Europe)",
-    fields: [
-      { key: "outboundFlightNumber", label: "Flight number", type: "text", placeholder: "e.g. KL888" },
-      { key: "outboundDepartureDateTime", label: "Departs Hong Kong (HKT)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.outboundDepartureDateTime },
-      { key: "flightArrivalDateTime", label: "Arrives in Europe (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightArrivalDateTime },
-      { key: "arrivalCity", label: "Arrival city / airport", type: "text", placeholder: "e.g. Amsterdam Schiphol (AMS)" },
-    ],
-  },
-  {
-    title: "Return flight (Europe → Hong Kong)",
-    fields: [
-      { key: "returnFlightNumber", label: "Flight number", type: "text", placeholder: "e.g. KL887" },
-      { key: "flightDepartureDateTime", label: "Departs Europe (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightDepartureDateTime },
-      { key: "returnArrivalDateTime", label: "Arrives Hong Kong (HKT)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.returnArrivalDateTime },
-    ],
-  },
-  {
     title: "Passport & personal",
     fields: [
       { key: "name", label: "Full name", type: "text", placeholder: "Your full name" },
@@ -53,11 +36,34 @@ const SECTIONS = [
     ],
   },
   {
+    title: "Travel",
+    fields: [
+      { key: "outboundFlightNumber", label: "Outbound flight number (HK → Europe)", type: "text", placeholder: "e.g. KL888" },
+      { key: "outboundDepartureDateTime", label: "Departs Hong Kong (HKT)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.outboundDepartureDateTime },
+      { key: "flightArrivalDateTime", label: "Arrives in Europe (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightArrivalDateTime },
+      { key: "arrivalCity", label: "Arrival city / airport", type: "text", placeholder: "e.g. Amsterdam Schiphol (AMS)" },
+      { key: "returnFlightNumber", label: "Return flight number (Europe → HK)", type: "text", placeholder: "e.g. KL887" },
+      { key: "flightDepartureDateTime", label: "Departs Europe (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightDepartureDateTime },
+      { key: "returnArrivalDateTime", label: "Arrives Hong Kong (HKT)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.returnArrivalDateTime },
+    ],
+  },
+  {
     title: "Accommodation",
     fields: [
       { key: "accommodationName", label: "Hotel / accommodation name", type: "text", placeholder: "e.g. Marriott Rotterdam" },
       { key: "accommodationAddress", label: "Address", type: "text", placeholder: "e.g. Weena 686, 3012 CN Rotterdam" },
       { key: "accommodationPhone", label: "Phone number", type: "tel", placeholder: "+31 10 430 4300" },
+    ],
+  },
+  {
+    title: "Travel & medical insurance",
+    fields: [
+      { key: "insuranceProvider", label: "Insurance provider", type: "text", placeholder: "e.g. AXA, Zurich, HSBC Insurance" },
+      { key: "insurancePolicyNumber", label: "Policy number", type: "text", placeholder: "e.g. POL-12345678" },
+      { key: "insuranceEmergencyPhone", label: "24/7 emergency assistance phone", type: "tel", placeholder: "+852 XXXX XXXX" },
+      { key: "insurancePolicyHolder", label: "Policy holder name (if different from you)", type: "text", placeholder: "Full name on policy" },
+      { key: "insuranceExpiry", label: "Policy expiry date", type: "date", placeholder: "" },
+      { key: "insuranceEmail", label: "General contact email", type: "email", placeholder: "claims@insurer.com" },
     ],
   },
   {

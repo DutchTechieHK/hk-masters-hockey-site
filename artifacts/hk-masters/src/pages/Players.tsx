@@ -124,6 +124,12 @@ const playerSchema = z.object({
   accommodationName: z.string().optional(),
   accommodationAddress: z.string().optional(),
   accommodationPhone: z.string().optional(),
+  insuranceProvider: z.string().optional(),
+  insurancePolicyNumber: z.string().optional(),
+  insuranceEmergencyPhone: z.string().optional(),
+  insurancePolicyHolder: z.string().optional(),
+  insuranceExpiry: z.string().optional(),
+  insuranceEmail: z.string().optional(),
   shirtSize: z.string().optional(),
   shortsSize: z.string().optional(),
   jacketSize: z.string().optional(),
@@ -244,6 +250,8 @@ export default function Players() {
     returnFlightNumber: "", returnArrivalDateTime: "",
     roomSharingPreference: "shared", roomSharingWith: "",
     accommodationName: "", accommodationAddress: "", accommodationPhone: "",
+    insuranceProvider: "", insurancePolicyNumber: "", insuranceEmergencyPhone: "",
+    insurancePolicyHolder: "", insuranceExpiry: "", insuranceEmail: "",
     shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
     feePaid: false, passportCopyReviewed: false,
     paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
@@ -285,6 +293,12 @@ export default function Players() {
       accommodationName: player.accommodationName || "",
       accommodationAddress: player.accommodationAddress || "",
       accommodationPhone: player.accommodationPhone || "",
+      insuranceProvider: player.insuranceProvider || "",
+      insurancePolicyNumber: player.insurancePolicyNumber || "",
+      insuranceEmergencyPhone: player.insuranceEmergencyPhone || "",
+      insurancePolicyHolder: player.insurancePolicyHolder || "",
+      insuranceExpiry: player.insuranceExpiry || "",
+      insuranceEmail: player.insuranceEmail || "",
       shirtSize: player.shirtSize || "",
       shortsSize: player.shortsSize || "",
       jacketSize: player.jacketSize || "",
@@ -904,7 +918,7 @@ export default function Players() {
             </div>
           </div>
 
-          <SectionHeading>Passport & Emergency Contact</SectionHeading>
+          <SectionHeading>Passport</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Number</label>
@@ -967,6 +981,10 @@ export default function Players() {
                 )}
               </div>
             )}
+          </div>
+
+          <SectionHeading>Emergency Contact</SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Emergency Contact Name</label>
               <Input {...register("emergencyContactName")} placeholder="John Doe" />
@@ -977,8 +995,13 @@ export default function Players() {
             </div>
           </div>
 
-          <SectionHeading>Outbound Flight (Hong Kong → Europe)</SectionHeading>
+          <SectionHeading>Travel</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-semibold">Travel Dates (Summary)</label>
+              <Input {...register("travelDates")} placeholder="e.g. 10 Jul – 25 Jul" />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Outbound (Hong Kong → Europe)</p>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Flight Number</label>
               <Input {...register("outboundFlightNumber")} placeholder="e.g. KL888" />
@@ -995,10 +1018,7 @@ export default function Players() {
               <label className="text-sm font-semibold">Arrival City/Airport</label>
               <Input {...register("arrivalCity")} placeholder="e.g. Amsterdam Schiphol (AMS)" />
             </div>
-          </div>
-
-          <SectionHeading>Return Flight (Europe → Hong Kong)</SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Return (Europe → Hong Kong)</p>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Flight Number</label>
               <Input {...register("returnFlightNumber")} placeholder="e.g. KL887" />
@@ -1016,17 +1036,13 @@ export default function Players() {
           <SectionHeading>Accommodation</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Travel Dates (Summary)</label>
-              <Input {...register("travelDates")} placeholder="e.g. 10 Jul – 25 Jul" />
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-semibold">Room Sharing Preference</label>
               <Select {...register("roomSharingPreference")}>
                 <option value="shared">Shared</option>
                 <option value="single">Single</option>
               </Select>
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <label className="text-sm font-semibold">Room Sharing With (Player Name)</label>
               <Input {...register("roomSharingWith")} placeholder="Preferred roommate" />
             </div>
@@ -1041,6 +1057,34 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Accommodation Phone</label>
               <Input {...register("accommodationPhone")} placeholder="+31 10 000 0000" />
+            </div>
+          </div>
+
+          <SectionHeading>Insurance</SectionHeading>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-semibold">Insurance Provider</label>
+              <Input {...register("insuranceProvider")} placeholder="e.g. AXA, Zurich, HSBC Insurance" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Policy Number</label>
+              <Input {...register("insurancePolicyNumber")} placeholder="e.g. POL-12345678" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">24/7 Emergency Assistance Phone</label>
+              <Input {...register("insuranceEmergencyPhone")} placeholder="+852 XXXX XXXX" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Policy Holder Name <span className="text-muted-foreground font-normal">(if different from player)</span></label>
+              <Input {...register("insurancePolicyHolder")} placeholder="Full name on policy" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Policy Expiry Date</label>
+              <Input type="date" {...register("insuranceExpiry")} />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-semibold">General Contact Email</label>
+              <Input type="email" {...register("insuranceEmail")} placeholder="claims@insurer.com" />
             </div>
           </div>
 

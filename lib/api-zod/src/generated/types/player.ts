@@ -37,6 +37,12 @@ export interface Player {
   accommodationName?: string;
   accommodationAddress?: string;
   accommodationPhone?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceEmergencyPhone?: string;
+  insurancePolicyHolder?: string;
+  insuranceExpiry?: string;
+  insuranceEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
