@@ -324,6 +324,67 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Insurance summary card */}
+        {player && (() => {
+          const hasInsurance = player.insuranceProvider || player.insurancePolicyNumber || player.insuranceExpiry;
+          const isMissing = !hasInsurance;
+          const expiryStr = player.insuranceExpiry
+            ? new Date(player.insuranceExpiry).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+            : null;
+          const expirySoon = player.insuranceExpiry && (() => {
+            const diff = new Date(player.insuranceExpiry) - new Date();
+            return diff > 0 && diff < 60 * 24 * 60 * 60 * 1000;
+          })();
+          const expired = player.insuranceExpiry && new Date(player.insuranceExpiry) < new Date();
+          return (
+            <button
+              onClick={() => player.accessToken && setLocation(`/my-details/${encodeURIComponent(player.accessToken)}`)}
+              className={`w-full text-left mb-4 flex items-start gap-3 rounded-2xl px-5 py-4 border transition group ${
+                isMissing
+                  ? "bg-amber-50 border-amber-200 hover:bg-amber-100"
+                  : expired
+                  ? "bg-red-50 border-red-200 hover:bg-red-100"
+                  : expirySoon
+                  ? "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                  : "bg-white border-gray-100 hover:shadow-md hover:border-green-200"
+              }`}
+            >
+              <span className="text-xl mt-0.5">🛡️</span>
+              <div className="flex-1 min-w-0">
+                <p className={`font-semibold ${isMissing ? "text-amber-800" : expired ? "text-red-800" : "text-gray-900"}`}>
+                  Travel &amp; medical insurance
+                </p>
+                {isMissing ? (
+                  <p className="text-sm text-amber-700 mt-0.5">No insurance details on file — please add your policy information.</p>
+                ) : (
+                  <div className="mt-1 space-y-0.5">
+                    {player.insuranceProvider && (
+                      <p className="text-sm text-gray-700">{player.insuranceProvider}</p>
+                    )}
+                    {player.insurancePolicyNumber && (
+                      <p className="text-sm text-gray-500">Policy: {player.insurancePolicyNumber}</p>
+                    )}
+                    {expiryStr && (
+                      <p className={`text-sm ${expired ? "text-red-600 font-medium" : expirySoon ? "text-yellow-700 font-medium" : "text-gray-500"}`}>
+                        {expired ? "Expired" : "Expires"}: {expiryStr}
+                        {expired && " — please update your policy"}
+                        {!expired && expirySoon && " — expiring soon"}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              <span className={`text-sm font-medium self-center shrink-0 ${
+                isMissing ? "text-amber-500 group-hover:text-amber-700"
+                : expired ? "text-red-400 group-hover:text-red-600"
+                : "text-gray-400 group-hover:text-gray-600"
+              }`}>
+                {isMissing ? "Add →" : "Edit →"}
+              </span>
+            </button>
+          );
+        })()}
+
         {/* Mandatory forms alert */}
         {mandatoryCount > 0 && (
           <button
