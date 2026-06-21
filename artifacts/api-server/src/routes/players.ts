@@ -592,6 +592,7 @@ router.post("/send-insurance-reminders", requireSession, async (req, res) => {
 
   let sent = 0;
   let failed = 0;
+  const sentPlayerIds: number[] = [];
 
   for (const { player, teamName } of players) {
     if (!player.email) { failed++; continue; }
@@ -607,8 +608,27 @@ router.post("/send-insurance-reminders", requireSession, async (req, res) => {
       teamName: teamName ?? "your team",
       portalUrl,
     });
-    if (success) sent++; else failed++;
+    if (success) {
+      sent++;
+      sentPlayerIds.push(player.id);
+    } else {
+      failed++;
+    }
     await new Promise((r) => setTimeout(r, 600));
+  }
+
+  if (sent > 0 || failed > 0) {
+    const recipientCount = players.filter(p => !!p.player.email).length;
+    await db.insert(emailBlastsTable).values({
+      subject: "Insurance Details Reminder",
+      body: `Insurance reminder${sent !== 1 ? "s" : ""} sent to ${sent} player${sent !== 1 ? "s" : ""}${failed > 0 ? ` (${failed} failed to deliver)` : ""}.`,
+      audienceType: "insurance-reminder",
+      playerIds: JSON.stringify(sentPlayerIds),
+      recipientCount,
+      sentCount: sent,
+      failedCount: failed,
+      sentByEmail: null,
+    });
   }
 
   console.log(`[insurance-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
