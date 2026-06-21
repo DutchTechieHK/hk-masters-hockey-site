@@ -91,6 +91,7 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     facebookHandle: player.facebookHandle,
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
     feeReminderSentAt: player.feeReminderSentAt?.toISOString() ?? null,
+    insuranceReminderSentAt: player.insuranceReminderSentAt?.toISOString() ?? null,
     onboardingInviteSentAt: player.onboardingInviteSentAt?.toISOString() ?? null,
     lastLoginAt: lastLoginAt ?? null,
     createdAt: player.createdAt?.toISOString(),
@@ -611,6 +612,7 @@ router.post("/send-insurance-reminders", requireSession, async (req, res) => {
     if (success) {
       sent++;
       sentPlayerIds.push(player.id);
+      await db.update(playersTable).set({ insuranceReminderSentAt: new Date() }).where(eq(playersTable.id, player.id));
     } else {
       failed++;
     }

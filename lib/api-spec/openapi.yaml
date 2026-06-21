@@ -1181,6 +1181,9 @@ components:
         feeReminderSentAt:
           type: string
           nullable: true
+        insuranceReminderSentAt:
+          type: string
+          nullable: true
         onboardingInviteSentAt:
           type: string
           nullable: true

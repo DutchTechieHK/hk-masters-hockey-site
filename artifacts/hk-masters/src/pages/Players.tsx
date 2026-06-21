@@ -833,9 +833,17 @@ export default function Players() {
                             </div>
                           )
                           return (
-                            <div className="flex items-center gap-1.5 text-amber-600">
-                              <ShieldAlert className="w-4 h-4" />
-                              <span className="text-sm font-medium">Missing</span>
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-1.5 text-amber-600">
+                                <ShieldAlert className="w-4 h-4" />
+                                <span className="text-sm font-medium">Missing</span>
+                              </div>
+                              {player.insuranceReminderSentAt && (
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  {new Date(player.insuranceReminderSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                                </span>
+                              )}
                             </div>
                           )
                         })()}

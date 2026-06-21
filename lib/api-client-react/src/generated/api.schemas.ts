@@ -168,6 +168,7 @@ export interface Player {
   facebookHandle?: string;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
+  insuranceReminderSentAt?: string | null;
   onboardingInviteSentAt?: string | null;
   lastLoginAt?: string | null;
   createdAt?: string;
