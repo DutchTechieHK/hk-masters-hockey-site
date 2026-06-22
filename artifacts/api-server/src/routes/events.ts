@@ -2,7 +2,8 @@ import { Router, type IRouter, type Request, type Response, type NextFunction } 
 import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus } from "@workspace/db";
 import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
-import { sendRsvpReminderEmail } from "../utils/email";
+import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
+import { sendPushToAll, sendPushToTeam } from "../utils/push";
 import { requirePlayerSession } from "../middleware/playerSession";
 
 const router: IRouter = Router();
@@ -59,6 +60,7 @@ function parseBody(body: unknown): {
   description: string | null;
   teamId: number | null;
   isPublic: boolean;
+  sendNotify: boolean;
 } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -94,6 +96,7 @@ function parseBody(body: unknown): {
     description: typeof b.description === "string" && b.description.trim() ? b.description.trim() : null,
     teamId,
     isPublic: b.isPublic === true,
+    sendNotify: b.sendNotify !== false && b.sendNotify !== "false",
   };
 }
 
@@ -174,11 +177,78 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
 router.post("/", requireAdminAccess, async (req, res) => {
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
-  const [row] = await db.insert(eventsTable).values(parsed).returning();
+  const { sendNotify, ...eventValues } = parsed;
+  const [row] = await db.insert(eventsTable).values(eventValues).returning();
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
     : null;
   res.status(201).json(serialize(row, team?.name));
+
+  if (sendNotify) {
+    // Fire-and-forget notifications after responding to the admin.
+    const PUBLIC_URL = process.env.PUBLIC_URL || "https://www.hkmastershockey.com";
+    const scheduleUrl = `${PUBLIC_URL}/schedule`;
+
+    const startsAt = new Date(row.startsAt);
+    const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime();
+    const tz = startsAt.getTime() >= RTM_START_EPOCH ? "Europe/Amsterdam" : "Asia/Hong_Kong";
+    const tzLabel = tz === "Europe/Amsterdam" ? " CEST" : " HKT";
+    const eventDate = startsAt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz });
+    const eventTime = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz }) + tzLabel;
+
+    const kindLabel =
+      row.kind === "training" ? "Training" :
+      row.kind === "social" ? "Social event" : "Meeting";
+    const pushPayload = {
+      title: `New ${kindLabel.toLowerCase()}: ${row.title}`,
+      body: `${eventDate} at ${eventTime}${row.location ? ` · ${row.location}` : ""}`,
+      url: "/schedule",
+    };
+
+    (async () => {
+      try {
+        if (parsed.teamId != null) {
+          await sendPushToTeam(parsed.teamId, pushPayload);
+        } else {
+          await sendPushToAll(pushPayload);
+        }
+      } catch (err) {
+        console.error("[events] Push notification error:", err);
+      }
+    })();
+
+    (async () => {
+      try {
+        const players = parsed.teamId != null
+          ? await db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
+              .from(playersTable)
+              .where(eq(playersTable.teamId, parsed.teamId!))
+              .orderBy(asc(playersTable.name))
+          : await db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
+              .from(playersTable)
+              .orderBy(asc(playersTable.name));
+
+        const withEmail = players.filter((p) => !!p.email);
+        let sent = 0;
+        for (const player of withEmail) {
+          const ok = await sendNewEventEmail({
+            playerName: player.name,
+            playerEmail: player.email!,
+            eventKind: row.kind,
+            eventTitle: row.title,
+            eventDate,
+            eventTime,
+            location: row.location,
+            scheduleUrl,
+          });
+          if (ok) sent++;
+        }
+        console.log(`[events] New-event emails: ${sent}/${withEmail.length} sent for event #${row.id} "${row.title}"`);
+      } catch (err) {
+        console.error("[events] Email notification error:", err);
+      }
+    })();
+  }
 });
 
 router.patch("/:id", requireAdminAccess, async (req, res) => {
@@ -186,7 +256,8 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
-  const [row] = await db.update(eventsTable).set(parsed).where(eq(eventsTable.id, id)).returning();
+  const { sendNotify: _sendNotify, ...eventValues } = parsed;
+  const [row] = await db.update(eventsTable).set(eventValues).where(eq(eventsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Event not found" });
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]

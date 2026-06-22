@@ -54,6 +54,7 @@ type FormState = {
   description: string
   teamId: string
   isPublic: boolean
+  sendNotify: boolean
 }
 
 const EMPTY_FORM: FormState = {
@@ -65,6 +66,7 @@ const EMPTY_FORM: FormState = {
   description: "",
   teamId: "",
   isPublic: false,
+  sendNotify: true,
 }
 
 const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: string }> = {
@@ -424,6 +426,7 @@ export default function Events() {
       description: e.description ?? "",
       teamId: e.teamId ? String(e.teamId) : "",
       isPublic: e.isPublic ?? false,
+      sendNotify: true,
     })
     setFormError(null)
     setIsModalOpen(true)
@@ -498,7 +501,7 @@ export default function Events() {
     setSaving(true)
     try {
       const tz = formTz(form.startsAt)
-      const payload = {
+      const payload: Record<string, unknown> = {
         kind: form.kind,
         title: form.title.trim(),
         startsAt: zoneInputToIso(form.startsAt, tz),
@@ -507,6 +510,9 @@ export default function Events() {
         description: form.description.trim() || null,
         teamId: form.teamId ? Number(form.teamId) : null,
         isPublic: form.isPublic,
+      }
+      if (!editing) {
+        payload.sendNotify = form.sendNotify
       }
       const url = editing ? `/api/events/${editing.id}` : "/api/events"
       const method = editing ? "PATCH" : "POST"
@@ -742,6 +748,21 @@ export default function Events() {
               <p className="text-xs text-muted-foreground mt-0.5">Tournament programme, ceremonies, social events. Leave off for internal team activities.</p>
             </div>
           </label>
+
+          {!editing && (
+            <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/30 transition-colors">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-border text-[#1E3A6E] focus:ring-[#1E3A6E]"
+                checked={form.sendNotify}
+                onChange={(e) => setForm({ ...form, sendNotify: e.target.checked })}
+              />
+              <div className="text-sm">
+                <div className="font-semibold">Notify players</div>
+                <p className="text-xs text-muted-foreground mt-0.5">Send a push notification and email to all invited players when this event is created.</p>
+              </div>
+            </label>
+          )}
 
           {formError && <p className="text-sm text-destructive">{formError}</p>}
 
