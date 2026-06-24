@@ -91,37 +91,27 @@ router.get("/reconciliation", async (_req, res) => {
     fundMap.set(row.beneficiary, parseFloat(row.total));
   }
 
-  // Payouts per player (by playerId)
+  // All payouts per linked player (strict playerId match only — no fuzzy name attribution)
   const payoutsByPlayer = await db
     .select({
       playerId: playerPayoutsTable.playerId,
-      total: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
+      totalAll: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
+      totalLegoJar: sql<string>`COALESCE(SUM(CASE WHEN ${playerPayoutsTable.source} = 'lego_jar' THEN ${playerPayoutsTable.amount} ELSE 0 END), 0)`,
     })
     .from(playerPayoutsTable)
     .where(sql`${playerPayoutsTable.playerId} IS NOT NULL`)
     .groupBy(playerPayoutsTable.playerId);
 
-  const payoutMap = new Map<number, number>();
+  const payoutTotalMap = new Map<number, number>();
+  const payoutLegoMap = new Map<number, number>();
   for (const row of payoutsByPlayer) {
-    if (row.playerId !== null) payoutMap.set(row.playerId, parseFloat(row.total));
+    if (row.playerId !== null) {
+      payoutTotalMap.set(row.playerId, parseFloat(row.totalAll));
+      payoutLegoMap.set(row.playerId, parseFloat(row.totalLegoJar));
+    }
   }
 
-  // Payouts without a playerId (unlinked), grouped by recipient name
-  const unlinkedPayouts = await db
-    .select({
-      recipientName: sql<string>`LOWER(TRIM(${playerPayoutsTable.recipientName}))`,
-      total: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
-    })
-    .from(playerPayoutsTable)
-    .where(isNull(playerPayoutsTable.playerId))
-    .groupBy(sql`LOWER(TRIM(${playerPayoutsTable.recipientName}))`);
-
-  const unlinkedMap = new Map<string, number>();
-  for (const row of unlinkedPayouts) {
-    unlinkedMap.set(row.recipientName, parseFloat(row.total));
-  }
-
-  // Lego Jar total collected
+  // Lego Jar total collected (the whole pot)
   const [legoRow] = await db
     .select({ total: sql<string>`COALESCE(SUM(${legoJarGuessesTable.amountPaid}), 0)` })
     .from(legoJarGuessesTable)
@@ -130,21 +120,26 @@ router.get("/reconciliation", async (_req, res) => {
   const legoJarTotal = parseFloat(legoRow?.total ?? "0");
 
   // Build per-player reconciliation
+  // balance = (fundraisingReceived + legoJarAllocated) - totalPaidOut
+  // legoJarAllocated = payouts with source='lego_jar' (admin explicitly tagged these as lego jar disbursements)
+  // This nets to zero for lego jar payments, leaving only outstanding fundraising obligations in the balance
   const playerRows = players.map((p) => {
     const nameLower = p.name.toLowerCase().trim();
     const fundraisingReceived = fundMap.get(nameLower) ?? 0;
-    const paidOut = (payoutMap.get(p.id) ?? 0) + (unlinkedMap.get(nameLower) ?? 0);
-    const balance = fundraisingReceived - paidOut;
+    const totalPaidOut = payoutTotalMap.get(p.id) ?? 0;
+    const legoJarAllocated = payoutLegoMap.get(p.id) ?? 0;
+    const balance = (fundraisingReceived + legoJarAllocated) - totalPaidOut;
     return {
       playerId: p.id,
       playerName: p.name,
       fundraisingReceived,
-      totalPaidOut: paidOut,
+      legoJarAllocated,
+      totalPaidOut,
       balance,
     };
   });
 
-  // Only return players who have some fundraising or some payouts
+  // Only return players who have some fundraising or some linked payouts
   const activeRows = playerRows.filter(
     (r) => r.fundraisingReceived > 0 || r.totalPaidOut > 0
   );

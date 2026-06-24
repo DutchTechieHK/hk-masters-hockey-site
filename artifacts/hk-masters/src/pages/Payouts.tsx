@@ -37,6 +37,7 @@ type ReconciliationRow = {
   playerId: number
   playerName: string
   fundraisingReceived: number
+  legoJarAllocated: number
   totalPaidOut: number
   balance: number
 }
@@ -476,6 +477,7 @@ export default function Payouts() {
                   <tr className="border-b border-gray-100 bg-gray-50">
                     <th className="px-4 py-3 text-left font-semibold text-gray-600">Player</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600">Fundraising In</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-600 hidden md:table-cell">LEGO Jar</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600">Paid Out</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600">Balance</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden sm:table-cell">Status</th>
@@ -504,6 +506,12 @@ export default function Payouts() {
                       <tr key={row.playerId} className="hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-medium text-gray-900">{row.playerName}</td>
                         <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(row.fundraisingReceived)}</td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
+                          {row.legoJarAllocated > 0
+                            ? <span className="text-purple-700 font-medium">{formatCurrency(row.legoJarAllocated)}</span>
+                            : <span className="text-gray-400">—</span>
+                          }
+                        </td>
                         <td className="px-4 py-3 text-right text-gray-700">{formatCurrency(row.totalPaidOut)}</td>
                         <td className={`px-4 py-3 text-right ${balanceClass}`}>
                           {formatCurrency(row.balance)}
