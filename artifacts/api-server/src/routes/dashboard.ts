@@ -150,6 +150,24 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const totalPaidOut = Object.values(payoutBySource).reduce((s, v) => s + v, 0);
   const payoutNetBalance = totalFundsRaised - totalPaidOut;
 
+  // Payout breakdown by team
+  const payoutByTeamRows = await db
+    .select({
+      teamId: playersTable.teamId,
+      teamName: teamsTable.name,
+      total: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
+    })
+    .from(playerPayoutsTable)
+    .innerJoin(playersTable, eq(playerPayoutsTable.playerId, playersTable.id))
+    .innerJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .groupBy(playersTable.teamId, teamsTable.name)
+    .orderBy(teamsTable.name);
+  const payoutByTeam = payoutByTeamRows.map((r) => ({
+    teamId: r.teamId,
+    teamName: r.teamName,
+    total: parseFloat(r.total),
+  }));
+
   res.json({
     upcomingEventCount,
     nextEventStartsAt,
@@ -187,6 +205,7 @@ router.get("/", requireAdminAccess, async (_req, res) => {
         legoJar: payoutBySource["lego_jar"] ?? 0,
         general: payoutBySource["general"] ?? 0,
       },
+      byTeam: payoutByTeam,
     },
   });
 });

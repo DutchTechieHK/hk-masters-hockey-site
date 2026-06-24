@@ -436,10 +436,12 @@ export default function Dashboard() {
 
           {/* Payouts summary card */}
           {(() => {
-            const payoutStats = (stats as unknown as { payoutStats?: { totalPaidOut: number; totalFundsRaised: number; netBalance: number; bySource?: { fundraising: number; legoJar: number; general: number } } }).payoutStats
+            const payoutStats = (stats as unknown as { payoutStats?: { totalPaidOut: number; totalFundsRaised: number; netBalance: number; bySource?: { fundraising: number; legoJar: number; general: number }; byTeam?: { teamId: number; teamName: string; total: number }[] } }).payoutStats
             if (!payoutStats) return null
             const bySource = payoutStats.bySource
             const hasSourceBreakdown = bySource && (bySource.fundraising > 0 || bySource.legoJar > 0 || bySource.general > 0)
+            const byTeam = payoutStats.byTeam ?? []
+            const hasTeamBreakdown = byTeam.length > 0
             return (
               <button
                 className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
@@ -478,6 +480,18 @@ export default function Dashboard() {
                             <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(bySource.general)}</span>
                           </div>
                         )}
+                        <div className="border-t border-border pt-2 mt-2" />
+                      </>
+                    )}
+                    {hasTeamBreakdown && (
+                      <>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">By Team</p>
+                        {byTeam.map((t) => (
+                          <div key={t.teamId} className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">{t.teamName}</span>
+                            <span className="text-sm font-semibold text-foreground tabular-nums">{hkdPrecise.format(t.total)}</span>
+                          </div>
+                        ))}
                         <div className="border-t border-border pt-2 mt-2" />
                       </>
                     )}
