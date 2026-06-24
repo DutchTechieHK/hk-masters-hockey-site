@@ -49,6 +49,7 @@ type ReconciliationData = {
 
 const METHOD_LABELS: Record<string, string> = {
   fps: "FPS",
+  payme: "PayMe",
   bank_transfer: "Bank Transfer",
   cash: "Cash",
   cheque: "Cheque",
@@ -72,7 +73,7 @@ const payoutSchema = z.object({
   recipientName: z.string().min(1, "Recipient name is required"),
   amount: z.coerce.number().positive("Amount must be positive"),
   payoutDate: z.string().min(1, "Date is required"),
-  method: z.enum(["fps", "bank_transfer", "cash", "cheque", "other"]),
+  method: z.enum(["fps", "payme", "bank_transfer", "cash", "cheque", "other"]),
   source: z.enum(["fundraising", "lego_jar", "general"]),
   reference: z.string().optional(),
   notes: z.string().optional(),
@@ -584,6 +585,7 @@ export default function Payouts() {
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
               >
                 <option value="fps">FPS</option>
+                <option value="payme">PayMe</option>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="cash">Cash</option>
                 <option value="cheque">Cheque</option>

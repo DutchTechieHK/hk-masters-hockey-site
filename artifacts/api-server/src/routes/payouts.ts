@@ -4,7 +4,7 @@ import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable
 import { eq, sql, desc, isNull } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
-const VALID_METHODS = ["fps", "bank_transfer", "cash", "cheque", "other"] as const;
+const VALID_METHODS = ["fps", "payme", "bank_transfer", "cash", "cheque", "other"] as const;
 const VALID_SOURCES = ["fundraising", "lego_jar", "general"] as const;
 type Method = typeof VALID_METHODS[number];
 type Source = typeof VALID_SOURCES[number];
