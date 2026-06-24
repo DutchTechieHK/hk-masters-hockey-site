@@ -31,6 +31,7 @@ export const playersTable = pgTable("players", {
   accommodationName: text("accommodation_name"),
   accommodationAddress: text("accommodation_address"),
   accommodationPhone: text("accommodation_phone"),
+  accommodationEmail: text("accommodation_email"),
   insuranceProvider: text("insurance_provider"),
   insurancePolicyNumber: text("insurance_policy_number"),
   insuranceEmergencyPhone: text("insurance_emergency_phone"),

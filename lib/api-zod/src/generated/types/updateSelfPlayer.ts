@@ -27,6 +27,7 @@ export interface UpdateSelfPlayer {
   accommodationName?: string;
   accommodationAddress?: string;
   accommodationPhone?: string;
+  accommodationEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;

@@ -124,6 +124,7 @@ const playerSchema = z.object({
   accommodationName: z.string().optional(),
   accommodationAddress: z.string().optional(),
   accommodationPhone: z.string().optional(),
+  accommodationEmail: z.string().optional(),
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
   insuranceEmergencyPhone: z.string().optional(),
@@ -307,7 +308,7 @@ export default function Players() {
     outboundFlightNumber: "", outboundDepartureDateTime: "",
     returnFlightNumber: "", returnArrivalDateTime: "",
     roomSharingPreference: "shared", roomSharingWith: "",
-    accommodationName: "", accommodationAddress: "", accommodationPhone: "",
+    accommodationName: "", accommodationAddress: "", accommodationPhone: "", accommodationEmail: "",
     insuranceProvider: "", insurancePolicyNumber: "", insuranceEmergencyPhone: "",
     insurancePolicyHolder: "", insuranceExpiry: "", insuranceEmail: "",
     shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
@@ -351,6 +352,7 @@ export default function Players() {
       accommodationName: player.accommodationName || "",
       accommodationAddress: player.accommodationAddress || "",
       accommodationPhone: player.accommodationPhone || "",
+      accommodationEmail: player.accommodationEmail || "",
       insuranceProvider: player.insuranceProvider || "",
       insurancePolicyNumber: player.insurancePolicyNumber || "",
       insuranceEmergencyPhone: player.insuranceEmergencyPhone || "",
@@ -1170,6 +1172,10 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Accommodation Phone</label>
               <Input {...register("accommodationPhone")} placeholder="+31 10 000 0000" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Accommodation Email</label>
+              <Input {...register("accommodationEmail")} type="email" placeholder="hotel@example.com" />
             </div>
           </div>
 

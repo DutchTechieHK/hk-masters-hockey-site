@@ -53,6 +53,7 @@ const SECTIONS = [
       { key: "accommodationName", label: "Hotel / accommodation name", type: "text", placeholder: "e.g. Marriott Rotterdam" },
       { key: "accommodationAddress", label: "Address", type: "text", placeholder: "e.g. Weena 686, 3012 CN Rotterdam" },
       { key: "accommodationPhone", label: "Phone number", type: "tel", placeholder: "+31 10 430 4300" },
+      { key: "accommodationEmail", label: "Email address", type: "email", placeholder: "hotel@example.com" },
     ],
   },
   {
