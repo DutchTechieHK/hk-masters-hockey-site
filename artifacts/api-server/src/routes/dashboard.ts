@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunParticipantsTable } from "@workspace/db/schema";
+import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunParticipantsTable, playerPayoutsTable } from "@workspace/db/schema";
 import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -135,6 +135,13 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   };
   const totalFundsRaised = onlinePledges + legoJarTotal + sponsorsTotal + funRunTotal + auctionTotalBidValue;
 
+  // Payout summary
+  const [payoutTotals] = await db
+    .select({ totalPaidOut: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)` })
+    .from(playerPayoutsTable);
+  const totalPaidOut = parseFloat(payoutTotals?.totalPaidOut ?? "0");
+  const payoutNetBalance = totalFundsRaised - totalPaidOut;
+
   res.json({
     upcomingEventCount,
     nextEventStartsAt,
@@ -162,6 +169,11 @@ router.get("/", requireAdminAccess, async (_req, res) => {
       itemsWithBids: auctionItemsWithBids,
       totalBidValue: auctionTotalBidValue,
       isLive: auctionIsLive,
+    },
+    payoutStats: {
+      totalPaidOut,
+      totalFundsRaised,
+      netBalance: payoutNetBalance,
     },
   });
 });

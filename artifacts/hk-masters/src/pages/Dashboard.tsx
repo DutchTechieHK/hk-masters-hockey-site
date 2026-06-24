@@ -1,6 +1,6 @@
 import { useGetDashboard, useListPlayers, useListKits, useGetFunRunSummary } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
-import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, ShieldAlert, Package, FileText, Gavel, Footprints, Building2 } from "lucide-react"
+import { Users, DollarSign, CalendarDays, TrendingUp, AlertCircle, CheckCircle2, ArrowRight, Trophy, CalendarClock, ShieldCheck, ShieldAlert, Package, FileText, Gavel, Footprints, Building2, Wallet } from "lucide-react"
 import { formatCurrency } from "@/lib/utils"
 import { isFullyReady } from "@/lib/readiness"
 import { useMemo } from "react"
@@ -433,6 +433,51 @@ export default function Dashboard() {
               </div>
             </button>
           )}
+
+          {/* Payouts summary card */}
+          {(() => {
+            const payoutStats = (stats as unknown as { payoutStats?: { totalPaidOut: number; totalFundsRaised: number; netBalance: number } }).payoutStats
+            if (!payoutStats) return null
+            return (
+              <button
+                className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
+                onClick={() => navigate("/payouts")}
+              >
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <h2 className="text-xl font-display font-bold">Payouts</h2>
+                  <div className="flex items-center gap-2 text-muted-foreground group-hover:text-primary transition-colors">
+                    <Wallet className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="p-6">
+                  <div className="flex items-end gap-2 mb-1">
+                    <p className="text-3xl font-bold text-foreground">{hkdPrecise.format(payoutStats.totalPaidOut)}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">paid out to players</p>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Total raised</span>
+                      <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(payoutStats.totalFundsRaised)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Paid out</span>
+                      <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(payoutStats.totalPaidOut)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-border pt-2 mt-2">
+                      <span className="text-sm font-medium text-foreground">Net balance</span>
+                      <span className={`text-sm font-bold ${payoutStats.netBalance >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                        {hkdPrecise.format(payoutStats.netBalance)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
+                    View payouts ledger <ArrowRight className="w-3 h-3" />
+                  </p>
+                </div>
+              </button>
+            )
+          })()}
 
           {/* Insurance summary card */}
           {players.length > 0 && (
