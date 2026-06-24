@@ -23,6 +23,7 @@ import newsRouter from "./news";
 import { legoJarPublicRouter, legoJarAdminRouter } from "./lego-jar";
 import funRunRouter from "./fun-run";
 import pollsRouter from "./polls";
+import payoutsRouter from "./payouts";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use("/lego-jar", legoJarPublicRouter);
 router.use("/admin/lego-jar", legoJarAdminRouter);
 router.use("/fun-run", funRunRouter);
 router.use("/polls", pollsRouter);
+router.use("/payouts", payoutsRouter);
 
 export default router;

@@ -1,5 +1,5 @@
 import { Link, useRoute, useLocation } from "wouter"
-import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut, CalendarClock, Megaphone, History, FolderOpen, Gavel, Package, HandCoins, Footprints, ChevronRight, BarChart2, PlayCircle, FileText } from "lucide-react"
+import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut, CalendarClock, Megaphone, History, FolderOpen, Gavel, Package, HandCoins, Footprints, ChevronRight, BarChart2, PlayCircle, FileText, ArrowDownToLine } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -16,6 +16,7 @@ const FUNDRAISING_CHILDREN = [
   { href: "/lego-jar", label: "LEGO Jar", icon: Package },
   { href: "/auction", label: "Auction", icon: Gavel },
   { href: "/sponsors", label: "Sponsors", icon: Star },
+  { href: "/payouts", label: "Payouts", icon: ArrowDownToLine },
 ]
 
 const FUNDRAISING_PATHS = new Set(FUNDRAISING_CHILDREN.map((c) => c.href))
