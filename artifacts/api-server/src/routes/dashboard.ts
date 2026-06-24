@@ -136,10 +136,18 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const totalFundsRaised = onlinePledges + legoJarTotal + sponsorsTotal + funRunTotal + auctionTotalBidValue;
 
   // Payout summary
-  const [payoutTotals] = await db
-    .select({ totalPaidOut: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)` })
-    .from(playerPayoutsTable);
-  const totalPaidOut = parseFloat(payoutTotals?.totalPaidOut ?? "0");
+  const payoutSourceRows = await db
+    .select({
+      source: playerPayoutsTable.source,
+      total: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
+    })
+    .from(playerPayoutsTable)
+    .groupBy(playerPayoutsTable.source);
+  const payoutBySource: Record<string, number> = {};
+  for (const row of payoutSourceRows) {
+    payoutBySource[row.source] = parseFloat(row.total);
+  }
+  const totalPaidOut = Object.values(payoutBySource).reduce((s, v) => s + v, 0);
   const payoutNetBalance = totalFundsRaised - totalPaidOut;
 
   res.json({
@@ -174,6 +182,11 @@ router.get("/", requireAdminAccess, async (_req, res) => {
       totalPaidOut,
       totalFundsRaised,
       netBalance: payoutNetBalance,
+      bySource: {
+        fundraising: payoutBySource["fundraising"] ?? 0,
+        legoJar: payoutBySource["lego_jar"] ?? 0,
+        general: payoutBySource["general"] ?? 0,
+      },
     },
   });
 });

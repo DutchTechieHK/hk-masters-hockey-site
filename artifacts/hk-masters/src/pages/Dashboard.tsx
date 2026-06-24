@@ -436,8 +436,10 @@ export default function Dashboard() {
 
           {/* Payouts summary card */}
           {(() => {
-            const payoutStats = (stats as unknown as { payoutStats?: { totalPaidOut: number; totalFundsRaised: number; netBalance: number } }).payoutStats
+            const payoutStats = (stats as unknown as { payoutStats?: { totalPaidOut: number; totalFundsRaised: number; netBalance: number; bySource?: { fundraising: number; legoJar: number; general: number } } }).payoutStats
             if (!payoutStats) return null
+            const bySource = payoutStats.bySource
+            const hasSourceBreakdown = bySource && (bySource.fundraising > 0 || bySource.legoJar > 0 || bySource.general > 0)
             return (
               <button
                 className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
@@ -456,13 +458,32 @@ export default function Dashboard() {
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">paid out to players</p>
                   <div className="space-y-2">
+                    {hasSourceBreakdown && bySource && (
+                      <>
+                        {bySource.fundraising > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Fundraising</span>
+                            <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(bySource.fundraising)}</span>
+                          </div>
+                        )}
+                        {bySource.legoJar > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">Lego Jar</span>
+                            <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(bySource.legoJar)}</span>
+                          </div>
+                        )}
+                        {bySource.general > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-muted-foreground">General</span>
+                            <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(bySource.general)}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-border pt-2 mt-2" />
+                      </>
+                    )}
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Total raised</span>
                       <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(payoutStats.totalFundsRaised)}</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Paid out</span>
-                      <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(payoutStats.totalPaidOut)}</span>
                     </div>
                     <div className="flex justify-between items-center border-t border-border pt-2 mt-2">
                       <span className="text-sm font-medium text-foreground">Net balance</span>
