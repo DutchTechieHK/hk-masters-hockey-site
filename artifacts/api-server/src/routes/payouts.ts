@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable } from "@workspace/db/schema";
-import { eq, sql, desc, isNull } from "drizzle-orm";
+import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable, teamsTable } from "@workspace/db/schema";
+import { eq, sql, desc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
 const VALID_METHODS = ["fps", "payme", "bank_transfer", "cash", "cheque", "other"] as const;
@@ -55,9 +55,12 @@ router.get("/", async (_req, res) => {
       notes: playerPayoutsTable.notes,
       createdAt: playerPayoutsTable.createdAt,
       playerName: playersTable.name,
+      teamId: teamsTable.id,
+      teamName: teamsTable.name,
     })
     .from(playerPayoutsTable)
     .leftJoin(playersTable, eq(playerPayoutsTable.playerId, playersTable.id))
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
     .orderBy(desc(playerPayoutsTable.createdAt));
 
   res.json(

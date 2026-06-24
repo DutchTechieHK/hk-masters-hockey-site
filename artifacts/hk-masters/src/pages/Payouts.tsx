@@ -29,6 +29,8 @@ type Payout = {
   notes: string | null
   createdAt: string
   playerName: string | null
+  teamId: number | null
+  teamName: string | null
 }
 
 type Player = { id: number; name: string }
@@ -292,6 +294,24 @@ export default function Payouts() {
 
   const totalPaidOut = payouts.reduce((s, p) => s + p.amount, 0)
 
+  const payoutsByTeam: { teamId: number | null; teamName: string; payouts: Payout[] }[] = (() => {
+    const map = new Map<string, { teamId: number | null; teamName: string; payouts: Payout[] }>()
+    for (const p of payouts) {
+      const key = p.teamId != null ? String(p.teamId) : "__unlinked__"
+      if (!map.has(key)) {
+        map.set(key, { teamId: p.teamId, teamName: p.teamName ?? "Unlinked / No Team", payouts: [] })
+      }
+      map.get(key)!.payouts.push(p)
+    }
+    const groups = Array.from(map.values())
+    groups.sort((a, b) => {
+      if (a.teamId == null) return 1
+      if (b.teamId == null) return -1
+      return a.teamName.localeCompare(b.teamName)
+    })
+    return groups
+  })()
+
   return (
     <PageLayout
       title="Payouts"
@@ -371,50 +391,71 @@ export default function Payouts() {
                     <th className="px-4 py-3" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {payouts.map((p) => (
-                    <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-700">
-                        {p.payoutDate ? format(parseISO(p.payoutDate), "d MMM yyyy") : "—"}
-                      </td>
-                      <td className="px-4 py-3 font-medium text-gray-900">{p.recipientName}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-emerald-700 whitespace-nowrap">
-                        {formatCurrency(p.amount)}
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell text-gray-600">
-                        {METHOD_LABELS[p.method] ?? p.method}
-                      </td>
-                      <td className="px-4 py-3 hidden sm:table-cell">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[p.source] ?? "bg-gray-100 text-gray-700"}`}>
-                          {SOURCE_LABELS[p.source] ?? p.source}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell text-gray-500 text-xs">
-                        {p.reference ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 hidden lg:table-cell text-gray-500 text-xs max-w-[180px] truncate">
-                        {p.notes ?? "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => openEditModal(p)}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(p.id, p.recipientName)}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                <tbody>
+                  {payoutsByTeam.map((group) => {
+                    const groupTotal = group.payouts.reduce((s, p) => s + p.amount, 0)
+                    return (
+                      <React.Fragment key={group.teamId ?? "__unlinked__"}>
+                        {/* Team header row */}
+                        <tr className="bg-gray-100 border-t border-gray-200">
+                          <td colSpan={8} className="px-4 py-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                {group.teamName}
+                              </span>
+                              <span className="text-xs font-semibold text-emerald-700">
+                                {formatCurrency(groupTotal)} · {group.payouts.length} payout{group.payouts.length !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {/* Individual payout rows */}
+                        {group.payouts.map((p) => (
+                          <tr key={p.id} className="hover:bg-gray-50 transition-colors border-t border-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-700">
+                              {p.payoutDate ? format(parseISO(p.payoutDate), "d MMM yyyy") : "—"}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-gray-900">{p.recipientName}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-emerald-700 whitespace-nowrap">
+                              {formatCurrency(p.amount)}
+                            </td>
+                            <td className="px-4 py-3 hidden sm:table-cell text-gray-600">
+                              {METHOD_LABELS[p.method] ?? p.method}
+                            </td>
+                            <td className="px-4 py-3 hidden sm:table-cell">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[p.source] ?? "bg-gray-100 text-gray-700"}`}>
+                                {SOURCE_LABELS[p.source] ?? p.source}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 hidden lg:table-cell text-gray-500 text-xs">
+                              {p.reference ?? "—"}
+                            </td>
+                            <td className="px-4 py-3 hidden lg:table-cell text-gray-500 text-xs max-w-[180px] truncate">
+                              {p.notes ?? "—"}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => openEditModal(p)}
+                                  className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(p.id, p.recipientName)}
+                                  className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    )
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-gray-200 bg-gray-50">
