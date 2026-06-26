@@ -1,8 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { pollsTable, pollOptionsTable, pollVotesTable, playersTable, teamsTable } from "@workspace/db/schema";
+import { pollsTable, pollOptionsTable, pollVotesTable, playersTable, teamsTable, pushSubscriptionsTable } from "@workspace/db/schema";
 import { eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { sendPushToAll } from "../utils/push";
+import type { PushPayload } from "../utils/push";
 
 const router: IRouter = Router();
 
@@ -294,6 +296,73 @@ router.post("/:id/email", requireAdminAccess, async (req, res) => {
   }
   console.log(`[polls] Email blast for poll ${id}: sent=${sent} failed=${failed}`);
   res.json({ sent, failed, total: playersWithToken.length });
+});
+
+// ── Admin: push notification blast ──────────────────────────────────────────
+
+router.post("/:id/push", requireAdminAccess, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  const [poll] = await db.select().from(pollsTable).where(eq(pollsTable.id, id));
+  if (!poll) return res.status(404).json({ error: "Not found" });
+
+  const eligible = await getEligiblePlayers(poll.audience as Audience);
+  const eligibleIds = eligible.map(p => p.id);
+
+  if (eligibleIds.length === 0) {
+    return res.json({ sent: 0, total: 0 });
+  }
+
+  const rows = await db
+    .select({ sub: pushSubscriptionsTable, accessToken: playersTable.accessToken })
+    .from(pushSubscriptionsTable)
+    .innerJoin(playersTable, eq(playersTable.id, pushSubscriptionsTable.playerId))
+    .where(inArray(pushSubscriptionsTable.playerId, eligibleIds));
+
+  if (rows.length === 0) {
+    return res.json({ sent: 0, total: 0 });
+  }
+
+  const { default: webpush } = await import("web-push");
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT ?? "mailto:admin@hkmastershockey.com";
+  if (!publicKey || !privateKey) {
+    return res.status(503).json({ error: "Push notifications not configured (VAPID keys missing)" });
+  }
+  webpush.setVapidDetails(subject, publicKey, privateKey);
+
+  let sent = 0;
+  const expiredEndpoints: string[] = [];
+
+  await Promise.allSettled(
+    rows.map(async ({ sub, accessToken }) => {
+      const url = `${PUBLIC_URL}/polls/${id}${accessToken ? `?t=${accessToken}` : ""}`;
+      const payload: PushPayload = {
+        title: `New poll: ${poll.title}`,
+        body: poll.description ?? "Tap to view and cast your vote.",
+        url,
+      };
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          JSON.stringify(payload),
+          { TTL: 86400 }
+        );
+        sent++;
+      } catch (err: unknown) {
+        const status = (err as { statusCode?: number }).statusCode;
+        if (status === 410 || status === 404) expiredEndpoints.push(sub.endpoint);
+      }
+    })
+  );
+
+  if (expiredEndpoints.length > 0) {
+    await db.delete(pushSubscriptionsTable).where(inArray(pushSubscriptionsTable.endpoint, expiredEndpoints));
+  }
+
+  console.log(`[polls] Push blast for poll ${id}: sent=${sent} total=${rows.length}`);
+  res.json({ sent, total: rows.length });
 });
 
 // ── Admin: remind non-responders ─────────────────────────────────────────────

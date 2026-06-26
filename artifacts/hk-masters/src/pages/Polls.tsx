@@ -97,6 +97,7 @@ export default function Polls() {
   const [detailLoading, setDetailLoading] = useState<number | null>(null)
   const [detailData, setDetailData] = useState<Record<number, Poll>>({})
   const [emailing, setEmailing] = useState<number | null>(null)
+  const [pushing, setPushing] = useState<number | null>(null)
   const [reminding, setReminding] = useState<number | null>(null)
   const [closing, setClosing] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
@@ -229,6 +230,26 @@ export default function Polls() {
       toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
       setEmailing(null)
+    }
+  }
+
+  const handlePush = async (poll: Poll) => {
+    const aud = AUDIENCES.find(a => a.value === poll.audience)?.label ?? poll.audience
+    if (!confirm(`Send a push notification to ${aud} who have notifications enabled? The notification will link directly to the poll.`)) return
+    setPushing(poll.id)
+    try {
+      const res = await fetch(`/api/polls/${poll.id}/push`, { method: "POST", headers: authHeaders() })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Failed to send push notifications")
+      if (data.total === 0) {
+        toast({ title: "No players have push notifications enabled yet" })
+      } else {
+        toast({ title: `Push sent to ${data.sent} of ${data.total} subscribed player${data.total !== 1 ? "s" : ""}` })
+      }
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setPushing(null)
     }
   }
 
@@ -401,6 +422,14 @@ export default function Polls() {
                         className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all disabled:opacity-50"
                       >
                         {emailing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handlePush(poll)}
+                        disabled={pushing === poll.id}
+                        title="Push notification to players"
+                        className="p-1.5 text-muted-foreground hover:text-violet-600 rounded border border-transparent hover:border-violet-200 transition-all disabled:opacity-50"
+                      >
+                        {pushing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
                       </button>
                       <button
                         onClick={() => handleClose(poll)}
