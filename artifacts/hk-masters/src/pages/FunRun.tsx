@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, Edit2, Download, Upload, DollarSign, TrendingUp, Coffee, Tag, Loader2, X, ChevronDown } from "lucide-react"
+import { Plus, Trash2, Edit2, Download, Upload, DollarSign, TrendingUp, Loader2, X, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 
@@ -46,6 +46,22 @@ const EMPTY_FORM: RowForm = {
   notes: "",
 }
 
+type SortField = "date" | "payerName" | "category" | "amountHkd"
+type SortDir = "asc" | "desc"
+
+// ── Column mapping types ─────────────────────────────────────────────────────
+type ColRole = "date" | "payerName" | "description" | "amountHkd" | "notes" | "ignore"
+const COL_ROLES: { value: ColRole; label: string }[] = [
+  { value: "date", label: "Date" },
+  { value: "payerName", label: "Payer / Name" },
+  { value: "description", label: "Description" },
+  { value: "amountHkd", label: "Amount HKD" },
+  { value: "notes", label: "Notes" },
+  { value: "ignore", label: "Ignore" },
+]
+
+type BulkStep = "paste" | "map" | "preview"
+
 function authHeaders(): Record<string, string> {
   const token = getStoredAdminToken()
   return token
@@ -64,39 +80,102 @@ function CategoryBadge({ category }: { category: Category }) {
 
 const hkd = new Intl.NumberFormat("en-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
-function parseBulkText(raw: string): { rows: Partial<RowForm>[]; warning?: string } {
-  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean)
-  if (lines.length === 0) return { rows: [] }
-  const rows: Partial<RowForm>[] = []
-  for (const line of lines) {
-    const cols = line.includes("\t") ? line.split("\t") : line.split(",")
-    const trimmed = cols.map(c => c.trim().replace(/^"|"$/g, ""))
-    if (trimmed.length < 2) continue
-    const dateRx = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
-    const amountRx = /^[\d,]+(\.\d{1,2})?$/
-    let date = "", payerName = "", amountRaw = "", notes = ""
-    let amountIdx = -1
-    for (let i = trimmed.length - 1; i >= 0; i--) {
-      if (amountRx.test(trimmed[i].replace(/,/g, ""))) { amountIdx = i; break }
-    }
-    const dateIdx = trimmed.findIndex(c => dateRx.test(c))
-    if (dateIdx >= 0) date = trimmed[dateIdx]
-    if (amountIdx >= 0) amountRaw = trimmed[amountIdx].replace(/,/g, "")
-    const skipIdxs = new Set([dateIdx, amountIdx].filter(i => i >= 0))
-    const rest = trimmed.filter((_, i) => !skipIdxs.has(i)).filter(Boolean)
-    if (rest.length > 0) payerName = rest[0]
-    if (rest.length > 1) notes = rest.slice(1).join(" — ")
-    const amount = parseFloat(amountRaw)
-    if (isNaN(amount) || !payerName) continue
-    rows.push({ date, payerName, description: "", category: "entry_fee", amountHkd: String(amount), notes })
+function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField | null; sortDir: SortDir }) {
+  if (sortField !== field) return <ChevronsUpDown className="w-3 h-3 inline ml-1 opacity-40" />
+  return sortDir === "asc"
+    ? <ChevronUp className="w-3 h-3 inline ml-1 text-primary" />
+    : <ChevronDown className="w-3 h-3 inline ml-1 text-primary" />
+}
+
+function parseRawLines(raw: string): string[][] {
+  return raw
+    .split("\n")
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(l => (l.includes("\t") ? l.split("\t") : l.split(",")).map(c => c.trim().replace(/^"|"$/g, "")))
+    .filter(cols => cols.length > 0)
+}
+
+function guessRoles(sample: string[]): ColRole[] {
+  const dateRx = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
+  const amountRx = /^[\d,]+(\.\d{1,2})?$/
+  return sample.map(v => {
+    if (dateRx.test(v)) return "date"
+    if (amountRx.test(v.replace(/,/g, ""))) return "amountHkd"
+    return "ignore"
+  })
+}
+
+function autoGuessRoles(cols: number, firstDataRow: string[]): ColRole[] {
+  const roles: ColRole[] = Array(cols).fill("ignore")
+  const dateRx = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
+  const amountRx = /^[\d,]+(\.\d{1,2})?$/
+  let payerAssigned = false
+  for (let i = 0; i < firstDataRow.length; i++) {
+    const v = firstDataRow[i]
+    if (dateRx.test(v)) { roles[i] = "date"; continue }
+    if (amountRx.test(v.replace(/,/g, ""))) { roles[i] = "amountHkd"; continue }
+    if (!payerAssigned && v.length > 0) { roles[i] = "payerName"; payerAssigned = true; continue }
   }
-  return { rows, warning: rows.length < lines.length ? `${lines.length - rows.length} line(s) skipped (could not parse)` : undefined }
+  return roles
+}
+
+function applyMapping(lines: string[][], roles: ColRole[], defaultCategory: Category): Partial<RowForm>[] {
+  const results: Partial<RowForm>[] = []
+  for (const cols of lines) {
+    const row: Record<string, string> = {}
+    cols.forEach((v, i) => {
+      const role = roles[i]
+      if (!role || role === "ignore") return
+      row[role] = (row[role] ? row[role] + " " : "") + v
+    })
+    const amount = parseFloat((row.amountHkd || "").replace(/,/g, ""))
+    if (isNaN(amount) || !row.payerName) continue
+    results.push({
+      date: row.date || "",
+      payerName: row.payerName.trim(),
+      description: (row.description || "").trim(),
+      category: defaultCategory,
+      amountHkd: String(amount),
+      notes: (row.notes || "").trim(),
+    })
+  }
+  return results
 }
 
 export default function FunRun() {
   const { toast } = useToast()
   const [rows, setRows] = useState<IncomeRow[]>([])
   const [loading, setLoading] = useState(true)
+
+  // ── Sort state ───────────────────────────────────────────────────────────────
+  const [sortField, setSortField] = useState<SortField | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>("asc")
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDir("asc")
+    }
+  }
+
+  const sortedRows = useMemo(() => {
+    if (!sortField) return rows
+    return [...rows].sort((a, b) => {
+      let av: string | number = a[sortField]
+      let bv: string | number = b[sortField]
+      if (sortField === "amountHkd") {
+        av = Number(av); bv = Number(bv)
+        return sortDir === "asc" ? av - bv : bv - av
+      }
+      av = String(av).toLowerCase(); bv = String(bv).toLowerCase()
+      if (av < bv) return sortDir === "asc" ? -1 : 1
+      if (av > bv) return sortDir === "asc" ? 1 : -1
+      return 0
+    })
+  }, [rows, sortField, sortDir])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -113,6 +192,7 @@ export default function FunRun() {
 
   useEffect(() => { load() }, [load])
 
+  // ── Add / Edit ───────────────────────────────────────────────────────────────
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingRow, setEditingRow] = useState<IncomeRow | null>(null)
   const [form, setForm] = useState<RowForm>(EMPTY_FORM)
@@ -188,18 +268,51 @@ export default function FunRun() {
     }
   }
 
-  // ── Bulk import ─────────────────────────────────────────────────────────────
+  // ── Bulk import (3 steps: paste → map → preview) ─────────────────────────────
   const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const [bulkStep, setBulkStep] = useState<BulkStep>("paste")
   const [bulkText, setBulkText] = useState("")
+  const [bulkLines, setBulkLines] = useState<string[][]>([])
+  const [colRoles, setColRoles] = useState<ColRole[]>([])
   const [bulkPreview, setBulkPreview] = useState<Partial<RowForm>[]>([])
   const [bulkWarning, setBulkWarning] = useState<string | undefined>()
   const [bulkCategory, setBulkCategory] = useState<Category>("entry_fee")
   const [bulkSaving, setBulkSaving] = useState(false)
 
-  const parseBulk = () => {
-    const { rows: parsed, warning } = parseBulkText(bulkText)
+  const closeBulk = () => {
+    setIsBulkOpen(false)
+    setBulkStep("paste")
+    setBulkText("")
+    setBulkLines([])
+    setColRoles([])
+    setBulkPreview([])
+    setBulkWarning(undefined)
+  }
+
+  const handleBulkParsePaste = () => {
+    const lines = parseRawLines(bulkText)
+    if (lines.length === 0) return
+    setBulkLines(lines)
+    const ncols = Math.max(...lines.map(l => l.length))
+    const firstRow = lines[0]
+    const guessed = autoGuessRoles(ncols, firstRow)
+    setColRoles(guessed)
+    setBulkStep("map")
+  }
+
+  const applyMappingStep = () => {
+    const hasPayerCol = colRoles.some(r => r === "payerName")
+    const hasAmountCol = colRoles.some(r => r === "amountHkd")
+    if (!hasPayerCol || !hasAmountCol) {
+      setBulkWarning("Please assign at least one column as 'Payer / Name' and one as 'Amount HKD'.")
+      return
+    }
+    setBulkWarning(undefined)
+    const parsed = applyMapping(bulkLines, colRoles, bulkCategory)
+    const skipped = bulkLines.length - parsed.length
     setBulkPreview(parsed)
-    setBulkWarning(warning)
+    setBulkWarning(skipped > 0 ? `${skipped} row(s) skipped (missing payer name or amount).` : undefined)
+    setBulkStep("preview")
   }
 
   const handleBulkSave = async () => {
@@ -211,9 +324,7 @@ export default function FunRun() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || "Bulk import failed")
       toast({ title: `${data.inserted} rows imported` })
-      setIsBulkOpen(false)
-      setBulkText("")
-      setBulkPreview([])
+      closeBulk()
       load()
     } catch (err) {
       toast({ title: (err as Error).message, variant: "destructive" })
@@ -225,10 +336,12 @@ export default function FunRun() {
   const updateBulkRow = (i: number, field: keyof RowForm, value: string) => {
     setBulkPreview(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r))
   }
-
   const removeBulkRow = (i: number) => {
     setBulkPreview(prev => prev.filter((_, idx) => idx !== i))
   }
+
+  const ncols = bulkLines.length > 0 ? Math.max(...bulkLines.map(l => l.length)) : 0
+  const SAMPLE_ROWS = bulkLines.slice(0, 4)
 
   // ── Totals ──────────────────────────────────────────────────────────────────
   const total = rows.reduce((s, r) => s + r.amountHkd, 0)
@@ -236,6 +349,15 @@ export default function FunRun() {
     ...c,
     amount: rows.filter(r => r.category === c.value).reduce((s, r) => s + r.amountHkd, 0),
   }))
+
+  const thBtn = (field: SortField, label: string, align?: "right") => (
+    <th
+      className={`px-4 py-3 font-semibold cursor-pointer select-none hover:text-foreground transition-colors${align ? " text-right" : ""}`}
+      onClick={() => handleSort(field)}
+    >
+      {label}<SortIcon field={field} sortField={sortField} sortDir={sortDir} />
+    </th>
+  )
 
   return (
     <PageLayout
@@ -280,11 +402,11 @@ export default function FunRun() {
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
               <tr>
-                <th className="px-4 py-3 font-semibold">Date</th>
-                <th className="px-4 py-3 font-semibold">Payer / Name</th>
+                {thBtn("date", "Date")}
+                {thBtn("payerName", "Payer / Name")}
                 <th className="px-4 py-3 font-semibold">Description</th>
-                <th className="px-4 py-3 font-semibold">Category</th>
-                <th className="px-4 py-3 font-semibold text-right">Amount HKD</th>
+                {thBtn("category", "Category")}
+                {thBtn("amountHkd", "Amount HKD", "right")}
                 <th className="px-4 py-3 font-semibold">Notes</th>
                 <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
@@ -292,7 +414,7 @@ export default function FunRun() {
             <tbody className="divide-y divide-border">
               {loading ? (
                 <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>
-              ) : rows.length === 0 ? (
+              ) : sortedRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
@@ -305,8 +427,8 @@ export default function FunRun() {
                   </td>
                 </tr>
               ) : (
-                rows.map(r => (
-                  <tr key={r.id} className="hover:bg-muted/10 transition-colors group">
+                sortedRows.map(r => (
+                  <tr key={r.id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-4 py-3 text-muted-foreground whitespace-nowrap text-xs">{r.date || "—"}</td>
                     <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">{r.payerName}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-[200px]">
@@ -331,7 +453,7 @@ export default function FunRun() {
                 ))
               )}
             </tbody>
-            {rows.length > 0 && (
+            {sortedRows.length > 0 && (
               <tfoot className="bg-muted/50 border-t border-border">
                 <tr>
                   <td colSpan={4} className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Total</td>
@@ -389,13 +511,23 @@ export default function FunRun() {
         </form>
       </Modal>
 
-      {/* Bulk import modal */}
-      <Modal isOpen={isBulkOpen} onClose={() => { setIsBulkOpen(false); setBulkText(""); setBulkPreview([]) }} title="Bulk Import">
+      {/* Bulk import modal — 3-step: paste → map columns → preview */}
+      <Modal
+        isOpen={isBulkOpen}
+        onClose={closeBulk}
+        title={
+          bulkStep === "paste" ? "Bulk Import — Step 1 of 3: Paste data"
+          : bulkStep === "map" ? "Bulk Import — Step 2 of 3: Map columns"
+          : "Bulk Import — Step 3 of 3: Review & confirm"
+        }
+      >
         <div className="space-y-4">
-          {bulkPreview.length === 0 ? (
+
+          {/* Step 1: Paste */}
+          {bulkStep === "paste" && (
             <>
               <p className="text-sm text-muted-foreground">
-                Paste rows from your spreadsheet below. Each row should have columns in any order — the app will auto-detect date, payer name, and amount. Expected columns: <strong>Date · Payer Name · Amount</strong> (plus optional notes).
+                Copy and paste rows directly from your spreadsheet. Tabs or commas are both fine as separators. You'll get to assign which column is which in the next step.
               </p>
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold">Default category for all imported rows</label>
@@ -414,15 +546,78 @@ export default function FunRun() {
                 onChange={e => setBulkText(e.target.value)}
               />
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setIsBulkOpen(false)}>Cancel</Button>
-                <Button onClick={parseBulk} disabled={!bulkText.trim()}>Preview rows</Button>
+                <Button type="button" variant="outline" onClick={closeBulk}>Cancel</Button>
+                <Button onClick={handleBulkParsePaste} disabled={!bulkText.trim()}>Next: Map columns →</Button>
               </div>
             </>
-          ) : (
+          )}
+
+          {/* Step 2: Map columns */}
+          {bulkStep === "map" && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Tell us what each column in your data represents. We've made a best guess — adjust any that look wrong.
+              </p>
+              {bulkWarning && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">{bulkWarning}</p>}
+              <div className="overflow-x-auto border border-border rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="bg-muted border-b border-border">
+                    <tr>
+                      {Array.from({ length: ncols }, (_, i) => (
+                        <th key={i} className="px-3 py-2 text-left font-semibold text-muted-foreground">Column {i + 1}</th>
+                      ))}
+                    </tr>
+                    <tr className="border-b border-border">
+                      {Array.from({ length: ncols }, (_, i) => (
+                        <th key={i} className="px-2 py-1.5">
+                          <select
+                            className="w-full h-7 text-xs border border-input rounded px-1 bg-background font-medium"
+                            value={colRoles[i] ?? "ignore"}
+                            onChange={e => setColRoles(prev => {
+                              const next = [...prev]
+                              next[i] = e.target.value as ColRole
+                              return next
+                            })}
+                          >
+                            {COL_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                          </select>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {SAMPLE_ROWS.map((line, ri) => (
+                      <tr key={ri} className="hover:bg-muted/20">
+                        {Array.from({ length: ncols }, (_, ci) => (
+                          <td key={ci} className="px-3 py-1.5 text-foreground truncate max-w-[120px]">
+                            {line[ci] ?? <span className="text-muted-foreground italic">—</span>}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    {bulkLines.length > 4 && (
+                      <tr>
+                        <td colSpan={ncols} className="px-3 py-1.5 text-muted-foreground italic">
+                          … and {bulkLines.length - 4} more rows
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="flex justify-between gap-2">
+                <Button variant="outline" onClick={() => { setBulkWarning(undefined); setBulkStep("paste") }}>← Back</Button>
+                <Button onClick={applyMappingStep}>Next: Preview rows →</Button>
+              </div>
+            </>
+          )}
+
+          {/* Step 3: Preview */}
+          {bulkStep === "preview" && (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold">{bulkPreview.length} rows parsed — review before saving</p>
-                <button onClick={() => setBulkPreview([])} className="text-xs text-primary hover:underline">← Back to paste</button>
+                <p className="text-sm font-semibold">{bulkPreview.length} rows — review before saving</p>
+                <button onClick={() => { setBulkWarning(undefined); setBulkStep("map") }} className="text-xs text-primary hover:underline">← Back to mapping</button>
               </div>
               {bulkWarning && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">{bulkWarning}</p>}
               <div className="max-h-80 overflow-y-auto border border-border rounded-lg divide-y divide-border text-xs">
@@ -447,7 +642,7 @@ export default function FunRun() {
                   Total: {hkd.format(bulkPreview.reduce((s, r) => s + (parseFloat(r.amountHkd || "0") || 0), 0))}
                 </span>
                 <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => setIsBulkOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={closeBulk}>Cancel</Button>
                   <Button onClick={handleBulkSave} disabled={bulkSaving || bulkPreview.length === 0}>
                     {bulkSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                     Import {bulkPreview.length} rows
@@ -456,6 +651,7 @@ export default function FunRun() {
               </div>
             </>
           )}
+
         </div>
       </Modal>
     </PageLayout>
