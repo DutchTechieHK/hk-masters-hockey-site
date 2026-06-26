@@ -1,12 +1,12 @@
 import { pgTable, serial, text, numeric, timestamp } from "drizzle-orm/pg-core";
 
-export const funRunParticipantsTable = pgTable("fun_run_participants", {
+export const funRunIncomeTable = pgTable("fun_run_income", {
   id: serial("id").primaryKey(),
-  participantName: text("participant_name").notNull(),
-  participantEmail: text("participant_email"),
-  pledgePerKm: numeric("pledge_per_km", { precision: 10, scale: 2 }).notNull().default("0"),
-  distanceKm: numeric("distance_km", { precision: 8, scale: 2 }),
-  status: text("status").notNull().default("registered"),
+  date: text("date").notNull().default(""),
+  payerName: text("payer_name").notNull(),
+  description: text("description"),
+  category: text("category").notNull().default("entry_fee"),
+  amountHkd: numeric("amount_hkd", { precision: 10, scale: 2 }).notNull().default("0"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

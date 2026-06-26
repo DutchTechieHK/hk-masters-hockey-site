@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunParticipantsTable, playerPayoutsTable } from "@workspace/db/schema";
+import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunIncomeTable, playerPayoutsTable } from "@workspace/db/schema";
 import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -59,13 +59,12 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     bronze: sponsorRows.filter((s) => s.tier?.toLowerCase() === "bronze").length,
   };
 
-  // Fun Run: sum of pledge_per_km * distance_km for completed participants only
+  // Fun Run: sum of all income entries
   const [funRunTotals] = await db
     .select({
-      total: sql<string>`COALESCE(SUM(pledge_per_km * distance_km), 0)`,
+      total: sql<string>`COALESCE(SUM(amount_hkd), 0)`,
     })
-    .from(funRunParticipantsTable)
-    .where(eq(funRunParticipantsTable.status, "completed"));
+    .from(funRunIncomeTable);
   const funRunTotal = Number(funRunTotals?.total ?? 0);
 
   const fundraisingTarget = 300000;

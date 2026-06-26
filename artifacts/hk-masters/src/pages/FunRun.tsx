@@ -2,509 +2,328 @@ import { useState, useEffect, useCallback } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, Edit2, Footprints, Lock, CheckCircle2, Timer, TrendingUp, DollarSign } from "lucide-react"
+import { Plus, Trash2, Edit2, Download, Upload, DollarSign, TrendingUp, Coffee, Tag, Loader2, X, ChevronDown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { formatCurrency } from "@/lib/utils"
-import { format, parseISO } from "date-fns"
+import { getStoredAdminToken } from "@/lib/admin-auth"
 
-const SESSION_KEY = "hkm_admin_session"
-function getStoredToken(): string | null {
-  try { return localStorage.getItem(SESSION_KEY) } catch { return null }
-}
-async function apiLogin(password: string): Promise<string> {
-  const res = await fetch("/api/admin/auth", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password }),
-  })
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}))
-    throw new Error((data as { error?: string }).error ?? "Login failed")
-  }
-  const data = await res.json() as { token: string }
-  return data.token
-}
-async function apiCheckSession(token: string): Promise<boolean> {
-  const res = await fetch("/api/admin/auth", { headers: { "x-session-token": token } })
-  const data = await res.json() as { authenticated: boolean }
-  return data.authenticated
-}
+const CATEGORIES = [
+  { value: "entry_fee", label: "Entry fee", color: "bg-blue-100 text-blue-800" },
+  { value: "pledge", label: "Pledge", color: "bg-purple-100 text-purple-800" },
+  { value: "drinks_cookies", label: "Drinks & cookies", color: "bg-amber-100 text-amber-800" },
+  { value: "other", label: "Other", color: "bg-gray-100 text-gray-700" },
+] as const
 
-function apiFetch(path: string, opts: RequestInit = {}) {
-  const token = getStoredToken()
-  return fetch(path, {
-    ...opts,
-    headers: {
-      "Content-Type": "application/json",
-      "x-session-token": token ?? "",
-      ...(opts.headers ?? {}),
-    },
-  }).then(async (res) => {
-    if (res.status === 204) return null
-    const data = await res.json()
-    if (!res.ok) throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`)
-    return data
-  })
-}
+type Category = typeof CATEGORIES[number]["value"]
 
-type Participant = {
+type IncomeRow = {
   id: number
-  participantName: string
-  participantEmail: string | null
-  pledgePerKm: number
-  distanceKm: number | null
-  totalRaised: number | null
-  status: string
+  date: string
+  payerName: string
+  description: string | null
+  category: Category
+  amountHkd: number
   notes: string | null
   createdAt: string
 }
 
-type FormValues = {
-  participantName: string
-  participantEmail: string
-  pledgePerKm: string
-  distanceKm: string
+type RowForm = {
+  date: string
+  payerName: string
+  description: string
+  category: Category
+  amountHkd: string
   notes: string
 }
 
-const EMPTY_FORM: FormValues = {
-  participantName: "",
-  participantEmail: "",
-  pledgePerKm: "",
-  distanceKm: "",
+const EMPTY_FORM: RowForm = {
+  date: "",
+  payerName: "",
+  description: "",
+  category: "entry_fee",
+  amountHkd: "",
   notes: "",
 }
 
-function participantToForm(p: Participant): FormValues {
-  return {
-    participantName: p.participantName,
-    participantEmail: p.participantEmail ?? "",
-    pledgePerKm: p.pledgePerKm > 0 ? String(p.pledgePerKm) : "",
-    distanceKm: p.distanceKm != null ? String(p.distanceKm) : "",
-    notes: p.notes ?? "",
+function authHeaders(): Record<string, string> {
+  const token = getStoredAdminToken()
+  return token
+    ? { "x-session-token": token, "Content-Type": "application/json" }
+    : { "Content-Type": "application/json" }
+}
+
+function CategoryBadge({ category }: { category: Category }) {
+  const cat = CATEGORIES.find(c => c.value === category)
+  return (
+    <span className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${cat?.color ?? "bg-gray-100 text-gray-700"}`}>
+      {cat?.label ?? category}
+    </span>
+  )
+}
+
+const hkd = new Intl.NumberFormat("en-HK", { style: "currency", currency: "HKD", minimumFractionDigits: 0, maximumFractionDigits: 0 })
+
+function parseBulkText(raw: string): { rows: Partial<RowForm>[]; warning?: string } {
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean)
+  if (lines.length === 0) return { rows: [] }
+  const rows: Partial<RowForm>[] = []
+  for (const line of lines) {
+    const cols = line.includes("\t") ? line.split("\t") : line.split(",")
+    const trimmed = cols.map(c => c.trim().replace(/^"|"$/g, ""))
+    if (trimmed.length < 2) continue
+    const dateRx = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
+    const amountRx = /^[\d,]+(\.\d{1,2})?$/
+    let date = "", payerName = "", amountRaw = "", notes = ""
+    let amountIdx = -1
+    for (let i = trimmed.length - 1; i >= 0; i--) {
+      if (amountRx.test(trimmed[i].replace(/,/g, ""))) { amountIdx = i; break }
+    }
+    const dateIdx = trimmed.findIndex(c => dateRx.test(c))
+    if (dateIdx >= 0) date = trimmed[dateIdx]
+    if (amountIdx >= 0) amountRaw = trimmed[amountIdx].replace(/,/g, "")
+    const skipIdxs = new Set([dateIdx, amountIdx].filter(i => i >= 0))
+    const rest = trimmed.filter((_, i) => !skipIdxs.has(i)).filter(Boolean)
+    if (rest.length > 0) payerName = rest[0]
+    if (rest.length > 1) notes = rest.slice(1).join(" — ")
+    const amount = parseFloat(amountRaw)
+    if (isNaN(amount) || !payerName) continue
+    rows.push({ date, payerName, description: "", category: "entry_fee", amountHkd: String(amount), notes })
   }
+  return { rows, warning: rows.length < lines.length ? `${lines.length - rows.length} line(s) skipped (could not parse)` : undefined }
 }
 
 export default function FunRun() {
   const { toast } = useToast()
+  const [rows, setRows] = useState<IncomeRow[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [sessionToken, setSessionToken] = useState<string | null>(null)
-  const [sessionChecked, setSessionChecked] = useState(false)
-  const [loginPassword, setLoginPassword] = useState("")
-  const [loginError, setLoginError] = useState<string | null>(null)
-  const [loginLoading, setLoginLoading] = useState(false)
-
-  useEffect(() => {
-    const stored = getStoredToken()
-    if (stored) {
-      apiCheckSession(stored).then((valid) => {
-        if (valid) setSessionToken(stored)
-        setSessionChecked(true)
-      }).catch(() => setSessionChecked(true))
-    } else {
-      setSessionChecked(true)
-    }
-  }, [])
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoginLoading(true)
-    setLoginError(null)
-    try {
-      const token = await apiLogin(loginPassword)
-      localStorage.setItem(SESSION_KEY, token)
-      setSessionToken(token)
-      setLoginPassword("")
-    } catch (err) {
-      setLoginError((err as Error).message || "Login failed")
-    } finally {
-      setLoginLoading(false)
-    }
-  }
-
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const fetchParticipants = useCallback(async () => {
-    if (!sessionToken) return
+  const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await apiFetch("/api/fun-run")
-      setParticipants(data as Participant[])
+      const res = await fetch("/api/fun-run", { headers: authHeaders() })
+      if (!res.ok) throw new Error("Failed to load")
+      setRows(await res.json())
     } catch (err) {
-      toast({ title: (err as Error).message || "Failed to load participants", variant: "destructive" })
+      toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
       setLoading(false)
     }
-  }, [sessionToken, toast])
+  }, [toast])
 
-  useEffect(() => {
-    if (sessionToken) fetchParticipants()
-  }, [sessionToken, fetchParticipants])
+  useEffect(() => { load() }, [load])
 
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null)
-  const [formValues, setFormValues] = useState<FormValues>(EMPTY_FORM)
-  const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormValues, string>>>({})
-  const [formSubmitting, setFormSubmitting] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [editingRow, setEditingRow] = useState<IncomeRow | null>(null)
+  const [form, setForm] = useState<RowForm>(EMPTY_FORM)
+  const [saving, setSaving] = useState(false)
 
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean
-    title: string
-    message: string
-    onConfirm: () => void
-  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} })
-
-  const [recordDistanceDialog, setRecordDistanceDialog] = useState<{
-    isOpen: boolean
-    participant: Participant | null
-    distanceKm: string
-  }>({ isOpen: false, participant: null, distanceKm: "" })
-
-  const showConfirm = (title: string, message: string, onConfirm: () => void) => {
-    setConfirmDialog({ isOpen: true, title, message, onConfirm })
+  const openAdd = () => { setEditingRow(null); setForm(EMPTY_FORM); setIsAddOpen(true) }
+  const openEdit = (r: IncomeRow) => {
+    setEditingRow(r)
+    setForm({ date: r.date, payerName: r.payerName, description: r.description ?? "", category: r.category, amountHkd: String(r.amountHkd), notes: r.notes ?? "" })
+    setIsAddOpen(true)
   }
 
-  const openAddModal = () => {
-    setEditingParticipant(null)
-    setFormValues(EMPTY_FORM)
-    setFormErrors({})
-    setIsModalOpen(true)
-  }
-
-  const openEditModal = (p: Participant) => {
-    setEditingParticipant(p)
-    setFormValues(participantToForm(p))
-    setFormErrors({})
-    setIsModalOpen(true)
-  }
-
-  const validateForm = (values: FormValues): Partial<Record<keyof FormValues, string>> => {
-    const errors: Partial<Record<keyof FormValues, string>> = {}
-    if (!values.participantName.trim()) errors.participantName = "Name is required"
-    if (values.participantEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.participantEmail.trim())) {
-      errors.participantEmail = "Invalid email address"
-    }
-    const pledge = parseFloat(values.pledgePerKm)
-    if (values.pledgePerKm && (isNaN(pledge) || pledge < 0)) {
-      errors.pledgePerKm = "Must be a non-negative number"
-    }
-    const dist = parseFloat(values.distanceKm)
-    if (values.distanceKm && (isNaN(dist) || dist < 0)) {
-      errors.distanceKm = "Must be a non-negative number"
-    }
-    return errors
-  }
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    const errors = validateForm(formValues)
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors)
-      return
-    }
-    setFormSubmitting(true)
+    setSaving(true)
     try {
       const body = {
-        participantName: formValues.participantName.trim(),
-        participantEmail: formValues.participantEmail.trim() || null,
-        pledgePerKm: formValues.pledgePerKm ? parseFloat(formValues.pledgePerKm) : 0,
-        distanceKm: formValues.distanceKm ? parseFloat(formValues.distanceKm) : null,
-        notes: formValues.notes.trim() || null,
+        date: form.date.trim(),
+        payerName: form.payerName.trim(),
+        description: form.description.trim() || null,
+        category: form.category,
+        amountHkd: parseFloat(form.amountHkd) || 0,
+        notes: form.notes.trim() || null,
       }
-      if (editingParticipant) {
-        const updated = await apiFetch(`/api/fun-run/${editingParticipant.id}`, {
-          method: "PUT",
-          body: JSON.stringify(body),
-        }) as Participant
-        setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p))
-        toast({ title: "Participant updated" })
+      if (editingRow) {
+        const res = await fetch(`/api/fun-run/${editingRow.id}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify(body) })
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to update")
+        const updated: IncomeRow = await res.json()
+        setRows(prev => prev.map(r => r.id === updated.id ? updated : r))
+        toast({ title: "Row updated" })
       } else {
-        const created = await apiFetch("/api/fun-run", {
-          method: "POST",
-          body: JSON.stringify(body),
-        }) as Participant
-        setParticipants(prev => [...prev, created])
-        toast({ title: "Participant added" })
+        const res = await fetch("/api/fun-run", { method: "POST", headers: authHeaders(), body: JSON.stringify(body) })
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Failed to add")
+        const created: IncomeRow = await res.json()
+        setRows(prev => [...prev, created])
+        toast({ title: "Row added" })
       }
-      setIsModalOpen(false)
+      setIsAddOpen(false)
     } catch (err) {
-      toast({ title: (err as Error).message || "An error occurred", variant: "destructive" })
+      toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
-      setFormSubmitting(false)
+      setSaving(false)
     }
   }
 
-  const handleDelete = (p: Participant) => {
-    showConfirm(
-      "Delete Participant",
-      `Remove ${p.participantName} from the fun run? This action cannot be undone.`,
-      async () => {
-        setConfirmDialog(prev => ({ ...prev, isOpen: false }))
-        try {
-          await apiFetch(`/api/fun-run/${p.id}`, { method: "DELETE" })
-          setParticipants(prev => prev.filter(x => x.id !== p.id))
-          toast({ title: "Participant deleted" })
-        } catch (err) {
-          toast({ title: (err as Error).message || "Failed to delete", variant: "destructive" })
-        }
-      }
-    )
-  }
-
-  const openRecordDistance = (p: Participant) => {
-    setRecordDistanceDialog({
-      isOpen: true,
-      participant: p,
-      distanceKm: p.distanceKm != null ? String(p.distanceKm) : "",
-    })
-  }
-
-  const handleRecordDistance = async () => {
-    const { participant, distanceKm } = recordDistanceDialog
-    if (!participant) return
-    const dist = parseFloat(distanceKm)
-    if (isNaN(dist) || dist < 0) {
-      toast({ title: "Please enter a valid distance", variant: "destructive" })
-      return
-    }
-    setRecordDistanceDialog(prev => ({ ...prev, isOpen: false }))
+  const handleDelete = async (r: IncomeRow) => {
+    if (!confirm(`Delete entry for "${r.payerName}" (${hkd.format(r.amountHkd)})?`)) return
     try {
-      const updated = await apiFetch(`/api/fun-run/${participant.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ distanceKm: dist, status: "completed" }),
-      }) as Participant
-      setParticipants(prev => prev.map(p => p.id === updated.id ? updated : p))
-      toast({ title: "Distance recorded", description: `${participant.participantName}: ${dist} km` })
+      await fetch(`/api/fun-run/${r.id}`, { method: "DELETE", headers: authHeaders() })
+      setRows(prev => prev.filter(x => x.id !== r.id))
+      toast({ title: "Entry deleted" })
     } catch (err) {
-      toast({ title: (err as Error).message || "Failed to record distance", variant: "destructive" })
+      toast({ title: (err as Error).message, variant: "destructive" })
     }
   }
 
-  const totalRaised = participants.reduce((sum, p) => sum + (p.totalRaised ?? 0), 0)
-  const totalPledgedPipeline = participants.reduce((sum, p) => sum + p.pledgePerKm, 0)
-  const completedCount = participants.filter(p => p.status === "completed").length
-  const registeredCount = participants.filter(p => p.status === "registered").length
-
-  if (!sessionChecked) {
-    return (
-      <PageLayout title="Fun Run" description="Checking access...">
-        <div className="flex items-center justify-center py-24 text-muted-foreground">Loading...</div>
-      </PageLayout>
-    )
+  const handleExport = () => {
+    const token = getStoredAdminToken()
+    const url = token ? `/api/fun-run/export?token=${token}` : "/api/fun-run/export"
+    window.open(url, "_blank")
   }
 
-  if (!sessionToken) {
-    return (
-      <PageLayout title="Fun Run" description="Admin access required.">
-        <div className="max-w-sm mx-auto mt-12">
-          <div className="bg-white rounded-2xl border border-border shadow-sm p-8">
-            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full mx-auto mb-5">
-              <Lock className="w-6 h-6 text-primary" />
-            </div>
-            <h2 className="text-lg font-bold text-center mb-1">Admin Login</h2>
-            <p className="text-sm text-muted-foreground text-center mb-6">Enter your admin password to access fun run records.</p>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <Input
-                type="password"
-                placeholder="Admin password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                autoFocus
-              />
-              {loginError && <p className="text-xs text-destructive">{loginError}</p>}
-              <Button type="submit" className="w-full" disabled={loginLoading || !loginPassword}>
-                {loginLoading ? "Signing in…" : "Sign in"}
-              </Button>
-            </form>
-          </div>
-        </div>
-      </PageLayout>
-    )
+  // ── Bulk import ─────────────────────────────────────────────────────────────
+  const [isBulkOpen, setIsBulkOpen] = useState(false)
+  const [bulkText, setBulkText] = useState("")
+  const [bulkPreview, setBulkPreview] = useState<Partial<RowForm>[]>([])
+  const [bulkWarning, setBulkWarning] = useState<string | undefined>()
+  const [bulkCategory, setBulkCategory] = useState<Category>("entry_fee")
+  const [bulkSaving, setBulkSaving] = useState(false)
+
+  const parseBulk = () => {
+    const { rows: parsed, warning } = parseBulkText(bulkText)
+    setBulkPreview(parsed)
+    setBulkWarning(warning)
   }
+
+  const handleBulkSave = async () => {
+    if (bulkPreview.length === 0) return
+    setBulkSaving(true)
+    try {
+      const payload = bulkPreview.map(r => ({ ...r, category: r.category || bulkCategory }))
+      const res = await fetch("/api/fun-run/bulk", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Bulk import failed")
+      toast({ title: `${data.inserted} rows imported` })
+      setIsBulkOpen(false)
+      setBulkText("")
+      setBulkPreview([])
+      load()
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setBulkSaving(false)
+    }
+  }
+
+  const updateBulkRow = (i: number, field: keyof RowForm, value: string) => {
+    setBulkPreview(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r))
+  }
+
+  const removeBulkRow = (i: number) => {
+    setBulkPreview(prev => prev.filter((_, idx) => idx !== i))
+  }
+
+  // ── Totals ──────────────────────────────────────────────────────────────────
+  const total = rows.reduce((s, r) => s + r.amountHkd, 0)
+  const byCategory = CATEGORIES.map(c => ({
+    ...c,
+    amount: rows.filter(r => r.category === c.value).reduce((s, r) => s + r.amountHkd, 0),
+  }))
 
   return (
     <PageLayout
       title="Fun Run"
-      description="Track participants, pledges per km, and total funds raised."
+      description="Income received from the Fun Run event."
       action={
-        <Button onClick={openAddModal}>
-          <Plus className="w-5 h-5 mr-2" /> Add Participant
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Download className="w-4 h-4" /> Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="gap-2">
+            <Upload className="w-4 h-4" /> Bulk Import
+          </Button>
+          <Button onClick={openAdd} className="gap-2">
+            <Plus className="w-4 h-4" /> Add Row
+          </Button>
+        </div>
       }
     >
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-emerald-600 to-emerald-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-lg shadow-emerald-900/20">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="lg:col-span-2 bg-gradient-to-br from-emerald-600 to-emerald-900 rounded-2xl p-6 text-white shadow-lg shadow-emerald-900/20 relative overflow-hidden">
           <div className="absolute right-0 bottom-0 opacity-10 translate-x-1/4 translate-y-1/4">
             <DollarSign className="w-32 h-32" />
           </div>
-          <div className="relative z-10">
-            <p className="text-emerald-100 font-medium mb-1 uppercase tracking-wider text-xs">Total Raised</p>
-            <p className="text-3xl font-display font-bold">{formatCurrency(totalRaised)}</p>
-          </div>
+          <p className="text-emerald-100 font-medium mb-1 uppercase tracking-wider text-xs">Total Raised</p>
+          <p className="text-4xl font-bold">{hkd.format(total)}</p>
+          <p className="text-emerald-200 text-sm mt-1">{rows.length} entries</p>
         </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1 text-xs uppercase tracking-wider">
-            <TrendingUp className="w-4 h-4" />
-            Participants
+        {byCategory.map(c => (
+          <div key={c.value} className="bg-white rounded-2xl p-5 border border-border shadow-sm">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">{c.label}</p>
+            <p className="text-2xl font-bold text-foreground">{hkd.format(c.amount)}</p>
+            <p className="text-xs text-muted-foreground mt-1">{rows.filter(r => r.category === c.value).length} entries</p>
           </div>
-          <p className="text-3xl font-display font-bold text-foreground">{participants.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">{registeredCount} registered · {completedCount} completed</p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1 text-xs uppercase tracking-wider">
-            <CheckCircle2 className="w-4 h-4" />
-            Completed
-          </div>
-          <p className="text-3xl font-display font-bold text-foreground">{completedCount}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {participants.length > 0
-              ? `${Math.round((completedCount / participants.length) * 100)}% of participants`
-              : "No participants yet"}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-2xl p-6 border border-border shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-1 text-xs uppercase tracking-wider">
-            <Footprints className="w-4 h-4" />
-            Total Distance
-          </div>
-          <p className="text-3xl font-display font-bold text-foreground">
-            {participants.reduce((sum, p) => sum + (p.distanceKm ?? 0), 0).toFixed(1)} km
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">across all completed runners</p>
-        </div>
+        ))}
       </div>
 
-      {/* Participants Table */}
+      {/* Income table */}
       <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-muted-foreground uppercase bg-muted border-b border-border">
               <tr>
-                <th className="px-4 py-3 font-semibold">Participant</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
-                <th className="px-4 py-3 font-semibold text-right">Pledge / km</th>
-                <th className="px-4 py-3 font-semibold text-right">Distance</th>
-                <th className="px-4 py-3 font-semibold text-right">Total Raised</th>
-                <th className="px-4 py-3 font-semibold">Status</th>
+                <th className="px-4 py-3 font-semibold">Date</th>
+                <th className="px-4 py-3 font-semibold">Payer / Name</th>
+                <th className="px-4 py-3 font-semibold">Description</th>
+                <th className="px-4 py-3 font-semibold">Category</th>
+                <th className="px-4 py-3 font-semibold text-right">Amount HKD</th>
                 <th className="px-4 py-3 font-semibold">Notes</th>
-                <th className="px-4 py-3 font-semibold text-right sticky right-0 z-20 bg-muted border-l border-border">Actions</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {loading ? (
+                <tr><td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">Loading…</td></tr>
+              ) : rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Loading participants...</td>
-                </tr>
-              ) : participants.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-4 py-16 text-center">
+                  <td colSpan={7} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                      <Footprints className="w-10 h-10 opacity-30" />
+                      <TrendingUp className="w-10 h-10 opacity-30" />
                       <div>
-                        <p className="font-medium">No participants yet</p>
-                        <p className="text-xs mt-1">Click "Add Participant" to get started.</p>
+                        <p className="font-medium">No income entries yet</p>
+                        <p className="text-xs mt-1">Use "Add Row" for single entries or "Bulk Import" to paste from a spreadsheet.</p>
                       </div>
                     </div>
                   </td>
                 </tr>
               ) : (
-                participants.map(p => (
-                  <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
-                    <td className="px-4 py-3">
-                      <div className="font-semibold text-foreground whitespace-nowrap">{p.participantName}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Added {format(parseISO(p.createdAt), "d MMM yyyy")}
-                      </div>
+                rows.map(r => (
+                  <tr key={r.id} className="hover:bg-muted/10 transition-colors group">
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap text-xs">{r.date || "—"}</td>
+                    <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">{r.payerName}</td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-[200px]">
+                      <span className="block truncate text-xs" title={r.description ?? ""}>{r.description || <span className="italic">—</span>}</span>
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[180px]">
-                      {p.participantEmail
-                        ? <a href={`mailto:${p.participantEmail}`} className="hover:text-primary transition-colors block truncate" title={p.participantEmail}>{p.participantEmail}</a>
-                        : <span className="text-xs italic">—</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {p.pledgePerKm > 0 ? formatCurrency(p.pledgePerKm) : <span className="text-muted-foreground italic text-xs">—</span>}
+                    <td className="px-4 py-3"><CategoryBadge category={r.category} /></td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold text-emerald-700">{hkd.format(r.amountHkd)}</td>
+                    <td className="px-4 py-3 text-muted-foreground max-w-[160px]">
+                      <span className="block truncate text-xs" title={r.notes ?? ""}>{r.notes || <span className="italic">—</span>}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {p.distanceKm != null
-                        ? <span className="font-mono">{p.distanceKm} km</span>
-                        : <span className="text-muted-foreground italic text-xs">—</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {p.totalRaised != null && p.totalRaised > 0
-                        ? <span className="text-emerald-700 font-semibold">{formatCurrency(p.totalRaised)}</span>
-                        : <span className="text-muted-foreground italic text-xs">—</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3">
-                      {p.status === "completed"
-                        ? <span className="inline-flex items-center gap-1 text-xs font-medium bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full whitespace-nowrap"><CheckCircle2 className="w-3 h-3" /> Completed</span>
-                        : <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full whitespace-nowrap"><Timer className="w-3 h-3" /> Registered</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-[160px]">
-                      {p.notes
-                        ? <span className="text-xs truncate block" title={p.notes}>{p.notes}</span>
-                        : <span className="text-xs italic">—</span>
-                      }
-                    </td>
-                    <td className="px-4 py-3 text-right sticky right-0 z-10 bg-white border-l border-border group-hover:bg-muted/10 transition-colors">
                       <div className="flex items-center justify-end gap-1">
-                        {p.status === "registered" && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 px-2 text-xs"
-                            onClick={() => openRecordDistance(p)}
-                          >
-                            <Footprints className="w-3 h-3 mr-1" /> Record
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0"
-                          onClick={() => openEditModal(p)}
-                          title="Edit"
-                        >
+                        <button onClick={() => openEdit(r)} title="Edit" className="p-1.5 text-muted-foreground hover:text-primary rounded transition-colors">
                           <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(p)}
-                          title="Delete"
-                        >
+                        </button>
+                        <button onClick={() => handleDelete(r)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded transition-colors">
                           <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
-            {participants.length > 0 && (
+            {rows.length > 0 && (
               <tfoot className="bg-muted/50 border-t border-border">
                 <tr>
-                  <td colSpan={2} className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Totals</td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold">
-                    {formatCurrency(totalPledgedPipeline)}<span className="text-muted-foreground font-normal"> /km</span>
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold">
-                    {participants.reduce((sum, p) => sum + (p.distanceKm ?? 0), 0).toFixed(1)} km
-                  </td>
-                  <td className="px-4 py-3 text-right font-mono text-xs font-semibold text-emerald-700">
-                    {formatCurrency(totalRaised)}
-                  </td>
-                  <td colSpan={3} />
+                  <td colSpan={4} className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase">Total</td>
+                  <td className="px-4 py-3 text-right font-mono font-bold text-emerald-700">{hkd.format(total)}</td>
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             )}
@@ -512,163 +331,118 @@ export default function FunRun() {
         </div>
       </div>
 
-      {/* Add / Edit Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title={editingParticipant ? "Edit Participant" : "Add Participant"}
-      >
-        <form onSubmit={handleFormSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Name <span className="text-destructive">*</span>
-            </label>
-            <Input
-              value={formValues.participantName}
-              onChange={e => setFormValues(v => ({ ...v, participantName: e.target.value }))}
-              placeholder="Full name"
-              autoFocus
-            />
-            {formErrors.participantName && (
-              <p className="text-xs text-destructive mt-1">{formErrors.participantName}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Email</label>
-            <Input
-              type="email"
-              value={formValues.participantEmail}
-              onChange={e => setFormValues(v => ({ ...v, participantEmail: e.target.value }))}
-              placeholder="email@example.com"
-            />
-            {formErrors.participantEmail && (
-              <p className="text-xs text-destructive mt-1">{formErrors.participantEmail}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Pledge per km (HKD)</label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={formValues.pledgePerKm}
-              onChange={e => setFormValues(v => ({ ...v, pledgePerKm: e.target.value }))}
-              placeholder="e.g. 100"
-            />
-            {formErrors.pledgePerKm && (
-              <p className="text-xs text-destructive mt-1">{formErrors.pledgePerKm}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Distance run (km)
-              <span className="text-muted-foreground font-normal ml-1">— leave blank until after the run</span>
-            </label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={formValues.distanceKm}
-              onChange={e => setFormValues(v => ({ ...v, distanceKm: e.target.value }))}
-              placeholder="e.g. 5.5"
-            />
-            {formErrors.distanceKm && (
-              <p className="text-xs text-destructive mt-1">{formErrors.distanceKm}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Notes</label>
-            <Input
-              value={formValues.notes}
-              onChange={e => setFormValues(v => ({ ...v, notes: e.target.value }))}
-              placeholder="Optional notes"
-            />
-          </div>
-
-          {formValues.pledgePerKm && formValues.distanceKm && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
-              <span className="font-medium">Estimated total: </span>
-              {formatCurrency(parseFloat(formValues.pledgePerKm || "0") * parseFloat(formValues.distanceKm || "0"))}
+      {/* Add / Edit modal */}
+      <Modal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} title={editingRow ? "Edit entry" : "Add income entry"}>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold">Date</label>
+              <Input value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} placeholder="e.g. 01/06/2026" />
             </div>
-          )}
-
-          <div className="flex gap-3 pt-2 justify-end">
-            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={formSubmitting}>
-              {formSubmitting ? "Saving…" : editingParticipant ? "Save Changes" : "Add Participant"}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold">Amount HKD *</label>
+              <Input type="number" min="0" step="0.01" required value={form.amountHkd} onChange={e => setForm(f => ({ ...f, amountHkd: e.target.value }))} placeholder="100" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold">Payer / Name *</label>
+            <Input required value={form.payerName} onChange={e => setForm(f => ({ ...f, payerName: e.target.value }))} placeholder="e.g. Brian Thomas" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold">Description</label>
+            <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Bank transfer reference" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold">Category</label>
+            <select
+              className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              value={form.category}
+              onChange={e => setForm(f => ({ ...f, category: e.target.value as Category }))}
+            >
+              {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-semibold">Notes</label>
+            <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional" />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              {editingRow ? "Save changes" : "Add entry"}
             </Button>
           </div>
         </form>
       </Modal>
 
-      {/* Record Distance Modal */}
-      <Modal
-        isOpen={recordDistanceDialog.isOpen}
-        onClose={() => setRecordDistanceDialog(prev => ({ ...prev, isOpen: false }))}
-        title={`Record Distance — ${recordDistanceDialog.participant?.participantName ?? ""}`}
-      >
+      {/* Bulk import modal */}
+      <Modal isOpen={isBulkOpen} onClose={() => { setIsBulkOpen(false); setBulkText(""); setBulkPreview([]) }} title="Bulk Import">
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Enter the distance this participant completed in the fun run.
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Distance (km) <span className="text-destructive">*</span>
-            </label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={recordDistanceDialog.distanceKm}
-              onChange={e => setRecordDistanceDialog(prev => ({ ...prev, distanceKm: e.target.value }))}
-              placeholder="e.g. 5.5"
-              autoFocus
-            />
-          </div>
-          {recordDistanceDialog.participant && recordDistanceDialog.distanceKm && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-3 text-sm text-emerald-800">
-              <span className="font-medium">Total raised: </span>
-              {formatCurrency(
-                recordDistanceDialog.participant.pledgePerKm * parseFloat(recordDistanceDialog.distanceKm || "0")
-              )}
-              <span className="text-emerald-600 ml-1">
-                ({recordDistanceDialog.distanceKm} km × {formatCurrency(recordDistanceDialog.participant.pledgePerKm)}/km)
-              </span>
-            </div>
+          {bulkPreview.length === 0 ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Paste rows from your spreadsheet below. Each row should have columns in any order — the app will auto-detect date, payer name, and amount. Expected columns: <strong>Date · Payer Name · Amount</strong> (plus optional notes).
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold">Default category for all imported rows</label>
+                <select
+                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+                  value={bulkCategory}
+                  onChange={e => setBulkCategory(e.target.value as Category)}
+                >
+                  {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              </div>
+              <Textarea
+                className="font-mono text-xs min-h-[200px]"
+                placeholder={"01/06/2026\tMiss Cheuk Ho San\t100\n30/05/2026\tBrian Thomas\t400\t..."}
+                value={bulkText}
+                onChange={e => setBulkText(e.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsBulkOpen(false)}>Cancel</Button>
+                <Button onClick={parseBulk} disabled={!bulkText.trim()}>Preview rows</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold">{bulkPreview.length} rows parsed — review before saving</p>
+                <button onClick={() => setBulkPreview([])} className="text-xs text-primary hover:underline">← Back to paste</button>
+              </div>
+              {bulkWarning && <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">{bulkWarning}</p>}
+              <div className="max-h-80 overflow-y-auto border border-border rounded-lg divide-y divide-border text-xs">
+                {bulkPreview.map((r, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2">
+                    <span className="w-20 shrink-0 text-muted-foreground">{r.date || "—"}</span>
+                    <span className="flex-1 font-medium truncate">{r.payerName}</span>
+                    <select
+                      className="h-6 text-xs border border-input rounded px-1 shrink-0"
+                      value={r.category || bulkCategory}
+                      onChange={e => updateBulkRow(i, "category", e.target.value)}
+                    >
+                      {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                    </select>
+                    <span className="font-mono font-semibold text-emerald-700 shrink-0">HK${Number(r.amountHkd || 0).toLocaleString()}</span>
+                    <button onClick={() => removeBulkRow(i)} className="text-muted-foreground hover:text-rose-600 shrink-0"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">
+                  Total: {hkd.format(bulkPreview.reduce((s, r) => s + (parseFloat(r.amountHkd || "0") || 0), 0))}
+                </span>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setIsBulkOpen(false)}>Cancel</Button>
+                  <Button onClick={handleBulkSave} disabled={bulkSaving || bulkPreview.length === 0}>
+                    {bulkSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Import {bulkPreview.length} rows
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
-          <div className="flex gap-3 pt-2 justify-end">
-            <Button variant="outline" onClick={() => setRecordDistanceDialog(prev => ({ ...prev, isOpen: false }))}>
-              Cancel
-            </Button>
-            <Button onClick={handleRecordDistance} disabled={!recordDistanceDialog.distanceKm}>
-              <CheckCircle2 className="w-4 h-4 mr-2" /> Record & Mark Complete
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Confirm Dialog */}
-      <Modal
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
-        title={confirmDialog.title}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{confirmDialog.message}</p>
-          <div className="flex gap-3 pt-2 justify-end">
-            <Button variant="outline" onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDialog.onConfirm}>
-              Confirm
-            </Button>
-          </div>
         </div>
       </Modal>
     </PageLayout>

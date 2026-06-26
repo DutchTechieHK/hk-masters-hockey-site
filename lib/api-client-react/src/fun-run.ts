@@ -4,10 +4,14 @@ import { customFetch } from "./custom-fetch";
 import type { ErrorType } from "./custom-fetch";
 
 export interface FunRunSummary {
+  total: number;
   count: number;
-  completedCount: number;
-  totalRaised: number;
-  totalPledged: number;
+  byCategory: {
+    entry_fee: number;
+    pledge: number;
+    drinks_cookies: number;
+    other: number;
+  };
 }
 
 export const getFunRunSummaryQueryKey = () => ["/api/fun-run/summary"] as const;

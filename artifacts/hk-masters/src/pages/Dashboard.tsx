@@ -396,7 +396,7 @@ export default function Dashboard() {
           })()}
 
           {/* Fun Run summary card */}
-          {funRunSummary && (
+          {funRunSummary && funRunSummary.total > 0 && (
             <button
               className="w-full text-left bg-white rounded-2xl shadow-sm border border-border hover:border-primary/40 hover:shadow-md transition-all group overflow-hidden"
               onClick={() => navigate("/fun-run")}
@@ -410,23 +410,37 @@ export default function Dashboard() {
               </div>
               <div className="p-6">
                 <div className="flex items-end gap-2 mb-1">
-                  <p className="text-3xl font-bold text-foreground">{hkdPrecise.format(funRunSummary.totalRaised)}</p>
+                  <p className="text-3xl font-bold text-foreground">{hkdPrecise.format(funRunSummary.total)}</p>
                 </div>
-                <p className="text-sm text-muted-foreground mb-4">raised across {funRunSummary.count} participant{funRunSummary.count !== 1 ? "s" : ""}</p>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Registered</span>
-                    <span className="text-sm font-semibold text-foreground">{funRunSummary.count}</span>
+                <p className="text-sm text-muted-foreground mb-4">{funRunSummary.count} income entr{funRunSummary.count !== 1 ? "ies" : "y"}</p>
+                {funRunSummary.byCategory && (
+                  <div className="space-y-2">
+                    {funRunSummary.byCategory.entry_fee > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Entry fees</span>
+                        <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.byCategory.entry_fee)}</span>
+                      </div>
+                    )}
+                    {funRunSummary.byCategory.pledge > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Pledges</span>
+                        <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.byCategory.pledge)}</span>
+                      </div>
+                    )}
+                    {funRunSummary.byCategory.drinks_cookies > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Drinks & cookies</span>
+                        <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.byCategory.drinks_cookies)}</span>
+                      </div>
+                    )}
+                    {funRunSummary.byCategory.other > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Other</span>
+                        <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.byCategory.other)}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Completed</span>
-                    <span className="text-sm font-semibold text-emerald-600">{funRunSummary.completedCount}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Total raised</span>
-                    <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.totalRaised)}</span>
-                  </div>
-                </div>
+                )}
                 <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">
                   View fun run <ArrowRight className="w-3 h-3" />
                 </p>
