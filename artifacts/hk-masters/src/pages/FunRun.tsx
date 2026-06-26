@@ -161,7 +161,8 @@ export default function FunRun() {
   const handleDelete = async (r: IncomeRow) => {
     if (!confirm(`Delete entry for "${r.payerName}" (${hkd.format(r.amountHkd)})?`)) return
     try {
-      await fetch(`/api/fun-run/${r.id}`, { method: "DELETE", headers: authHeaders() })
+      const res = await fetch(`/api/fun-run/${r.id}`, { method: "DELETE", headers: authHeaders() })
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Delete failed")
       setRows(prev => prev.filter(x => x.id !== r.id))
       toast({ title: "Entry deleted" })
     } catch (err) {
@@ -169,10 +170,22 @@ export default function FunRun() {
     }
   }
 
-  const handleExport = () => {
-    const token = getStoredAdminToken()
-    const url = token ? `/api/fun-run/export?token=${token}` : "/api/fun-run/export"
-    window.open(url, "_blank")
+  const handleExport = async () => {
+    try {
+      const res = await fetch("/api/fun-run/export", { headers: authHeaders() })
+      if (!res.ok) throw new Error("Export failed — are you signed in?")
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `fun-run-income-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    }
   }
 
   // ── Bulk import ─────────────────────────────────────────────────────────────
