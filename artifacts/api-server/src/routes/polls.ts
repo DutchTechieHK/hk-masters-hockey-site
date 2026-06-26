@@ -53,7 +53,7 @@ function pollEmailHtml(opts: { playerName: string; pollTitle: string; pollDescri
 <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5;padding:32px 16px;"><tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
 <tr><td style="background-color:#1E3A6E;padding:24px 32px;text-align:center;">
-<img src="https://www.hkmastershockey.com/logo.png" alt="HK Masters Hockey" width="64" height="64" style="display:block;margin:0 auto 14px auto;border-radius:8px;"/>
+<img src="https://www.hkmastershockey.com/logo.png" alt="HK Masters Hockey" width="64" height="64" style="display:block;margin:0 auto 14px auto;border-radius:8px;filter:brightness(0) invert(1);"/>
 <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;">HK Masters Hockey</p>
 <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.08em;">2026 Masters World Cup</p>
 </td></tr>

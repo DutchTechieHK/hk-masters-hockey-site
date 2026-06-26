@@ -106,7 +106,7 @@ function emailShell(headerBg: string, title: string, body: string): string {
       <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
         <tr>
           <td style="background-color:${headerBg};padding:24px 32px;text-align:center;">
-            <img src="${LOGO_URL}" alt="HK Masters Hockey" width="64" height="64" style="display:block;margin:0 auto 14px auto;border-radius:8px;" />
+            <img src="${LOGO_URL}" alt="HK Masters Hockey" width="64" height="64" style="display:block;margin:0 auto 14px auto;border-radius:8px;filter:brightness(0) invert(1);" />
             <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.02em;">HK Masters Hockey</p>
             <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75);letter-spacing:0.08em;text-transform:uppercase;">2026 Masters World Cup</p>
           </td>
