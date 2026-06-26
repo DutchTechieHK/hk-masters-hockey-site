@@ -12,7 +12,6 @@ const CATEGORIES = [
   { value: "entry_fee", label: "Entry fee", color: "bg-blue-100 text-blue-800" },
   { value: "pledge", label: "Pledge", color: "bg-purple-100 text-purple-800" },
   { value: "drinks_cookies", label: "Drinks & cookies", color: "bg-amber-100 text-amber-800" },
-  { value: "other", label: "Other", color: "bg-gray-100 text-gray-700" },
 ] as const
 
 type Category = typeof CATEGORIES[number]["value"]

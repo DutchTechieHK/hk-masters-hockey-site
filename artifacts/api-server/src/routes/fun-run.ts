@@ -7,7 +7,7 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 const router = Router();
 router.use(requireAdminAccess);
 
-const VALID_CATEGORIES = ["entry_fee", "pledge", "drinks_cookies", "other"] as const;
+const VALID_CATEGORIES = ["entry_fee", "pledge", "drinks_cookies"] as const;
 type Category = typeof VALID_CATEGORIES[number];
 
 function serialize(row: typeof funRunIncomeTable.$inferSelect) {
@@ -57,7 +57,6 @@ router.get("/summary", async (_req, res) => {
       entryFee: sql<string>`COALESCE(SUM(CASE WHEN category = 'entry_fee' THEN amount_hkd ELSE 0 END), 0)`,
       pledge: sql<string>`COALESCE(SUM(CASE WHEN category = 'pledge' THEN amount_hkd ELSE 0 END), 0)`,
       drinksCookies: sql<string>`COALESCE(SUM(CASE WHEN category = 'drinks_cookies' THEN amount_hkd ELSE 0 END), 0)`,
-      other: sql<string>`COALESCE(SUM(CASE WHEN category = 'other' THEN amount_hkd ELSE 0 END), 0)`,
     })
     .from(funRunIncomeTable);
 
@@ -68,7 +67,6 @@ router.get("/summary", async (_req, res) => {
       entry_fee: Number(totals?.entryFee ?? 0),
       pledge: Number(totals?.pledge ?? 0),
       drinks_cookies: Number(totals?.drinksCookies ?? 0),
-      other: Number(totals?.other ?? 0),
     },
   });
 });

@@ -433,12 +433,6 @@ export default function Dashboard() {
                         <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.byCategory.drinks_cookies)}</span>
                       </div>
                     )}
-                    {funRunSummary.byCategory.other > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-muted-foreground">Other</span>
-                        <span className="text-sm font-semibold text-foreground">{hkdPrecise.format(funRunSummary.byCategory.other)}</span>
-                      </div>
-                    )}
                   </div>
                 )}
                 <p className="text-xs text-primary font-medium mt-4 flex items-center gap-1">

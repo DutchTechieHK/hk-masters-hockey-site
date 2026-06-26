@@ -10,7 +10,6 @@ export interface FunRunSummary {
     entry_fee: number;
     pledge: number;
     drinks_cookies: number;
-    other: number;
   };
 }
 
