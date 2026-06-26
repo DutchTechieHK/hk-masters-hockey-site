@@ -272,6 +272,7 @@ export default function FunRun() {
   const [isBulkOpen, setIsBulkOpen] = useState(false)
   const [bulkStep, setBulkStep] = useState<BulkStep>("paste")
   const [bulkText, setBulkText] = useState("")
+  const [bulkFileName, setBulkFileName] = useState<string | null>(null)
   const [bulkLines, setBulkLines] = useState<string[][]>([])
   const [colRoles, setColRoles] = useState<ColRole[]>([])
   const [bulkPreview, setBulkPreview] = useState<Partial<RowForm>[]>([])
@@ -283,10 +284,24 @@ export default function FunRun() {
     setIsBulkOpen(false)
     setBulkStep("paste")
     setBulkText("")
+    setBulkFileName(null)
     setBulkLines([])
     setColRoles([])
     setBulkPreview([])
     setBulkWarning(undefined)
+  }
+
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBulkFileName(file.name)
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string
+      setBulkText(text ?? "")
+    }
+    reader.readAsText(file)
+    e.target.value = ""
   }
 
   const handleBulkParsePaste = () => {
@@ -523,12 +538,38 @@ export default function FunRun() {
       >
         <div className="space-y-4">
 
-          {/* Step 1: Paste */}
+          {/* Step 1: Paste or upload CSV */}
           {bulkStep === "paste" && (
             <>
               <p className="text-sm text-muted-foreground">
-                Copy and paste rows directly from your spreadsheet. Tabs or commas are both fine as separators. You'll get to assign which column is which in the next step.
+                Upload a CSV file or paste rows directly from your spreadsheet. Tabs or commas are both fine as separators. You'll get to assign which column is which in the next step.
               </p>
+
+              {/* File upload */}
+              <div>
+                <label className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-lg px-4 py-5 cursor-pointer hover:bg-muted/30 transition-colors text-center">
+                  <Upload className="w-6 h-6 text-muted-foreground" />
+                  {bulkFileName ? (
+                    <span className="text-sm font-medium text-foreground">{bulkFileName}</span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Click to upload a <span className="font-semibold">.csv</span> file</span>
+                  )}
+                  <span className="text-xs text-muted-foreground">or drag and drop</span>
+                  <input
+                    type="file"
+                    accept=".csv,text/csv"
+                    className="sr-only"
+                    onChange={handleCsvFileChange}
+                  />
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex-1 h-px bg-border" />
+                <span>or paste text below</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-sm font-semibold">Default category for all imported rows</label>
                 <select
@@ -540,10 +581,10 @@ export default function FunRun() {
                 </select>
               </div>
               <Textarea
-                className="font-mono text-xs min-h-[200px]"
+                className="font-mono text-xs min-h-[160px]"
                 placeholder={"01/06/2026\tMiss Cheuk Ho San\t100\n30/05/2026\tBrian Thomas\t400\t..."}
                 value={bulkText}
-                onChange={e => setBulkText(e.target.value)}
+                onChange={e => { setBulkText(e.target.value); if (bulkFileName) setBulkFileName(null) }}
               />
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={closeBulk}>Cancel</Button>
