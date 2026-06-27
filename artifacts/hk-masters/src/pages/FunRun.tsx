@@ -86,6 +86,20 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
     : <ChevronDown className="w-3 h-3 inline ml-1 text-primary" />
 }
 
+function ddmmyyyyToISO(s: string): string {
+  if (!s) return ""
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!m) return ""
+  return `${m[3]}-${m[2]}-${m[1]}`
+}
+
+function isoToDdmmyyyy(s: string): string {
+  if (!s) return ""
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return ""
+  return `${m[3]}/${m[2]}/${m[1]}`
+}
+
 function parseRawLines(raw: string): string[][] {
   return raw
     .split("\n")
@@ -148,8 +162,8 @@ export default function FunRun() {
   const [loading, setLoading] = useState(true)
 
   // ── Sort state ───────────────────────────────────────────────────────────────
-  const [sortField, setSortField] = useState<SortField | null>(null)
-  const [sortDir, setSortDir] = useState<SortDir>("asc")
+  const [sortField, setSortField] = useState<SortField | null>("date")
+  const [sortDir, setSortDir] = useState<SortDir>("desc")
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -168,6 +182,13 @@ export default function FunRun() {
       if (sortField === "amountHkd") {
         av = Number(av); bv = Number(bv)
         return sortDir === "asc" ? av - bv : bv - av
+      }
+      if (sortField === "date") {
+        const aISO = ddmmyyyyToISO(String(av))
+        const bISO = ddmmyyyyToISO(String(bv))
+        if (aISO < bISO) return sortDir === "asc" ? -1 : 1
+        if (aISO > bISO) return sortDir === "asc" ? 1 : -1
+        return 0
       }
       av = String(av).toLowerCase(); bv = String(bv).toLowerCase()
       if (av < bv) return sortDir === "asc" ? -1 : 1
@@ -486,7 +507,11 @@ export default function FunRun() {
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-sm font-semibold">Date</label>
-              <Input value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} placeholder="e.g. 01/06/2026" />
+              <Input
+                type="date"
+                value={ddmmyyyyToISO(form.date)}
+                onChange={e => setForm(f => ({ ...f, date: isoToDdmmyyyy(e.target.value) }))}
+              />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-semibold">Amount HKD *</label>
