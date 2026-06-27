@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Input } from "@/components/ui/input"
-import { Search, HandCoins, Footprints, Package, Star, ArrowDownToLine, AlertCircle } from "lucide-react"
+import { Search, X, HandCoins, Footprints, Package, Star, ArrowDownToLine, AlertCircle } from "lucide-react"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 import { formatCurrency } from "@/lib/utils"
 import { Link } from "wouter"
@@ -156,9 +156,18 @@ export default function FundraisingSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name…"
-          className="pl-9"
+          className={query ? "pl-9 pr-9" : "pl-9"}
           autoFocus
         />
+        {query && (
+          <button
+            onClick={() => setQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Clear search"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* States */}
