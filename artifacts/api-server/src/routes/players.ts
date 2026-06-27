@@ -21,7 +21,7 @@ import {
   DeletePlayerPaymentParams,
   SendBulkEmailBody,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -319,6 +319,8 @@ router.patch("/self/:token", async (req, res) => {
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
   res.json(mapSelfPlayer(updated, team?.name));
 
+  const updatedFields = Object.keys(updates);
+
   if (passportCopyChanged) {
     sendPassportUploadNotificationEmail({
       playerName: updated.name,
@@ -328,6 +330,17 @@ router.patch("/self/:token", async (req, res) => {
       isUpdate: existing.passportCopyUrl !== null && existing.passportCopyUrl !== "",
     }).catch((err) => {
       console.error("[passport-notify] Failed to send notification email:", err);
+    });
+  }
+
+  if (updatedFields.length > 0) {
+    sendProfileUpdateNotificationEmail({
+      playerName: updated.name,
+      playerEmail: updated.email,
+      teamName: team?.name ?? "Unknown Team",
+      updatedFields,
+    }).catch((err) => {
+      console.error("[profile-update-notify] Failed to send notification email:", err);
     });
   }
 });

@@ -1224,6 +1224,117 @@ The HK Masters Hockey Team`;
   });
 }
 
+const PROFILE_FIELD_SECTIONS: Record<string, string> = {
+  name: "Personal details",
+  phone: "Personal details",
+  dateOfBirth: "Personal details",
+  nationality: "Personal details",
+  dietaryRequirements: "Personal details",
+  medicalNotes: "Personal details",
+  passportNumber: "Passport",
+  passportExpiry: "Passport",
+  passportCopyUrl: "Passport",
+  emergencyContactName: "Emergency contact",
+  emergencyContactPhone: "Emergency contact",
+  flightArrivalDateTime: "Travel & flights",
+  flightDepartureDateTime: "Travel & flights",
+  arrivalCity: "Travel & flights",
+  outboundFlightNumber: "Travel & flights",
+  outboundDepartureDateTime: "Travel & flights",
+  returnFlightNumber: "Travel & flights",
+  returnArrivalDateTime: "Travel & flights",
+  roomSharingPreference: "Accommodation",
+  accommodationName: "Accommodation",
+  accommodationAddress: "Accommodation",
+  accommodationPhone: "Accommodation",
+  accommodationEmail: "Accommodation",
+  insuranceProvider: "Insurance",
+  insurancePolicyNumber: "Insurance",
+  insuranceEmergencyPhone: "Insurance",
+  insurancePolicyHolder: "Insurance",
+  insuranceExpiry: "Insurance",
+  insuranceEmail: "Insurance",
+  shirtSize: "Kit sizes",
+  shortsSize: "Kit sizes",
+  jacketSize: "Kit sizes",
+  poloSize: "Kit sizes",
+  trackTopSize: "Kit sizes",
+  goalieSmockSize: "Kit sizes",
+  instagramHandle: "Social handles",
+  facebookHandle: "Social handles",
+};
+
+export async function sendProfileUpdateNotificationEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  teamName: string;
+  updatedFields: string[];
+}): Promise<boolean> {
+  if (opts.updatedFields.length === 0) return false;
+
+  const adminPlayersUrl = `${ADMIN_APP_URL}/players`;
+  const safeName = escapeHtml(opts.playerName);
+  const safeTeam = escapeHtml(opts.teamName);
+  const safeEmail = escapeHtml(opts.playerEmail);
+
+  const sections = [...new Set(
+    opts.updatedFields.map(f => PROFILE_FIELD_SECTIONS[f] ?? "Other")
+  )];
+
+  const sectionRows = sections.map((s, i) => `
+    <tr${i % 2 === 0 ? ' style="background-color:#f9fafb;"' : ""}>
+      <td style="padding:8px 16px;font-size:14px;color:#374151;">✓ ${escapeHtml(s)}</td>
+    </tr>`).join("");
+
+  const html = emailShell(
+    "#1e3a5f",
+    "Player profile updated",
+    `<p style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:#1f2937;">Player Profile Updated</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      A player has just updated their profile on the <strong>HK 2026 Masters World Cup</strong> portal.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:100px;">Player</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;font-weight:600;">${safeName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;">Email</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeEmail}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;">Team</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeTeam}</td>
+      </tr>
+    </table>
+    <p style="margin:0 0 10px 0;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Sections updated</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      ${sectionRows}
+    </table>
+    <p style="margin:0 0 20px 0;text-align:center;">
+      <a href="${escapeHtml(adminPlayersUrl)}" style="display:inline-block;background-color:#1e3a5f;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Open Players list</a>
+    </p>`
+  );
+
+  const text = `Player Profile Updated
+
+${opts.playerName} (${opts.teamName}) has just updated their profile.
+
+Email: ${opts.playerEmail}
+Sections updated: ${sections.join(", ")}
+
+Open Players list: ${adminPlayersUrl}
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[Profile updated] ${opts.playerName} — ${opts.teamName}`,
+    html,
+    text,
+  });
+}
+
 export async function sendRsvpReminderEmail(opts: {
   playerName: string;
   playerEmail: string;
