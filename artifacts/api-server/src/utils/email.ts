@@ -1849,3 +1849,80 @@ The HK Masters Hockey Team`;
     text,
   });
 }
+
+export async function sendPledgeDigestAdminSummaryEmail(opts: {
+  recipients: Array<{
+    playerName: string;
+    playerEmail: string;
+    pledgeCount: number;
+    totalAmount: number;
+  }>;
+  skippedCount: number;
+}) {
+  const todayStr = new Date().toLocaleDateString("en-GB", {
+    timeZone: "Asia/Hong_Kong",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const rowsHtml = opts.recipients
+    .map((r, i) => {
+      const bg = i % 2 === 0 ? "#ffffff" : "#f9fafb";
+      return `<tr style="background-color:${bg};">
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;">${escapeHtml(r.playerName)}</td>
+        <td style="padding:10px 16px;font-size:13px;color:#6b7280;border-top:1px solid #e5e7eb;">${escapeHtml(r.playerEmail)}</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;border-top:1px solid #e5e7eb;text-align:center;">${r.pledgeCount}</td>
+        <td style="padding:10px 16px;font-size:14px;font-weight:600;color:#1E3A6E;border-top:1px solid #e5e7eb;text-align:right;">HK$${r.totalAmount.toLocaleString()}</td>
+      </tr>`;
+    })
+    .join("\n");
+
+  const skippedNote = opts.skippedCount > 0
+    ? `<p style="margin:16px 0 0 0;font-size:13px;color:#9ca3af;">Note: ${opts.skippedCount} beneficiar${opts.skippedCount !== 1 ? "ies were" : "y was"} skipped — no matching player email found in the system.</p>`
+    : "";
+
+  const html = emailShell(
+    "#1E3A6E",
+    "Nightly pledge digest — admin copy",
+    `<p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      The nightly pledge digest ran on <strong>${todayStr}</strong> and notified <strong>${opts.recipients.length} player${opts.recipients.length !== 1 ? "s" : ""}</strong> about new pledges received in their name.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <thead>
+        <tr style="background-color:#1E3A6E;">
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Player</th>
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:left;text-transform:uppercase;letter-spacing:0.05em;">Email sent to</th>
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:center;text-transform:uppercase;letter-spacing:0.05em;">Pledges</th>
+          <th style="padding:10px 16px;font-size:12px;font-weight:600;color:#ffffff;text-align:right;text-transform:uppercase;letter-spacing:0.05em;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+    ${skippedNote}`
+  );
+
+  const rowsText = opts.recipients
+    .map((r) => `  • ${r.playerName} <${r.playerEmail}>: ${r.pledgeCount} pledge${r.pledgeCount !== 1 ? "s" : ""}, HK$${r.totalAmount.toLocaleString()}`)
+    .join("\n");
+
+  const skippedText = opts.skippedCount > 0
+    ? `\nNote: ${opts.skippedCount} beneficiar${opts.skippedCount !== 1 ? "ies were" : "y was"} skipped — no matching player email found.`
+    : "";
+
+  const text = `Nightly pledge digest — admin copy (${todayStr})
+
+The following players were notified:
+
+${rowsText}${skippedText}`;
+
+  return sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[HK Masters] Pledge digest sent — ${opts.recipients.length} player${opts.recipients.length !== 1 ? "s" : ""} notified (${todayStr})`,
+    html,
+    text,
+  });
+}

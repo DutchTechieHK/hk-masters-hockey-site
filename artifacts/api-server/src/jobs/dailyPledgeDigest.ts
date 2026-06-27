@@ -1,8 +1,8 @@
 import cron from "node-cron";
 import { db } from "@workspace/db";
-import { fundraisingTable, playersTable } from "@workspace/db/schema";
-import { isNotNull, gte, lt, ne } from "drizzle-orm";
-import { sendDailyPledgeDigestEmail } from "../utils/email";
+import { fundraisingTable, playersTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db/schema";
+import { isNotNull } from "drizzle-orm";
+import { sendDailyPledgeDigestEmail, sendPledgeDigestAdminSummaryEmail } from "../utils/email";
 
 /**
  * Returns the start and end of "today" in HKT (UTC+8) as UTC Date objects.
@@ -77,6 +77,15 @@ async function runDailyPledgeDigest() {
   let sent = 0;
   let skipped = 0;
 
+  type DigestEntry = {
+    playerName: string;
+    playerEmail: string;
+    sent: boolean;
+    pledgeCount: number;
+    totalAmount: number;
+  };
+  const digestLog: DigestEntry[] = [];
+
   for (const [normalisedName, playerPledges] of byPlayer) {
     const email = playerEmailMap.get(normalisedName);
     const displayName = playerPledges[0].beneficiary!.trim();
@@ -87,25 +96,89 @@ async function runDailyPledgeDigest() {
       continue;
     }
 
+    const pledgeMapped = playerPledges.map((p) => ({
+      donorName: p.donorName,
+      donorEmail: p.donorEmail ?? null,
+      amountPledged: parseFloat(p.amountPledged ?? "0"),
+      paymentMethod: p.paymentMethod ?? null,
+      notes: p.notes ?? null,
+    }));
+    const totalAmount = pledgeMapped.reduce((s, p) => s + p.amountPledged, 0);
+
+    let didSend = false;
     try {
       await sendDailyPledgeDigestEmail({
         playerName: displayName,
         playerEmail: email,
-        pledges: playerPledges.map((p) => ({
-          donorName: p.donorName,
-          donorEmail: p.donorEmail ?? null,
-          amountPledged: parseFloat(p.amountPledged ?? "0"),
-          paymentMethod: p.paymentMethod ?? null,
-          notes: p.notes ?? null,
-        })),
+        pledges: pledgeMapped,
       });
       sent++;
+      didSend = true;
     } catch (err) {
       console.error(`[daily-pledge-digest] Failed to send to ${displayName} <${email}>:`, err);
     }
+
+    digestLog.push({
+      playerName: displayName,
+      playerEmail: email,
+      sent: didSend,
+      pledgeCount: pledgeMapped.length,
+      totalAmount,
+    });
   }
 
   console.log(`[daily-pledge-digest] Done — sent: ${sent}, skipped (no email match): ${skipped}.`);
+
+  // 5. Log to DB and send admin summary
+  if (digestLog.length > 0) {
+    try {
+      const sentEntries = digestLog.filter((e) => e.sent);
+      const failedEntries = digestLog.filter((e) => !e.sent);
+
+      const bodyLines = digestLog.map((e) =>
+        `${e.sent ? "✓" : "✗"} ${e.playerName} <${e.playerEmail}>: ${e.pledgeCount} pledge${e.pledgeCount !== 1 ? "s" : ""}, HK$${e.totalAmount.toLocaleString()}`
+      );
+      if (skipped > 0) {
+        bodyLines.push(`\n${skipped} beneficiar${skipped !== 1 ? "ies" : "y"} skipped — no matching player email found.`);
+      }
+
+      const [blast] = await db
+        .insert(emailBlastsTable)
+        .values({
+          subject: `Pledge digest — ${sentEntries.length} player${sentEntries.length !== 1 ? "s" : ""} notified`,
+          body: bodyLines.join("\n"),
+          audienceType: "pledge-digest",
+          recipientCount: digestLog.length,
+          sentCount: sentEntries.length,
+          failedCount: failedEntries.length,
+          sentByEmail: "system",
+        })
+        .returning();
+
+      if (blast && digestLog.length > 0) {
+        await db.insert(emailBlastRecipientsTable).values(
+          digestLog.map((e) => ({
+            blastId: blast.id,
+            playerName: e.playerName,
+            playerEmail: e.playerEmail,
+            sent: e.sent,
+            errorMessage: e.sent ? null : "Send failed",
+          }))
+        );
+      }
+
+      if (sentEntries.length > 0) {
+        await sendPledgeDigestAdminSummaryEmail({
+          recipients: sentEntries,
+          skippedCount: skipped,
+        }).catch((err) =>
+          console.error("[daily-pledge-digest] Failed to send admin summary email:", err)
+        );
+      }
+    } catch (err) {
+      console.error("[daily-pledge-digest] Failed to log digest to DB:", err);
+    }
+  }
 }
 
 /**

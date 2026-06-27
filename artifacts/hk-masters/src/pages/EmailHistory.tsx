@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { useListEmailBlasts, useListOnboardingInviteLog } from "@workspace/api-client-react"
 import type { OnboardingInviteLogItem } from "@workspace/api-client-react"
 import { format } from "date-fns"
-import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send, CheckCircle, LogIn, ShieldCheck } from "lucide-react"
+import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send, CheckCircle, LogIn, ShieldCheck, HandCoins } from "lucide-react"
 import type { EmailBlastItem } from "@workspace/api-client-react"
 
 function audienceLabel(blast: EmailBlastItem): string {
@@ -22,6 +22,13 @@ function audienceLabel(blast: EmailBlastItem): string {
     } catch {
       return "Players reminded"
     }
+  }
+  if (blast.audienceType === "pledge-digest") {
+    const names = blast.recipientNames ?? []
+    if (names.length === 0) return "Pledge digest"
+    if (names.length === 1) return `${names[0]} — pledge digest`
+    if (names.length === 2) return `${names[0]}, ${names[1]} — pledge digest`
+    return `${names[0]} + ${names.length - 1} more — pledge digest`
   }
   if (blast.audienceType === "all") return "All players"
   if (blast.audienceType === "teams") {
@@ -51,6 +58,7 @@ function audienceLabel(blast: EmailBlastItem): string {
 function AudienceIcon({ audienceType }: { audienceType: string }) {
   if (audienceType === "onboarding") return <Send className="w-3.5 h-3.5" />
   if (audienceType === "insurance-reminder") return <ShieldCheck className="w-3.5 h-3.5" />
+  if (audienceType === "pledge-digest") return <HandCoins className="w-3.5 h-3.5" />
   if (audienceType === "all") return <Users className="w-3.5 h-3.5" />
   if (audienceType === "teams") return <Users className="w-3.5 h-3.5" />
   return <User className="w-3.5 h-3.5" />

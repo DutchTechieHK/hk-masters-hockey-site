@@ -887,7 +887,7 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     .orderBy(desc(emailBlastsTable.sentAt));
 
   const individualBlastIds = rows
-    .filter((r) => r.audienceType === "individuals")
+    .filter((r) => r.audienceType === "individuals" || r.audienceType === "pledge-digest")
     .map((r) => r.id);
 
   const recipientNamesByBlastId = new Map<number, string[]>();
