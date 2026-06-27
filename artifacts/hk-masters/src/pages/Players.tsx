@@ -8,7 +8,7 @@ import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Search, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, ShieldAlert, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
+import { Plus, Search, X, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Shield, ShieldAlert, Link as LinkIcon, Lock, RefreshCw, Mail, Send, Clock, Upload } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -667,13 +667,22 @@ export default function Players() {
         {/* Filters */}
         <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-4 bg-muted/20 flex-wrap">
           <div className="relative flex-1 min-w-48">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Search by name, email or nationality..."
-              className="pl-10 bg-white"
+              className="pl-10 pr-8 bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
           <Select
             className="sm:w-52 bg-white"
