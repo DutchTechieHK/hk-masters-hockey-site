@@ -27,6 +27,7 @@ import Polls from "@/pages/Polls";
 import Tutorials from "@/pages/Tutorials";
 import Reports from "@/pages/Reports";
 import Payouts from "@/pages/Payouts";
+import FundraisingSearch from "@/pages/FundraisingSearch";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate } from "@/components/AdminAuthGate";
 
@@ -66,6 +67,7 @@ function Router() {
       <Route path="/tutorials" component={Tutorials} />
       <Route path="/reports" component={Reports} />
       <Route path="/payouts" component={Payouts} />
+      <Route path="/fundraising/search" component={FundraisingSearch} />
       <Route component={NotFound} />
     </Switch>
   );

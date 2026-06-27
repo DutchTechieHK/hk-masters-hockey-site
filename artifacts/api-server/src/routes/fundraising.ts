@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { fundraisingTable, teamsTable } from "@workspace/db/schema";
-import { eq, sql, and, desc } from "drizzle-orm";
+import { fundraisingTable, teamsTable, funRunIncomeTable, sponsorsTable, playerPayoutsTable, legoJarGuessesTable } from "@workspace/db/schema";
+import { eq, sql, and, desc, ilike } from "drizzle-orm";
 import {
   CreateFundraisingBody,
   UpdateFundraisingBody,
@@ -12,6 +12,92 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 import { sendPledgeReceivedEmail, sendNewPledgeEmail } from "../utils/email";
 
 const router = Router();
+
+router.get("/search", requireAdminAccess, async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  if (q.length < 2) {
+    res.json({ pledges: [], funRun: [], legoJar: [], sponsors: [], payouts: [] });
+    return;
+  }
+  const pattern = `%${q}%`;
+
+  const [pledges, funRunResults, legoJarResults, sponsorsResults, payoutsResults] = await Promise.all([
+    db.select({ f: fundraisingTable, teamName: teamsTable.name })
+      .from(fundraisingTable)
+      .leftJoin(teamsTable, eq(fundraisingTable.teamId, teamsTable.id))
+      .where(ilike(fundraisingTable.donorName, pattern))
+      .orderBy(desc(fundraisingTable.createdAt))
+      .limit(20),
+
+    db.select().from(funRunIncomeTable)
+      .where(ilike(funRunIncomeTable.payerName, pattern))
+      .orderBy(desc(funRunIncomeTable.createdAt))
+      .limit(20),
+
+    db.select({
+      guesserName: legoJarGuessesTable.guesserName,
+      guesserEmail: sql<string | null>`MAX(${legoJarGuessesTable.guesserEmail})`,
+      guessCount: sql<number>`COUNT(*)::int`,
+      paidCount: sql<number>`COUNT(*) FILTER (WHERE ${legoJarGuessesTable.paid} = true)::int`,
+      totalAmountPaid: sql<number>`COALESCE(SUM(CASE WHEN ${legoJarGuessesTable.paid} THEN COALESCE(${legoJarGuessesTable.amountPaid}::numeric, 0) ELSE 0 END), 0)::int`,
+    })
+      .from(legoJarGuessesTable)
+      .where(ilike(legoJarGuessesTable.guesserName, pattern))
+      .groupBy(legoJarGuessesTable.guesserName)
+      .limit(20),
+
+    db.select().from(sponsorsTable)
+      .where(ilike(sponsorsTable.name, pattern))
+      .limit(20),
+
+    db.select().from(playerPayoutsTable)
+      .where(ilike(playerPayoutsTable.recipientName, pattern))
+      .orderBy(desc(playerPayoutsTable.createdAt))
+      .limit(20),
+  ]);
+
+  res.json({
+    pledges: pledges.map(({ f, teamName }) => ({
+      id: f.id,
+      donorName: f.donorName,
+      donorEmail: f.donorEmail ?? null,
+      amountPledged: parseFloat(f.amountPledged ?? "0"),
+      amountReceived: parseFloat(f.amountReceived ?? "0"),
+      status: f.status,
+      teamName: teamName ?? null,
+      date: f.date,
+    })),
+    funRun: funRunResults.map((r) => ({
+      id: r.id,
+      payerName: r.payerName,
+      amountHkd: Number(r.amountHkd),
+      category: r.category,
+      date: r.date,
+    })),
+    legoJar: legoJarResults.map((r) => ({
+      guesserName: r.guesserName,
+      guesserEmail: r.guesserEmail ?? null,
+      guessCount: r.guessCount,
+      paidCount: r.paidCount,
+      totalAmountPaid: r.totalAmountPaid,
+    })),
+    sponsors: sponsorsResults.map((s) => ({
+      id: s.id,
+      name: s.name,
+      tier: s.tier,
+      active: s.active,
+      contributionAmount: s.contributionAmount ? parseFloat(s.contributionAmount) : null,
+    })),
+    payouts: payoutsResults.map((p) => ({
+      id: p.id,
+      recipientName: p.recipientName,
+      amount: parseFloat(p.amount ?? "0"),
+      payoutDate: p.payoutDate,
+      method: p.method,
+      source: p.source,
+    })),
+  });
+});
 
 router.get("/summary", async (_req, res) => {
   const [row] = await db
