@@ -58,7 +58,7 @@ function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; 
             <Badge className="mb-2">{team.category}</Badge>
             <h2 className="text-3xl font-bold text-primary">{team.name}</h2>
             {team.createdAt && (
-              <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'MMM d, yyyy')}</p>
+              <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>
             )}
           </div>
           <Button variant="outline" onClick={() => onEdit(team)} className="shrink-0">
@@ -275,7 +275,7 @@ export default function Teams() {
                     </div>
                     <Badge className="mb-3">{team.category}</Badge>
                     <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
-                    {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'MMM d, yyyy')}</p>}
+                    {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>}
                   </div>
                   <div className="p-6 flex-1 flex flex-col gap-4">
                     <div>
