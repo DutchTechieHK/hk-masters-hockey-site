@@ -402,9 +402,8 @@ export default function Polls() {
                     <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                       <button
                         onClick={() => openEdit(poll)}
-                        disabled={totalVotes > 0}
-                        title={totalVotes > 0 ? "Cannot edit — votes have already been cast" : "Edit poll"}
-                        className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:text-muted-foreground disabled:hover:border-transparent"
+                        title={totalVotes > 0 ? "Edit poll (answer options locked — votes cast)" : "Edit poll"}
+                        className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all"
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
