@@ -894,6 +894,7 @@ export default function Fundraising() {
                                         <tr className="text-muted-foreground border-b border-border">
                                           <th className="py-1.5 pr-4 text-left font-semibold">Donor</th>
                                           <th className="py-1.5 pr-4 text-left font-semibold">Email</th>
+                                          <th className="py-1.5 pr-4 text-left font-semibold">Beneficiary</th>
                                           <th className="py-1.5 pr-4 text-right font-semibold">Pledged</th>
                                           <th className="py-1.5 pr-4 text-right font-semibold">Received</th>
                                           <th className="py-1.5 pr-4 text-left font-semibold">Method</th>
@@ -914,6 +915,11 @@ export default function Fundraising() {
                                                 {d.donorEmail
                                                   ? <a href={`mailto:${d.donorEmail}`} className="text-blue-600 hover:underline">{d.donorEmail}</a>
                                                   : "—"}
+                                              </td>
+                                              <td className="py-1.5 pr-4 text-muted-foreground">
+                                                {d.beneficiary
+                                                  ? <span className="bg-primary/8 text-primary px-1.5 py-0.5 rounded-full whitespace-nowrap">{d.beneficiary}</span>
+                                                  : <span className="italic">—</span>}
                                               </td>
                                               <td className="py-1.5 pr-4 text-right text-foreground">{formatCurrency(d.amountPledged)}</td>
                                               <td className="py-1.5 pr-4 text-right text-emerald-600 font-semibold">{formatCurrency(d.amountReceived)}</td>
