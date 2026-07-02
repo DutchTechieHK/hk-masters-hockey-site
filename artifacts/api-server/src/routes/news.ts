@@ -1,155 +1,211 @@
 import { Router } from "express";
-import {
-  isNotionConfigured,
-  getCachedList,
-  getCachedPost,
-  clearNewsCache,
-} from "../lib/notionNews";
+import multer from "multer";
+import { db } from "@workspace/db";
+import { newsPostsTable } from "@workspace/db/schema";
+import { eq, desc, and } from "drizzle-orm";
+import { requireAdminAccess } from "../middleware/adminAuth";
+import { requireSession } from "../middleware/adminSession";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const objectStorage = new ObjectStorageService();
 
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 80);
+}
+
+function mapPost(row: typeof newsPostsTable.$inferSelect) {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    excerpt: row.excerpt,
+    bodyHtml: row.bodyHtml,
+    coverImage: row.coverImage,
+    category: row.category,
+    author: row.author,
+    status: row.status,
+    publishedAt: row.publishedAt?.toISOString() ?? null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/* ── Public: list published posts ─────────────────────── */
 router.get("/", async (_req, res) => {
-  if (!isNotionConfigured()) {
-    res.json({ configured: false, posts: [] });
-    return;
-  }
   try {
-    const posts = await getCachedList();
-    res.set("Cache-Control", "public, max-age=60");
-    res.json({ configured: true, posts });
+    const rows = await db
+      .select()
+      .from(newsPostsTable)
+      .where(eq(newsPostsTable.status, "published"))
+      .orderBy(desc(newsPostsTable.publishedAt));
+    res.set("Cache-Control", "public, max-age=30");
+    res.json({ configured: true, posts: rows.map(mapPost) });
   } catch (err) {
     console.error("[news] list failed:", err);
     res.status(503).json({ configured: true, posts: [], error: "Temporarily unavailable" });
   }
 });
 
-router.post("/refresh", (req, res) => {
-  const expected = process.env.NOTION_WEBHOOK_SECRET;
-  // Refresh MUST be secret-verified. If no secret is configured, refuse —
-  // an open invalidation endpoint is an easy DoS vector.
-  if (!expected) {
-    res.status(503).json({ error: "Refresh endpoint not configured" });
-    return;
-  }
-  // Header-only — never accept secrets via query string (they leak into
-  // access logs, browser history, and Referer headers).
-  const provided = req.headers["x-webhook-secret"];
-  const providedStr = typeof provided === "string" ? provided : "";
-  if (providedStr !== expected) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-  clearNewsCache();
-  res.json({ ok: true, refreshedAt: new Date().toISOString() });
-});
-
-// Only proxy Notion-hosted images. Exact host match, https only, no redirects,
-// content-type allowlist, and bounded body size to mitigate SSRF / DoS.
-const ALLOWED_IMAGE_HOSTS = new Set([
-  "prod-files-secure.s3.us-west-2.amazonaws.com",
-  "file.notion.so",
-  "s3.us-west-2.amazonaws.com",
-]);
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
-const IMAGE_FETCH_TIMEOUT_MS = 10_000;
-
-router.get("/image", async (req, res) => {
-  const url = typeof req.query.url === "string" ? req.query.url : "";
-  if (!url) {
-    res.status(400).json({ error: "url required" });
-    return;
-  }
-  let parsed: URL;
+/* ── Admin: list all posts (including drafts) ─────────── */
+router.get("/admin/all", requireSession, requireAdminAccess, async (_req, res) => {
   try {
-    parsed = new URL(url);
-  } catch {
-    res.status(400).json({ error: "Invalid url" });
-    return;
-  }
-  if (parsed.protocol !== "https:") {
-    res.status(400).json({ error: "Only https URLs are allowed" });
-    return;
-  }
-  if (!ALLOWED_IMAGE_HOSTS.has(parsed.hostname)) {
-    res.status(400).json({ error: "Host not allowed" });
-    return;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
-  try {
-    const upstream = await fetch(parsed.toString(), {
-      redirect: "manual", // do not follow redirects — prevents SSRF via redirect to internal targets
-      signal: controller.signal,
-    });
-    // Reject any redirect — caller must give us the final URL.
-    if (upstream.status >= 300 && upstream.status < 400) {
-      res.status(502).json({ error: "Upstream redirected; refusing to follow" });
-      return;
-    }
-    if (!upstream.ok) {
-      res.status(502).json({ error: "Upstream image fetch failed" });
-      return;
-    }
-    const contentType = (upstream.headers.get("content-type") || "").toLowerCase();
-    if (!contentType.startsWith("image/")) {
-      res.status(502).json({ error: "Upstream response is not an image" });
-      return;
-    }
-    const contentLengthHeader = upstream.headers.get("content-length");
-    if (contentLengthHeader && Number(contentLengthHeader) > MAX_IMAGE_BYTES) {
-      res.status(502).json({ error: "Upstream image too large" });
-      return;
-    }
-
-    // Stream-read with a hard byte cap.
-    const reader = upstream.body?.getReader();
-    if (!reader) {
-      res.status(502).json({ error: "Upstream image had no body" });
-      return;
-    }
-    const chunks: Uint8Array[] = [];
-    let received = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        received += value.byteLength;
-        if (received > MAX_IMAGE_BYTES) {
-          await reader.cancel();
-          res.status(502).json({ error: "Upstream image too large" });
-          return;
-        }
-        chunks.push(value);
-      }
-    }
-    const buffer = Buffer.concat(chunks.map((c) => Buffer.from(c)));
-    res.set("Content-Type", contentType);
-    res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=86400");
-    res.send(buffer);
+    const rows = await db
+      .select()
+      .from(newsPostsTable)
+      .orderBy(desc(newsPostsTable.updatedAt));
+    res.json({ posts: rows.map(mapPost) });
   } catch (err) {
-    console.error("[news] image proxy failed:", err);
-    if (!res.headersSent) {
-      res.status(502).json({ error: "Image proxy failed" });
-    }
-  } finally {
-    clearTimeout(timer);
+    console.error("[news] admin list failed:", err);
+    res.status(503).json({ error: "Failed to load posts" });
   }
 });
 
-router.get("/:slug", async (req, res) => {
-  if (!isNotionConfigured()) {
-    res.status(404).json({ error: "Not found" });
+/* ── Admin: create post ───────────────────────────────── */
+router.post("/", requireSession, requireAdminAccess, async (req, res) => {
+  const { title, slug, excerpt, bodyHtml, coverImage, category, author, status } = req.body ?? {};
+  if (!title?.trim()) {
+    res.status(400).json({ error: "title required" });
+    return;
+  }
+  const finalSlug = slug?.trim() || slugify(title.trim());
+  if (!finalSlug) {
+    res.status(400).json({ error: "slug required" });
     return;
   }
   try {
-    const post = await getCachedPost(req.params.slug);
-    if (!post) {
-      res.status(404).json({ error: "Not found" });
+    const publishedAt = status === "published" ? new Date() : null;
+    const [row] = await db.insert(newsPostsTable).values({
+      title: title.trim(),
+      slug: finalSlug,
+      excerpt: excerpt?.trim() || null,
+      bodyHtml: bodyHtml || null,
+      coverImage: coverImage?.trim() || null,
+      category: category?.trim() || null,
+      author: author?.trim() || null,
+      status: status === "published" ? "published" : "draft",
+      publishedAt,
+    }).returning();
+    res.status(201).json(mapPost(row));
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "A post with this slug already exists" });
       return;
     }
-    res.set("Cache-Control", "public, max-age=60");
-    res.json(post);
+    console.error("[news] create failed:", err);
+    res.status(500).json({ error: "Failed to create post" });
+  }
+});
+
+/* ── Admin: update post ───────────────────────────────── */
+router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const { title, slug, excerpt, bodyHtml, coverImage, category, author, status } = req.body ?? {};
+
+  try {
+    const [existing] = await db.select().from(newsPostsTable).where(eq(newsPostsTable.id, id));
+    if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+
+    const wasPublished = existing.status === "published";
+    const nowPublished = status === "published";
+    const publishedAt = nowPublished
+      ? (wasPublished ? existing.publishedAt : new Date())
+      : null;
+
+    const [row] = await db.update(newsPostsTable).set({
+      title: title?.trim() ?? existing.title,
+      slug: slug?.trim() || existing.slug,
+      excerpt: excerpt !== undefined ? (excerpt?.trim() || null) : existing.excerpt,
+      bodyHtml: bodyHtml !== undefined ? (bodyHtml || null) : existing.bodyHtml,
+      coverImage: coverImage !== undefined ? (coverImage?.trim() || null) : existing.coverImage,
+      category: category !== undefined ? (category?.trim() || null) : existing.category,
+      author: author !== undefined ? (author?.trim() || null) : existing.author,
+      status: status ?? existing.status,
+      publishedAt,
+      updatedAt: new Date(),
+    }).where(eq(newsPostsTable.id, id)).returning();
+    res.json(mapPost(row));
+  } catch (err: any) {
+    if (err?.code === "23505") {
+      res.status(409).json({ error: "A post with this slug already exists" });
+      return;
+    }
+    console.error("[news] update failed:", err);
+    res.status(500).json({ error: "Failed to update post" });
+  }
+});
+
+/* ── Admin: delete post ───────────────────────────────── */
+router.delete("/:id", requireSession, requireAdminAccess, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(newsPostsTable).where(eq(newsPostsTable.id, id));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[news] delete failed:", err);
+    res.status(500).json({ error: "Failed to delete post" });
+  }
+});
+
+/* ── Admin: upload image ──────────────────────────────── */
+router.post("/upload-image", requireSession, requireAdminAccess, upload.single("image"), async (req, res) => {
+  const file = req.file;
+  if (!file) { res.status(400).json({ error: "No file uploaded" }); return; }
+  if (!ALLOWED_IMAGE_TYPES.has(file.mimetype)) {
+    res.status(400).json({ error: "Only JPEG, PNG, GIF, and WebP images are allowed" });
+    return;
+  }
+  try {
+    const objectPath = await objectStorage.uploadObjectEntity(file.buffer, file.mimetype);
+    const objectId = objectPath.replace("/objects/uploads/", "");
+    res.json({ url: `/api/news/serve-image/${objectId}` });
+  } catch (err) {
+    console.error("[news] image upload failed:", err);
+    res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+/* ── Public: serve uploaded image ─────────────────────── */
+router.get("/serve-image/:objectId", async (req, res) => {
+  const { objectId } = req.params;
+  if (!objectId || !/^[\w-]+$/.test(objectId)) {
+    res.status(400).json({ error: "Invalid objectId" });
+    return;
+  }
+  try {
+    const signedUrl = await objectStorage.getObjectEntityDownloadURL(`/objects/uploads/${objectId}`);
+    res.redirect(302, signedUrl);
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Image not found" });
+      return;
+    }
+    console.error("[news] serve-image failed:", err);
+    res.status(502).json({ error: "Could not retrieve image" });
+  }
+});
+
+/* ── Public: get single post by slug ──────────────────── */
+router.get("/:slug", async (req, res) => {
+  try {
+    const [row] = await db
+      .select()
+      .from(newsPostsTable)
+      .where(and(eq(newsPostsTable.slug, req.params.slug), eq(newsPostsTable.status, "published")));
+    if (!row) { res.status(404).json({ error: "Not found" }); return; }
+    res.set("Cache-Control", "public, max-age=30");
+    res.json(mapPost(row));
   } catch (err) {
     console.error(`[news] post fetch failed for "${req.params.slug}":`, err);
     res.status(503).json({ error: "Temporarily unavailable" });

@@ -28,6 +28,7 @@ import Tutorials from "@/pages/Tutorials";
 import Reports from "@/pages/Reports";
 import Payouts from "@/pages/Payouts";
 import FundraisingSearch from "@/pages/FundraisingSearch";
+import NewsAdmin from "@/pages/NewsAdmin";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate } from "@/components/AdminAuthGate";
 
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/reports" component={Reports} />
       <Route path="/payouts" component={Payouts} />
       <Route path="/fundraising/search" component={FundraisingSearch} />
+      <Route path="/news" component={NewsAdmin} />
       <Route component={NotFound} />
     </Switch>
   );

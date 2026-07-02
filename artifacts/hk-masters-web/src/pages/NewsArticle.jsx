@@ -1,45 +1,31 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { format, parseISO } from "date-fns";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import DOMPurify from "dompurify";
 import { API_BASE } from "../utils/api";
 import { useOpenGraph } from "../utils/useOpenGraph";
 import ShareMenu from "../components/ShareMenu";
 
 function proxiedImage(url) {
   if (!url) return null;
-  if (
-    url.includes("amazonaws.com") ||
-    url.includes("notion.so") ||
-    url.includes("file.notion")
-  ) {
-    return `${API_BASE}/api/news/image?url=${encodeURIComponent(url)}`;
-  }
-  return url;
+  return url.startsWith("/") ? `${API_BASE}${url}` : url;
 }
 
-// Strict URL sanitizer for ReactMarkdown — drops javascript:, vbscript:, file:,
-// and other non-web schemes so rendered links/images can never execute script.
-// Allows http(s), mailto, tel, and inline image data: URIs.
-const SAFE_PROTOCOLS = /^(?:https?|mailto|tel):/i;
-function sanitizeUrl(url, key) {
-  if (!url || typeof url !== "string") return "";
-  const trimmed = url.trim();
-  if (!trimmed) return "";
-  // The API server rewrites Notion image URLs in the markdown body to the
-  // relative path /api/news/image?url=... — resolve them against API_BASE so
-  // they work in split-origin deployments (web on a different host than API).
-  if (trimmed.startsWith("/api/news/image?")) {
-    return `${API_BASE}${trimmed}`;
-  }
-  if (trimmed.startsWith("/") || trimmed.startsWith("#") || trimmed.startsWith("?")) return trimmed;
-  if (key === "src" && /^data:image\/(png|jpe?g|gif|webp|svg\+xml);/i.test(trimmed)) {
-    return trimmed;
-  }
-  if (SAFE_PROTOCOLS.test(trimmed)) return trimmed;
-  return "";
+function sanitizeHtml(html) {
+  if (!html) return "";
+  return DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: [
+      "p","br","strong","em","u","s","del","h1","h2","h3","h4","h5","h6",
+      "ul","ol","li","blockquote","hr","a","img","figure","figcaption",
+      "table","thead","tbody","tr","th","td","code","pre","span","div",
+    ],
+    ALLOWED_ATTR: ["href","src","alt","title","target","rel","class","style"],
+    ALLOW_DATA_ATTR: false,
+    FORCE_BODY: true,
+    RETURN_DOM_FRAGMENT: false,
+  });
 }
+
 
 function useArticleOpenGraph(post) {
   const ogTitle = post ? `${post.title} — HK Masters Hockey` : null;
@@ -183,26 +169,11 @@ export default function NewsArticle() {
 
       {/* Body */}
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {post.bodyMarkdown ? (
-          <div className="prose prose-sm sm:prose-base max-w-none prose-headings:text-gray-900 prose-a:text-[#1E3A6E] prose-img:rounded-xl">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              skipHtml
-              urlTransform={sanitizeUrl}
-              components={{
-                img: ({ src, alt }) => (
-                  <img src={src} alt={alt || ""} loading="lazy" />
-                ),
-                a: ({ href, children }) => (
-                  <a href={href} target="_blank" rel="noopener noreferrer">
-                    {children}
-                  </a>
-                ),
-              }}
-            >
-              {post.bodyMarkdown}
-            </ReactMarkdown>
-          </div>
+        {post.bodyHtml ? (
+          <div
+            className="prose prose-sm sm:prose-base max-w-none prose-headings:text-gray-900 prose-a:text-[#1E3A6E] prose-img:rounded-xl"
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.bodyHtml) }}
+          />
         ) : (
           <p className="text-gray-500 italic">This post has no body content.</p>
         )}
