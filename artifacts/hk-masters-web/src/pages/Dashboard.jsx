@@ -3,6 +3,34 @@ import { Link, useLocation } from "wouter";
 import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 import { API_BASE } from "../utils/api";
 
+const ROTTERDAM_TZ = "Europe/Amsterdam";
+
+function formatMatchDate(iso) {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short",
+    timeZone: ROTTERDAM_TZ,
+  });
+}
+
+function formatMatchTime(iso) {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: false,
+    timeZone: ROTTERDAM_TZ,
+  });
+}
+
+function getMatchCountdown(iso) {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days  = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  if (days > 1) return `In ${days} days`;
+  if (days === 1) return "Tomorrow";
+  if (hours >= 1) return `In ${hours}h`;
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+  return mins > 0 ? `In ${mins}m` : "Starting soon";
+}
+
 const CARDS = [
   { key: "profile", title: "My profile", desc: "Passport, kit sizes, dietary needs, emergency contact.", emoji: "👤", to: "profile" },
   { key: "schedule", title: "My schedule", desc: "Training, meetings and team events with calendar download.", emoji: "📅", to: "schedule" },
@@ -71,6 +99,7 @@ export default function Dashboard() {
   const [showMaybeNote, setShowMaybeNote] = useState(false);
   const [maybeNoteText, setMaybeNoteText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
+  const [upcomingMatches, setUpcomingMatches] = useState(null);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -131,6 +160,25 @@ export default function Dashboard() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!player) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/matches`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((allMatches) => {
+        if (cancelled || !Array.isArray(allMatches)) return;
+        const now = Date.now() - 3 * 60 * 60 * 1000;
+        const filtered = (player.teamId
+          ? allMatches.filter((m) => m.teamId === player.teamId)
+          : allMatches
+        ).filter((m) => m.status !== "cancelled" && new Date(m.kickoffAt).getTime() >= now)
+          .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
+        setUpcomingMatches(filtered);
+      })
+      .catch(() => setUpcomingMatches([]));
+    return () => { cancelled = true; };
+  }, [player]);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -323,6 +371,89 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+
+        {/* Fixture preview */}
+        {upcomingMatches !== null && (upcomingMatches.length > 0 ? (
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">Next matches</p>
+              <button
+                onClick={() => setLocation("/schedule")}
+                className="text-xs font-medium text-green-700 hover:text-green-900 underline"
+              >
+                See all fixtures →
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {upcomingMatches.slice(0, 2).map((match) => {
+                const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
+                const isLive = match.status === "in_progress";
+                return (
+                  <div
+                    key={match.id}
+                    className={`bg-white rounded-2xl border shadow-sm px-5 py-4 ${isLive ? "border-emerald-300 ring-2 ring-emerald-200" : "border-gray-100"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {match.teamCategory && (
+                        <span className="bg-[#DE2910] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                          {match.teamCategory}
+                        </span>
+                      )}
+                      {isLive && (
+                        <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
+                          <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full inline-block" />
+                          Live
+                        </span>
+                      )}
+                      {match.status === "final" && (
+                        <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded">Final</span>
+                      )}
+                      {countdown && (
+                        <span className="bg-[#EEF4FB] text-[#1E3A6E] text-[10px] font-semibold px-2 py-0.5 rounded">
+                          {countdown}
+                        </span>
+                      )}
+                      <span className="ml-auto text-xs text-gray-500 tabular-nums">
+                        {formatMatchDate(match.kickoffAt)} · {formatMatchTime(match.kickoffAt)} <span className="text-[10px] text-gray-400">CEST</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 truncate">vs {match.opponent}</p>
+                        {match.venue && (
+                          <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span className="truncate">{match.venue}</span>
+                          </p>
+                        )}
+                      </div>
+                      {(isLive || match.status === "final") && match.ourScore !== null && match.theirScore !== null && (
+                        <div className="shrink-0 text-right">
+                          <div className={`text-xl font-extrabold tabular-nums ${
+                            isLive ? "text-emerald-700"
+                            : match.ourScore > match.theirScore ? "text-[#1E3A6E]"
+                            : match.ourScore < match.theirScore ? "text-rose-600"
+                            : "text-gray-700"
+                          }`}>
+                            {match.ourScore} – {match.theirScore}
+                          </div>
+                          {match.status === "final" && (
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {match.ourScore > match.theirScore ? "Win" : match.ourScore < match.theirScore ? "Loss" : "Draw"}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : upcomingMatches.length === 0 && null)}
 
         {/* Insurance summary card */}
         {player && (() => {
