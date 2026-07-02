@@ -164,20 +164,38 @@ export default function Dashboard() {
   useEffect(() => {
     if (!player) return;
     let cancelled = false;
-    fetch(`${API_BASE}/api/matches`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((allMatches) => {
-        if (cancelled || !Array.isArray(allMatches)) return;
-        const now = Date.now() - 3 * 60 * 60 * 1000;
-        const filtered = (player.teamId
-          ? allMatches.filter((m) => m.teamId === player.teamId)
-          : allMatches
-        ).filter((m) => m.status !== "cancelled" && new Date(m.kickoffAt).getTime() >= now)
-          .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
-        setUpcomingMatches(filtered);
-      })
-      .catch(() => setUpcomingMatches([]));
-    return () => { cancelled = true; };
+
+    const fetchMatches = () => {
+      fetch(`${API_BASE}/api/matches`)
+        .then((r) => r.ok ? r.json() : [])
+        .then((allMatches) => {
+          if (cancelled || !Array.isArray(allMatches)) return;
+          const now = Date.now() - 3 * 60 * 60 * 1000;
+          const filtered = (player.teamId
+            ? allMatches.filter((m) => m.teamId === player.teamId)
+            : allMatches
+          ).filter((m) => m.status !== "cancelled" && new Date(m.kickoffAt).getTime() >= now)
+            .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
+          setUpcomingMatches(filtered);
+        })
+        .catch(() => { if (!cancelled) setUpcomingMatches([]); });
+    };
+
+    fetchMatches();
+
+    const handleFocus = () => { if (!cancelled) fetchMatches(); };
+    const handleVisibility = () => { if (!document.hidden && !cancelled) fetchMatches(); };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    const interval = setInterval(() => { if (!cancelled) fetchMatches(); }, 60_000);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearInterval(interval);
+    };
   }, [player]);
 
   useEffect(() => {
