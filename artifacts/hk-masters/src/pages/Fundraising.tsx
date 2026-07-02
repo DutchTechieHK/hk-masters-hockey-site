@@ -125,17 +125,6 @@ function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, 
 
         if (!playerEntries[b]) playerEntries[b] = []
         playerEntries[b].push(e)
-
-        const teamCategory = playerTeamMap.get(b) ?? ""
-        if (teamCategory.toLowerCase().includes("mo40")) {
-          mo40.totalPledged += e.amountPledged
-          mo40.totalReceived += e.amountReceived
-          mo40.count++
-        } else if (teamCategory.toLowerCase().includes("mo50")) {
-          mo50.totalPledged += e.amountPledged
-          mo50.totalReceived += e.amountReceived
-          mo50.count++
-        }
       }
     }
   }
@@ -726,7 +715,7 @@ export default function Fundraising() {
               <div className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="px-6 py-3 border-b border-border bg-muted/20">
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Team Totals</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Team-level pledges plus pledges for individual players on each team</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Pledges made directly to the team (individual player pledges are listed separately below)</p>
                 </div>
                 <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
