@@ -262,15 +262,15 @@ export default function Schedule() {
                       <h3 className="text-sm font-bold text-[#1E3A6E] uppercase tracking-wide mb-4">
                         {formatDateHeading(g.date)}
                       </h3>
-                      <div className="space-y-6">
+                      <div className={`grid gap-6 ${g.teams.length >= 2 ? "md:grid-cols-2" : "grid-cols-1 max-w-xl"}`}>
                         {g.teams.map((teamGroup) => (
-                          <div key={teamGroup.name}>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <div key={teamGroup.name} className="space-y-3">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                               <span className="bg-[#DE2910] text-white px-2 py-0.5 rounded text-[10px]">
                                 {teamGroup.name}
                               </span>
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
                               {teamGroup.items.map((m) => (
                                 <MatchCard key={m.id} match={m} />
                               ))}
@@ -293,15 +293,15 @@ export default function Schedule() {
                       <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wide mb-4">
                         {formatDateHeading(g.date)}
                       </h3>
-                      <div className="space-y-6">
+                      <div className={`grid gap-6 ${g.teams.length >= 2 ? "md:grid-cols-2" : "grid-cols-1 max-w-xl"}`}>
                         {g.teams.map((teamGroup) => (
-                          <div key={teamGroup.name}>
-                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                          <div key={teamGroup.name} className="space-y-3">
+                            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
                               <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-[10px]">
                                 {teamGroup.name}
                               </span>
                             </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-3">
                               {teamGroup.items.map((m) => (
                                 <MatchCard key={m.id} match={m} />
                               ))}
