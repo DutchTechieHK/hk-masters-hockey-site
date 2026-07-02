@@ -2,8 +2,18 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
+import { getCountryFlag, HK_FLAG } from "../utils/countryFlags";
 
 const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
+
+const TEAM_THEME = {
+  MO40: { gradient: "from-[#1E3A6E] to-[#2E5490]", ring: "ring-[#1E3A6E]/20" },
+  MO50: { gradient: "from-[#DE2910] to-[#B8210C]", ring: "ring-[#DE2910]/20" },
+};
+
+function themeFor(category) {
+  return TEAM_THEME[category] || { gradient: "from-[#1E3A6E] to-[#2E5490]", ring: "ring-[#1E3A6E]/20" };
+}
 
 const KIND_META = {
   training: { label: "Training", emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
@@ -173,84 +183,102 @@ function MatchFixtureCard({ match }) {
   const isLive    = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
   const showCalendar = match.status !== "cancelled" && match.status !== "final";
+  const theme = themeFor(match.teamCategory);
+  const opponentFlag = getCountryFlag(match.opponent);
 
   const resultColour =
-    match.ourScore > match.theirScore ? "text-[#1E3A6E]" :
-    match.ourScore < match.theirScore ? "text-rose-600" : "text-gray-700";
+    match.ourScore > match.theirScore ? "text-emerald-300" :
+    match.ourScore < match.theirScore ? "text-rose-300" : "text-white/80";
 
   return (
-    <div className={`bg-white rounded-2xl border shadow-sm p-4 ${
-      isLive ? "border-emerald-300 ring-2 ring-emerald-200" : "border-gray-100"
+    <div className={`rounded-2xl overflow-hidden shadow-sm ${
+      isLive ? "ring-2 ring-emerald-300" : `ring-1 ${theme.ring}`
     }`}>
-      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="bg-[#DE2910] text-white text-[10px] font-bold px-2 py-0.5 rounded">
-            {match.teamCategory || "HK"}
+      <div className={`bg-gradient-to-br ${theme.gradient} px-4 pt-3 pb-9 text-white relative overflow-hidden`}>
+        <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/10" />
+
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap relative">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="bg-white/20 backdrop-blur text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+              {match.teamCategory || "HK"}
+            </span>
+            {isLive && (
+              <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
+                <span className="w-1.5 h-1.5 bg-emerald-950 rounded-full inline-block" />
+                LIVE
+              </span>
+            )}
+            {match.status === "cancelled" && (
+              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Cancelled</span>
+            )}
+            {match.status === "final" && (
+              <span className="bg-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">Full Time</span>
+            )}
+            {countdown && (
+              <span className="bg-amber-400 text-amber-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                {countdown}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-bold text-white/90 tabular-nums whitespace-nowrap">
+            {formatTimeRtm(match.kickoffAt)} <span className="text-white/60">CEST</span>
           </span>
-          {isLive && (
-            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
-              <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full inline-block" />
-              Live
-            </span>
-          )}
-          {match.status === "cancelled" && (
-            <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded">Cancelled</span>
-          )}
-          {match.status === "final" && (
-            <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded">Final</span>
-          )}
-          {countdown && (
-            <span className="bg-[#EEF4FB] text-[#1E3A6E] text-[10px] font-semibold px-2 py-0.5 rounded">
-              {countdown}
-            </span>
-          )}
         </div>
-        <span className="text-xs font-medium text-gray-500 tabular-nums">
-          {formatTimeRtm(match.kickoffAt)} <span className="text-[10px] text-gray-400">CEST</span>
-        </span>
+
+        <div className="flex items-center justify-center gap-3 relative">
+          <div className="flex flex-col items-center gap-1 w-16">
+            <span className="text-2xl leading-none">{HK_FLAG}</span>
+            <span className="text-[9px] font-bold uppercase tracking-wide">HK</span>
+          </div>
+
+          {(isPast || isLive) && match.ourScore !== null && match.theirScore !== null ? (
+            <div className="flex flex-col items-center shrink-0">
+              <div className={`text-2xl font-black tabular-nums ${isLive ? "text-emerald-200" : resultColour}`}>
+                {match.ourScore} – {match.theirScore}
+              </div>
+              {isPast && !isLive && (
+                <p className="text-[9px] font-bold uppercase tracking-widest text-white/70">
+                  {match.ourScore > match.theirScore ? "Win" : match.ourScore < match.theirScore ? "Loss" : "Draw"}
+                </p>
+              )}
+            </div>
+          ) : (
+            <span className="text-sm font-black text-white/50 italic shrink-0">VS</span>
+          )}
+
+          <div className="flex flex-col items-center gap-1 w-16">
+            <span className="text-2xl leading-none">{opponentFlag || "🏑"}</span>
+            <span className="text-[9px] font-bold uppercase tracking-wide truncate w-full text-center">{match.opponent}</span>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="font-bold text-gray-900 text-base truncate">vs {match.opponent}</p>
-          {match.venue && (
-            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="truncate">{match.venue}</span>
-            </p>
-          )}
-        </div>
+      <div className="bg-white px-4 pt-2 pb-3 -mt-5 relative rounded-t-2xl">
+        <p className="font-bold text-gray-900 text-sm text-center truncate">vs {match.opponent}</p>
+        {match.venue && (
+          <p className="text-xs text-gray-500 mt-0.5 flex items-center justify-center gap-1">
+            <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="truncate">{match.venue}</span>
+          </p>
+        )}
 
-        {(isPast || isLive) && match.ourScore !== null && match.theirScore !== null && (
-          <div className="shrink-0 text-right">
-            <div className={`text-2xl font-extrabold tabular-nums ${isLive ? "text-emerald-700" : resultColour}`}>
-              {match.ourScore} – {match.theirScore}
-            </div>
-            {isPast && !isLive && (
-              <p className="text-[10px] text-gray-400 mt-0.5">
-                {match.ourScore > match.theirScore ? "Win" : match.ourScore < match.theirScore ? "Loss" : "Draw"}
-              </p>
-            )}
+        {showCalendar && (
+          <div className="mt-2 pt-2 border-t border-gray-100 text-center">
+            <a
+              href={`${API_BASE}/api/matches/${match.id}/calendar.ics`}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006B3C] hover:text-[#004d2b] transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Add to calendar
+            </a>
           </div>
         )}
       </div>
-
-      {showCalendar && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <a
-            href={`${API_BASE}/api/matches/${match.id}/calendar.ics`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006B3C] hover:text-[#004d2b] transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            Add to calendar
-          </a>
-        </div>
-      )}
     </div>
   );
 }
