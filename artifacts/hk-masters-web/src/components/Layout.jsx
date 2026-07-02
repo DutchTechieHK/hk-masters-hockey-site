@@ -27,7 +27,6 @@ const BASE_NAV_LINKS = [
   { href: "/sponsors",       label: "Sponsors" },
   { href: "/support",        label: "Support", cta: true },
   { href: "/auction",        label: "Auction", auctionGated: true },
-  { href: "/get-the-app",    label: "Get the App" },
   { href: "/contact",        label: "Contact" },
 ];
 
@@ -69,7 +68,6 @@ const MOBILE_SECTIONS = [
       { href: "/support",        label: "Support",        Icon: Heart },
       { href: "/contact",        label: "Contact",        Icon: Mail },
       { href: "/about",          label: "About",          Icon: Info },
-      { href: "/get-the-app",    label: "Get the App",    Icon: Smartphone },
     ],
   },
 ];
