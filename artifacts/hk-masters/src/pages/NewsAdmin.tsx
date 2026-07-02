@@ -24,13 +24,13 @@ function authHeaders(): Record<string, string> {
   const token = getStoredAdminToken()
   return {
     "Content-Type": "application/json",
-    ...(token ? { "x-admin-token": token } : {}),
+    ...(token ? { "x-session-token": token } : {}),
   }
 }
 
 function authHeadersForUpload(): Record<string, string> {
   const token = getStoredAdminToken()
-  return token ? { "x-admin-token": token } : {}
+  return token ? { "x-session-token": token } : {}
 }
 
 type NewsPost = {
