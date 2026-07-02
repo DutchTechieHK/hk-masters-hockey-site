@@ -28,7 +28,6 @@ function isRotterdamEvent(ev) {
 
 function pad(n) { return String(n).padStart(2, "0"); }
 
-// Browser-local display (for HK events)
 function formatDateTime(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
@@ -42,7 +41,6 @@ function formatTimeRange(startsAt, endsAt) {
   return `${s} – ${e}`;
 }
 
-// Rotterdam-timezone display (for Rotterdam events)
 function formatDateTimeRtm(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
@@ -57,6 +55,13 @@ function formatTimeRangeRtm(startsAt, endsAt) {
   return `${s} – ${e}`;
 }
 
+function formatTimeRtm(iso) {
+  return new Date(iso).toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: false,
+    timeZone: ROTTERDAM_TZ,
+  });
+}
+
 function monthKey(iso) {
   return new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
 }
@@ -66,6 +71,18 @@ function dayHeadingRtm(iso) {
     weekday: "long", day: "numeric", month: "long",
     timeZone: ROTTERDAM_TZ,
   });
+}
+
+function getMatchCountdown(iso) {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days  = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  if (days > 1) return `In ${days} days`;
+  if (days === 1) return "Tomorrow";
+  if (hours >= 1) return `In ${hours}h`;
+  const mins = Math.floor((diff % 3_600_000) / 60_000);
+  return mins > 0 ? `In ${mins}m` : "Starting soon";
 }
 
 function useCountdown(targetIso) {
@@ -150,7 +167,95 @@ function downloadIcs(events, filename, calendarName) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Shared event card (used for both HK and Rotterdam events) ------------------
+// Match fixture card ---------------------------------------------------------
+function MatchFixtureCard({ match }) {
+  const isPast    = match.status === "final" || match.status === "cancelled";
+  const isLive    = match.status === "in_progress";
+  const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
+  const showCalendar = match.status !== "cancelled" && match.status !== "final";
+
+  const resultColour =
+    match.ourScore > match.theirScore ? "text-[#1E3A6E]" :
+    match.ourScore < match.theirScore ? "text-rose-600" : "text-gray-700";
+
+  return (
+    <div className={`bg-white rounded-2xl border shadow-sm p-4 ${
+      isLive ? "border-emerald-300 ring-2 ring-emerald-200" : "border-gray-100"
+    }`}>
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="bg-[#DE2910] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+            {match.teamCategory || "HK"}
+          </span>
+          {isLive && (
+            <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
+              <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full inline-block" />
+              Live
+            </span>
+          )}
+          {match.status === "cancelled" && (
+            <span className="bg-rose-100 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded">Cancelled</span>
+          )}
+          {match.status === "final" && (
+            <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-2 py-0.5 rounded">Final</span>
+          )}
+          {countdown && (
+            <span className="bg-[#EEF4FB] text-[#1E3A6E] text-[10px] font-semibold px-2 py-0.5 rounded">
+              {countdown}
+            </span>
+          )}
+        </div>
+        <span className="text-xs font-medium text-gray-500 tabular-nums">
+          {formatTimeRtm(match.kickoffAt)} <span className="text-[10px] text-gray-400">CEST</span>
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-gray-900 text-base truncate">vs {match.opponent}</p>
+          {match.venue && (
+            <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="truncate">{match.venue}</span>
+            </p>
+          )}
+        </div>
+
+        {(isPast || isLive) && match.ourScore !== null && match.theirScore !== null && (
+          <div className="shrink-0 text-right">
+            <div className={`text-2xl font-extrabold tabular-nums ${isLive ? "text-emerald-700" : resultColour}`}>
+              {match.ourScore} – {match.theirScore}
+            </div>
+            {isPast && !isLive && (
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                {match.ourScore > match.theirScore ? "Win" : match.ourScore < match.theirScore ? "Loss" : "Draw"}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {showCalendar && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <a
+            href={`${API_BASE}/api/matches/${match.id}/calendar.ics`}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#006B3C] hover:text-[#004d2b] transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Add to calendar
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Shared event card ----------------------------------------------------------
 function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
   const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
   const dateStr = isRtm ? formatDateTimeRtm(ev.startsAt) : formatDateTime(ev.startsAt);
@@ -232,7 +337,6 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
           </div>
         </div>
 
-        {/* Maybe note form */}
         {showNoteForm && (
           <div className="mt-3">
             <textarea
@@ -259,7 +363,6 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
           </div>
         )}
 
-        {/* Show existing maybe note when not editing */}
         {!showNoteForm && ev.myRsvp === "maybe" && ev.myNote && (
           <div className="mt-2 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
             <span className="flex-1">🤔 {ev.myNote}</span>
@@ -276,6 +379,7 @@ export default function MySchedule() {
   const [, setLocation] = useLocation();
   const [player, setPlayer] = useState(null);
   const [events, setEvents] = useState([]);
+  const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showPast, setShowPast] = useState(false);
@@ -289,7 +393,6 @@ export default function MySchedule() {
     if (!token) { setLocation("/login"); return; }
     setRsvpSaving((s) => ({ ...s, [eventId]: true }));
     setRsvpError("");
-    // Optimistic update — adjust counts and selection in place.
     setEvents((prev) => prev.map((ev) => {
       if (ev.id !== eventId) return ev;
       const counts = { yes: 0, no: 0, maybe: 0, ...(ev.rsvpCounts || {}) };
@@ -310,7 +413,6 @@ export default function MySchedule() {
       }
     } catch (err) {
       setRsvpError(err.message || "Could not save your RSVP");
-      // Reload to get authoritative state if optimistic update was wrong.
       try {
         const r = await fetch(`${API_BASE}/api/player-auth/my-schedule`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -331,11 +433,12 @@ export default function MySchedule() {
     let cancelled = false;
     (async () => {
       try {
-        const [me, scheduleRes] = await Promise.all([
+        const [me, scheduleRes, matchesRes] = await Promise.all([
           fetchMe(),
           fetch(`${API_BASE}/api/player-auth/my-schedule`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
+          fetch(`${API_BASE}/api/matches`),
         ]);
         if (cancelled) return;
         if (!me) { setLocation("/login"); return; }
@@ -344,6 +447,15 @@ export default function MySchedule() {
         if (!scheduleRes.ok) throw new Error("Could not load your schedule");
         const data = await scheduleRes.json();
         setEvents(data.events || []);
+        if (matchesRes.ok) {
+          const allMatches = await matchesRes.json();
+          const filtered = Array.isArray(allMatches)
+            ? (me.teamId
+                ? allMatches.filter((m) => m.teamId === me.teamId)
+                : allMatches)
+            : [];
+          setMatches(filtered.sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()));
+        }
       } catch (err) {
         if (!cancelled) setError(err.message || "Could not load your schedule");
       } finally {
@@ -370,6 +482,14 @@ export default function MySchedule() {
     rtmEvents: upcoming.filter((ev) =>  isRotterdamEvent(ev)),
   }), [upcoming]);
 
+  // Split matches into upcoming and past
+  const { upcomingMatches, pastMatches } = useMemo(() => {
+    const now = Date.now() - 3 * 60 * 60 * 1000; // 3h grace
+    const u = matches.filter((m) => new Date(m.kickoffAt).getTime() >= now && m.status !== "cancelled");
+    const p = matches.filter((m) => !u.includes(m)).reverse();
+    return { upcomingMatches: u, pastMatches: p };
+  }, [matches]);
+
   // HK events grouped by month
   const groupedHk = useMemo(() => {
     const groups = {};
@@ -380,16 +500,28 @@ export default function MySchedule() {
     return groups;
   }, [hkEvents]);
 
-  // Rotterdam events grouped by day (Rotterdam TZ)
+  // Build merged Rotterdam day groups: union of match days and event days
   const groupedRtm = useMemo(() => {
-    const groups = new Map();
+    const days = new Map(); // dateKey → { date, matches, events }
+
+    for (const m of upcomingMatches) {
+      const key = rtmDateKey(m.kickoffAt);
+      if (!days.has(key)) days.set(key, { date: m.kickoffAt, matches: [], events: [] });
+      days.get(key).matches.push(m);
+    }
     for (const ev of rtmEvents) {
       const key = rtmDateKey(ev.startsAt);
-      if (!groups.has(key)) groups.set(key, { date: ev.startsAt, items: [] });
-      groups.get(key).items.push(ev);
+      if (!days.has(key)) days.set(key, { date: ev.startsAt, matches: [], events: [] });
+      days.get(key).events.push(ev);
     }
-    return Array.from(groups.values());
-  }, [rtmEvents]);
+
+    return Array.from(days.entries())
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([, g]) => g);
+  }, [upcomingMatches, rtmEvents]);
+
+  const showRotterdamSection = groupedRtm.length > 0 || matches.length > 0;
+  const totalRtmCount = rtmEvents.length + upcomingMatches.length;
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><p className="text-gray-500">Loading your schedule…</p></div>;
@@ -453,7 +585,7 @@ export default function MySchedule() {
         )}
 
         {/* Empty state */}
-        {upcoming.length === 0 && (
+        {upcoming.length === 0 && matches.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
             <p className="text-gray-500">No upcoming events scheduled yet. Check back soon.</p>
           </div>
@@ -477,8 +609,8 @@ export default function MySchedule() {
           </div>
         )}
 
-        {/* Rotterdam 2026 Programme */}
-        {rtmEvents.length > 0 && (
+        {/* Rotterdam 2026 Section */}
+        {showRotterdamSection && (
           <div>
             {/* Banner */}
             <div className="rounded-2xl bg-[#006B3C] text-white px-5 py-4 mb-6 flex items-center justify-between gap-4">
@@ -487,36 +619,91 @@ export default function MySchedule() {
                 <p className="text-lg font-extrabold leading-tight">Rotterdam 2026 Programme</p>
                 <p className="text-green-200 text-xs mt-0.5">HC Rotterdam, Netherlands</p>
               </div>
-              <span className="shrink-0 bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
-                {rtmEvents.length} event{rtmEvents.length !== 1 ? "s" : ""}
-              </span>
+              {totalRtmCount > 0 && (
+                <span className="shrink-0 bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
+                  {totalRtmCount} item{totalRtmCount !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
-            <div className="space-y-6">
-              {groupedRtm.map((g) => (
-                <section key={g.date}>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#006B3C] mb-3">
-                    {dayHeadingRtm(g.date)}
-                  </h3>
-                  <ul className="space-y-3">
-                    {g.items.map((ev) => <EventCard key={ev.id} ev={ev} isRtm={true} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
-                  </ul>
-                </section>
-              ))}
-            </div>
+
+            {/* No fixtures yet notice */}
+            {matches.length === 0 && (
+              <div className="mb-6 rounded-xl bg-[#EEF4FB] border border-[#C2D8F0] px-4 py-3 flex items-center gap-3">
+                <svg className="w-4 h-4 text-[#1E3A6E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm text-[#1E3A6E]">
+                  Match fixtures will appear here once the tournament draw is published.
+                </p>
+              </div>
+            )}
+
+            {groupedRtm.length > 0 && (
+              <div className="space-y-8">
+                {groupedRtm.map((g) => (
+                  <section key={rtmDateKey(g.date)}>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#006B3C] mb-3">
+                      {dayHeadingRtm(g.date)}
+                    </h3>
+
+                    {/* Fixtures for this day */}
+                    {g.matches.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#1E3A6E] mb-2 flex items-center gap-1.5">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                          </svg>
+                          Match{g.matches.length !== 1 ? "es" : ""}
+                        </p>
+                        <div className="space-y-3">
+                          {g.matches.map((m) => <MatchFixtureCard key={m.id} match={m} />)}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Programme events for this day */}
+                    {g.events.length > 0 && (
+                      <div>
+                        {g.matches.length > 0 && (
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#006B3C] mb-2 flex items-center gap-1.5 mt-4">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            Programme
+                          </p>
+                        )}
+                        <ul className="space-y-3">
+                          {g.events.map((ev) => <EventCard key={ev.id} ev={ev} isRtm={true} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
+                        </ul>
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Past */}
-        {past.length > 0 && (
+        {/* Past events & results */}
+        {(past.length > 0 || pastMatches.length > 0) && (
           <div className="mt-10">
             <button
               onClick={() => setShowPast((v) => !v)}
               className="text-sm text-gray-600 hover:text-gray-900 underline"
             >
-              {showPast ? "Hide" : "Show"} past events ({past.length})
+              {showPast ? "Hide" : "Show"} past events{pastMatches.length > 0 ? " & results" : ""} ({past.length + pastMatches.length})
             </button>
             {showPast && (
               <ul className="mt-4 space-y-2">
+                {pastMatches.map((m) => (
+                  <li key={`match-${m.id}`} className="bg-white/60 rounded-xl border border-gray-100 px-4 py-3 text-sm text-gray-600">
+                    <span className="font-medium text-gray-700">🏒 vs {m.opponent}</span>
+                    <span className="text-gray-500"> · {formatDateTimeRtm(m.kickoffAt)} {formatTimeRtm(m.kickoffAt)} CEST</span>
+                    {m.ourScore !== null && m.theirScore !== null && (
+                      <span className="ml-2 font-bold text-gray-700">{m.ourScore}–{m.theirScore}</span>
+                    )}
+                  </li>
+                ))}
                 {past.map((ev) => {
                   const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌" };
                   return (
