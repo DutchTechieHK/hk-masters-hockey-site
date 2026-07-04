@@ -3,17 +3,9 @@ import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 import { getCountryFlag, HK_FLAG } from "../utils/countryFlags";
+import { themeFor } from "../utils/teamTheme";
 
 const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
-
-const TEAM_THEME = {
-  MO40: { gradient: "from-[#1E3A6E] to-[#2E5490]", ring: "ring-[#1E3A6E]/20" },
-  MO50: { gradient: "from-[#DE2910] to-[#B8210C]", ring: "ring-[#DE2910]/20" },
-};
-
-function themeFor(category) {
-  return TEAM_THEME[category] || { gradient: "from-[#1E3A6E] to-[#2E5490]", ring: "ring-[#1E3A6E]/20" };
-}
 
 const KIND_META = {
   training: { label: "Training", emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },

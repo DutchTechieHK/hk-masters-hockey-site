@@ -1,17 +1,9 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
 import { getCountryFlag, HK_FLAG } from "../utils/countryFlags";
+import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
-
-const TEAM_THEME = {
-  MO40: { gradient: "from-[#1E3A6E] to-[#2E5490]", ring: "ring-[#1E3A6E]/20", chip: "bg-[#1E3A6E]" },
-  MO50: { gradient: "from-[#DE2910] to-[#B8210C]", ring: "ring-[#DE2910]/20", chip: "bg-[#DE2910]" },
-};
-
-function themeFor(category) {
-  return TEAM_THEME[category] || { gradient: "from-[#1E3A6E] to-[#2E5490]", ring: "ring-[#1E3A6E]/20", chip: "bg-[#1E3A6E]" };
-}
 
 function formatDateHeading(dateStr) {
   const d = new Date(dateStr);
