@@ -24,6 +24,7 @@ import { z } from "zod"
 import { format } from "date-fns"
 import type { Match } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
+import { getCountryFlag } from "@/utils/countryFlags"
 
 const SESSION_KEY = "hkm_admin_session"
 function getStoredToken(): string | null {
@@ -386,7 +387,14 @@ export default function Schedule() {
                                 <span className="text-[10px] font-bold uppercase tracking-wide text-[#006B3C]">CEST</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 font-medium text-foreground">{m.opponent}</td>
+                            <td className="px-6 py-4 font-medium text-foreground">
+                              <span className="inline-flex items-center gap-2">
+                                {getCountryFlag(m.opponent) && (
+                                  <span className="text-lg leading-none" aria-hidden="true">{getCountryFlag(m.opponent)}</span>
+                                )}
+                                {m.opponent}
+                              </span>
+                            </td>
                             <td className="px-6 py-4 text-muted-foreground">{m.venue || "—"}</td>
                             <td className="px-6 py-4">
                               <Badge className={`${STATUS_COLORS[m.status] ?? ""} border-0 shadow-none`}>
