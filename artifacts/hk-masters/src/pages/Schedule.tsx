@@ -24,7 +24,7 @@ import { z } from "zod"
 import { format } from "date-fns"
 import type { Match } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
-import { getCountryFlag } from "@workspace/country-flags"
+import { getCountryFlagImageUrl } from "@workspace/country-flags"
 
 const SESSION_KEY = "hkm_admin_session"
 function getStoredToken(): string | null {
@@ -389,8 +389,13 @@ export default function Schedule() {
                             </td>
                             <td className="px-6 py-4 font-medium text-foreground">
                               <span className="inline-flex items-center gap-2">
-                                {getCountryFlag(m.opponent) && (
-                                  <span className="text-lg leading-none" aria-hidden="true">{getCountryFlag(m.opponent)}</span>
+                                {getCountryFlagImageUrl(m.opponent) && (
+                                  <img
+                                    src={getCountryFlagImageUrl(m.opponent) ?? undefined}
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="w-5 h-5 rounded-full object-cover shadow-sm"
+                                  />
                                 )}
                                 {m.opponent}
                               </span>

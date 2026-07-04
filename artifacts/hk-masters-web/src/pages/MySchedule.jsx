@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
-import { getCountryFlag, HK_FLAG } from "@workspace/country-flags";
+import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 
 const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
@@ -176,7 +176,7 @@ function MatchFixtureCard({ match }) {
   const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
   const showCalendar = match.status !== "cancelled" && match.status !== "final";
   const theme = themeFor(match.teamCategory);
-  const opponentFlag = getCountryFlag(match.opponent);
+  const opponentFlagUrl = getCountryFlagImageUrl(match.opponent);
 
   const resultColour =
     match.ourScore > match.theirScore ? "text-emerald-300" :
@@ -219,7 +219,7 @@ function MatchFixtureCard({ match }) {
 
         <div className="flex items-center justify-center gap-3 relative">
           <div className="flex flex-col items-center gap-1 w-16">
-            <span className="text-2xl leading-none">{HK_FLAG}</span>
+            <img src={HK_FLAG_IMAGE_URL} alt="Hong Kong" className="w-6 h-6 rounded-full object-cover shadow" />
             <span className="text-[9px] font-bold uppercase tracking-wide">HK</span>
           </div>
 
@@ -239,7 +239,11 @@ function MatchFixtureCard({ match }) {
           )}
 
           <div className="flex flex-col items-center gap-1 w-16">
-            <span className="text-2xl leading-none">{opponentFlag || "🏑"}</span>
+            {opponentFlagUrl ? (
+              <img src={opponentFlagUrl} alt={match.opponent} className="w-6 h-6 rounded-full object-cover shadow" />
+            ) : (
+              <span className="text-2xl leading-none">🏑</span>
+            )}
             <span className="text-[9px] font-bold uppercase tracking-wide truncate w-full text-center">{match.opponent}</span>
           </div>
         </div>

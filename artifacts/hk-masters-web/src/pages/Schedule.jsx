@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
-import { getCountryFlag, HK_FLAG } from "@workspace/country-flags";
+import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
@@ -45,7 +45,7 @@ function MatchCard({ match }) {
   const countdown = match.status === "scheduled" ? getCountdown(match.kickoffAt) : null;
   const showCalendarButton = match.status !== "cancelled" && match.status !== "final";
   const theme = themeFor(match.teamCategory);
-  const opponentFlag = getCountryFlag(match.opponent);
+  const opponentFlagUrl = getCountryFlagImageUrl(match.opponent);
   const resultColour =
     match.ourScore > match.theirScore ? "text-emerald-300" :
     match.ourScore < match.theirScore ? "text-rose-300" : "text-white/80";
@@ -86,7 +86,7 @@ function MatchCard({ match }) {
 
         <div className="flex items-center justify-center gap-4 relative">
           <div className="flex flex-col items-center gap-1.5 w-24">
-            <span className="text-4xl leading-none drop-shadow">{HK_FLAG}</span>
+            <img src={HK_FLAG_IMAGE_URL} alt="Hong Kong" className="w-9 h-9 rounded-full object-cover shadow drop-shadow" />
             <span className="text-[11px] font-bold uppercase tracking-wide text-center leading-tight">HK Masters</span>
           </div>
 
@@ -106,7 +106,11 @@ function MatchCard({ match }) {
           )}
 
           <div className="flex flex-col items-center gap-1.5 w-24">
-            <span className="text-4xl leading-none drop-shadow">{opponentFlag || "🏑"}</span>
+            {opponentFlagUrl ? (
+              <img src={opponentFlagUrl} alt={match.opponent} className="w-9 h-9 rounded-full object-cover shadow drop-shadow" />
+            ) : (
+              <span className="text-4xl leading-none drop-shadow">🏑</span>
+            )}
             <span className="text-[11px] font-bold uppercase tracking-wide text-center leading-tight truncate w-full">{match.opponent}</span>
           </div>
         </div>

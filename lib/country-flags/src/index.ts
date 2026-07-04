@@ -77,3 +77,27 @@ export function getCountryFlag(name: string | null | undefined): string | null {
 }
 
 export const HK_FLAG = "🇭🇰";
+
+// Windows browsers (Chrome/Edge on Windows) don't ship a color emoji font with
+// flag glyphs — regional-indicator flag emoji render as plain two-letter
+// country-code text instead of a flag picture there. To get a real flag image
+// on every OS, we render Twemoji's PNG assets instead of the raw emoji glyph.
+// The Twemoji asset filename is just the emoji's codepoints (lowercase hex,
+// dash-joined, with the U+FE0F variation selector stripped).
+const TWEMOJI_VERSION = "14.0.2";
+
+export function getFlagImageUrl(flagEmoji: string): string {
+  const codepoints = Array.from(flagEmoji)
+    .map((char) => char.codePointAt(0)!.toString(16))
+    .filter((cp) => cp !== "fe0f")
+    .join("-");
+  return `https://cdn.jsdelivr.net/npm/twemoji@${TWEMOJI_VERSION}/assets/72x72/${codepoints}.png`;
+}
+
+export const HK_FLAG_IMAGE_URL = getFlagImageUrl(HK_FLAG);
+
+// Returns a flag image URL for a given opponent name/abbreviation, or null if unknown.
+export function getCountryFlagImageUrl(name: string | null | undefined): string | null {
+  const flag = getCountryFlag(name);
+  return flag ? getFlagImageUrl(flag) : null;
+}
