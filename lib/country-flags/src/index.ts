@@ -84,6 +84,11 @@ export const HK_FLAG = "🇭🇰";
 // on every OS, we render Twemoji's PNG assets instead of the raw emoji glyph.
 // The Twemoji asset filename is just the emoji's codepoints (lowercase hex,
 // dash-joined, with the U+FE0F variation selector stripped).
+// NOTE: the twemoji npm package (jsdelivr.net/npm/twemoji@.../assets/...) does
+// NOT ship the image assets in its published tarball — only the JS lib. The
+// PNGs only exist in the twitter/twemoji GitHub repo itself, so we must pull
+// them via jsdelivr's GitHub-file CDN (cdn.jsdelivr.net/gh/...), pinned to a
+// tagged release so the URLs never change under us.
 const TWEMOJI_VERSION = "14.0.2";
 
 export function getFlagImageUrl(flagEmoji: string): string {
@@ -91,7 +96,7 @@ export function getFlagImageUrl(flagEmoji: string): string {
     .map((char) => char.codePointAt(0)!.toString(16))
     .filter((cp) => cp !== "fe0f")
     .join("-");
-  return `https://cdn.jsdelivr.net/npm/twemoji@${TWEMOJI_VERSION}/assets/72x72/${codepoints}.png`;
+  return `https://cdn.jsdelivr.net/gh/twitter/twemoji@${TWEMOJI_VERSION}/assets/72x72/${codepoints}.png`;
 }
 
 export const HK_FLAG_IMAGE_URL = getFlagImageUrl(HK_FLAG);
