@@ -1,7 +1,9 @@
 // Maps opponent country names / abbreviations (as entered by admins) to a flag emoji.
 // Keys are lowercased and stripped of punctuation for matching.
-// Kept in sync with artifacts/hk-masters-web/src/utils/countryFlags.js
-const FLAG_MAP = {
+//
+// Shared between the public site (@workspace/hk-masters-web) and staff admin
+// (@workspace/hk-masters) so new countries/abbreviations only need to be added once.
+const FLAG_MAP: Record<string, string> = {
   "hong kong": "🇭🇰", "hk": "🇭🇰", "hkg": "🇭🇰",
   australia: "🇦🇺", aus: "🇦🇺",
   ireland: "🇮🇪", irl: "🇮🇪", ire: "🇮🇪",
@@ -54,7 +56,7 @@ const FLAG_MAP = {
   "chinese taipei": "🇹🇼", taiwan: "🇹🇼", tpe: "🇹🇼",
 };
 
-function normalize(name) {
+function normalize(name: string | null | undefined): string {
   return String(name || "")
     .toLowerCase()
     .replace(/[^a-z\s]/g, "")
@@ -62,7 +64,7 @@ function normalize(name) {
 }
 
 // Returns a flag emoji for a given opponent name/abbreviation, or null if unknown.
-export function getCountryFlag(name) {
+export function getCountryFlag(name: string | null | undefined): string | null {
   if (!name) return null;
   const key = normalize(name);
   if (FLAG_MAP[key]) return FLAG_MAP[key];

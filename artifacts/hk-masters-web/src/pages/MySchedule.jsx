@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
-import { getCountryFlag, HK_FLAG } from "../utils/countryFlags";
+import { getCountryFlag, HK_FLAG } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 
 const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT

@@ -24,7 +24,7 @@ import { z } from "zod"
 import { format } from "date-fns"
 import type { Match } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
-import { getCountryFlag } from "@/utils/countryFlags"
+import { getCountryFlag } from "@workspace/country-flags"
 
 const SESSION_KEY = "hkm_admin_session"
 function getStoredToken(): string | null {

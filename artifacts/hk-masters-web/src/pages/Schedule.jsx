@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
-import { getCountryFlag, HK_FLAG } from "../utils/countryFlags";
+import { getCountryFlag, HK_FLAG } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
