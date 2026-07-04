@@ -40,6 +40,7 @@ type ReconciliationRow = {
   playerName: string
   fundraisingReceived: number
   legoJarAllocated: number
+  funRunAllocated: number
   totalPaidOut: number
   balance: number
 }
@@ -47,6 +48,7 @@ type ReconciliationRow = {
 type ReconciliationData = {
   players: ReconciliationRow[]
   legoJarTotal: number
+  funRunTotal: number
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -61,12 +63,14 @@ const METHOD_LABELS: Record<string, string> = {
 const SOURCE_LABELS: Record<string, string> = {
   fundraising: "Fundraising",
   lego_jar: "LEGO Jar",
+  fun_run: "Fun Run",
   general: "General",
 }
 
 const SOURCE_COLORS: Record<string, string> = {
   fundraising: "bg-blue-100 text-blue-800",
   lego_jar: "bg-purple-100 text-purple-800",
+  fun_run: "bg-orange-100 text-orange-800",
   general: "bg-gray-100 text-gray-800",
 }
 
@@ -76,7 +80,7 @@ const payoutSchema = z.object({
   amount: z.coerce.number().positive("Amount must be positive"),
   payoutDate: z.string().min(1, "Date is required"),
   method: z.enum(["fps", "payme", "bank_transfer", "cash", "cheque", "other"]),
-  source: z.enum(["fundraising", "lego_jar", "general"]),
+  source: z.enum(["fundraising", "lego_jar", "fun_run", "general"]),
   reference: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -492,15 +496,26 @@ export default function Payouts() {
             </Button>
           </div>
 
-          {/* LEGO Jar summary card */}
+          {/* LEGO Jar / Fun Run summary cards */}
           {reconciliation && (
-            <div className="mb-5 flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-5 py-3">
-              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Package className="w-5 h-5 text-purple-600" />
+            <div className="mb-5 flex flex-wrap gap-4">
+              <div className="flex items-center gap-3 bg-purple-50 border border-purple-200 rounded-xl px-5 py-3">
+                <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <Package className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">LEGO Jar Total Collected</p>
+                  <p className="text-xl font-bold text-purple-900">{formatCurrency(reconciliation.legoJarTotal)}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">LEGO Jar Total Collected</p>
-                <p className="text-xl font-bold text-purple-900">{formatCurrency(reconciliation.legoJarTotal)}</p>
+              <div className="flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl px-5 py-3">
+                <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center">
+                  <Package className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-orange-600 font-medium uppercase tracking-wide">Fun Run Total Collected</p>
+                  <p className="text-xl font-bold text-orange-900">{formatCurrency(reconciliation.funRunTotal)}</p>
+                </div>
               </div>
             </div>
           )}
@@ -520,6 +535,7 @@ export default function Payouts() {
                     <th className="px-4 py-3 text-left font-semibold text-gray-600">Player</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600">Fundraising In</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600 hidden md:table-cell">LEGO Jar</th>
+                    <th className="px-4 py-3 text-right font-semibold text-gray-600 hidden md:table-cell">Fun Run</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600">Paid Out</th>
                     <th className="px-4 py-3 text-right font-semibold text-gray-600">Balance</th>
                     <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden sm:table-cell">Status</th>
@@ -551,6 +567,12 @@ export default function Payouts() {
                         <td className="px-4 py-3 text-right hidden md:table-cell">
                           {row.legoJarAllocated > 0
                             ? <span className="text-purple-700 font-medium">{formatCurrency(row.legoJarAllocated)}</span>
+                            : <span className="text-gray-400">—</span>
+                          }
+                        </td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell">
+                          {row.funRunAllocated > 0
+                            ? <span className="text-orange-700 font-medium">{formatCurrency(row.funRunAllocated)}</span>
                             : <span className="text-gray-400">—</span>
                           }
                         </td>
@@ -641,6 +663,7 @@ export default function Payouts() {
               >
                 <option value="fundraising">Fundraising</option>
                 <option value="lego_jar">LEGO Jar</option>
+                <option value="fun_run">Fun Run</option>
                 <option value="general">General</option>
               </select>
             </div>

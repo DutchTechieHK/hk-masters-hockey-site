@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable, teamsTable } from "@workspace/db/schema";
+import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable, teamsTable, funRunIncomeTable } from "@workspace/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
 const VALID_METHODS = ["fps", "payme", "bank_transfer", "cash", "cheque", "other"] as const;
-const VALID_SOURCES = ["fundraising", "lego_jar", "general"] as const;
+const VALID_SOURCES = ["fundraising", "lego_jar", "fun_run", "general"] as const;
 type Method = typeof VALID_METHODS[number];
 type Source = typeof VALID_SOURCES[number];
 
@@ -100,6 +100,7 @@ router.get("/reconciliation", async (_req, res) => {
       playerId: playerPayoutsTable.playerId,
       totalAll: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
       totalLegoJar: sql<string>`COALESCE(SUM(CASE WHEN ${playerPayoutsTable.source} = 'lego_jar' THEN ${playerPayoutsTable.amount} ELSE 0 END), 0)`,
+      totalFunRun: sql<string>`COALESCE(SUM(CASE WHEN ${playerPayoutsTable.source} = 'fun_run' THEN ${playerPayoutsTable.amount} ELSE 0 END), 0)`,
     })
     .from(playerPayoutsTable)
     .where(sql`${playerPayoutsTable.playerId} IS NOT NULL`)
@@ -107,10 +108,12 @@ router.get("/reconciliation", async (_req, res) => {
 
   const payoutTotalMap = new Map<number, number>();
   const payoutLegoMap = new Map<number, number>();
+  const payoutFunRunMap = new Map<number, number>();
   for (const row of payoutsByPlayer) {
     if (row.playerId !== null) {
       payoutTotalMap.set(row.playerId, parseFloat(row.totalAll));
       payoutLegoMap.set(row.playerId, parseFloat(row.totalLegoJar));
+      payoutFunRunMap.set(row.playerId, parseFloat(row.totalFunRun));
     }
   }
 
@@ -122,21 +125,30 @@ router.get("/reconciliation", async (_req, res) => {
 
   const legoJarTotal = parseFloat(legoRow?.total ?? "0");
 
+  // Fun Run total collected (the whole pot)
+  const [funRunRow] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${funRunIncomeTable.amountHkd}), 0)` })
+    .from(funRunIncomeTable);
+
+  const funRunTotal = parseFloat(funRunRow?.total ?? "0");
+
   // Build per-player reconciliation
-  // balance = (fundraisingReceived + legoJarAllocated) - totalPaidOut
-  // legoJarAllocated = payouts with source='lego_jar' (admin explicitly tagged these as lego jar disbursements)
-  // This nets to zero for lego jar payments, leaving only outstanding fundraising obligations in the balance
+  // balance = (fundraisingReceived + legoJarAllocated + funRunAllocated) - totalPaidOut
+  // legoJarAllocated / funRunAllocated = payouts explicitly tagged with that source (admin-tagged disbursements)
+  // This nets to zero for lego jar / fun run payments, leaving only outstanding fundraising obligations in the balance
   const playerRows = players.map((p) => {
     const nameLower = p.name.toLowerCase().trim();
     const fundraisingReceived = fundMap.get(nameLower) ?? 0;
     const totalPaidOut = payoutTotalMap.get(p.id) ?? 0;
     const legoJarAllocated = payoutLegoMap.get(p.id) ?? 0;
-    const balance = (fundraisingReceived + legoJarAllocated) - totalPaidOut;
+    const funRunAllocated = payoutFunRunMap.get(p.id) ?? 0;
+    const balance = (fundraisingReceived + legoJarAllocated + funRunAllocated) - totalPaidOut;
     return {
       playerId: p.id,
       playerName: p.name,
       fundraisingReceived,
       legoJarAllocated,
+      funRunAllocated,
       totalPaidOut,
       balance,
     };
@@ -147,7 +159,7 @@ router.get("/reconciliation", async (_req, res) => {
     (r) => r.fundraisingReceived > 0 || r.totalPaidOut > 0
   );
 
-  res.json({ players: activeRows, legoJarTotal });
+  res.json({ players: activeRows, legoJarTotal, funRunTotal });
 });
 
 // POST /api/payouts
