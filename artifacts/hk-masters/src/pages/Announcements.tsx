@@ -144,6 +144,8 @@ export default function Announcements() {
   const [waForm, setWaForm] = useState<WhatsAppFormState>(EMPTY_WA_FORM)
   const [waSaving, setWaSaving] = useState(false)
   const [waError, setWaError] = useState<string | null>(null)
+  const isWaDraftDirty = waForm.title.trim().length > 0 || waForm.body.trim().length > 0
+  const WA_DRAFT_WARNING = "You have an unsent WhatsApp draft. Leave without sending it?"
 
   // Email state
   const [emailForm, setEmailForm] = useState<EmailFormState>(EMPTY_EMAIL_FORM)
@@ -209,6 +211,47 @@ export default function Announcements() {
   useEffect(() => {
     if (activeTab === "email") refreshBlasts()
   }, [activeTab, refreshBlasts])
+
+  // Warn before closing the tab, refreshing, or navigating to an external
+  // page while an unsent WhatsApp draft exists.
+  useEffect(() => {
+    if (!isWaDraftDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [isWaDraftDirty])
+
+  // Warn before following an in-app link (e.g. the sidebar) away from this
+  // page while an unsent WhatsApp draft exists. Sidebar navigation is
+  // client-side routing via wouter's <Link>, which renders a plain <a>, so
+  // beforeunload alone won't catch it — intercept the click instead.
+  useEffect(() => {
+    if (!isWaDraftDirty) return
+    const handler = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement)?.closest("a")
+      if (!anchor) return
+      const href = anchor.getAttribute("href")
+      if (!href || href.startsWith("#")) return
+      if (!confirm(WA_DRAFT_WARNING)) {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+      }
+    }
+    document.addEventListener("click", handler, true)
+    return () => document.removeEventListener("click", handler, true)
+  }, [isWaDraftDirty])
+
+  // Warn before switching away from the WhatsApp tab while an unsent draft
+  // exists.
+  const changeTab = (tab: "announcements" | "email" | "whatsapp") => {
+    if (activeTab === "whatsapp" && tab !== "whatsapp" && isWaDraftDirty) {
+      if (!confirm(WA_DRAFT_WARNING)) return
+    }
+    setActiveTab(tab)
+  }
 
   // --- Announcement handlers ---
 
@@ -470,7 +513,7 @@ export default function Announcements() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted/50 rounded-xl p-1 w-fit border border-border">
         <button
-          onClick={() => setActiveTab("announcements")}
+          onClick={() => changeTab("announcements")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "announcements"
               ? "bg-white shadow-sm text-foreground"
@@ -480,7 +523,7 @@ export default function Announcements() {
           <Megaphone className="w-4 h-4" /> In-app feed
         </button>
         <button
-          onClick={() => setActiveTab("email")}
+          onClick={() => changeTab("email")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "email"
               ? "bg-white shadow-sm text-foreground"
@@ -490,7 +533,7 @@ export default function Announcements() {
           <Mail className="w-4 h-4" /> Email players
         </button>
         <button
-          onClick={() => setActiveTab("whatsapp")}
+          onClick={() => changeTab("whatsapp")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             activeTab === "whatsapp"
               ? "bg-white shadow-sm text-foreground"
