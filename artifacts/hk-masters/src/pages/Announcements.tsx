@@ -78,6 +78,15 @@ const MAX_ATTACHMENTS = 5
 
 const EMPTY_FORM: FormState = { title: "", body: "", teamId: "", pinned: false, sendPush: true }
 
+type WhatsAppFormState = {
+  title: string
+  body: string
+  teamId: string
+  alsoPostInApp: boolean
+}
+
+const EMPTY_WA_FORM: WhatsAppFormState = { title: "", body: "", teamId: "", alsoPostInApp: false }
+
 function authHeaders(): Record<string, string> {
   const token = getStoredAdminToken()
   return token ? { "x-session-token": token, "Content-Type": "application/json" } : { "Content-Type": "application/json" }
@@ -100,6 +109,10 @@ function toPlainText(html: string): string {
     .trim()
 }
 
+function buildWaShareText(title: string, body: string): string {
+  return `*${title}*\n\n${toPlainText(body)}`
+}
+
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -115,7 +128,7 @@ export default function Announcements() {
   const { data: allPlayers = [] } = useListPlayers()
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"announcements" | "email">("announcements")
+  const [activeTab, setActiveTab] = useState<"announcements" | "email" | "whatsapp">("announcements")
 
   // In-app announcements state
   const [items, setItems] = useState<Announcement[]>([])
@@ -125,6 +138,11 @@ export default function Announcements() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  // WhatsApp compose state
+  const [waForm, setWaForm] = useState<WhatsAppFormState>(EMPTY_WA_FORM)
+  const [waSaving, setWaSaving] = useState(false)
+  const [waError, setWaError] = useState<string | null>(null)
 
   // Email state
   const [emailForm, setEmailForm] = useState<EmailFormState>(EMPTY_EMAIL_FORM)
@@ -220,13 +238,13 @@ export default function Announcements() {
   }
 
   const handleShareWhatsApp = (a: Announcement) => {
-    const text = `*${a.title}*\n\n${toPlainText(a.body)}`
+    const text = buildWaShareText(a.title, a.body)
     const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
     window.open(waUrl, "_blank", "noopener,noreferrer")
   }
 
   const handleOpenSquadGroup = async (a: Announcement, groupLink: string) => {
-    const text = `*${a.title}*\n\n${toPlainText(a.body)}`
+    const text = buildWaShareText(a.title, a.body)
     try {
       await navigator.clipboard.writeText(text)
       toast({ title: "Message copied — paste it into the squad group" })
@@ -234,6 +252,60 @@ export default function Announcements() {
       // clipboard unavailable — still open the group so the admin can type it manually
     }
     window.open(groupLink, "_blank", "noopener,noreferrer")
+  }
+
+  // --- WhatsApp compose handlers ---
+
+  const waSelectedTeam = waForm.teamId ? teams.find((t) => t.id === Number(waForm.teamId)) : undefined
+
+  const handleShareCompose = async () => {
+    const title = waForm.title.trim()
+    const body = waForm.body.trim()
+    if (!title || !body) {
+      setWaError("Title and message are required")
+      return
+    }
+    setWaError(null)
+    setWaSaving(true)
+    try {
+      if (waForm.alsoPostInApp) {
+        const res = await fetch("/api/announcements", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({
+            title,
+            body,
+            teamId: waForm.teamId === "" ? null : Number(waForm.teamId),
+            pinned: false,
+            sendPush: false,
+          }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error || "Failed to post announcement")
+        refresh()
+      }
+      const waUrl = `https://wa.me/?text=${encodeURIComponent(buildWaShareText(title, body))}`
+      window.open(waUrl, "_blank", "noopener,noreferrer")
+      toast({ title: waForm.alsoPostInApp ? "Posted to in-app feed and opened WhatsApp" : "Opened WhatsApp" })
+      setWaForm(EMPTY_WA_FORM)
+    } catch (err) {
+      setWaError((err as Error).message)
+    } finally {
+      setWaSaving(false)
+    }
+  }
+
+  const handleOpenWaSquadGroup = async () => {
+    const title = waForm.title.trim()
+    const body = waForm.body.trim()
+    if (!title || !body || !waSelectedTeam?.whatsappGroupLink) return
+    try {
+      await navigator.clipboard.writeText(buildWaShareText(title, body))
+      toast({ title: "Message copied — paste it into the squad group" })
+    } catch {
+      // clipboard unavailable — still open the group so the admin can type it manually
+    }
+    window.open(waSelectedTeam.whatsappGroupLink, "_blank", "noopener,noreferrer")
   }
 
   const togglePin = async (a: Announcement) => {
@@ -387,7 +459,7 @@ export default function Announcements() {
   return (
     <PageLayout
       title="Announcements"
-      description="Post in-app updates or send emails directly to players."
+      description="Post in-app updates, send emails, or share via WhatsApp."
       action={activeTab === "announcements" ? (
         <Button onClick={openCreate} className="gap-2">
           <Plus className="w-4 h-4" /> New announcement
@@ -415,6 +487,16 @@ export default function Announcements() {
           }`}
         >
           <Mail className="w-4 h-4" /> Email players
+        </button>
+        <button
+          onClick={() => setActiveTab("whatsapp")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            activeTab === "whatsapp"
+              ? "bg-white shadow-sm text-foreground"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <WhatsAppIcon className="w-4 h-4" /> WhatsApp
         </button>
       </div>
 
@@ -801,6 +883,91 @@ export default function Announcements() {
                 })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Tab */}
+      {activeTab === "whatsapp" && (
+        <div className="max-w-xl bg-white rounded-2xl border border-border p-6 space-y-5">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <WhatsAppIcon className="w-4 h-4 text-green-600" /> Compose WhatsApp message
+          </h2>
+          <p className="text-sm text-muted-foreground -mt-3">
+            Write a message and share it straight to WhatsApp. This won't post to the in-app feed unless you check the box below.
+          </p>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Title</label>
+            <Input
+              value={waForm.title}
+              onChange={(e) => setWaForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Training moved to Sunday"
+              maxLength={200}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Message</label>
+            <Textarea
+              value={waForm.body}
+              onChange={(e) => setWaForm((f) => ({ ...f, body: e.target.value }))}
+              placeholder="Tell the squad what's going on…"
+              rows={6}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Visible to</label>
+            <Select
+              value={waForm.teamId}
+              onChange={(e) => setWaForm((f) => ({ ...f, teamId: e.target.value }))}
+            >
+              <option value="">All squads</option>
+              {teams.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </Select>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={waForm.alsoPostInApp}
+              onChange={(e) => setWaForm((f) => ({ ...f, alsoPostInApp: e.target.checked }))}
+              className="rounded border-gray-300"
+            />
+            Also post to in-app feed
+          </label>
+
+          {waSelectedTeam?.whatsappGroupLink && (
+            <p className="text-xs text-muted-foreground bg-muted/30 border border-border rounded-lg px-3 py-2">
+              {waSelectedTeam.name} has a saved WhatsApp group. Use "Open squad group" to copy this message and jump straight there.
+            </p>
+          )}
+
+          {waError && <p className="text-sm text-rose-600">{waError}</p>}
+
+          <div className="flex flex-wrap gap-2 justify-end pt-1">
+            {waSelectedTeam?.whatsappGroupLink && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenWaSquadGroup}
+                disabled={!waForm.title.trim() || !waForm.body.trim()}
+                className="gap-2"
+              >
+                <Users className="w-4 h-4" /> Open squad group
+              </Button>
+            )}
+            <Button
+              onClick={handleShareCompose}
+              disabled={waSaving || !waForm.title.trim() || !waForm.body.trim()}
+              className="gap-2"
+            >
+              <WhatsAppIcon className="w-4 h-4" />
+              {waSaving ? "Sharing…" : "Share via WhatsApp"}
+            </Button>
           </div>
         </div>
       )}
