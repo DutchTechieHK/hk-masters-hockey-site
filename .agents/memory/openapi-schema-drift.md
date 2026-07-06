@@ -1,0 +1,13 @@
+---
+name: openapi.yaml schema drift breaks api-server boot / can silently drop fields
+description: openapi.yaml can drift from hand-written route code in two dangerous ways — missing schema (crashes on boot) or missing field on an existing schema (regenerating validation silently strips real data on update). Check before and after any codegen run.
+---
+
+The generated Zod modules (via orval codegen in `lib/api-spec`) are derived entirely from `openapi.yaml`, not from the hand-written route code in `artifacts/api-server`. Two failure modes stem from the same root cause (spec/code drift):
+
+1. **Missing schema entirely** — a route imports a schema (e.g. `SendInsuranceRemindersBody`) that isn't declared as a schema + path in `openapi.yaml`. Codegen silently omits it instead of erroring; the route file then fails to import it and api-server crashes on boot. Loud and easy to catch.
+2. **Missing field on an existing schema** — far more dangerous. If `openapi.yaml`'s schema (e.g. Player, Team, Sponsor, DashboardStats) is missing a field that hand-written routes already read/write (found in practice: accommodation*, insurance*, instagramHandle/facebookHandle, coachName/captainName/description, contributionAmount, fundraisingBreakdown), the *committed generated code* had that field only because it went stale/hand-patched previously. Rerunning codegen "fixes" the generated code by silently deleting those fields from the Zod validation schema — update requests then pass validation while silently dropping that data. This is a **silent data-loss regression**, not a crash, so it won't be caught by boot/smoke tests.
+
+**Why:** Discovered when an unrelated codegen fix (case 1, for `SendInsuranceRemindersBody`) forced a full `pnpm run codegen` rerun, which then surfaced case 2 across many schemas — pre-existing drift that had been masked because nobody had regenerated in a long time.
+
+**How to apply:** Before trusting any `pnpm run codegen` rerun in `lib/api-spec`, diff the previous generated output against the new one and treat any *removed* field as a potential regression, not a cleanup — go verify in the hand-written routes whether that field is actually used, and if so, add it to `openapi.yaml` before accepting the regen. Never assume "codegen output changed" == "codegen output improved." Also: `tsc --build` across `lib/api-zod` may have pre-existing TS2308 export-ambiguity errors (from `export *` colliding between `generated/types` and hand-written modules like `email-templates.ts`) — this is separate, dormant tech debt unrelated to runtime correctness (packages are consumed via `src` directly, not `dist`), so don't treat it as a new regression unless you introduced the *first* instance of the pattern.

@@ -8,3 +8,4 @@
 - [Admin tutorial video controls & sound](admin-video-controls.md) — clips open in a new tab; controls/unmute only show with `?view=1` (or iframed); export URLs stay flag-free; unmuted autoplay is browser-blocked.
 - [Video artifact unregistered port fix](video-artifact-port-fix.md) — unregistered artifact port → dev workflow shows FAILED (health check) yet prod is unaffected; artifact workflows can't be overridden (configureWorkflow = PROHIBITED). Fix = remove a redundant artifact or port-swap.
 - [SW navigation denylist](sw-navigation-denylist.md) — public-site SW hijacks cross-artifact navigations not in its denylist → public 404 in prod only (hard-refresh works, click fails); add every sibling base path.
+- [openapi.yaml schema drift](openapi-schema-drift.md) — missing schema crashes boot; missing *field* on existing schema silently strips it from validation on codegen rerun (data loss). Diff generated output before trusting a regen.

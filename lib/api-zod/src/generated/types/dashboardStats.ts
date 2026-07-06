@@ -6,16 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { DashboardStatsDocumentCounts } from "./dashboardStatsDocumentCounts";
+import type { DashboardStatsFundraisingBreakdown } from "./dashboardStatsFundraisingBreakdown";
 import type { DashboardStatsTeamStatsItem } from "./dashboardStatsTeamStatsItem";
 import type { DashboardStatsUpcomingDeadlinesItem } from "./dashboardStatsUpcomingDeadlinesItem";
-
-export type DashboardStatsFundraisingBreakdown = {
-  onlinePledges: number;
-  legoJar: number;
-  sponsors: number;
-  funRun: number;
-  auction: number;
-};
 
 export interface DashboardStats {
   totalPlayers: number;
@@ -32,6 +25,6 @@ export interface DashboardStats {
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
-  fundraisingBreakdown: DashboardStatsFundraisingBreakdown;
+  fundraisingBreakdown?: DashboardStatsFundraisingBreakdown;
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
 }

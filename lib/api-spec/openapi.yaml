@@ -224,6 +224,27 @@ paths:
         "401":
           description: Not authenticated
 
+  /players/send-insurance-reminders:
+    post:
+      operationId: sendInsuranceReminders
+      tags: [players]
+      summary: Send insurance detail reminder emails to players missing insurance info
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendInsuranceRemindersBody"
+      responses:
+        "200":
+          description: Result of sending reminders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeeReminderResult"
+        "401":
+          description: Not authenticated
+
   /players/self/{token}:
     get:
       operationId: getSelfPlayer
@@ -904,6 +925,15 @@ components:
             type: integer
           description: Specific player IDs to email. If omitted, emails all players whose fee is unpaid.
 
+    SendInsuranceRemindersBody:
+      type: object
+      properties:
+        playerIds:
+          type: array
+          items:
+            type: integer
+          description: Specific player IDs to email. If omitted, emails all players missing insurance info.
+
     FeeReminderResult:
       type: object
       properties:
@@ -988,6 +1018,25 @@ components:
           type: number
         fundraisingTarget:
           type: number
+        fundraisingBreakdown:
+          type: object
+          properties:
+            onlinePledges:
+              type: number
+            legoJar:
+              type: number
+            sponsors:
+              type: number
+            funRun:
+              type: number
+            auction:
+              type: number
+          required:
+            - onlinePledges
+            - legoJar
+            - sponsors
+            - funRun
+            - auction
         upcomingDeadlines:
           type: array
           items:
@@ -1044,6 +1093,12 @@ components:
           type: string
         notes:
           type: string
+        coachName:
+          type: string
+        captainName:
+          type: string
+        description:
+          type: string
         createdAt:
           type: string
       required:
@@ -1078,6 +1133,12 @@ components:
         kitNotes:
           type: string
         notes:
+          type: string
+        coachName:
+          type: string
+        captainName:
+          type: string
+        description:
           type: string
       required:
         - name
@@ -1147,6 +1208,26 @@ components:
           type: string
         roomSharingWith:
           type: string
+        accommodationName:
+          type: string
+        accommodationAddress:
+          type: string
+        accommodationPhone:
+          type: string
+        accommodationEmail:
+          type: string
+        insuranceProvider:
+          type: string
+        insurancePolicyNumber:
+          type: string
+        insuranceEmergencyPhone:
+          type: string
+        insurancePolicyHolder:
+          type: string
+        insuranceExpiry:
+          type: string
+        insuranceEmail:
+          type: string
         shirtSize:
           type: string
         shortsSize:
@@ -1174,6 +1255,10 @@ components:
         medicalNotes:
           type: string
         notes:
+          type: string
+        instagramHandle:
+          type: string
+        facebookHandle:
           type: string
         travelReminderSentAt:
           type: string
@@ -1249,6 +1334,26 @@ components:
           type: string
         roomSharingWith:
           type: string
+        accommodationName:
+          type: string
+        accommodationAddress:
+          type: string
+        accommodationPhone:
+          type: string
+        accommodationEmail:
+          type: string
+        insuranceProvider:
+          type: string
+        insurancePolicyNumber:
+          type: string
+        insuranceEmergencyPhone:
+          type: string
+        insurancePolicyHolder:
+          type: string
+        insuranceExpiry:
+          type: string
+        insuranceEmail:
+          type: string
         shirtSize:
           type: string
         shortsSize:
@@ -1276,6 +1381,10 @@ components:
         medicalNotes:
           type: string
         notes:
+          type: string
+        instagramHandle:
+          type: string
+        facebookHandle:
           type: string
       required:
         - teamId
@@ -1347,6 +1456,10 @@ components:
           type: string
         medicalNotes:
           type: string
+        instagramHandle:
+          type: string
+        facebookHandle:
+          type: string
         feePaid:
           type: boolean
         paymentAmountDue:
@@ -1406,6 +1519,26 @@ components:
           type: string
         roomSharingPreference:
           type: string
+        accommodationName:
+          type: string
+        accommodationAddress:
+          type: string
+        accommodationPhone:
+          type: string
+        accommodationEmail:
+          type: string
+        insuranceProvider:
+          type: string
+        insurancePolicyNumber:
+          type: string
+        insuranceEmergencyPhone:
+          type: string
+        insurancePolicyHolder:
+          type: string
+        insuranceExpiry:
+          type: string
+        insuranceEmail:
+          type: string
         shirtSize:
           type: string
         shortsSize:
@@ -1421,6 +1554,10 @@ components:
         dietaryRequirements:
           type: string
         medicalNotes:
+          type: string
+        instagramHandle:
+          type: string
+        facebookHandle:
           type: string
 
     PlayerPayment:
@@ -1616,6 +1753,9 @@ components:
           type: string
         beneficiary:
           type: string
+        paymentMethod:
+          type: string
+          nullable: true
         paidAt:
           type: string
           nullable: true
@@ -1655,6 +1795,9 @@ components:
           type: string
         beneficiary:
           type: string
+        paymentMethod:
+          type: string
+          nullable: true
       required:
         - donorName
         - amountPledged
@@ -1732,6 +1875,9 @@ components:
           enum: [Gold, Silver, Bronze]
         active:
           type: boolean
+        contributionAmount:
+          type: number
+          nullable: true
         createdAt:
           type: string
       required:
@@ -1754,6 +1900,9 @@ components:
           enum: [Gold, Silver, Bronze]
         active:
           type: boolean
+        contributionAmount:
+          type: number
+          nullable: true
       required:
         - name
         - tier
@@ -1920,6 +2069,68 @@ components:
           type: integer
         body:
           $ref: "#/components/schemas/UpdateEmailTemplateBody"
+      required:
+        - id
+        - body
+
+    WhatsappTemplate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - title
+        - body
+        - createdAt
+        - updatedAt
+
+    CreateWhatsappTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+      required:
+        - name
+        - title
+        - body
+
+    UpdateWhatsappTemplateBody:
+      type: object
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        body:
+          type: string
+      required:
+        - name
+        - title
+        - body
+
+    UpdateWhatsappTemplateVariables:
+      type: object
+      properties:
+        id:
+          type: integer
+        body:
+          $ref: "#/components/schemas/UpdateWhatsappTemplateBody"
       required:
         - id
         - body

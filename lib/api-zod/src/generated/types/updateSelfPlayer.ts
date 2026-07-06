@@ -28,6 +28,12 @@ export interface UpdateSelfPlayer {
   accommodationAddress?: string;
   accommodationPhone?: string;
   accommodationEmail?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceEmergencyPhone?: string;
+  insurancePolicyHolder?: string;
+  insuranceExpiry?: string;
+  insuranceEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;

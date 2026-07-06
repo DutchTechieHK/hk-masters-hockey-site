@@ -18,4 +18,7 @@ export interface CreateTeam {
   targetPlayerCount?: number;
   kitNotes?: string;
   notes?: string;
+  coachName?: string;
+  captainName?: string;
+  description?: string;
 }

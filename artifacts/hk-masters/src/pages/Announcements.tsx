@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useListTeams, useListPlayers } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { TemplateLoader } from "@/components/email/TemplateLoader"
+import { WhatsAppTemplateLoader } from "@/components/whatsapp/WhatsAppTemplateLoader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
@@ -896,6 +897,15 @@ export default function Announcements() {
           <p className="text-sm text-muted-foreground -mt-3">
             Write a message and share it straight to WhatsApp. This won't post to the in-app feed unless you check the box below.
           </p>
+
+          <div className="space-y-2">
+            <label className="text-sm font-semibold">Templates</label>
+            <WhatsAppTemplateLoader
+              currentTitle={waForm.title}
+              currentBody={waForm.body}
+              onLoad={(title, body) => setWaForm((f) => ({ ...f, title, body }))}
+            />
+          </div>
 
           <div className="space-y-2">
             <label className="text-sm font-semibold">Title</label>

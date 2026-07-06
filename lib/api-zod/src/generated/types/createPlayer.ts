@@ -30,6 +30,16 @@ export interface CreatePlayer {
   returnArrivalDateTime?: string;
   roomSharingPreference?: string;
   roomSharingWith?: string;
+  accommodationName?: string;
+  accommodationAddress?: string;
+  accommodationPhone?: string;
+  accommodationEmail?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceEmergencyPhone?: string;
+  insurancePolicyHolder?: string;
+  insuranceExpiry?: string;
+  insuranceEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;

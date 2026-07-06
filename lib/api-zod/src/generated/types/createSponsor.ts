@@ -13,4 +13,5 @@ export interface CreateSponsor {
   websiteUrl?: string;
   tier: CreateSponsorTier;
   active: boolean;
+  contributionAmount?: number | null;
 }

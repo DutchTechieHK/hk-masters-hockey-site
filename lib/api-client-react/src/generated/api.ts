@@ -43,6 +43,7 @@ import type {
   PlayerPayment,
   SelfPlayer,
   SendFeeRemindersBody,
+  SendInsuranceRemindersBody,
   SendOnboardingInvitesBody,
   SendTravelRemindersBody,
   Sponsor,
@@ -970,6 +971,93 @@ export const useSendFeeReminders = <
   TContext
 > => {
   return useMutation(getSendFeeRemindersMutationOptions(options));
+};
+
+/**
+ * @summary Send insurance detail reminder emails to players missing insurance info
+ */
+export const getSendInsuranceRemindersUrl = () => {
+  return `/api/players/send-insurance-reminders`;
+};
+
+export const sendInsuranceReminders = async (
+  sendInsuranceRemindersBody?: SendInsuranceRemindersBody,
+  options?: RequestInit,
+): Promise<FeeReminderResult> => {
+  return customFetch<FeeReminderResult>(getSendInsuranceRemindersUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendInsuranceRemindersBody),
+  });
+};
+
+export const getSendInsuranceRemindersMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendInsuranceReminders>>,
+    TError,
+    { data: BodyType<SendInsuranceRemindersBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendInsuranceReminders>>,
+  TError,
+  { data: BodyType<SendInsuranceRemindersBody> },
+  TContext
+> => {
+  const mutationKey = ["sendInsuranceReminders"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendInsuranceReminders>>,
+    { data: BodyType<SendInsuranceRemindersBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendInsuranceReminders(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendInsuranceRemindersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendInsuranceReminders>>
+>;
+export type SendInsuranceRemindersMutationBody =
+  BodyType<SendInsuranceRemindersBody>;
+export type SendInsuranceRemindersMutationError = ErrorType<void>;
+
+/**
+ * @summary Send insurance detail reminder emails to players missing insurance info
+ */
+export const useSendInsuranceReminders = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendInsuranceReminders>>,
+    TError,
+    { data: BodyType<SendInsuranceRemindersBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendInsuranceReminders>>,
+  TError,
+  { data: BodyType<SendInsuranceRemindersBody> },
+  TContext
+> => {
+  return useMutation(getSendInsuranceRemindersMutationOptions(options));
 };
 
 /**

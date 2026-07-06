@@ -46,13 +46,15 @@ export const GetDashboardResponse = zod.object({
   ),
   totalFundsRaised: zod.number(),
   fundraisingTarget: zod.number(),
-  fundraisingBreakdown: zod.object({
-    onlinePledges: zod.number(),
-    legoJar: zod.number(),
-    sponsors: zod.number(),
-    funRun: zod.number(),
-    auction: zod.number(),
-  }),
+  fundraisingBreakdown: zod
+    .object({
+      onlinePledges: zod.number(),
+      legoJar: zod.number(),
+      sponsors: zod.number(),
+      funRun: zod.number(),
+      auction: zod.number(),
+    })
+    .optional(),
   upcomingDeadlines: zod.array(
     zod.object({
       title: zod.string(),
@@ -78,6 +80,9 @@ export const ListTeamsResponseItem = zod.object({
   targetPlayerCount: zod.number().optional(),
   kitNotes: zod.string().optional(),
   notes: zod.string().optional(),
+  coachName: zod.string().optional(),
+  captainName: zod.string().optional(),
+  description: zod.string().optional(),
   createdAt: zod.string().optional(),
 });
 export const ListTeamsResponse = zod.array(ListTeamsResponseItem);
@@ -187,6 +192,16 @@ export const ListPlayersResponseItem = zod.object({
   returnArrivalDateTime: zod.string().optional(),
   roomSharingPreference: zod.string().optional(),
   roomSharingWith: zod.string().optional(),
+  accommodationName: zod.string().optional(),
+  accommodationAddress: zod.string().optional(),
+  accommodationPhone: zod.string().optional(),
+  accommodationEmail: zod.string().optional(),
+  insuranceProvider: zod.string().optional(),
+  insurancePolicyNumber: zod.string().optional(),
+  insuranceEmergencyPhone: zod.string().optional(),
+  insurancePolicyHolder: zod.string().optional(),
+  insuranceExpiry: zod.string().optional(),
+  insuranceEmail: zod.string().optional(),
   shirtSize: zod.string().optional(),
   shortsSize: zod.string().optional(),
   jacketSize: zod.string().optional(),
@@ -239,6 +254,16 @@ export const CreatePlayerBody = zod.object({
   returnArrivalDateTime: zod.string().optional(),
   roomSharingPreference: zod.string().optional(),
   roomSharingWith: zod.string().optional(),
+  accommodationName: zod.string().optional(),
+  accommodationAddress: zod.string().optional(),
+  accommodationPhone: zod.string().optional(),
+  accommodationEmail: zod.string().optional(),
+  insuranceProvider: zod.string().optional(),
+  insurancePolicyNumber: zod.string().optional(),
+  insuranceEmergencyPhone: zod.string().optional(),
+  insurancePolicyHolder: zod.string().optional(),
+  insuranceExpiry: zod.string().optional(),
+  insuranceEmail: zod.string().optional(),
   shirtSize: zod.string().optional(),
   shortsSize: zod.string().optional(),
   jacketSize: zod.string().optional(),
@@ -313,14 +338,14 @@ export const SendFeeRemindersResponse = zod.object({
 });
 
 /**
- * @summary Send insurance reminder emails to players missing insurance details
+ * @summary Send insurance detail reminder emails to players missing insurance info
  */
 export const SendInsuranceRemindersBody = zod.object({
   playerIds: zod
     .array(zod.number())
     .optional()
     .describe(
-      "Specific player IDs to email. If omitted, emails all players with no insuranceProvider set.",
+      "Specific player IDs to email. If omitted, emails all players missing insurance info.",
     ),
 });
 
@@ -627,6 +652,16 @@ export const UpdatePlayerResponse = zod.object({
   returnArrivalDateTime: zod.string().optional(),
   roomSharingPreference: zod.string().optional(),
   roomSharingWith: zod.string().optional(),
+  accommodationName: zod.string().optional(),
+  accommodationAddress: zod.string().optional(),
+  accommodationPhone: zod.string().optional(),
+  accommodationEmail: zod.string().optional(),
+  insuranceProvider: zod.string().optional(),
+  insurancePolicyNumber: zod.string().optional(),
+  insuranceEmergencyPhone: zod.string().optional(),
+  insurancePolicyHolder: zod.string().optional(),
+  insuranceExpiry: zod.string().optional(),
+  insuranceEmail: zod.string().optional(),
   shirtSize: zod.string().optional(),
   shortsSize: zod.string().optional(),
   jacketSize: zod.string().optional(),
@@ -871,6 +906,7 @@ export const ListFundraisingResponseItem = zod.object({
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
   beneficiary: zod.string().optional(),
+  paymentMethod: zod.string().nullish(),
   paidAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
@@ -890,6 +926,7 @@ export const CreateFundraisingBody = zod.object({
   paidAt: zod.string().nullish(),
   notes: zod.string().optional(),
   beneficiary: zod.string().optional(),
+  paymentMethod: zod.string().nullish(),
 });
 
 /**
@@ -910,7 +947,7 @@ export const UpdateFundraisingBody = zod.object({
   paidAt: zod.string().nullish(),
   notes: zod.string().optional(),
   beneficiary: zod.string().optional(),
-  paymentMethod: zod.string().optional().nullable(),
+  paymentMethod: zod.string().nullish(),
 });
 
 export const UpdateFundraisingResponse = zod.object({
@@ -925,6 +962,7 @@ export const UpdateFundraisingResponse = zod.object({
   status: zod.enum(["pending", "confirmed", "received"]),
   notes: zod.string().optional(),
   beneficiary: zod.string().optional(),
+  paymentMethod: zod.string().nullish(),
   paidAt: zod.string().nullish(),
   createdAt: zod.string().optional(),
 });
@@ -1122,6 +1160,7 @@ export const ListSponsorsResponseItem = zod.object({
   websiteUrl: zod.string().optional(),
   tier: zod.enum(["Gold", "Silver", "Bronze"]),
   active: zod.boolean(),
+  contributionAmount: zod.number().nullish(),
   createdAt: zod.string().optional(),
 });
 export const ListSponsorsResponse = zod.array(ListSponsorsResponseItem);
@@ -1135,7 +1174,7 @@ export const CreateSponsorBody = zod.object({
   websiteUrl: zod.string().optional(),
   tier: zod.enum(["Gold", "Silver", "Bronze"]),
   active: zod.boolean(),
-  contributionAmount: zod.number().nullable().optional(),
+  contributionAmount: zod.number().nullish(),
 });
 
 /**
@@ -1151,6 +1190,7 @@ export const UpdateSponsorBody = zod.object({
   websiteUrl: zod.string().optional(),
   tier: zod.enum(["Gold", "Silver", "Bronze"]),
   active: zod.boolean(),
+  contributionAmount: zod.number().nullish(),
 });
 
 export const UpdateSponsorResponse = zod.object({
@@ -1160,6 +1200,7 @@ export const UpdateSponsorResponse = zod.object({
   websiteUrl: zod.string().optional(),
   tier: zod.enum(["Gold", "Silver", "Bronze"]),
   active: zod.boolean(),
+  contributionAmount: zod.number().nullish(),
   createdAt: zod.string().optional(),
 });
 

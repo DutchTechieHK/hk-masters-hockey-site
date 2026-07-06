@@ -37,6 +37,11 @@ export interface SendFeeRemindersBody {
   playerIds?: number[];
 }
 
+export interface SendInsuranceRemindersBody {
+  /** Specific player IDs to email. If omitted, emails all players missing insurance info. */
+  playerIds?: number[];
+}
+
 export interface FeeReminderResult {
   sent: number;
   failed: number;
@@ -59,18 +64,18 @@ export type DashboardStatsTeamStatsItem = {
   feesOutstanding: number;
 };
 
-export type DashboardStatsUpcomingDeadlinesItem = {
-  title: string;
-  dueDate: string;
-  category: string;
-};
-
 export type DashboardStatsFundraisingBreakdown = {
   onlinePledges: number;
   legoJar: number;
   sponsors: number;
   funRun: number;
   auction: number;
+};
+
+export type DashboardStatsUpcomingDeadlinesItem = {
+  title: string;
+  dueDate: string;
+  category: string;
 };
 
 export interface DashboardStats {
@@ -88,7 +93,7 @@ export interface DashboardStats {
   teamStats: DashboardStatsTeamStatsItem[];
   totalFundsRaised: number;
   fundraisingTarget: number;
-  fundraisingBreakdown: DashboardStatsFundraisingBreakdown;
+  fundraisingBreakdown?: DashboardStatsFundraisingBreakdown;
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
 }
 
@@ -105,6 +110,9 @@ export interface Team {
   targetPlayerCount?: number;
   kitNotes?: string;
   notes?: string;
+  coachName?: string;
+  captainName?: string;
+  description?: string;
   createdAt?: string;
 }
 
@@ -120,6 +128,9 @@ export interface CreateTeam {
   targetPlayerCount?: number;
   kitNotes?: string;
   notes?: string;
+  coachName?: string;
+  captainName?: string;
+  description?: string;
 }
 
 export interface Player {
@@ -150,6 +161,16 @@ export interface Player {
   returnArrivalDateTime?: string;
   roomSharingPreference?: string;
   roomSharingWith?: string;
+  accommodationName?: string;
+  accommodationAddress?: string;
+  accommodationPhone?: string;
+  accommodationEmail?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceEmergencyPhone?: string;
+  insurancePolicyHolder?: string;
+  insuranceExpiry?: string;
+  insuranceEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
@@ -198,6 +219,16 @@ export interface CreatePlayer {
   returnArrivalDateTime?: string;
   roomSharingPreference?: string;
   roomSharingWith?: string;
+  accommodationName?: string;
+  accommodationAddress?: string;
+  accommodationPhone?: string;
+  accommodationEmail?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceEmergencyPhone?: string;
+  insurancePolicyHolder?: string;
+  insuranceExpiry?: string;
+  insuranceEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
@@ -275,6 +306,16 @@ export interface UpdateSelfPlayer {
   returnFlightNumber?: string;
   returnArrivalDateTime?: string;
   roomSharingPreference?: string;
+  accommodationName?: string;
+  accommodationAddress?: string;
+  accommodationPhone?: string;
+  accommodationEmail?: string;
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string;
+  insuranceEmergencyPhone?: string;
+  insurancePolicyHolder?: string;
+  insuranceExpiry?: string;
+  insuranceEmail?: string;
   shirtSize?: string;
   shortsSize?: string;
   jacketSize?: string;
@@ -432,6 +473,7 @@ export interface FundraisingEntry {
   status: FundraisingEntryStatus;
   notes?: string;
   beneficiary?: string;
+  paymentMethod?: string | null;
   paidAt?: string | null;
   createdAt?: string;
 }
@@ -456,6 +498,7 @@ export interface CreateFundraisingEntry {
   paidAt?: string | null;
   notes?: string;
   beneficiary?: string;
+  paymentMethod?: string | null;
 }
 
 export type LogisticsTaskCategory =
@@ -557,6 +600,7 @@ export interface CreateSponsor {
   websiteUrl?: string;
   tier: CreateSponsorTier;
   active: boolean;
+  contributionAmount?: number | null;
 }
 
 export type MatchStatus = (typeof MatchStatus)[keyof typeof MatchStatus];
@@ -616,8 +660,6 @@ export interface EmailBlastItem {
   failedCount: number;
   sentByEmail?: string | null;
   sentAt: string;
-  recipientNames?: string[];
-  teamNames?: string[];
 }
 
 export interface EmailTemplate {
@@ -644,6 +686,32 @@ export interface UpdateEmailTemplateBody {
 export interface UpdateEmailTemplateVariables {
   id: number;
   body: UpdateEmailTemplateBody;
+}
+
+export interface WhatsappTemplate {
+  id: number;
+  name: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWhatsappTemplateBody {
+  name: string;
+  title: string;
+  body: string;
+}
+
+export interface UpdateWhatsappTemplateBody {
+  name: string;
+  title: string;
+  body: string;
+}
+
+export interface UpdateWhatsappTemplateVariables {
+  id: number;
+  body: UpdateWhatsappTemplateBody;
 }
 
 export type ListPlayersParams = {

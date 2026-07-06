@@ -18,4 +18,5 @@ export interface CreateFundraisingEntry {
   paidAt?: string | null;
   notes?: string;
   beneficiary?: string;
+  paymentMethod?: string | null;
 }

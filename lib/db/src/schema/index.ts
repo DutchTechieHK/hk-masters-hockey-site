@@ -14,6 +14,7 @@ export * from "./event-rsvps";
 export * from "./announcements";
 export * from "./email-blasts";
 export * from "./email-templates";
+export * from "./whatsapp-templates";
 export * from "./documents";
 export * from "./admin-sessions";
 export * from "./auction";

@@ -19,5 +19,8 @@ export interface Team {
   targetPlayerCount?: number;
   kitNotes?: string;
   notes?: string;
+  coachName?: string;
+  captainName?: string;
+  description?: string;
   createdAt?: string;
 }
