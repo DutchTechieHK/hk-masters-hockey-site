@@ -9,3 +9,4 @@
 - [Video artifact unregistered port fix](video-artifact-port-fix.md) — unregistered artifact port → dev workflow shows FAILED (health check) yet prod is unaffected; artifact workflows can't be overridden (configureWorkflow = PROHIBITED). Fix = remove a redundant artifact or port-swap.
 - [SW navigation denylist](sw-navigation-denylist.md) — public-site SW hijacks cross-artifact navigations not in its denylist → public 404 in prod only (hard-refresh works, click fails); add every sibling base path.
 - [openapi.yaml schema drift](openapi-schema-drift.md) — missing schema crashes boot; missing *field* on existing schema silently strips it from validation on codegen rerun (data loss). Diff generated output before trusting a regen.
+- [hk-masters admin auth testing](hk-masters-admin-auth-testing.md) — no dev bypass for the team-password gate; insert an admin_sessions row + temp-patch AdminAuthGate to e2e-test admin pages, then fully revert.

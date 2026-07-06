@@ -4,6 +4,7 @@ import {
   useCreateWhatsappTemplate,
   useDeleteWhatsappTemplate,
   useUpdateWhatsappTemplate,
+  useListEmailTemplates,
 } from "@workspace/api-client-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ interface EditState {
 export function WhatsAppTemplateLoader({ currentTitle, currentBody, onLoad }: WhatsAppTemplateLoaderProps) {
   const { toast } = useToast()
   const { data: templates = [] } = useListWhatsappTemplates()
+  const { data: emailTemplates = [] } = useListEmailTemplates()
   const createTemplate = useCreateWhatsappTemplate()
   const deleteTemplate = useDeleteWhatsappTemplate()
   const updateTemplate = useUpdateWhatsappTemplate()
@@ -38,10 +40,18 @@ export function WhatsAppTemplateLoader({ currentTitle, currentBody, onLoad }: Wh
 
   const handleLoad = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value
-    const id = Number(val)
-    const tpl = templates.find((t) => t.id === id)
-    if (tpl) {
-      onLoad(tpl.title, tpl.body)
+    if (val.startsWith("email-")) {
+      const id = Number(val.slice("email-".length))
+      const tpl = emailTemplates.find((t) => t.id === id)
+      if (tpl) {
+        onLoad(tpl.subject, tpl.body)
+      }
+    } else if (val.startsWith("wa-")) {
+      const id = Number(val.slice("wa-".length))
+      const tpl = templates.find((t) => t.id === id)
+      if (tpl) {
+        onLoad(tpl.title, tpl.body)
+      }
     }
     setSelectedId("")
   }
@@ -112,13 +122,28 @@ export function WhatsAppTemplateLoader({ currentTitle, currentBody, onLoad }: Wh
             className="flex-1 min-w-0 h-9 rounded-lg border border-border bg-white text-sm px-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
           >
             <option value="" disabled>
-              {templates.length === 0 ? "No saved templates yet" : "Load a saved template…"}
+              {templates.length === 0 && emailTemplates.length === 0
+                ? "No saved templates yet"
+                : "Load a saved template…"}
             </option>
-            {templates.map((t) => (
-              <option key={t.id} value={String(t.id)}>
-                {t.name}
-              </option>
-            ))}
+            {templates.length > 0 && (
+              <optgroup label="WhatsApp templates">
+                {templates.map((t) => (
+                  <option key={`wa-${t.id}`} value={`wa-${t.id}`}>
+                    {t.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {emailTemplates.length > 0 && (
+              <optgroup label="Email templates">
+                {emailTemplates.map((t) => (
+                  <option key={`email-${t.id}`} value={`email-${t.id}`}>
+                    {t.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
 
