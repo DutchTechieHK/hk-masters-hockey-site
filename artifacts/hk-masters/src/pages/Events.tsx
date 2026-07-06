@@ -287,7 +287,7 @@ export default function Events() {
   const [roster, setRoster] = useState<RsvpRoster | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
   const [reminding, setReminding] = useState(false)
-  const [remindResult, setRemindResult] = useState<{ sent: number; skippedNoEmail: number } | null>(null)
+  const [remindResult, setRemindResult] = useState<{ sent: number; skippedNoEmail: number; failed: number } | null>(null)
   const [showCsvImport, setShowCsvImport] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
@@ -380,10 +380,15 @@ export default function Events() {
         headers: authHeaders(),
       })
       if (!res.ok) throw new Error("Failed to send reminders")
-      const data = await res.json() as { sent: number; total: number; skippedNoEmail: number }
-      setRemindResult({ sent: data.sent, skippedNoEmail: data.skippedNoEmail })
+      const data = await res.json() as { sent: number; total: number; skippedNoEmail: number; failed?: number }
+      const failed = data.failed ?? 0
+      setRemindResult({ sent: data.sent, skippedNoEmail: data.skippedNoEmail, failed })
       const skippedMsg = data.skippedNoEmail > 0 ? ` (${data.skippedNoEmail} skipped — no email on file)` : ""
-      toast({ title: `Reminder${data.sent !== 1 ? "s" : ""} sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${skippedMsg}` })
+      const failedMsg = failed > 0 ? ` — ${failed} failed to send` : ""
+      toast({
+        title: `Reminder${data.sent !== 1 ? "s" : ""} sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${skippedMsg}${failedMsg}`,
+        variant: failed > 0 ? "destructive" : undefined,
+      })
     } catch (err) {
       toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
@@ -882,7 +887,7 @@ export default function Events() {
                         <RefreshCw className="w-3 h-3 animate-spin" /> Sending…
                       </>
                     ) : remindResult !== null ? (
-                      <>✓ Sent to {remindResult.sent}{remindResult.skippedNoEmail > 0 ? ` (${remindResult.skippedNoEmail} skipped)` : ""}</>
+                      <>✓ Sent to {remindResult.sent}{remindResult.skippedNoEmail > 0 ? ` (${remindResult.skippedNoEmail} skipped)` : ""}{remindResult.failed > 0 ? ` · ${remindResult.failed} failed` : ""}</>
                     ) : (
                       "Remind non-responders"
                     )}

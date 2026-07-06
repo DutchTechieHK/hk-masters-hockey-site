@@ -388,7 +388,8 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   const eventTime = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz }) + tzLabel;
 
   let sent = 0;
-  for (const player of nonResponders) {
+  for (let i = 0; i < nonResponders.length; i++) {
+    const player = nonResponders[i];
     const ok = await sendRsvpReminderEmail({
       playerName: player.name,
       playerEmail: player.email!,
@@ -398,10 +399,16 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
       scheduleUrl,
     });
     if (ok) sent++;
+    // Throttle to stay under the email provider's rate limit (~2/sec).
+    // Without this, a burst of sends gets rate-limited (429) and silently fails.
+    if (i < nonResponders.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 
-  console.log(`[events] Sent ${sent} RSVP reminders for event #${id} (${nonResponders.length} eligible, ${skippedNoEmail} skipped no-email, ${nonResponders.length - sent} failed)`);
-  res.json({ sent, total: allNonResponders.length, skippedNoEmail });
+  const failed = nonResponders.length - sent;
+  console.log(`[events] Sent ${sent} RSVP reminders for event #${id} (${nonResponders.length} eligible, ${skippedNoEmail} skipped no-email, ${failed} failed)`);
+  res.json({ sent, total: allNonResponders.length, skippedNoEmail, failed });
 }) as (req: Request, res: Response) => Promise<void>);
 
 // Player upserts their own RSVP for an event.
