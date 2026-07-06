@@ -89,6 +89,26 @@ function audienceLabel(a: EmailBlast) {
   return "Selected players"
 }
 
+// Strip simple HTML tags an announcement body might contain, so the WhatsApp
+// message reads as plain text rather than showing raw markup.
+function toPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|li)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.117 1.523 5.845L.057 23.428a.5.5 0 00.515.572l5.734-1.503A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.686-.511-5.215-1.402l-.374-.22-3.876 1.016 1.034-3.77-.242-.386A9.96 9.96 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+    </svg>
+  )
+}
+
 export default function Announcements() {
   const { toast } = useToast()
   const { data: teams = [] } = useListTeams()
@@ -197,6 +217,23 @@ export default function Announcements() {
     } catch (err) {
       toast({ title: (err as Error).message, variant: "destructive" })
     }
+  }
+
+  const handleShareWhatsApp = (a: Announcement) => {
+    const text = `*${a.title}*\n\n${toPlainText(a.body)}`
+    const waUrl = `https://wa.me/?text=${encodeURIComponent(text)}`
+    window.open(waUrl, "_blank", "noopener,noreferrer")
+  }
+
+  const handleOpenSquadGroup = async (a: Announcement, groupLink: string) => {
+    const text = `*${a.title}*\n\n${toPlainText(a.body)}`
+    try {
+      await navigator.clipboard.writeText(text)
+      toast({ title: "Message copied — paste it into the squad group" })
+    } catch {
+      // clipboard unavailable — still open the group so the admin can type it manually
+    }
+    window.open(groupLink, "_blank", "noopener,noreferrer")
   }
 
   const togglePin = async (a: Announcement) => {
@@ -413,6 +450,22 @@ export default function Announcements() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleShareWhatsApp(a)}
+                        title="Share to WhatsApp"
+                        className="p-1.5 text-muted-foreground hover:text-green-600 rounded border border-transparent hover:border-green-200 transition-all"
+                      >
+                        <WhatsAppIcon className="w-4 h-4" />
+                      </button>
+                      {a.teamId && teams.find((t) => t.id === a.teamId)?.whatsappGroupLink && (
+                        <button
+                          onClick={() => handleOpenSquadGroup(a, teams.find((t) => t.id === a.teamId)!.whatsappGroupLink!)}
+                          title="Open squad WhatsApp group (copies the message first)"
+                          className="p-1.5 text-muted-foreground hover:text-green-600 rounded border border-transparent hover:border-green-200 transition-all"
+                        >
+                          <Users className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => togglePin(a)}
                         title={a.pinned ? "Unpin" : "Pin to top"}
