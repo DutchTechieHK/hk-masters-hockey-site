@@ -1,0 +1,220 @@
+diff --git a/.gitignore b/.gitignore
+index 12bc7fa..d63be82 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -47,3 +47,8 @@ Thumbs.db
+ # Replit
+ .cache/
+ .local/
++
++# Environment secrets (S6)
++.env
++.env.*
++!.env.example
+diff --git a/artifacts/api-server/package.json b/artifacts/api-server/package.json
+index b20df06..32c00eb 100644
+--- a/artifacts/api-server/package.json
++++ b/artifacts/api-server/package.json
+@@ -20,7 +20,9 @@
+     "cors": "^2",
+     "drizzle-orm": "catalog:",
+     "express": "^5",
++    "express-rate-limit": "^7.5.0",
+     "google-auth-library": "^10.6.2",
++    "helmet": "^8.1.0",
+     "multer": "^2.1.1",
+     "node-cron": "^4.2.1",
+     "notion-to-md": "^3.1.9",
+diff --git a/artifacts/api-server/src/app.ts b/artifacts/api-server/src/app.ts
+index 0fb9641..176c9a7 100644
+--- a/artifacts/api-server/src/app.ts
++++ b/artifacts/api-server/src/app.ts
+@@ -1,11 +1,55 @@
+ import express, { type Express, type Request, type Response, type NextFunction } from "express";
+-import cors from "cors";
++import cors, { type CorsOptions } from "cors";
++import helmet from "helmet";
+ import router from "./routes";
+ import sitemapRouter from "./routes/sitemap.js";
+ 
+ const app: Express = express();
+ 
+-app.use(cors());
++// --- Security headers (S7) ---
++// The API server returns only JSON/XML (it serves no HTML pages), so helmet's
++// defaults — including its default CSP — cannot affect the separately hosted
++// front-ends. crossOriginResourcePolicy is relaxed to "cross-origin" so the
++// sitemap and any resource-style responses keep working behind the Netlify proxy.
++app.use(
++  helmet({
++    crossOriginResourcePolicy: { policy: "cross-origin" },
++  }),
++);
++
++// --- CORS allow-list (S2) ---
++// In production every browser call is same-origin: the public site is proxied
++// server-to-server by Netlify, and the management app / player PWA are served
++// from the same Replit origin as this API. Same-origin and server-to-server
++// requests send no Origin header and are always allowed, so tightening CORS
++// here does not affect any production flow. Cross-origin browsers (e.g. local
++// dev on a different port) must appear in ALLOWED_ORIGINS.
++const DEFAULT_ALLOWED_ORIGINS = [
++  "https://hkmastershockey.com",
++  "https://www.hkmastershockey.com",
++  "https://masters-world-hub.replit.app",
++];
++const envOrigins = (process.env.CORS_ALLOWED_ORIGINS ?? "")
++  .split(",")
++  .map((o) => o.trim())
++  .filter(Boolean);
++const allowedOrigins = new Set([...DEFAULT_ALLOWED_ORIGINS, ...envOrigins]);
++// Allow any localhost / 127.0.0.1 origin (any port) for local development.
++const LOCAL_ORIGIN_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
++
++const corsOptions: CorsOptions = {
++  origin(origin, callback) {
++    // No Origin header = same-origin request, server-to-server, curl, or a
++    // native/mobile client. These are not cross-origin and are always allowed.
++    if (!origin) return callback(null, true);
++    if (allowedOrigins.has(origin) || LOCAL_ORIGIN_RE.test(origin)) {
++      return callback(null, true);
++    }
++    return callback(null, false); // reject CORS without throwing a 500
++  },
++};
++
++app.use(cors(corsOptions));
+ app.use(express.json());
+ app.use(express.urlencoded({ extended: true }));
+ 
+diff --git a/artifacts/api-server/src/middleware/adminAuth.ts b/artifacts/api-server/src/middleware/adminAuth.ts
+index 470bbdf..155302c 100644
+--- a/artifacts/api-server/src/middleware/adminAuth.ts
++++ b/artifacts/api-server/src/middleware/adminAuth.ts
+@@ -1,6 +1,18 @@
++import crypto from "crypto";
+ import { type Request, type Response, type NextFunction } from "express";
+ import { validateSession } from "./adminSession.js";
+ 
++// Constant-time string comparison (S3). Avoids leaking, via response timing,
++// how many leading characters of a guessed admin key are correct. The length
++// check short-circuits mismatched lengths (timingSafeEqual requires equal
++// lengths); revealing only the length is standard and acceptable here.
++export function safeKeyEqual(provided: string, expected: string): boolean {
++  const a = Buffer.from(provided);
++  const b = Buffer.from(expected);
++  if (a.length !== b.length) return false;
++  return crypto.timingSafeEqual(a, b);
++}
++
+ export async function requireAdminKey(req: Request, res: Response, next: NextFunction): Promise<void> {
+   const adminKey = process.env.ADMIN_API_KEY;
+   if (!adminKey) {
+@@ -11,7 +23,7 @@ export async function requireAdminKey(req: Request, res: Response, next: NextFun
+   const provided =
+     req.headers["x-admin-key"] ||
+     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
+-  if (!provided || provided !== adminKey) {
++  if (typeof provided !== "string" || !safeKeyEqual(provided, adminKey)) {
+     res.status(401).json({ error: "Unauthorized" });
+     return;
+   }
+@@ -37,5 +49,5 @@ export async function hasAdminAccess(req: Request): Promise<boolean> {
+   const provided =
+     req.headers["x-admin-key"] ||
+     req.headers["authorization"]?.toString().replace(/^Bearer\s+/i, "");
+-  return Boolean(provided && provided === adminKey);
++  return typeof provided === "string" && safeKeyEqual(provided, adminKey);
+ }
+diff --git a/artifacts/api-server/src/routes/adminAuth.ts b/artifacts/api-server/src/routes/adminAuth.ts
+index 1c4b805..14d259e 100644
+--- a/artifacts/api-server/src/routes/adminAuth.ts
++++ b/artifacts/api-server/src/routes/adminAuth.ts
+@@ -1,5 +1,6 @@
+ import { Router } from "express";
+ import { createSession, destroySession, validateSession } from "../middleware/adminSession.js";
++import { safeKeyEqual } from "../middleware/adminAuth.js";
+ 
+ const router = Router();
+ 
+@@ -10,7 +11,7 @@ router.post("/", async (req, res) => {
+     res.status(503).json({ error: "Admin access not configured" });
+     return;
+   }
+-  if (!password || password !== adminKey) {
++  if (typeof password !== "string" || !safeKeyEqual(password, adminKey)) {
+     res.status(401).json({ error: "Invalid password" });
+     return;
+   }
+diff --git a/artifacts/api-server/src/routes/playerAuth.ts b/artifacts/api-server/src/routes/playerAuth.ts
+index 3ea9678..1d25c59 100644
+--- a/artifacts/api-server/src/routes/playerAuth.ts
++++ b/artifacts/api-server/src/routes/playerAuth.ts
+@@ -1,5 +1,6 @@
+ import crypto from "crypto";
+ import { Router, type IRouter } from "express";
++import rateLimit from "express-rate-limit";
+ import { eq, and, isNull, gt, sql, inArray } from "drizzle-orm";
+ import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, pollsTable, pollVotesTable, teamsTable, fundraisingTable } from "@workspace/db";
+ import { desc } from "drizzle-orm";
+@@ -14,6 +15,42 @@ const CODE_TTL_MINUTES = 15;
+ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+ const CODE_RE = /^\d{6}$/;
+ 
++// --- Brute-force / abuse protection (S1) ---
++// These endpoints are keyed by EMAIL, not IP. The public site reaches this API
++// through Netlify's server-side proxy, so every request shares Netlify's IP —
++// IP-based limits would throttle all visitors together. Keying by the submitted
++// email limits per-account abuse (code-guessing and email-bombing) without
++// affecting unrelated users. validate:false disables express-rate-limit's IP/
++// proxy checks, which are irrelevant here because we never key on IP.
++function emailKey(req: { body?: { email?: unknown } }): string {
++  const raw = typeof req.body?.email === "string" ? req.body.email : "";
++  return raw.trim().toLowerCase() || "unknown";
++}
++
++// Max 5 verification attempts per email per 15 minutes (matches the code TTL),
++// so a single 6-digit code cannot be brute-forced within its lifetime.
++const verifyCodeLimiter = rateLimit({
++  windowMs: 15 * 60 * 1000,
++  limit: 5,
++  standardHeaders: true,
++  legacyHeaders: false,
++  keyGenerator: emailKey,
++  validate: false,
++  message: { error: "Too many attempts. Please request a new code and try again later." },
++});
++
++// Max 5 code requests per email per hour, to prevent email-bombing a known
++// player address and burning the email quota.
++const requestCodeLimiter = rateLimit({
++  windowMs: 60 * 60 * 1000,
++  limit: 5,
++  standardHeaders: true,
++  legacyHeaders: false,
++  keyGenerator: emailKey,
++  validate: false,
++  message: { error: "Too many code requests. Please try again later." },
++});
++
+ function normaliseEmail(raw: string): string {
+   return raw.trim().toLowerCase();
+ }
+@@ -26,7 +63,7 @@ function hashCode(code: string): string {
+   return crypto.createHash("sha256").update(code).digest("hex");
+ }
+ 
+-router.post("/request-code", async (req, res) => {
++router.post("/request-code", requestCodeLimiter, async (req, res) => {
+   const rawEmail = typeof req.body?.email === "string" ? req.body.email : "";
+   if (!EMAIL_RE.test(rawEmail.trim())) {
+     return res.status(400).json({ error: "Valid email required" });
+@@ -67,7 +104,7 @@ router.post("/request-code", async (req, res) => {
+   res.json({ ok: true, expiresInMinutes: CODE_TTL_MINUTES });
+ });
+ 
+-router.post("/verify-code", async (req, res) => {
++router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
+   const rawEmail = typeof req.body?.email === "string" ? req.body.email : "";
+   const rawCode = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+   if (!EMAIL_RE.test(rawEmail.trim()) || !CODE_RE.test(rawCode)) {
