@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { createSession, destroySession, validateSession } from "../middleware/adminSession.js";
+import { safeKeyEqual } from "../middleware/adminAuth.js";
 
 const router = Router();
 
@@ -10,7 +11,7 @@ router.post("/", async (req, res) => {
     res.status(503).json({ error: "Admin access not configured" });
     return;
   }
-  if (!password || password !== adminKey) {
+  if (typeof password !== "string" || !safeKeyEqual(password, adminKey)) {
     res.status(401).json({ error: "Invalid password" });
     return;
   }

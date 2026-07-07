@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { Router, type IRouter } from "express";
+import rateLimit from "express-rate-limit";
 import { eq, and, isNull, gt, sql, inArray } from "drizzle-orm";
 import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, pollsTable, pollVotesTable, teamsTable, fundraisingTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
@@ -14,6 +15,42 @@ const CODE_TTL_MINUTES = 15;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_RE = /^\d{6}$/;
 
+// --- Brute-force / abuse protection (S1) ---
+// These endpoints are keyed by EMAIL, not IP. The public site reaches this API
+// through Netlify's server-side proxy, so every request shares Netlify's IP —
+// IP-based limits would throttle all visitors together. Keying by the submitted
+// email limits per-account abuse (code-guessing and email-bombing) without
+// affecting unrelated users. validate:false disables express-rate-limit's IP/
+// proxy checks, which are irrelevant here because we never key on IP.
+function emailKey(req: { body?: { email?: unknown } }): string {
+  const raw = typeof req.body?.email === "string" ? req.body.email : "";
+  return raw.trim().toLowerCase() || "unknown";
+}
+
+// Max 5 verification attempts per email per 15 minutes (matches the code TTL),
+// so a single 6-digit code cannot be brute-forced within its lifetime.
+const verifyCodeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: emailKey,
+  validate: false,
+  message: { error: "Too many attempts. Please request a new code and try again later." },
+});
+
+// Max 5 code requests per email per hour, to prevent email-bombing a known
+// player address and burning the email quota.
+const requestCodeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: emailKey,
+  validate: false,
+  message: { error: "Too many code requests. Please try again later." },
+});
+
 function normaliseEmail(raw: string): string {
   return raw.trim().toLowerCase();
 }
@@ -26,7 +63,7 @@ function hashCode(code: string): string {
   return crypto.createHash("sha256").update(code).digest("hex");
 }
 
-router.post("/request-code", async (req, res) => {
+router.post("/request-code", requestCodeLimiter, async (req, res) => {
   const rawEmail = typeof req.body?.email === "string" ? req.body.email : "";
   if (!EMAIL_RE.test(rawEmail.trim())) {
     return res.status(400).json({ error: "Valid email required" });
@@ -67,7 +104,7 @@ router.post("/request-code", async (req, res) => {
   res.json({ ok: true, expiresInMinutes: CODE_TTL_MINUTES });
 });
 
-router.post("/verify-code", async (req, res) => {
+router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
   const rawEmail = typeof req.body?.email === "string" ? req.body.email : "";
   const rawCode = typeof req.body?.code === "string" ? req.body.code.trim() : "";
   if (!EMAIL_RE.test(rawEmail.trim()) || !CODE_RE.test(rawCode)) {

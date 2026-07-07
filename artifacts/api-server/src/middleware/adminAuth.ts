@@ -1,5 +1,17 @@
+import crypto from "crypto";
 import { type Request, type Response, type NextFunction } from "express";
 import { validateSession } from "./adminSession.js";
+
+// Constant-time string comparison (S3). Avoids leaking, via response timing,
+// how many leading characters of a guessed admin key are correct. The length
+// check short-circuits mismatched lengths (timingSafeEqual requires equal
+// lengths); revealing only the length is standard and acceptable here.
+export function safeKeyEqual(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
+}
 
 export async function requireAdminKey(req: Request, res: Response, next: NextFunction): Promise<void> {
   const adminKey = process.env.ADMIN_API_KEY;
@@ -11,7 +23,7 @@ export async function requireAdminKey(req: Request, res: Response, next: NextFun
   const provided =
     req.headers["x-admin-key"] ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  if (!provided || provided !== adminKey) {
+  if (typeof provided !== "string" || !safeKeyEqual(provided, adminKey)) {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
@@ -37,5 +49,5 @@ export async function hasAdminAccess(req: Request): Promise<boolean> {
   const provided =
     req.headers["x-admin-key"] ||
     req.headers["authorization"]?.toString().replace(/^Bearer\s+/i, "");
-  return Boolean(provided && provided === adminKey);
+  return typeof provided === "string" && safeKeyEqual(provided, adminKey);
 }
