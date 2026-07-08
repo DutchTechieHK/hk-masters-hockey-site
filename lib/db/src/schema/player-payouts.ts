@@ -11,6 +11,7 @@ export const playerPayoutsTable = pgTable("player_payouts", {
   payoutDate: text("payout_date").notNull(),
   method: text("method").notNull().default("fps"),
   source: text("source").notNull().default("fundraising"),
+  pledgeCategory: text("pledge_category"),
   reference: text("reference"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

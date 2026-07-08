@@ -25,6 +25,7 @@ type Payout = {
   payoutDate: string
   method: string
   source: string
+  pledgeCategory: string | null
   reference: string | null
   notes: string | null
   createdAt: string
@@ -74,6 +75,13 @@ const SOURCE_COLORS: Record<string, string> = {
   general: "bg-gray-100 text-gray-800",
 }
 
+// Only relevant when Source = "Fundraising" — which pledge bucket this payout is drawn from.
+const PLEDGE_CATEGORY_LABELS: Record<string, string> = {
+  mo40: "MO40 Team",
+  mo50: "MO50 Team",
+  general: "General",
+}
+
 const payoutSchema = z.object({
   playerId: z.coerce.number().nullable().optional(),
   recipientName: z.string().min(1, "Recipient name is required"),
@@ -81,6 +89,7 @@ const payoutSchema = z.object({
   payoutDate: z.string().min(1, "Date is required"),
   method: z.enum(["fps", "payme", "bank_transfer", "cash", "cheque", "other"]),
   source: z.enum(["fundraising", "lego_jar", "fun_run", "general"]),
+  pledgeCategory: z.enum(["mo40", "mo50", "general"]).nullable().optional(),
   reference: z.string().optional(),
   notes: z.string().optional(),
 })
@@ -118,6 +127,7 @@ export default function Payouts() {
   })
 
   const watchedPlayerId = watch("playerId")
+  const watchedSource = watch("source")
 
   const fetchPayouts = useCallback(async () => {
     setLoading(true)
@@ -176,6 +186,7 @@ export default function Payouts() {
       payoutDate: new Date().toISOString().split("T")[0],
       method: "fps",
       source: "fundraising",
+      pledgeCategory: null,
       reference: "",
       notes: "",
     })
@@ -191,6 +202,7 @@ export default function Payouts() {
       payoutDate: p.payoutDate,
       method: p.method as PayoutFormValues["method"],
       source: p.source as PayoutFormValues["source"],
+      pledgeCategory: (p.pledgeCategory as PayoutFormValues["pledgeCategory"]) ?? null,
       reference: p.reference ?? "",
       notes: p.notes ?? "",
     })
@@ -274,7 +286,7 @@ export default function Payouts() {
     const escape = (v: string | number | null | undefined) =>
       `"${String(v ?? "").replace(/"/g, '""')}"`
     const rows = [
-      ["Date", "Recipient", "Amount (HKD)", "Method", "Source", "Reference", "Notes"].map(escape).join(","),
+      ["Date", "Recipient", "Amount (HKD)", "Method", "Source", "Pledges Category", "Reference", "Notes"].map(escape).join(","),
       ...payouts.map((p) =>
         [
           escape(p.payoutDate),
@@ -282,6 +294,7 @@ export default function Payouts() {
           escape(p.amount),
           escape(METHOD_LABELS[p.method] ?? p.method),
           escape(SOURCE_LABELS[p.source] ?? p.source),
+          escape(p.pledgeCategory ? (PLEDGE_CATEGORY_LABELS[p.pledgeCategory] ?? p.pledgeCategory) : ""),
           escape(p.reference ?? ""),
           escape(p.notes ?? ""),
         ].join(",")
@@ -430,6 +443,11 @@ export default function Payouts() {
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${SOURCE_COLORS[p.source] ?? "bg-gray-100 text-gray-700"}`}>
                                 {SOURCE_LABELS[p.source] ?? p.source}
                               </span>
+                              {p.source === "fundraising" && p.pledgeCategory && (
+                                <div className="mt-1 text-[11px] text-gray-500">
+                                  {PLEDGE_CATEGORY_LABELS[p.pledgeCategory] ?? p.pledgeCategory}
+                                </div>
+                              )}
                             </td>
                             <td className="px-4 py-3 hidden lg:table-cell text-gray-500 text-xs">
                               {p.reference ?? "—"}
@@ -668,6 +686,22 @@ export default function Payouts() {
               </select>
             </div>
           </div>
+
+          {/* Pledges Category (only when Source = Fundraising) */}
+          {watchedSource === "fundraising" && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Pledges Category</label>
+              <select
+                {...register("pledgeCategory", { setValueAs: (v) => (v === "" ? null : v) })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+              >
+                <option value="">— Select —</option>
+                <option value="mo40">MO40 Team</option>
+                <option value="mo50">MO50 Team</option>
+                <option value="general">General</option>
+              </select>
+            </div>
+          )}
 
           {/* Reference */}
           <div>

@@ -6,8 +6,11 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 
 const VALID_METHODS = ["fps", "payme", "bank_transfer", "cash", "cheque", "other"] as const;
 const VALID_SOURCES = ["fundraising", "lego_jar", "fun_run", "general"] as const;
+// Only meaningful when source === "fundraising" — which pledge bucket this payout draws down.
+const VALID_PLEDGE_CATEGORIES = ["mo40", "mo50", "general"] as const;
 type Method = typeof VALID_METHODS[number];
 type Source = typeof VALID_SOURCES[number];
+type PledgeCategory = typeof VALID_PLEDGE_CATEGORIES[number];
 
 function validatePayoutBody(body: Record<string, unknown>): {
   playerId?: number | null;
@@ -16,15 +19,17 @@ function validatePayoutBody(body: Record<string, unknown>): {
   payoutDate: string;
   method: Method;
   source: Source;
+  pledgeCategory?: PledgeCategory | null;
   reference?: string | null;
   notes?: string | null;
 } | null {
-  const { playerId, recipientName, amount, payoutDate, method, source, reference, notes } = body;
+  const { playerId, recipientName, amount, payoutDate, method, source, pledgeCategory, reference, notes } = body;
   if (typeof recipientName !== "string" || recipientName.trim() === "") return null;
   if (typeof amount !== "number" || isNaN(amount) || amount <= 0) return null;
   if (typeof payoutDate !== "string" || payoutDate.trim() === "") return null;
   if (!VALID_METHODS.includes(method as Method)) return null;
   if (!VALID_SOURCES.includes(source as Source)) return null;
+  if (pledgeCategory != null && !VALID_PLEDGE_CATEGORIES.includes(pledgeCategory as PledgeCategory)) return null;
   return {
     playerId: typeof playerId === "number" ? playerId : null,
     recipientName: recipientName.trim(),
@@ -32,6 +37,7 @@ function validatePayoutBody(body: Record<string, unknown>): {
     payoutDate: payoutDate.trim(),
     method: method as Method,
     source: source as Source,
+    pledgeCategory: source === "fundraising" ? ((pledgeCategory as PledgeCategory) ?? null) : null,
     reference: typeof reference === "string" ? reference : null,
     notes: typeof notes === "string" ? notes : null,
   };
@@ -51,6 +57,7 @@ router.get("/", async (_req, res) => {
       payoutDate: playerPayoutsTable.payoutDate,
       method: playerPayoutsTable.method,
       source: playerPayoutsTable.source,
+      pledgeCategory: playerPayoutsTable.pledgeCategory,
       reference: playerPayoutsTable.reference,
       notes: playerPayoutsTable.notes,
       createdAt: playerPayoutsTable.createdAt,
@@ -169,7 +176,7 @@ router.post("/", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { playerId, recipientName, amount, payoutDate, method, source, reference, notes } = data;
+  const { playerId, recipientName, amount, payoutDate, method, source, pledgeCategory, reference, notes } = data;
 
   const [row] = await db
     .insert(playerPayoutsTable)
@@ -180,6 +187,7 @@ router.post("/", async (req, res) => {
       payoutDate,
       method,
       source,
+      pledgeCategory: pledgeCategory ?? null,
       reference: reference ?? null,
       notes: notes ?? null,
     })
@@ -201,6 +209,15 @@ router.patch("/:id", async (req, res) => {
   if ("payoutDate" in b && typeof b.payoutDate === "string") update.payoutDate = b.payoutDate.trim();
   if ("method" in b && VALID_METHODS.includes(b.method as Method)) update.method = b.method;
   if ("source" in b && VALID_SOURCES.includes(b.source as Source)) update.source = b.source;
+  if ("pledgeCategory" in b) {
+    const pc = b.pledgeCategory;
+    const effectiveSource = ("source" in b ? b.source : undefined) as Source | undefined;
+    if (pc == null || (effectiveSource !== undefined && effectiveSource !== "fundraising")) {
+      update.pledgeCategory = null;
+    } else if (VALID_PLEDGE_CATEGORIES.includes(pc as PledgeCategory)) {
+      update.pledgeCategory = pc;
+    }
+  }
   if ("reference" in b) update.reference = typeof b.reference === "string" ? b.reference : null;
   if ("notes" in b) update.notes = typeof b.notes === "string" ? b.notes : null;
 
