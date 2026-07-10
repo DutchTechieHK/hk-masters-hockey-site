@@ -21,6 +21,7 @@ const SECTIONS = [
     title: "Passport & personal",
     fields: [
       { key: "name", label: "Full name", type: "text", placeholder: "Your full name" },
+      { key: "hkidNumber", label: "HK ID Card number", type: "text", placeholder: "X123456(7)" },
       { key: "passportNumber", label: "Passport number", type: "text", placeholder: "A1234567" },
       { key: "passportExpiry", label: "Passport expiry", type: "date", placeholder: "" },
       { key: "nationality", label: "Nationality", type: "text", placeholder: "e.g. Hong Kong" },

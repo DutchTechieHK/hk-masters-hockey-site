@@ -14,6 +14,7 @@ export const playersTable = pgTable("players", {
   position: text("position"),
   dateOfBirth: text("date_of_birth"),
   nationality: text("nationality"),
+  hkidNumber: text("hkid_number"),
   passportNumber: text("passport_number"),
   passportExpiry: text("passport_expiry"),
   passportCopyUrl: text("passport_copy_url"),

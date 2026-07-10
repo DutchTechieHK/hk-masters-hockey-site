@@ -11,6 +11,7 @@ export interface UpdateSelfPlayer {
   phone?: string;
   dateOfBirth?: string;
   nationality?: string;
+  hkidNumber?: string;
   passportNumber?: string;
   passportExpiry?: string;
   passportCopyUrl?: string | null;

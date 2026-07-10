@@ -158,6 +158,7 @@ export const IDENTITY_COLUMNS: ReportColumn[] = [
   TEAM_COL,
   { key: "nationality", header: "Nationality", value: p => v(p.nationality) },
   { key: "dateOfBirth", header: "Date of Birth", value: p => v(p.dateOfBirth) },
+  { key: "hkidNumber", header: "HK ID Card Number", value: p => v(p.hkidNumber) },
   { key: "passportNumber", header: "Passport Number", value: p => v(p.passportNumber) },
   { key: "passportExpiry", header: "Passport Expiry", value: p => v(p.passportExpiry) },
   {
@@ -226,6 +227,7 @@ export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   { key: "phone", header: "Phone", value: p => v(p.phone) },
   { key: "dateOfBirth", header: "Date of Birth", value: p => v(p.dateOfBirth) },
   { key: "nationality", header: "Nationality", value: p => v(p.nationality) },
+  { key: "hkidNumber", header: "HK ID Card Number", value: p => v(p.hkidNumber) },
   { key: "passportNumber", header: "Passport Number", value: p => v(p.passportNumber) },
   { key: "passportExpiry", header: "Passport Expiry", value: p => v(p.passportExpiry) },
   {

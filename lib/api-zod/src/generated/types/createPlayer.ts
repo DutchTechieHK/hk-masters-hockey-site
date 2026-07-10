@@ -15,6 +15,7 @@ export interface CreatePlayer {
   position?: string;
   dateOfBirth?: string;
   nationality?: string;
+  hkidNumber?: string;
   passportNumber?: string;
   passportExpiry?: string;
   passportCopyUrl?: string | null;

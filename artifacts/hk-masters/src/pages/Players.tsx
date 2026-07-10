@@ -108,6 +108,7 @@ const playerSchema = z.object({
   position: z.string().optional(),
   dateOfBirth: z.string().optional(),
   nationality: z.string().optional(),
+  hkidNumber: z.string().optional(),
   passportNumber: z.string().optional(),
   passportExpiry: z.string().optional(),
   emergencyContactName: z.string().optional(),
@@ -302,7 +303,7 @@ export default function Players() {
   const blankForm = (): Partial<PlayerFormValues> => ({
     teamId: teams.length > 0 ? teams[0].id : 0,
     name: "", shirtNumber: "", email: "", phone: "", position: "",
-    dateOfBirth: "", nationality: "", passportNumber: "", passportExpiry: "",
+    dateOfBirth: "", nationality: "", hkidNumber: "", passportNumber: "", passportExpiry: "",
     emergencyContactName: "", emergencyContactPhone: "",
     flightArrivalDateTime: "", flightDepartureDateTime: "", arrivalCity: "",
     outboundFlightNumber: "", outboundDepartureDateTime: "",
@@ -336,6 +337,7 @@ export default function Players() {
       position: player.position || "",
       dateOfBirth: player.dateOfBirth || "",
       nationality: player.nationality || "",
+      hkidNumber: player.hkidNumber || "",
       passportNumber: player.passportNumber || "",
       passportExpiry: player.passportExpiry || "",
       emergencyContactName: player.emergencyContactName || "",
@@ -1039,6 +1041,10 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Nationality</label>
               <Input {...register("nationality")} placeholder="e.g. Hong Kong" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">HK ID Card Number</label>
+              <Input {...register("hkidNumber")} placeholder="X123456(7)" />
             </div>
           </div>
 
