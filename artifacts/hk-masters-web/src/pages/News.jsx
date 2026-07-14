@@ -13,6 +13,9 @@ function proxiedImage(url) {
   ) {
     return `${API_BASE}/api/news/image?url=${encodeURIComponent(url)}`;
   }
+  // Relative paths (e.g. /api/news/serve-image/...) need API_BASE prepended
+  // so they resolve to the Replit API server, not the Netlify static host.
+  if (url.startsWith("/")) return `${API_BASE}${url}`;
   return url;
 }
 
