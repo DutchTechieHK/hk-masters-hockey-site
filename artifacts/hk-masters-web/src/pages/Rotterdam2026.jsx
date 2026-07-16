@@ -155,8 +155,8 @@ export default function Rotterdam2026() {
         </div>
       </section>
 
-      {/* HK Squads */}
-      <section id="squads" className="bg-[#EDE0C4] py-16">
+      {/* HK Squads — hidden */}
+      {false && <section id="squads" className="bg-[#EDE0C4] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-bold text-[#1E3A6E] mb-8">Hong Kong Squads</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -269,7 +269,7 @@ export default function Rotterdam2026() {
             })}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* Tournament Programme */}
       <section id="programme" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
