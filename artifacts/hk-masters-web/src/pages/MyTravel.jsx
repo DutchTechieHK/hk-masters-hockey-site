@@ -94,12 +94,12 @@ function ArrivalRow({ p, isFirst, isLast, showGroupNudge }) {
 }
 
 // A single player row inside the team departures timeline.
-function DepartureRow({ p, isLast }) {
+function DepartureRow({ p, isLast, isNearSelf }) {
   const isSelf = p.isSelf;
   return (
     <li
       className={`py-2.5 flex items-start gap-3 text-sm ${
-        isSelf ? "bg-blue-50 -mx-4 px-4 rounded-lg" : ""
+        isSelf ? "bg-blue-50 -mx-4 px-4 rounded-lg" : isNearSelf ? "bg-sky-50/60 -mx-4 px-4 rounded-lg" : ""
       } ${!isLast ? "border-b border-gray-50" : ""}`}
     >
       <div className="flex-1 min-w-0">
@@ -108,6 +108,11 @@ function DepartureRow({ p, isLast }) {
             {p.name}{isSelf && <span className="ml-1 text-xs font-normal text-blue-600">(you)</span>}
           </span>
           <SquadBadge category={p.teamCategory} />
+          {isNearSelf && !isSelf && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
+              Near your departure
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-xs text-gray-500 font-medium">
@@ -362,7 +367,7 @@ function TeamArrivalsTimeline({ allArrivals }) {
 }
 
 // Day-by-day team departures timeline.
-function TeamDeparturesTimeline({ allDepartures }) {
+function TeamDeparturesTimeline({ allDepartures, selfDepartureTime }) {
   if (!allDepartures || allDepartures.length === 0) {
     return (
       <p className="text-sm text-gray-500">
@@ -370,6 +375,8 @@ function TeamDeparturesTimeline({ allDepartures }) {
       </p>
     );
   }
+
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
   // Group by calendar day.
   const days = [];
@@ -417,13 +424,19 @@ function TeamDeparturesTimeline({ allDepartures }) {
                     </p>
                   )}
                   <ul>
-                    {group.map((p, i) => (
-                      <DepartureRow
-                        key={p.id}
-                        p={p}
-                        isLast={i === group.length - 1}
-                      />
-                    ))}
+                    {group.map((p, i) => {
+                      const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
+                        ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
+                        : false;
+                      return (
+                        <DepartureRow
+                          key={p.id}
+                          p={p}
+                          isLast={i === group.length - 1}
+                          isNearSelf={isNearSelf}
+                        />
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -504,6 +517,17 @@ export default function MyTravel() {
   const token = getPlayerToken();
   const hasAnyTravel = !!(flightArrivalDateTime || flightDepartureDateTime || arrivalCity || travelDates);
   const editHref = accessToken ? `/my-details/${encodeURIComponent(accessToken)}` : null;
+
+  // Compute squadmates departing within ±2 hours of the viewing player.
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const selfDepTime = flightDepartureDateTime ? new Date(flightDepartureDateTime).getTime() : null;
+  const departureBuddies = (selfDepTime && !isNaN(selfDepTime) && Array.isArray(allDepartures))
+    ? allDepartures.filter((d) => {
+        if (d.isSelf || !d.departure) return false;
+        const t = new Date(d.departure).getTime();
+        return !isNaN(t) && Math.abs(t - selfDepTime) <= TWO_HOURS_MS;
+      })
+    : [];
 
   // Find self in allArrivals to keep the travelNote in sync after saves.
   const handleNoteSaved = useCallback((newNote) => {
@@ -623,12 +647,47 @@ export default function MyTravel() {
             <TeamArrivalsTimeline allArrivals={allArrivals} />
           </Card>
 
+          {/* Co-departing squadmates callout */}
+          {departureBuddies.length > 0 && (() => {
+            const shown = departureBuddies.slice(0, 3);
+            const overflow = departureBuddies.length - shown.length;
+            const depDate = new Date(flightDepartureDateTime).toLocaleDateString("en-GB", {
+              weekday: "long", day: "numeric", month: "long",
+            });
+            return (
+              <div className="flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-2xl px-5 py-4">
+                <span className="text-xl mt-0.5 shrink-0">✈️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sky-900">
+                    {departureBuddies.length === 1
+                      ? "1 squadmate departs within 2 hours of you"
+                      : `${departureBuddies.length} squadmates depart within 2 hours of you`}
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {shown.map((b) => (
+                      <li key={b.id} className="text-sm text-sky-800 leading-snug">
+                        {b.name}{b.departureCity ? ` — ${b.departureCity}` : ""}
+                        {b.departure && (
+                          <span className="ml-1.5 text-xs text-sky-600 tabular-nums">{formatTimeOnly(b.departure)}</span>
+                        )}
+                      </li>
+                    ))}
+                    {overflow > 0 && (
+                      <li className="text-sm text-sky-600">and {overflow} more</li>
+                    )}
+                  </ul>
+                  <p className="text-xs text-sky-600 mt-1.5">Departing on {depDate} — great chance to coordinate!</p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Team departures timeline — return journeys to Schiphol */}
           <Card title="Team departures" emoji="🛫">
             <p className="text-xs text-gray-500 -mt-1 mb-4">
               All squadmates who have added their return flight time. Players departing within an hour of each other are grouped — coordinate your trip back to Schiphol together.
             </p>
-            <TeamDeparturesTimeline allDepartures={allDepartures} />
+            <TeamDeparturesTimeline allDepartures={allDepartures} selfDepartureTime={selfDepTime} />
           </Card>
         </div>
       </div>
