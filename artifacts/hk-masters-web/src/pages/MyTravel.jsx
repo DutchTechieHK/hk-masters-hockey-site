@@ -114,12 +114,93 @@ function DepartureRow({ p, isLast }) {
             {formatTimeOnly(p.departure)}
             {p.departureCity && <span className="text-gray-400"> · {p.departureCity}</span>}
           </span>
-          {p.travelNote && (
-            <span className="text-xs text-gray-600 italic">"{p.travelNote}"</span>
+          {p.departureNote && (
+            <span className="text-xs text-gray-600 italic">"{p.departureNote}"</span>
           )}
         </div>
       </div>
     </li>
+  );
+}
+
+// Inline departure-note editor card inside the player's own Departure card.
+function DepartureNoteEditor({ initial, token, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initial ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/player-auth/my-departure-note`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ departureNote: value.trim() || null }),
+      });
+      if (!res.ok) throw new Error("Could not save.");
+      const data = await res.json();
+      onSaved(data.departureNote);
+      setEditing(false);
+    } catch {
+      setSaveError("Could not save — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }, [value, token, onSaved]);
+
+  if (!editing) {
+    return (
+      <div className="mt-3 flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          {value ? (
+            <p className="text-sm text-gray-700 italic">"{value}"</p>
+          ) : (
+            <p className="text-sm text-gray-400">No departure note yet (e.g. "Happy to share an Uber to Schiphol")</p>
+          )}
+        </div>
+        <button
+          onClick={() => setEditing(true)}
+          className="text-xs text-gray-400 hover:text-blue-700 transition-colors shrink-0 flex items-center gap-0.5"
+          title="Edit departure note"
+        >
+          ✏️ Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <input
+        type="text"
+        maxLength={120}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder='e.g. "Happy to share an Uber to Schiphol" or "Renting a car — 2 spare seats"'
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+        autoFocus
+        onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
+      />
+      {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="text-xs bg-blue-700 text-white px-3 py-1.5 rounded-lg hover:bg-blue-800 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={() => { setEditing(false); setValue(initial ?? ""); }}
+          className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200"
+        >
+          Cancel
+        </button>
+      </div>
+      <p className="text-xs text-gray-400">{value.length}/120 — visible to all squadmates</p>
+    </div>
   );
 }
 
@@ -364,6 +445,7 @@ export default function MyTravel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [myTravelNote, setMyTravelNote] = useState(null);
+  const [myDepartureNote, setMyDepartureNote] = useState(null);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -384,6 +466,7 @@ export default function MyTravel() {
         setPlayer(me);
         setData(travel);
         setMyTravelNote(travel.travelNote ?? null);
+        setMyDepartureNote(travel.departureNote ?? null);
       } catch (err) {
         if (!cancelled) setError(err.message || "Could not load your travel info.");
       } finally {
@@ -422,18 +505,23 @@ export default function MyTravel() {
   const hasAnyTravel = !!(flightArrivalDateTime || flightDepartureDateTime || arrivalCity || travelDates);
   const editHref = accessToken ? `/my-details/${encodeURIComponent(accessToken)}` : null;
 
-  // Find self in allArrivals and allDepartures to keep the travelNote in sync after saves.
+  // Find self in allArrivals to keep the travelNote in sync after saves.
   const handleNoteSaved = useCallback((newNote) => {
     setMyTravelNote(newNote);
     if (allArrivals) {
       const selfEntry = allArrivals.find((p) => p.isSelf);
       if (selfEntry) selfEntry.travelNote = newNote;
     }
+  }, [allArrivals]);
+
+  // Keep departureNote in sync after saves.
+  const handleDepartureNoteSaved = useCallback((newNote) => {
+    setMyDepartureNote(newNote);
     if (allDepartures) {
       const selfEntry = allDepartures.find((p) => p.isSelf);
-      if (selfEntry) selfEntry.travelNote = newNote;
+      if (selfEntry) selfEntry.departureNote = newNote;
     }
-  }, [allArrivals, allDepartures]);
+  }, [allDepartures]);
 
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
@@ -493,6 +581,14 @@ export default function MyTravel() {
                 ) : (
                   <p className="text-sm text-gray-600">Departure flight not set.</p>
                 )}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Departure note</p>
+                  <DepartureNoteEditor
+                    initial={myDepartureNote}
+                    token={token}
+                    onSaved={handleDepartureNoteSaved}
+                  />
+                </div>
               </Card>
 
               {travelDates && (

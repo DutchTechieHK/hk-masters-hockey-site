@@ -276,7 +276,7 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
       name: playersTable.name,
       departure: playersTable.flightDepartureDateTime,
       departureCity: playersTable.arrivalCity,
-      travelNote: playersTable.travelNote,
+      departureNote: playersTable.departureNote,
       teamCategory: teamsTable.category,
     })
     .from(playersTable)
@@ -289,7 +289,7 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     name: r.name,
     departure: r.departure ?? "",
     departureCity: r.departureCity ?? null,
-    travelNote: r.travelNote ?? null,
+    departureNote: r.departureNote ?? null,
     teamCategory: r.teamCategory ?? null,
     isSelf: r.id === player.id,
   }));
@@ -314,6 +314,7 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     roomSharingPreference: player.roomSharingPreference ?? null,
     roomSharingWith: player.roomSharingWith ?? null,
     travelNote: player.travelNote ?? null,
+    departureNote: player.departureNote ?? null,
     roommate,
     sameDayArrivals,
     allArrivals,
@@ -331,6 +332,17 @@ router.patch("/my-travel-note", requirePlayerSession, async (req, res) => {
   const travelNote = raw === null || raw === undefined ? null : String(raw).trim().slice(0, 120) || null;
   await db.update(playersTable).set({ travelNote }).where(eq(playersTable.id, player.id));
   res.json({ ok: true, travelNote });
+});
+
+router.patch("/my-departure-note", requirePlayerSession, async (req, res) => {
+  const player = req.player!;
+  const raw = req.body?.departureNote;
+  if (typeof raw !== "string" && raw !== null && raw !== undefined) {
+    return res.status(400).json({ error: "departureNote must be a string or null." });
+  }
+  const departureNote = raw === null || raw === undefined ? null : String(raw).trim().slice(0, 120) || null;
+  await db.update(playersTable).set({ departureNote }).where(eq(playersTable.id, player.id));
+  res.json({ ok: true, departureNote });
 });
 
 router.get("/polls", requirePlayerSession, async (req, res) => {

@@ -59,6 +59,7 @@ export const playersTable = pgTable("players", {
   instagramHandle: text("instagram_handle"),
   facebookHandle: text("facebook_handle"),
   travelNote: text("travel_note"),
+  departureNote: text("departure_note"),
   travelReminderSentAt: timestamp("travel_reminder_sent_at"),
   feeReminderSentAt: timestamp("fee_reminder_sent_at"),
   insuranceReminderSentAt: timestamp("insurance_reminder_sent_at"),
