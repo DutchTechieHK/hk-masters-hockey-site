@@ -692,6 +692,11 @@ export default function MyTravel() {
                     )}
                   </ul>
                   <p className="text-xs text-green-600 mt-1.5">Arriving on {arrDate} — great chance to share a transfer to Rotterdam!</p>
+                  {!myTravelNote && editHref && (
+                    <p className="mt-2 text-xs text-green-700">
+                      <a href={editHref} className="underline hover:text-green-900">Add a travel note</a> so teammates can coordinate with you.
+                    </p>
+                  )}
                 </div>
               </div>
             );
@@ -735,6 +740,11 @@ export default function MyTravel() {
                     )}
                   </ul>
                   <p className="text-xs text-sky-600 mt-1.5">Departing on {depDate} — great chance to coordinate!</p>
+                  {!myDepartureNote && editHref && (
+                    <p className="mt-2 text-xs text-sky-700">
+                      <a href={editHref} className="underline hover:text-sky-900">Add a departure note</a> so teammates can coordinate with you.
+                    </p>
+                  )}
                 </div>
               </div>
             );
