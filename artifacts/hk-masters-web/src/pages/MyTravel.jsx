@@ -59,12 +59,12 @@ function SquadBadge({ category }) {
 }
 
 // A single player row inside the team arrivals timeline.
-function ArrivalRow({ p, isFirst, isLast, showGroupNudge }) {
+function ArrivalRow({ p, isFirst, isLast, showGroupNudge, isNearSelf }) {
   const isSelf = p.isSelf;
   return (
     <li
       className={`py-2.5 flex items-start gap-3 text-sm ${
-        isSelf ? "bg-green-50 -mx-4 px-4 rounded-lg" : ""
+        isSelf ? "bg-green-50 -mx-4 px-4 rounded-lg" : isNearSelf ? "bg-sky-50/60 -mx-4 px-4 rounded-lg" : ""
       } ${!isLast ? "border-b border-gray-50" : ""}`}
     >
       <div className="flex-1 min-w-0">
@@ -73,6 +73,11 @@ function ArrivalRow({ p, isFirst, isLast, showGroupNudge }) {
             {p.name}{isSelf && <span className="ml-1 text-xs font-normal text-green-600">(you)</span>}
           </span>
           <SquadBadge category={p.teamCategory} />
+          {isNearSelf && !isSelf && (
+            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
+              Near your arrival
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-xs text-gray-500 font-medium">
@@ -291,7 +296,7 @@ function TravelNoteEditor({ initial, playerId, token, onSaved }) {
 }
 
 // Day-by-day team arrivals timeline.
-function TeamArrivalsTimeline({ allArrivals }) {
+function TeamArrivalsTimeline({ allArrivals, selfArrivalTime }) {
   if (!allArrivals || allArrivals.length === 0) {
     return (
       <p className="text-sm text-gray-500">
@@ -299,6 +304,8 @@ function TeamArrivalsTimeline({ allArrivals }) {
       </p>
     );
   }
+
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
 
   // Group by calendar day.
   const days = [];
@@ -346,15 +353,21 @@ function TeamArrivalsTimeline({ allArrivals }) {
                     </p>
                   )}
                   <ul>
-                    {group.map((p, i) => (
-                      <ArrivalRow
-                        key={p.id}
-                        p={p}
-                        isFirst={i === 0}
-                        isLast={i === group.length - 1}
-                        showGroupNudge={false}
-                      />
-                    ))}
+                    {group.map((p, i) => {
+                      const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
+                        ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
+                        : false;
+                      return (
+                        <ArrivalRow
+                          key={p.id}
+                          p={p}
+                          isFirst={i === 0}
+                          isLast={i === group.length - 1}
+                          showGroupNudge={false}
+                          isNearSelf={isNearSelf}
+                        />
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -529,6 +542,16 @@ export default function MyTravel() {
       })
     : [];
 
+  // Compute squadmates arriving within ±2 hours of the viewing player.
+  const selfArrTime = flightArrivalDateTime ? new Date(flightArrivalDateTime).getTime() : null;
+  const arrivalBuddies = (selfArrTime && !isNaN(selfArrTime) && Array.isArray(allArrivals))
+    ? allArrivals.filter((a) => {
+        if (a.isSelf || !a.arrival) return false;
+        const t = new Date(a.arrival).getTime();
+        return !isNaN(t) && Math.abs(t - selfArrTime) <= TWO_HOURS_MS;
+      })
+    : [];
+
   // Find self in allArrivals to keep the travelNote in sync after saves.
   const handleNoteSaved = useCallback((newNote) => {
     setMyTravelNote(newNote);
@@ -639,12 +662,47 @@ export default function MyTravel() {
             </>
           )}
 
+          {/* Co-arriving squadmates callout */}
+          {arrivalBuddies.length > 0 && (() => {
+            const shown = arrivalBuddies.slice(0, 3);
+            const overflow = arrivalBuddies.length - shown.length;
+            const arrDate = new Date(flightArrivalDateTime).toLocaleDateString("en-GB", {
+              weekday: "long", day: "numeric", month: "long",
+            });
+            return (
+              <div className="flex items-start gap-3 bg-green-50 border border-green-200 rounded-2xl px-5 py-4">
+                <span className="text-xl mt-0.5 shrink-0">🛬</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-green-900">
+                    {arrivalBuddies.length === 1
+                      ? "1 squadmate arrives within 2 hours of you"
+                      : `${arrivalBuddies.length} squadmates arrive within 2 hours of you`}
+                  </p>
+                  <ul className="mt-1 space-y-0.5">
+                    {shown.map((b) => (
+                      <li key={b.id} className="text-sm text-green-800 leading-snug">
+                        {b.name}{b.arrivalCity ? ` — ${b.arrivalCity}` : ""}
+                        {b.arrival && (
+                          <span className="ml-1.5 text-xs text-green-600 tabular-nums">{formatTimeOnly(b.arrival)}</span>
+                        )}
+                      </li>
+                    ))}
+                    {overflow > 0 && (
+                      <li className="text-sm text-green-600">and {overflow} more</li>
+                    )}
+                  </ul>
+                  <p className="text-xs text-green-600 mt-1.5">Arriving on {arrDate} — great chance to share a transfer to Rotterdam!</p>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Team arrivals timeline — always shown so players can see teammates even if they haven't added their own details yet */}
           <Card title="Team arrivals" emoji="👥">
             <p className="text-xs text-gray-500 -mt-1 mb-4">
               All squadmates who have added their arrival time. Players arriving within an hour of each other are grouped — reach out to coordinate transport to Rotterdam.
             </p>
-            <TeamArrivalsTimeline allArrivals={allArrivals} />
+            <TeamArrivalsTimeline allArrivals={allArrivals} selfArrivalTime={selfArrTime} />
           </Card>
 
           {/* Co-departing squadmates callout */}
