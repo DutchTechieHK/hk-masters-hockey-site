@@ -126,6 +126,9 @@ function useLatestNews() {
 
 function proxyNotionImage(url) {
   if (!url) return null;
+  // Relative paths (e.g. /api/news/serve-image/...) must be prefixed with
+  // API_BASE so they resolve to the API server in production.
+  if (url.startsWith("/")) return `${API_BASE}${url}`;
   if (
     url.includes("amazonaws.com") ||
     url.includes("notion.so") ||
