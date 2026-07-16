@@ -20,9 +20,28 @@ export interface NoArrivalEntry {
   teamName: string | null;
 }
 
+export interface DepartureEntry {
+  id: number;
+  name: string;
+  departure: string;
+  departureCity: string | null;
+  departureNote: string | null;
+  teamCategory: string | null;
+  teamName: string | null;
+}
+
+export interface NoDepartureEntry {
+  id: number;
+  name: string;
+  teamCategory: string | null;
+  teamName: string | null;
+}
+
 export interface AdminArrivalsResponse {
   withArrival: ArrivalEntry[];
   withoutArrival: NoArrivalEntry[];
+  withDeparture: DepartureEntry[];
+  withoutDeparture: NoDepartureEntry[];
 }
 
 export const getAdminArrivalsQueryKey = () => ["/api/players/arrivals"] as const;

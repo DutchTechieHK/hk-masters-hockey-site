@@ -960,6 +960,8 @@ router.get("/arrivals", requireAdminAccess, async (_req, res) => {
       arrival: playersTable.flightArrivalDateTime,
       arrivalCity: playersTable.arrivalCity,
       travelNote: playersTable.travelNote,
+      departure: playersTable.flightDepartureDateTime,
+      departureNote: playersTable.departureNote,
       teamCategory: teamsTable.category,
       teamName: teamsTable.name,
     })
@@ -988,7 +990,32 @@ router.get("/arrivals", requireAdminAccess, async (_req, res) => {
       teamName: r.teamName ?? null,
     }));
 
-  res.json({ withArrival, withoutArrival });
+  const departureRows = [...allRows].sort((a, b) =>
+    (a.departure ?? "").localeCompare(b.departure ?? "")
+  );
+
+  const withDeparture = departureRows
+    .filter((r) => r.departure && ISO_DATE_RE.test(r.departure))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      departure: r.departure!,
+      departureCity: r.arrivalCity ?? null,
+      departureNote: r.departureNote ?? null,
+      teamCategory: r.teamCategory ?? null,
+      teamName: r.teamName ?? null,
+    }));
+
+  const withoutDeparture = departureRows
+    .filter((r) => !r.departure || !ISO_DATE_RE.test(r.departure))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      teamCategory: r.teamCategory ?? null,
+      teamName: r.teamName ?? null,
+    }));
+
+  res.json({ withArrival, withoutArrival, withDeparture, withoutDeparture });
 });
 
 export default router;
