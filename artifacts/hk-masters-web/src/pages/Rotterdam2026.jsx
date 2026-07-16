@@ -494,7 +494,14 @@ function ProgrammeSection({ progTab, publicEvents, publicMatches }) {
                         vs {m.opponent}
                         {isResult && <span className="ml-2 text-gray-500 font-normal">{m.ourScore}–{m.theirScore}</span>}
                       </p>
-                      {m.venue && <p className="text-xs text-gray-500 mt-0.5">📍 {m.venue}</p>}
+                      {m.venue && (
+                        <a
+                          href={`https://maps.google.com/?q=${encodeURIComponent(m.venue)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-gray-500 mt-0.5 hover:text-[#006B3C] transition-colors block"
+                        >📍 {m.venue}</a>
+                      )}
                     </div>
                   </li>
                 );

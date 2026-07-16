@@ -118,7 +118,12 @@ export default function NextMatchWidget() {
                       {formatDate(m.kickoffAt)} &middot; {formatTime(m.kickoffAt)}
                     </p>
                     {m.venue && (
-                      <p className="text-xs text-gray-500 mt-1 truncate">{m.venue}</p>
+                      <a
+                        href={`https://maps.google.com/?q=${encodeURIComponent(m.venue)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-gray-500 mt-1 truncate block hover:text-[#006B3C] transition-colors"
+                      >{m.venue}</a>
                     )}
                   </>
                 ) : (
