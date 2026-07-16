@@ -28,12 +28,16 @@ type ImportResult = { rowNum: number; title: string; ok: boolean; error?: string
 
 const ROTTERDAM_TZ = "Europe/Amsterdam"
 const HK_TZ = "Asia/Hong_Kong"
-const ALLOWED_KINDS = ["training", "meeting", "social"]
+const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time"]
 
 const TEMPLATE_CSV = `kind,title,starts_at,ends_at,location,description,team,is_public
 training,Wednesday Training,2026-04-02 18:00,2026-04-02 20:00,HKFC Astro,,MO40,false
 meeting,Pre-tour Briefing,2026-06-15 19:30,,,Room TBC,All squads,false
-social,Team Dinner,2026-07-25 19:00,,,Venue TBC,All squads,true
+social,Social Evening,2026-07-24 19:00,,,Venue TBC,All squads,true
+team_dinner,Team Dinner,2026-07-25 19:30,,,Restaurant TBC,MO40,true
+physio,Physio Session,2026-07-26 10:00,2026-07-26 12:00,,Individual appointments,MO50,false
+dinner,Dinner,2026-07-27 19:00,,,Venue TBC,All squads,true
+free_time,Free Afternoon,2026-07-28 14:00,2026-07-28 18:00,,,All squads,false
 `
 
 function downloadTemplate() {
@@ -114,6 +118,10 @@ function parseTimeRange(raw: string): { start: string; end: string | null } | nu
 function mapKind(purpose: string): string {
   const lc = purpose.toLowerCase().trim()
   if (lc.includes("training")) return "training"
+  if (lc.includes("physio") || lc.includes("medical")) return "physio"
+  if (lc.includes("team dinner") || lc.includes("squad dinner")) return "team_dinner"
+  if (lc.includes("dinner") && !lc.includes("team")) return "dinner"
+  if (lc.includes("free") || lc.includes("rest day")) return "free_time"
   if (lc.includes("social") || lc.includes("fundrais")) return "social"
   if (lc.includes("meeting") || lc.includes("briefing") || lc.includes("review")) return "meeting"
   return "training"
@@ -248,7 +256,7 @@ function validateRows(raw: string[][], teams: Team[], forceHkTz = false): Parsed
     const errors: string[] = []
 
     const kindNorm = kind.toLowerCase().trim()
-    if (!ALLOWED_KINDS.includes(kindNorm)) errors.push(`kind must be training, meeting or social (got "${kind}")`)
+    if (!ALLOWED_KINDS.includes(kindNorm)) errors.push(`kind must be training, meeting, social, physio, team_dinner, dinner or free_time (got "${kind}")`)
 
     const titleTrim = title.trim()
     if (!titleTrim) errors.push("title is required")

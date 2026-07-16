@@ -7,15 +7,16 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, LayoutList, CalendarRange } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 import EventsCsvImport from "@/components/ui/EventsCsvImport"
+import ProgrammeDayPlanner from "@/components/ui/ProgrammeDayPlanner"
 
 type EventRow = {
   id: number
-  kind: "training" | "meeting" | "social"
+  kind: "training" | "meeting" | "social" | "physio" | "team_dinner" | "dinner" | "free_time"
   title: string
   startsAt: string
   endsAt: string | null
@@ -46,7 +47,7 @@ type RsvpRoster = {
 }
 
 type FormState = {
-  kind: "training" | "meeting" | "social"
+  kind: "training" | "meeting" | "social" | "physio" | "team_dinner" | "dinner" | "free_time"
   title: string
   startsAt: string
   endsAt: string
@@ -70,9 +71,13 @@ const EMPTY_FORM: FormState = {
 }
 
 const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: string }> = {
-  training: { label: "Training", icon: Dumbbell, colour: "bg-emerald-100 text-emerald-800" },
-  meeting: { label: "Meeting", icon: Users, colour: "bg-blue-100 text-blue-800" },
-  social: { label: "Social", icon: Coffee, colour: "bg-amber-100 text-amber-800" },
+  training:    { label: "Training",    icon: Dumbbell,  colour: "bg-emerald-100 text-emerald-800" },
+  meeting:     { label: "Meeting",     icon: Users,     colour: "bg-blue-100 text-blue-800" },
+  social:      { label: "Social",      icon: Coffee,    colour: "bg-amber-100 text-amber-800" },
+  physio:      { label: "Physio",      icon: Activity,  colour: "bg-purple-100 text-purple-800" },
+  team_dinner: { label: "Team Dinner", icon: Utensils,  colour: "bg-orange-100 text-orange-800" },
+  dinner:      { label: "Dinner",      icon: Utensils,  colour: "bg-orange-50 text-orange-700" },
+  free_time:   { label: "Free Time",   icon: Sun,       colour: "bg-yellow-100 text-yellow-800" },
 }
 
 const HK_TZ        = "Asia/Hong_Kong"
@@ -292,6 +297,7 @@ export default function Events() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
   const [showPast, setShowPast] = useState(false)
+  const [view, setView] = useState<"list" | "programme">("list")
 
   const openRoster = async (id: number) => {
     setRosterEventId(id)
@@ -415,6 +421,20 @@ export default function Events() {
   const openAddModal = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
+    setFormError(null)
+    setIsModalOpen(true)
+  }
+
+  const openAddModalPrefilled = (prefillDate?: string, prefillTeamId?: number | null) => {
+    setEditing(null)
+    const startsAt = prefillDate
+      ? toZoneInputValue(new Date(`${prefillDate}T09:00:00`).toISOString(), ROTTERDAM_TZ)
+      : ""
+    setForm({
+      ...EMPTY_FORM,
+      startsAt,
+      teamId: prefillTeamId != null ? String(prefillTeamId) : "",
+    })
     setFormError(null)
     setIsModalOpen(true)
   }
@@ -565,6 +585,20 @@ export default function Events() {
       description="Training sessions, team meetings, and social events. Visible to logged-in players."
       action={
         <div className="flex items-center gap-2">
+          <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            <button
+              onClick={() => setView("list")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === "list" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted/50"}`}
+            >
+              <LayoutList className="w-3.5 h-3.5" /> List
+            </button>
+            <button
+              onClick={() => setView("programme")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === "programme" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted/50"}`}
+            >
+              <CalendarRange className="w-3.5 h-3.5" /> Programme
+            </button>
+          </div>
           <Button variant="outline" onClick={() => setShowCsvImport(true)}>
             <Upload className="w-4 h-4 mr-1.5" /> Import CSV
           </Button>
@@ -574,14 +608,31 @@ export default function Events() {
         </div>
       }
     >
-      {loading ? (
+      {view === "programme" && (
+        <div>
+          <div className="rounded-xl bg-[#1E3A6E]/5 border border-[#1E3A6E]/15 px-4 py-3 mb-4 flex items-center gap-3">
+            <CalendarRange className="w-4 h-4 text-[#1E3A6E] shrink-0" />
+            <p className="text-sm text-[#1E3A6E]">
+              <strong>Tournament Programme</strong> — day-by-day view for 22 Jul – 1 Aug 2026. Shows all events + matches per team. Click any item to edit, or "+ Add" to create a prefilled event for that date.
+            </p>
+          </div>
+          <ProgrammeDayPlanner
+            events={events as Parameters<typeof ProgrammeDayPlanner>[0]["events"]}
+            teams={teams as Parameters<typeof ProgrammeDayPlanner>[0]["teams"]}
+            onEdit={(ev) => openEditModal(ev as EventRow)}
+            onAdd={(date, teamId) => openAddModalPrefilled(date, teamId)}
+          />
+        </div>
+      )}
+
+      {view === "list" && loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading events…</div>
-      ) : events.length === 0 ? (
+      ) : view === "list" && events.length === 0 ? (
         <div className="bg-white rounded-2xl border border-border shadow-sm p-12 text-center">
           <CalendarDays className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-muted-foreground">No events yet. Add the first training, meeting or social.</p>
         </div>
-      ) : (
+      ) : view === "list" ? (
         <div className="space-y-8">
           {/* ── Upcoming events ── */}
           {upcomingEvents.length === 0 && (
@@ -645,7 +696,7 @@ export default function Events() {
             </div>
           )}
         </div>
-      )}
+      ) : null}
 
       {someSelected && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white rounded-2xl shadow-2xl px-5 py-3">
@@ -678,6 +729,10 @@ export default function Events() {
               <option value="training">Training</option>
               <option value="meeting">Meeting</option>
               <option value="social">Social</option>
+              <option value="physio">Physio</option>
+              <option value="team_dinner">Team Dinner</option>
+              <option value="dinner">Dinner</option>
+              <option value="free_time">Free Time</option>
             </Select>
           </div>
 

@@ -8,9 +8,13 @@ import { themeFor } from "../utils/teamTheme";
 const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
 
 const KIND_META = {
-  training: { label: "Training", emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
-  meeting:  { label: "Meeting",  emoji: "💬", chip: "bg-blue-100 text-blue-800" },
-  social:   { label: "Social",   emoji: "🍻", chip: "bg-amber-100 text-amber-800" },
+  training:    { label: "Training",    emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
+  meeting:     { label: "Meeting",     emoji: "💬", chip: "bg-blue-100 text-blue-800" },
+  social:      { label: "Social",      emoji: "🍻", chip: "bg-amber-100 text-amber-800" },
+  physio:      { label: "Physio",      emoji: "💆", chip: "bg-purple-100 text-purple-800" },
+  team_dinner: { label: "Team Dinner", emoji: "🍽️", chip: "bg-orange-100 text-orange-800" },
+  dinner:      { label: "Dinner",      emoji: "🍴", chip: "bg-orange-50 text-orange-700" },
+  free_time:   { label: "Free Time",   emoji: "☀️", chip: "bg-yellow-100 text-yellow-800" },
 };
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
@@ -641,7 +645,13 @@ export default function MySchedule() {
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wide text-green-300 mb-0.5">22 Jul – 1 Aug 2026 · Times in Rotterdam (CEST)</p>
                 <p className="text-lg font-extrabold leading-tight">Rotterdam 2026 Programme</p>
-                <p className="text-green-200 text-xs mt-0.5">HC Rotterdam, Netherlands</p>
+                <p className="text-green-200 text-xs mt-0.5">
+                  {(player?.teamCategory === "MO40" || player?.teamName?.includes("40"))
+                    ? "HC Schiedam · Rotterdam, Netherlands"
+                    : (player?.teamCategory === "MO50" || player?.teamName?.includes("50"))
+                    ? "HC Rotterdam · Netherlands"
+                    : "Rotterdam, Netherlands"}
+                </p>
               </div>
               {totalRtmCount > 0 && (
                 <span className="shrink-0 bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">

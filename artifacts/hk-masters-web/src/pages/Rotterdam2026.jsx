@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "wouter";
 import content from "../content/rotterdam.json";
 import teamsContent from "../content/teams.json";
@@ -9,11 +9,30 @@ import NextMatchWidget from "../components/NextMatchWidget";
 import { API_BASE } from "../utils/api";
 import { themeFor } from "../utils/teamTheme";
 
+const ROTTERDAM_TZ = "Europe/Amsterdam";
+const RTM_START = "2026-07-22";
+const RTM_END   = "2026-08-01";
+
+function rtmDateKey(iso) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
+}
+function rtmTime(iso) {
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ROTTERDAM_TZ });
+}
+function rtmDayHeading(dateKey) {
+  return new Date(`${dateKey}T12:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+
+const KIND_EMOJI = { training: "🏑", meeting: "💬", social: "🥂", physio: "💆", team_dinner: "🍽️", dinner: "🍴", free_time: "☀️" };
+const KIND_LABEL = { training: "Training", meeting: "Meeting", social: "Social", physio: "Physio", team_dinner: "Team Dinner", dinner: "Dinner", free_time: "Free Time" };
+
 export default function Rotterdam2026() {
   const teamManagementUrl = "https://app.hkmastershockey.com";
   const [expandedSquad, setExpandedSquad] = useState(null);
-  // Map from teamCategory → sorted player array from the live API
   const [liveSquads, setLiveSquads] = useState(new Map());
+  const [progTab, setProgTab] = useState("All");
+  const [publicEvents, setPublicEvents] = useState([]);
+  const [publicMatches, setPublicMatches] = useState([]);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/public/squad`)
@@ -42,6 +61,16 @@ export default function Rotterdam2026() {
         setLiveSquads(map);
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API_BASE}/api/events/public`).then(r => r.ok ? r.json() : []).catch(() => []),
+      fetch(`${API_BASE}/api/matches`).then(r => r.ok ? r.json() : []).catch(() => []),
+    ]).then(([evts, mtchs]) => {
+      setPublicEvents(Array.isArray(evts) ? evts : []);
+      setPublicMatches(Array.isArray(mtchs) ? mtchs : []);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -214,6 +243,35 @@ export default function Rotterdam2026() {
         </div>
       </section>
 
+      {/* Tournament Programme */}
+      <section id="programme" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-[#1E3A6E]">Tournament Programme</h2>
+            <p className="text-sm text-gray-500 mt-1">22 Jul – 1 Aug 2026 · Times in Rotterdam (CEST)</p>
+          </div>
+          <div className="flex items-center rounded-lg border border-[#1E3A6E]/25 overflow-hidden text-sm font-bold">
+            {["All", "MO40", "MO50"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setProgTab(tab)}
+                className={`px-4 py-2 transition-colors ${progTab === tab ? "bg-[#1E3A6E] text-white" : "text-[#1E3A6E] hover:bg-[#1E3A6E]/8"}`}
+              >
+                {tab === "MO40" ? <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#DE2910] inline-block" />MO40</span>
+                 : tab === "MO50" ? <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-[#1E3A6E] inline-block" />MO50</span>
+                 : "All squads"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <ProgrammeSection
+          progTab={progTab}
+          publicEvents={publicEvents}
+          publicMatches={publicMatches}
+        />
+      </section>
+
       {/* Key Dates */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h2 className="text-2xl font-bold text-[#1E3A6E] mb-8">Key Dates</h2>
@@ -290,6 +348,126 @@ export default function Rotterdam2026() {
       </section>
 
       <SponsorStrip />
+    </div>
+  );
+}
+
+function ProgrammeSection({ progTab, publicEvents, publicMatches }) {
+  const TOURNAMENT_DAYS = useMemo(() => {
+    const days = [];
+    const d = new Date("2026-07-22T00:00:00Z");
+    const end = new Date("2026-08-02T00:00:00Z");
+    while (d < end) {
+      days.push(new Date(d).toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" }));
+      d.setUTCDate(d.getUTCDate() + 1);
+    }
+    return days;
+  }, []);
+
+  const filteredEvents = useMemo(() => {
+    if (progTab === "All") return publicEvents;
+    return publicEvents.filter(ev => ev.teamCategory === progTab || ev.teamCategory == null);
+  }, [publicEvents, progTab]);
+
+  const filteredMatches = useMemo(() => {
+    if (progTab === "All") return publicMatches;
+    return publicMatches.filter(m => m.teamCategory === progTab);
+  }, [publicMatches, progTab]);
+
+  const hasAnyData = publicEvents.length > 0 || publicMatches.length > 0;
+
+  const days = useMemo(() => {
+    return TOURNAMENT_DAYS.map(dateKey => {
+      const events = filteredEvents.filter(ev => rtmDateKey(ev.startsAt) === dateKey);
+      const matches = filteredMatches.filter(m => rtmDateKey(m.kickoffAt) === dateKey);
+      const items = [
+        ...events.map(ev => ({ type: "event", ev, time: ev.startsAt })),
+        ...matches.map(m  => ({ type: "match", m,  time: m.kickoffAt })),
+      ].sort((a, b) => a.time.localeCompare(b.time));
+      return { dateKey, items };
+    }).filter(d => d.items.length > 0);
+  }, [TOURNAMENT_DAYS, filteredEvents, filteredMatches]);
+
+  if (!hasAnyData) {
+    return (
+      <div className="rounded-xl border border-[#1E3A6E]/15 bg-[#EEF4FB] px-6 py-10 text-center">
+        <p className="text-[#1E3A6E] font-semibold mb-1">Programme coming soon</p>
+        <p className="text-sm text-gray-500">Events and match fixtures will appear here once confirmed.</p>
+      </div>
+    );
+  }
+
+  if (days.length === 0) {
+    return (
+      <div className="rounded-xl border border-gray-100 bg-gray-50 px-6 py-10 text-center">
+        <p className="text-sm text-gray-500">No programme items for {progTab} yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {days.map(({ dateKey, items }) => (
+        <div key={dateKey}>
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#1E3A6E] mb-3">
+            {rtmDayHeading(dateKey)}
+          </h3>
+          <ul className="space-y-2">
+            {items.map((item, i) => {
+              if (item.type === "event") {
+                const ev = item.ev;
+                const emoji = KIND_EMOJI[ev.kind] ?? "📌";
+                const label = KIND_LABEL[ev.kind] ?? ev.kind;
+                const teamBadge = ev.teamCategory
+                  ? ev.teamCategory === "MO40"
+                    ? <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#DE2910]/10 text-[#DE2910]">MO40</span>
+                    : <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#1E3A6E]/10 text-[#1E3A6E]">MO50</span>
+                  : null;
+                return (
+                  <li key={`e-${ev.id}`} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-start gap-3">
+                    <span className="text-xl shrink-0 mt-0.5">{emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-500">{rtmTime(ev.startsAt)} CEST</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</span>
+                        {progTab === "All" && teamBadge}
+                      </div>
+                      <p className="font-semibold text-gray-900 text-sm mt-0.5">{ev.title}</p>
+                      {ev.location && <p className="text-xs text-gray-500 mt-0.5">📍 {ev.location}</p>}
+                      {ev.description && <p className="text-xs text-gray-600 mt-1">{ev.description}</p>}
+                    </div>
+                  </li>
+                );
+              } else {
+                const m = item.m;
+                const isResult = m.status === "final" && m.ourScore !== null;
+                const isLive = m.status === "in_progress";
+                const catColor = m.teamCategory === "MO40" ? "bg-[#DE2910]/10 text-[#DE2910]" : "bg-[#1E3A6E]/10 text-[#1E3A6E]";
+                return (
+                  <li key={`m-${m.id}`} className="bg-white rounded-xl border border-gray-100 shadow-sm px-4 py-3 flex items-start gap-3">
+                    <span className="text-xl shrink-0 mt-0.5">🏒</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-gray-500">{rtmTime(m.kickoffAt)} CEST</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Match</span>
+                        {progTab === "All" && m.teamCategory && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${catColor}`}>{m.teamCategory}</span>
+                        )}
+                        {isLive && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 animate-pulse">LIVE</span>}
+                      </div>
+                      <p className="font-semibold text-gray-900 text-sm mt-0.5">
+                        vs {m.opponent}
+                        {isResult && <span className="ml-2 text-gray-500 font-normal">{m.ourScore}–{m.theirScore}</span>}
+                      </p>
+                      {m.venue && <p className="text-xs text-gray-500 mt-0.5">📍 {m.venue}</p>}
+                    </div>
+                  </li>
+                );
+              }
+            })}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

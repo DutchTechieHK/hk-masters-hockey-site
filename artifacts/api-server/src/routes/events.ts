@@ -19,7 +19,7 @@ async function requireAdminOrPlayer(req: Request, res: Response, next: NextFunct
   return requirePlayerSession(req, res, next);
 }
 
-const ALLOWED_KINDS = ["training", "meeting", "social"] as const;
+const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time"] as const;
 type EventKind = typeof ALLOWED_KINDS[number];
 
 type RsvpCounts = { yes: number; no: number; maybe: number };
@@ -66,7 +66,7 @@ function parseBody(body: unknown): {
   const b = body as Record<string, unknown>;
   const kind = String(b.kind ?? "");
   if (!ALLOWED_KINDS.includes(kind as EventKind)) {
-    return { error: "kind must be training, meeting or social" };
+    return { error: "kind must be training, meeting, social, physio, team_dinner, dinner or free_time" };
   }
   const title = typeof b.title === "string" ? b.title.trim() : "";
   if (!title) return { error: "title required" };
@@ -142,11 +142,12 @@ async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<nu
 // Public, unauthenticated: events explicitly marked as public, for the public website.
 router.get("/public", (async (_req, res) => {
   const rows = await db
-    .select()
+    .select({ event: eventsTable, teamCategory: teamsTable.category })
     .from(eventsTable)
+    .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
     .where(eq(eventsTable.isPublic, true))
     .orderBy(asc(eventsTable.startsAt));
-  res.json(rows.map((r) => ({
+  res.json(rows.map(({ event: r, teamCategory }) => ({
     id: r.id,
     kind: r.kind,
     title: r.title,
@@ -154,6 +155,8 @@ router.get("/public", (async (_req, res) => {
     endsAt: r.endsAt ? r.endsAt.toISOString() : null,
     location: r.location,
     description: r.description,
+    teamId: r.teamId,
+    teamCategory: teamCategory ?? null,
   })));
 }) as (req: Request, res: Response) => Promise<void>);
 
@@ -198,7 +201,12 @@ router.post("/", requireAdminAccess, async (req, res) => {
 
     const kindLabel =
       row.kind === "training" ? "Training" :
-      row.kind === "social" ? "Social event" : "Meeting";
+      row.kind === "social" ? "Social event" :
+      row.kind === "physio" ? "Physio session" :
+      row.kind === "team_dinner" ? "Team dinner" :
+      row.kind === "dinner" ? "Dinner" :
+      row.kind === "free_time" ? "Free time" :
+      "Meeting";
     const pushPayload = {
       title: `New ${kindLabel.toLowerCase()}: ${row.title}`,
       body: `${eventDate} at ${eventTime}${row.location ? ` · ${row.location}` : ""}`,
