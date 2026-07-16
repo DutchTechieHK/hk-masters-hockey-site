@@ -685,6 +685,9 @@ export default function MyTravel() {
                         {b.arrival && (
                           <span className="ml-1.5 text-xs text-green-600 tabular-nums">{formatTimeOnly(b.arrival)}</span>
                         )}
+                        {b.travelNote && (
+                          <span className="block text-xs text-green-700 italic mt-0.5">{b.travelNote}</span>
+                        )}
                       </li>
                     ))}
                     {overflow > 0 && (
@@ -732,6 +735,9 @@ export default function MyTravel() {
                         {b.name}{b.departureCity ? ` — ${b.departureCity}` : ""}
                         {b.departure && (
                           <span className="ml-1.5 text-xs text-sky-600 tabular-nums">{formatTimeOnly(b.departure)}</span>
+                        )}
+                        {b.departureNote && (
+                          <span className="block text-xs text-sky-700 italic mt-0.5">{b.departureNote}</span>
                         )}
                       </li>
                     ))}
