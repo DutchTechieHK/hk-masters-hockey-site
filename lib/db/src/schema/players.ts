@@ -58,6 +58,7 @@ export const playersTable = pgTable("players", {
   passportCopyUploadedIsUpdate: boolean("passport_copy_uploaded_is_update").default(false).notNull(),
   instagramHandle: text("instagram_handle"),
   facebookHandle: text("facebook_handle"),
+  travelNote: text("travel_note"),
   travelReminderSentAt: timestamp("travel_reminder_sent_at"),
   feeReminderSentAt: timestamp("fee_reminder_sent_at"),
   insuranceReminderSentAt: timestamp("insurance_reminder_sent_at"),

@@ -1,18 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 
-function formatDateTime(iso) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-GB", {
-    weekday: "short", day: "numeric", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  });
-}
-
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function formatDateOnly(iso) {
   if (!iso) return null;
   const d = new Date(iso);
@@ -27,10 +20,28 @@ function formatTimeOnly(iso) {
   return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function dayKey(iso) {
+  return iso ? iso.slice(0, 10) : "";
+}
+
+function dayHeading(dateKey) {
+  const d = new Date(`${dateKey}T12:00:00Z`);
+  if (Number.isNaN(d.getTime())) return dateKey;
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+
+// Players within 60 min of each other can travel together.
+function minutesDiff(isoA, isoB) {
+  return Math.abs(new Date(isoA).getTime() - new Date(isoB).getTime()) / 60000;
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
 function Card({ title, emoji, children, className = "" }) {
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 ${className}`}>
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">{emoji}</span>
         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       </div>
@@ -39,12 +50,216 @@ function Card({ title, emoji, children, className = "" }) {
   );
 }
 
+function SquadBadge({ category }) {
+  if (category === "MO40")
+    return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#DE2910]/10 text-[#DE2910] shrink-0">MO40</span>;
+  if (category === "MO50")
+    return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#1E3A6E]/10 text-[#1E3A6E] shrink-0">MO50</span>;
+  return null;
+}
+
+// A single player row inside the team timeline.
+function ArrivalRow({ p, isFirst, isLast, showGroupNudge }) {
+  const isSelf = p.isSelf;
+  return (
+    <li
+      className={`py-2.5 flex items-start gap-3 text-sm ${
+        isSelf ? "bg-green-50 -mx-4 px-4 rounded-lg" : ""
+      } ${!isLast ? "border-b border-gray-50" : ""}`}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`font-semibold ${isSelf ? "text-green-800" : "text-gray-900"}`}>
+            {p.name}{isSelf && <span className="ml-1 text-xs font-normal text-green-600">(you)</span>}
+          </span>
+          <SquadBadge category={p.teamCategory} />
+        </div>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-xs text-gray-500 font-medium">
+            {formatTimeOnly(p.arrival)}
+            {p.arrivalCity && <span className="text-gray-400"> · {p.arrivalCity}</span>}
+          </span>
+          {p.travelNote && (
+            <span className="text-xs text-gray-600 italic">"{p.travelNote}"</span>
+          )}
+        </div>
+      </div>
+      {showGroupNudge && isLast && (
+        <span className="shrink-0 text-xs text-green-700 font-medium self-center whitespace-nowrap">
+          Travel together →
+        </span>
+      )}
+    </li>
+  );
+}
+
+// Inline travel-note editor card inside the player's own Arrival card.
+function TravelNoteEditor({ initial, playerId, token, onSaved }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initial ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const handleSave = useCallback(async () => {
+    setSaving(true);
+    setSaveError("");
+    try {
+      const res = await fetch(`${API_BASE}/api/player-auth/my-travel-note`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ travelNote: value.trim() || null }),
+      });
+      if (!res.ok) throw new Error("Could not save.");
+      const data = await res.json();
+      onSaved(data.travelNote);
+      setEditing(false);
+    } catch {
+      setSaveError("Could not save — please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }, [value, token, onSaved]);
+
+  if (!editing) {
+    return (
+      <div className="mt-3 flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          {value ? (
+            <p className="text-sm text-gray-700 italic">"{value}"</p>
+          ) : (
+            <p className="text-sm text-gray-400">No travel note yet (e.g. "Happy to share a taxi")</p>
+          )}
+        </div>
+        <button
+          onClick={() => setEditing(true)}
+          className="text-xs text-gray-400 hover:text-green-700 transition-colors shrink-0 flex items-center gap-0.5"
+          title="Edit travel note"
+        >
+          ✏️ Edit
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2">
+      <input
+        type="text"
+        maxLength={120}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder='e.g. "Happy to share a taxi" or "Renting a car — 2 spare seats"'
+        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-500"
+        autoFocus
+        onKeyDown={(e) => { if (e.key === "Enter") handleSave(); if (e.key === "Escape") setEditing(false); }}
+      />
+      {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="text-xs bg-green-700 text-white px-3 py-1.5 rounded-lg hover:bg-green-800 disabled:opacity-50"
+        >
+          {saving ? "Saving…" : "Save"}
+        </button>
+        <button
+          onClick={() => { setEditing(false); setValue(initial ?? ""); }}
+          className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200"
+        >
+          Cancel
+        </button>
+      </div>
+      <p className="text-xs text-gray-400">{value.length}/120 — visible to all squadmates</p>
+    </div>
+  );
+}
+
+// Day-by-day team arrivals timeline.
+function TeamArrivalsTimeline({ allArrivals }) {
+  if (!allArrivals || allArrivals.length === 0) {
+    return (
+      <p className="text-sm text-gray-500">
+        No arrival times recorded yet. Once squadmates add their flight details, they'll appear here.
+      </p>
+    );
+  }
+
+  // Group by calendar day.
+  const days = [];
+  const byDay = {};
+  for (const p of allArrivals) {
+    const dk = dayKey(p.arrival);
+    if (!dk) continue;
+    if (!byDay[dk]) { byDay[dk] = []; days.push(dk); }
+    byDay[dk].push(p);
+  }
+  days.sort();
+
+  return (
+    <div className="space-y-6">
+      {days.map((dk) => {
+        const players = byDay[dk].slice().sort((a, b) => (a.arrival || "").localeCompare(b.arrival || ""));
+
+        // Identify travel-window groups: consecutive players within 60 min of the group's first.
+        const groups = [];
+        let currentGroup = [];
+        for (const p of players) {
+          if (currentGroup.length === 0 || minutesDiff(currentGroup[0].arrival, p.arrival) <= 60) {
+            currentGroup.push(p);
+          } else {
+            groups.push(currentGroup);
+            currentGroup = [p];
+          }
+        }
+        if (currentGroup.length) groups.push(currentGroup);
+
+        return (
+          <div key={dk}>
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">{dayHeading(dk)}</p>
+            <div className="space-y-2">
+              {groups.map((group, gi) => (
+                <div
+                  key={gi}
+                  className={`bg-white rounded-xl border ${
+                    group.length > 1 ? "border-green-100" : "border-gray-100"
+                  } px-4 py-1 shadow-sm`}
+                >
+                  {group.length > 1 && (
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-green-600 pt-2 -mb-1">
+                      Arrive within an hour · coordinate travel
+                    </p>
+                  )}
+                  <ul>
+                    {group.map((p, i) => (
+                      <ArrivalRow
+                        key={p.id}
+                        p={p}
+                        isFirst={i === 0}
+                        isLast={i === group.length - 1}
+                        showGroupNudge={false}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
 export default function MyTravel() {
   const [, setLocation] = useLocation();
   const [player, setPlayer] = useState(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [myTravelNote, setMyTravelNote] = useState(null);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -64,6 +279,7 @@ export default function MyTravel() {
         const travel = await travelRes.json();
         setPlayer(me);
         setData(travel);
+        setMyTravelNote(travel.travelNote ?? null);
       } catch (err) {
         if (!cancelled) setError(err.message || "Could not load your travel info.");
       } finally {
@@ -94,12 +310,22 @@ export default function MyTravel() {
 
   const {
     flightArrivalDateTime, flightDepartureDateTime, arrivalCity, travelDates,
-    roomSharingPreference, roomSharingWith, roommate, sameDayArrivals,
+    roomSharingPreference, roomSharingWith, roommate, allArrivals,
     accessToken,
   } = data;
 
+  const token = getPlayerToken();
   const hasAnyTravel = !!(flightArrivalDateTime || flightDepartureDateTime || arrivalCity || travelDates);
   const editHref = accessToken ? `/my-details/${encodeURIComponent(accessToken)}` : null;
+
+  // Find self in allArrivals to keep the travelNote in sync after saves.
+  const handleNoteSaved = useCallback((newNote) => {
+    setMyTravelNote(newNote);
+    if (allArrivals) {
+      const selfEntry = allArrivals.find((p) => p.isSelf);
+      if (selfEntry) selfEntry.travelNote = newNote;
+    }
+  }, [allArrivals]);
 
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
@@ -107,7 +333,7 @@ export default function MyTravel() {
         <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <Link href="/dashboard" className="text-sm text-green-700 hover:underline">← Back to dashboard</Link>
-            <h1 className="mt-2 text-3xl font-bold text-gray-900">My travel</h1>
+            <h1 className="mt-2 text-3xl font-bold text-gray-900">Travel</h1>
             {player?.teamName && <p className="mt-1 text-sm text-gray-600">{player.name} · {player.teamName}</p>}
           </div>
           {editHref && (
@@ -117,83 +343,82 @@ export default function MyTravel() {
           )}
         </div>
 
-        {!hasAnyTravel ? (
-          <Card title="Travel details not set yet" emoji="✈️">
-            <p className="text-sm text-gray-600">
-              You haven't told us your flight or arrival info yet. Add it from your profile so the team can plan transfers and room sharing.
-            </p>
-            {editHref && (
-              <Link href={editHref} className="mt-4 inline-block text-sm bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
-                Add my travel details
-              </Link>
-            )}
-          </Card>
-        ) : (
-          <div className="space-y-4">
-            <Card title="Arrival" emoji="🛬">
-              {flightArrivalDateTime ? (
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold text-gray-900">{formatDateOnly(flightArrivalDateTime)}</p>
-                  <p className="text-gray-700">{formatTimeOnly(flightArrivalDateTime)}{arrivalCity && ` · ${arrivalCity}`}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600">Arrival flight not set. {arrivalCity && `Arrival airport: ${arrivalCity}.`}</p>
-              )}
-            </Card>
-
-            <Card title="Departure" emoji="🛫">
-              {flightDepartureDateTime ? (
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold text-gray-900">{formatDateOnly(flightDepartureDateTime)}</p>
-                  <p className="text-gray-700">{formatTimeOnly(flightDepartureDateTime)}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-600">Departure flight not set.</p>
-              )}
-            </Card>
-
-            {travelDates && (
-              <Card title="Trip dates" emoji="📅">
-                <p className="text-gray-800">{travelDates}</p>
-              </Card>
-            )}
-
-            <Card title="Room sharing" emoji="🛏️">
-              <p className="text-sm text-gray-700">
-                Preference: <span className="font-semibold capitalize">{roomSharingPreference || "Not set"}</span>
+        <div className="space-y-4">
+          {!hasAnyTravel ? (
+            <Card title="Travel details not set yet" emoji="✈️">
+              <p className="text-sm text-gray-600">
+                You haven't told us your flight or arrival info yet. Add it so the team can plan transfers and room sharing.
               </p>
-              {roomSharingWith ? (
-                <p className="mt-2 text-sm text-gray-700">
-                  Sharing with: <span className="font-semibold">{roomSharingWith}</span>
-                  {roommate && roommate.name.toLowerCase() === roomSharingWith.toLowerCase() && (
-                    <span className="ml-2 text-xs text-emerald-700">✓ matched in squad</span>
-                  )}
-                </p>
-              ) : roomSharingPreference === "shared" ? (
-                <p className="mt-2 text-sm text-gray-500">No roommate noted yet.</p>
-              ) : null}
+              {editHref && (
+                <Link href={editHref} className="mt-4 inline-block text-sm bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-800">
+                  Add my travel details
+                </Link>
+              )}
             </Card>
-
-            {sameDayArrivals.length > 0 && (
-              <Card title="Players arriving the same day" emoji="👥">
-                <ul className="divide-y divide-gray-100">
-                  {sameDayArrivals
-                    .slice()
-                    .sort((a, b) => (a.arrival || "").localeCompare(b.arrival || ""))
-                    .map((p) => (
-                      <li key={p.id} className="py-2 flex justify-between text-sm">
-                        <span className="font-medium text-gray-800">{p.name}</span>
-                        <span className="text-gray-600">
-                          {formatTimeOnly(p.arrival)}{p.arrivalCity && ` · ${p.arrivalCity}`}
-                        </span>
-                      </li>
-                    ))}
-                </ul>
-                <p className="mt-3 text-xs text-gray-500">Coordinate transfers from the airport with these players.</p>
+          ) : (
+            <>
+              <Card title="My arrival" emoji="🛬">
+                {flightArrivalDateTime ? (
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-gray-900">{formatDateOnly(flightArrivalDateTime)}</p>
+                    <p className="text-gray-700">{formatTimeOnly(flightArrivalDateTime)}{arrivalCity && ` · ${arrivalCity}`}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">Arrival flight not set. {arrivalCity && `Arrival airport: ${arrivalCity}.`}</p>
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Travel note</p>
+                  <TravelNoteEditor
+                    initial={myTravelNote}
+                    token={token}
+                    onSaved={handleNoteSaved}
+                  />
+                </div>
               </Card>
-            )}
-          </div>
-        )}
+
+              <Card title="My departure" emoji="🛫">
+                {flightDepartureDateTime ? (
+                  <div className="space-y-1">
+                    <p className="text-2xl font-bold text-gray-900">{formatDateOnly(flightDepartureDateTime)}</p>
+                    <p className="text-gray-700">{formatTimeOnly(flightDepartureDateTime)}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600">Departure flight not set.</p>
+                )}
+              </Card>
+
+              {travelDates && (
+                <Card title="Trip dates" emoji="📅">
+                  <p className="text-gray-800">{travelDates}</p>
+                </Card>
+              )}
+
+              <Card title="Room sharing" emoji="🛏️">
+                <p className="text-sm text-gray-700">
+                  Preference: <span className="font-semibold capitalize">{roomSharingPreference || "Not set"}</span>
+                </p>
+                {roomSharingWith ? (
+                  <p className="mt-2 text-sm text-gray-700">
+                    Sharing with: <span className="font-semibold">{roomSharingWith}</span>
+                    {roommate && roommate.name.toLowerCase() === roomSharingWith.toLowerCase() && (
+                      <span className="ml-2 text-xs text-emerald-700">✓ matched in squad</span>
+                    )}
+                  </p>
+                ) : roomSharingPreference === "shared" ? (
+                  <p className="mt-2 text-sm text-gray-500">No roommate noted yet.</p>
+                ) : null}
+              </Card>
+            </>
+          )}
+
+          {/* Team arrivals timeline — always shown so players can see teammates even if they haven't added their own details yet */}
+          <Card title="Team arrivals" emoji="👥">
+            <p className="text-xs text-gray-500 -mt-1 mb-4">
+              All squadmates who have added their arrival time. Players arriving within an hour of each other are grouped — reach out to coordinate transport to Rotterdam.
+            </p>
+            <TeamArrivalsTimeline allArrivals={allArrivals} />
+          </Card>
+        </div>
       </div>
     </div>
   );

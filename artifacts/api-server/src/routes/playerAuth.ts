@@ -241,6 +241,32 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     }));
   }
 
+  // Full team arrivals list — all players with a stored arrival datetime,
+  // sorted by arrival time, with team category for colour-coding.
+  const allArrivalRows = await db
+    .select({
+      id: playersTable.id,
+      name: playersTable.name,
+      arrival: playersTable.flightArrivalDateTime,
+      arrivalCity: playersTable.arrivalCity,
+      travelNote: playersTable.travelNote,
+      teamCategory: teamsTable.category,
+    })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(sql`${playersTable.flightArrivalDateTime} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'`)
+    .orderBy(playersTable.flightArrivalDateTime);
+
+  const allArrivals = allArrivalRows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    arrival: r.arrival ?? "",
+    arrivalCity: r.arrivalCity ?? null,
+    travelNote: r.travelNote ?? null,
+    teamCategory: r.teamCategory ?? null,
+    isSelf: r.id === player.id,
+  }));
+
   // Try to resolve the named roommate to a player record (best-effort by name match).
   let roommate: { id: number; name: string } | null = null;
   const roomWith = (player.roomSharingWith ?? "").trim();
@@ -260,10 +286,23 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     travelDates: player.travelDates ?? null,
     roomSharingPreference: player.roomSharingPreference ?? null,
     roomSharingWith: player.roomSharingWith ?? null,
+    travelNote: player.travelNote ?? null,
     roommate,
     sameDayArrivals,
+    allArrivals,
     accessToken: player.accessToken ?? null,
   });
+});
+
+router.patch("/my-travel-note", requirePlayerSession, async (req, res) => {
+  const player = req.player!;
+  const raw = req.body?.travelNote;
+  if (typeof raw !== "string" && raw !== null && raw !== undefined) {
+    return res.status(400).json({ error: "travelNote must be a string or null." });
+  }
+  const travelNote = raw === null || raw === undefined ? null : String(raw).trim().slice(0, 120) || null;
+  await db.update(playersTable).set({ travelNote }).where(eq(playersTable.id, player.id));
+  res.json({ ok: true, travelNote });
 });
 
 router.get("/polls", requirePlayerSession, async (req, res) => {
