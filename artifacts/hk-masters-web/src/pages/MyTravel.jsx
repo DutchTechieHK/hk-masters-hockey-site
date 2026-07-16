@@ -50,6 +50,44 @@ function Card({ title, emoji, children, className = "" }) {
   );
 }
 
+function waPhone(raw) {
+  if (!raw) return null;
+  const digits = raw.replace(/\D/g, "");
+  return digits.length >= 7 ? digits : null;
+}
+
+function ContactButton({ phone, email, name }) {
+  const wa = waPhone(phone);
+  if (wa) {
+    const msg = encodeURIComponent(`Hi ${name}, saw you on the HK Masters travel page — happy to coordinate!`);
+    return (
+      <a
+        href={`https://wa.me/${wa}?text=${msg}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`WhatsApp ${name}`}
+        className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-green-700 hover:text-green-900 bg-green-50 hover:bg-green-100 border border-green-200 rounded-full px-2 py-0.5 transition-colors self-center"
+      >
+        <span>💬</span>
+        <span className="hidden sm:inline">WhatsApp</span>
+      </a>
+    );
+  }
+  if (email) {
+    return (
+      <a
+        href={`mailto:${email}?subject=${encodeURIComponent("HK Masters — travel coordination")}`}
+        title={`Email ${name}`}
+        className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-gray-600 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-full px-2 py-0.5 transition-colors self-center"
+      >
+        <span>✉️</span>
+        <span className="hidden sm:inline">Email</span>
+      </a>
+    );
+  }
+  return null;
+}
+
 function SquadBadge({ category }) {
   if (category === "MO40")
     return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#DE2910]/10 text-[#DE2910] shrink-0">MO40</span>;
@@ -89,7 +127,8 @@ function ArrivalRow({ p, isFirst, isLast, showGroupNudge, isNearSelf }) {
           )}
         </div>
       </div>
-      {showGroupNudge && isLast && (
+      {!isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
+      {showGroupNudge && isLast && isSelf && (
         <span className="shrink-0 text-xs text-green-700 font-medium self-center whitespace-nowrap">
           Travel together →
         </span>
@@ -129,6 +168,7 @@ function DepartureRow({ p, isLast, isNearSelf }) {
           )}
         </div>
       </div>
+      {!isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
     </li>
   );
 }

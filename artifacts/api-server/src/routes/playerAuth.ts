@@ -251,6 +251,8 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
       arrivalCity: playersTable.arrivalCity,
       travelNote: playersTable.travelNote,
       teamCategory: teamsTable.category,
+      phone: playersTable.phone,
+      email: playersTable.email,
     })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
@@ -265,6 +267,8 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     travelNote: r.travelNote ?? null,
     teamCategory: r.teamCategory ?? null,
     isSelf: r.id === player.id,
+    phone: r.id === player.id ? null : (r.phone ?? null),
+    email: r.id === player.id ? null : (r.email ?? null),
   }));
 
   // Full team departures list — all players with a stored departure datetime,
@@ -278,6 +282,8 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
       departureCity: playersTable.arrivalCity,
       departureNote: playersTable.departureNote,
       teamCategory: teamsTable.category,
+      phone: playersTable.phone,
+      email: playersTable.email,
     })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
@@ -292,6 +298,8 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     departureNote: r.departureNote ?? null,
     teamCategory: r.teamCategory ?? null,
     isSelf: r.id === player.id,
+    phone: r.id === player.id ? null : (r.phone ?? null),
+    email: r.id === player.id ? null : (r.email ?? null),
   }));
 
   // Try to resolve the named roommate to a player record (best-effort by name match).
