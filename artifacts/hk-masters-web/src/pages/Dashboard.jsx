@@ -101,6 +101,10 @@ export default function Dashboard() {
   const [maybeNoteText, setMaybeNoteText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState(null);
+  const [departureBuddies, setDepartureBuddies] = useState(null);
+  const [depNudgeDismissed, setDepNudgeDismissed] = useState(
+    () => localStorage.getItem("depNudgeDismissed") === "1"
+  );
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -198,6 +202,35 @@ export default function Dashboard() {
       clearInterval(interval);
     };
   }, [player]);
+
+  useEffect(() => {
+    const token = getPlayerToken();
+    if (!token) return;
+    let cancelled = false;
+    fetch(`${API_BASE}/api/player-auth/my-travel`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (cancelled || !data) return;
+        const { allDepartures, flightDepartureDateTime } = data;
+        if (!flightDepartureDateTime || !Array.isArray(allDepartures)) return;
+        const ISO_RE = /^\d{4}-\d{2}-\d{2}/;
+        if (!ISO_RE.test(flightDepartureDateTime)) return;
+        const selfDep = new Date(flightDepartureDateTime).getTime();
+        if (isNaN(selfDep)) return;
+        const TWO_HOURS = 2 * 60 * 60 * 1000;
+        const count = allDepartures.filter((d) => {
+          if (d.isSelf) return false;
+          if (!d.departure || !ISO_RE.test(d.departure)) return false;
+          const t = new Date(d.departure).getTime();
+          return !isNaN(t) && Math.abs(t - selfDep) <= TWO_HOURS;
+        }).length;
+        setDepartureBuddies(count > 0 ? { count, date: flightDepartureDateTime } : null);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -532,6 +565,42 @@ export default function Dashboard() {
                 {isMissing ? "Add →" : "Edit →"}
               </span>
             </button>
+          );
+        })()}
+
+        {/* Departure buddies nudge */}
+        {departureBuddies && !depNudgeDismissed && (() => {
+          const depDate = new Date(departureBuddies.date).toLocaleDateString("en-GB", {
+            weekday: "long", day: "numeric", month: "long",
+          });
+          return (
+            <div className="relative mb-4 flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-2xl px-5 py-4">
+              <span className="text-xl mt-0.5 shrink-0">✈️</span>
+              <button
+                onClick={() => setLocation("/travel")}
+                className="flex-1 min-w-0 text-left"
+              >
+                <p className="font-semibold text-sky-900">
+                  {departureBuddies.count === 1
+                    ? "1 squadmate departs the same day as you"
+                    : `${departureBuddies.count} squadmates depart the same day as you`}
+                </p>
+                <p className="text-sm text-sky-700 mt-0.5">
+                  {departureBuddies.count === 1 ? "They leave" : "They all leave"} on {depDate} — tap to see who's on your flight window.
+                </p>
+                <span className="text-xs font-medium text-sky-600 mt-1 inline-block">View travel details →</span>
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.setItem("depNudgeDismissed", "1");
+                  setDepNudgeDismissed(true);
+                }}
+                aria-label="Dismiss"
+                className="shrink-0 text-sky-400 hover:text-sky-700 transition text-lg leading-none mt-0.5"
+              >
+                ×
+              </button>
+            </div>
           );
         })()}
 
