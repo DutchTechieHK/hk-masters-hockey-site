@@ -300,25 +300,6 @@ export default function Rotterdam2026() {
         />
       </section>
 
-      {/* Key Dates */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="text-2xl font-bold text-[#1E3A6E] mb-8">Key Dates</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <tbody>
-              {content.key_dates.map((item, i) => (
-                <tr key={i} className={i % 2 === 0 ? "bg-[#EDE0C4]" : "bg-white"}>
-                  <td className="py-3 px-4 font-medium text-[#1E3A6E] whitespace-nowrap rounded-l-lg w-48">
-                    {item.date}
-                  </td>
-                  <td className="py-3 px-4 text-gray-700 rounded-r-lg">{item.event}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       {/* Fundraising CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="reveal scale-in bg-gradient-to-br from-[#1E3A6E] to-[#16305D] rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row items-center gap-6 text-white">
