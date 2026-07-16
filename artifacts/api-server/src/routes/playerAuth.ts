@@ -267,6 +267,33 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     isSelf: r.id === player.id,
   }));
 
+  // Full team departures list — all players with a stored departure datetime,
+  // sorted by departure time, with team category for colour-coding.
+  // arrivalCity doubles as the departure airport (players all fly via AMS).
+  const allDepartureRows = await db
+    .select({
+      id: playersTable.id,
+      name: playersTable.name,
+      departure: playersTable.flightDepartureDateTime,
+      departureCity: playersTable.arrivalCity,
+      travelNote: playersTable.travelNote,
+      teamCategory: teamsTable.category,
+    })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(sql`${playersTable.flightDepartureDateTime} ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'`)
+    .orderBy(playersTable.flightDepartureDateTime);
+
+  const allDepartures = allDepartureRows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    departure: r.departure ?? "",
+    departureCity: r.departureCity ?? null,
+    travelNote: r.travelNote ?? null,
+    teamCategory: r.teamCategory ?? null,
+    isSelf: r.id === player.id,
+  }));
+
   // Try to resolve the named roommate to a player record (best-effort by name match).
   let roommate: { id: number; name: string } | null = null;
   const roomWith = (player.roomSharingWith ?? "").trim();
@@ -290,6 +317,7 @@ router.get("/my-travel", requirePlayerSession, async (req, res) => {
     roommate,
     sameDayArrivals,
     allArrivals,
+    allDepartures,
     accessToken: player.accessToken ?? null,
   });
 });
