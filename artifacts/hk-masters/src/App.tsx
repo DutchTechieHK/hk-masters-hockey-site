@@ -12,6 +12,7 @@ import Fees from "@/pages/Fees";
 import Logistics from "@/pages/Logistics";
 import Journal from "@/pages/Journal";
 import Travel from "@/pages/Travel";
+import TravelOverview from "@/pages/TravelOverview";
 import Sponsors from "@/pages/Sponsors";
 import Schedule from "@/pages/Schedule";
 import Events from "@/pages/Events";
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/fees" component={Fees} />
       <Route path="/logistics" component={Logistics} />
       <Route path="/travel" component={Travel} />
+      <Route path="/arrivals" component={TravelOverview} />
       <Route path="/journal" component={Journal} />
       <Route path="/sponsors" component={Sponsors} />
       <Route path="/matches" component={Schedule} />

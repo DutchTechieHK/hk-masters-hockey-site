@@ -950,4 +950,45 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
   }));
 });
 
+router.get("/arrivals", requireAdminAccess, async (_req, res) => {
+  const ISO_DATE_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}/;
+
+  const allRows = await db
+    .select({
+      id: playersTable.id,
+      name: playersTable.name,
+      arrival: playersTable.flightArrivalDateTime,
+      arrivalCity: playersTable.arrivalCity,
+      travelNote: playersTable.travelNote,
+      teamCategory: teamsTable.category,
+      teamName: teamsTable.name,
+    })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .orderBy(playersTable.flightArrivalDateTime);
+
+  const withArrival = allRows
+    .filter((r) => r.arrival && ISO_DATE_RE.test(r.arrival))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      arrival: r.arrival!,
+      arrivalCity: r.arrivalCity ?? null,
+      travelNote: r.travelNote ?? null,
+      teamCategory: r.teamCategory ?? null,
+      teamName: r.teamName ?? null,
+    }));
+
+  const withoutArrival = allRows
+    .filter((r) => !r.arrival || !ISO_DATE_RE.test(r.arrival))
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      teamCategory: r.teamCategory ?? null,
+      teamName: r.teamName ?? null,
+    }));
+
+  res.json({ withArrival, withoutArrival });
+});
+
 export default router;

@@ -37,6 +37,7 @@ const NAV_ITEMS = [
   { href: "/email-history", label: "Email History", icon: History },
   { href: "/logistics", label: "Logistics", icon: Plane },
   { href: "/travel", label: "Travel", icon: Luggage },
+  { href: "/arrivals", label: "Arrivals", icon: Plane },
   { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/documents", label: "Documents", icon: FolderOpen },
   { href: "/reports", label: "Reports", icon: FileText },

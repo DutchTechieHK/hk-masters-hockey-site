@@ -5,3 +5,4 @@ export * from "./email-templates";
 export * from "./whatsapp-templates";
 export * from "./documents";
 export * from "./fun-run";
+export * from "./arrivals";
