@@ -427,8 +427,10 @@ export default function Events() {
 
   const openAddModalPrefilled = (prefillDate?: string, prefillTeamId?: number | null) => {
     setEditing(null)
+    // Explicitly pass +02:00 (CEST) so "09:00" is always Rotterdam local,
+    // regardless of the admin's browser timezone.
     const startsAt = prefillDate
-      ? toZoneInputValue(new Date(`${prefillDate}T09:00:00`).toISOString(), ROTTERDAM_TZ)
+      ? toZoneInputValue(new Date(`${prefillDate}T09:00:00+02:00`).toISOString(), ROTTERDAM_TZ)
       : ""
     setForm({
       ...EMPTY_FORM,

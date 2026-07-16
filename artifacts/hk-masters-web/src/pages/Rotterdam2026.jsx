@@ -26,6 +26,34 @@ function rtmDayHeading(dateKey) {
 const KIND_EMOJI = { training: "🏑", meeting: "💬", social: "🥂", physio: "💆", team_dinner: "🍽️", dinner: "🍴", free_time: "☀️" };
 const KIND_LABEL = { training: "Training", meeting: "Meeting", social: "Social", physio: "Physio", team_dinner: "Team Dinner", dinner: "Dinner", free_time: "Free Time" };
 
+function escapeIcs(str) { return (str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n"); }
+function toIcsDate(iso) { return new Date(iso).toISOString().replace(/[-:]/g, "").replace(/\.\d+/, ""); }
+function downloadEventIcs(ev) {
+  const kindLabel = KIND_LABEL[ev.kind] ?? ev.kind;
+  const summary = `${kindLabel}: ${ev.title}`;
+  const start = toIcsDate(ev.startsAt);
+  const end = toIcsDate(ev.endsAt || new Date(new Date(ev.startsAt).getTime() + 60 * 60 * 1000).toISOString());
+  const now = toIcsDate(new Date().toISOString());
+  const lines = [
+    "BEGIN:VCALENDAR", "VERSION:2.0",
+    "PRODID:-//HK Masters Hockey//Rotterdam 2026//EN",
+    "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:hkm-event-${ev.id}@hkmastershockey.com`,
+    `DTSTAMP:${now}`, `DTSTART:${start}`, `DTEND:${end}`,
+    `SUMMARY:${escapeIcs(summary)}`,
+  ];
+  if (ev.location) lines.push(`LOCATION:${escapeIcs(ev.location)}`);
+  if (ev.description) lines.push(`DESCRIPTION:${escapeIcs(ev.description)}`);
+  lines.push("END:VEVENT", "END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url;
+  a.download = `hk-${ev.kind}-${ev.id}.ics`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export default function Rotterdam2026() {
   const teamManagementUrl = "https://app.hkmastershockey.com";
   const [expandedSquad, setExpandedSquad] = useState(null);
@@ -436,6 +464,13 @@ function ProgrammeSection({ progTab, publicEvents, publicMatches }) {
                       {ev.location && <p className="text-xs text-gray-500 mt-0.5">📍 {ev.location}</p>}
                       {ev.description && <p className="text-xs text-gray-600 mt-1">{ev.description}</p>}
                     </div>
+                    <button
+                      onClick={() => downloadEventIcs(ev)}
+                      title="Add to calendar"
+                      className="shrink-0 mt-0.5 text-gray-400 hover:text-[#1E3A6E] transition-colors p-1 rounded"
+                    >
+                      📅
+                    </button>
                   </li>
                 );
               } else {
