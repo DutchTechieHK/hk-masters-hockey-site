@@ -220,13 +220,13 @@ export default function Dashboard() {
         const selfDep = new Date(flightDepartureDateTime).getTime();
         if (isNaN(selfDep)) return;
         const TWO_HOURS = 2 * 60 * 60 * 1000;
-        const count = allDepartures.filter((d) => {
+        const buddies = allDepartures.filter((d) => {
           if (d.isSelf) return false;
           if (!d.departure || !ISO_RE.test(d.departure)) return false;
           const t = new Date(d.departure).getTime();
           return !isNaN(t) && Math.abs(t - selfDep) <= TWO_HOURS;
-        }).length;
-        setDepartureBuddies(count > 0 ? { count, date: flightDepartureDateTime } : null);
+        });
+        setDepartureBuddies(buddies.length > 0 ? { buddies, count: buddies.length, date: flightDepartureDateTime } : null);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -573,6 +573,11 @@ export default function Dashboard() {
           const depDate = new Date(departureBuddies.date).toLocaleDateString("en-GB", {
             weekday: "long", day: "numeric", month: "long",
           });
+          const { buddies, count } = departureBuddies;
+          const shown = buddies.slice(0, 3);
+          const overflow = count - shown.length;
+          const nameList = shown.map((b) => b.departureCity ? `${b.name} — ${b.departureCity}` : b.name);
+          if (overflow > 0) nameList.push(`and ${overflow} more`);
           return (
             <div className="relative mb-4 flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-2xl px-5 py-4">
               <span className="text-xl mt-0.5 shrink-0">✈️</span>
@@ -581,13 +586,16 @@ export default function Dashboard() {
                 className="flex-1 min-w-0 text-left"
               >
                 <p className="font-semibold text-sky-900">
-                  {departureBuddies.count === 1
-                    ? "1 squadmate departs the same day as you"
-                    : `${departureBuddies.count} squadmates depart the same day as you`}
+                  {count === 1
+                    ? "1 squadmate departs within 2 hours of you"
+                    : `${count} squadmates depart within 2 hours of you`}
                 </p>
-                <p className="text-sm text-sky-700 mt-0.5">
-                  {departureBuddies.count === 1 ? "They leave" : "They all leave"} on {depDate} — tap to see who's on your flight window.
-                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {nameList.map((label, i) => (
+                    <li key={i} className="text-sm text-sky-800 leading-snug">{label}</li>
+                  ))}
+                </ul>
+                <p className="text-sm text-sky-600 mt-1.5">Departing on {depDate} — great chance to coordinate!</p>
                 <span className="text-xs font-medium text-sky-600 mt-1 inline-block">View travel details →</span>
               </button>
               <button
