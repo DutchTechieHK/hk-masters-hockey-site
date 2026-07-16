@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 import { API_BASE } from "../utils/api";
+import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
 
@@ -413,7 +414,7 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       {match.teamCategory && (
-                        <span className="bg-[#DE2910] text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                        <span className={`${themeFor(match.teamCategory).chip} text-white text-[10px] font-bold px-2 py-0.5 rounded`}>
                           {match.teamCategory}
                         </span>
                       )}

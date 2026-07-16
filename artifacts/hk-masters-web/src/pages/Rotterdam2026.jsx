@@ -7,6 +7,7 @@ import RichText from "../components/RichText";
 import SponsorStrip from "../components/SponsorStrip";
 import NextMatchWidget from "../components/NextMatchWidget";
 import { API_BASE } from "../utils/api";
+import { themeFor } from "../utils/teamTheme";
 
 export default function Rotterdam2026() {
   const teamManagementUrl = "https://app.hkmastershockey.com";
@@ -119,7 +120,7 @@ export default function Rotterdam2026() {
               return (
                 <div key={squad.category} className="tilt-card bg-white rounded-xl border border-gray-100 shadow-sm p-5 flex flex-col">
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">
+                    <span className={`${themeFor(squad.category).chip} text-white text-xs font-bold px-2 py-0.5 rounded`}>
                       {squad.category}
                     </span>
                   </div>

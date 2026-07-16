@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { API_BASE } from "../utils/api";
+import { themeFor } from "../utils/teamTheme";
+
+// Normalise any category string to the key used in teamTheme (MO40 / MO50).
+function categoryKey(cat) {
+  if (!cat) return "MO40";
+  if (/50/i.test(cat)) return "MO50";
+  return "MO40";
+}
 
 const FALLBACK_TEAMS = [
   { id: -1, name: "MO40", category: "MO40" },
@@ -88,7 +96,7 @@ export default function NextMatchWidget() {
             return (
               <div key={team.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded">
+                  <span className={`${themeFor(categoryKey(team.category || team.name)).chip} text-white text-xs font-bold px-2 py-0.5 rounded`}>
                     {team.category || team.name}
                   </span>
                   {m && getCountdown(m.kickoffAt) && (
