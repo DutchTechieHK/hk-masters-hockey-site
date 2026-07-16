@@ -542,6 +542,24 @@ export default function MyTravel() {
     return () => { cancelled = true; };
   }, [setLocation]);
 
+  // Keep travelNote in sync after saves — must be before any early returns (Rules of Hooks).
+  const handleNoteSaved = useCallback((newNote) => {
+    setMyTravelNote(newNote);
+    setData((prev) => {
+      if (!prev?.allArrivals) return prev;
+      return { ...prev, allArrivals: prev.allArrivals.map((p) => p.isSelf ? { ...p, travelNote: newNote } : p) };
+    });
+  }, []);
+
+  // Keep departureNote in sync after saves — must be before any early returns (Rules of Hooks).
+  const handleDepartureNoteSaved = useCallback((newNote) => {
+    setMyDepartureNote(newNote);
+    setData((prev) => {
+      if (!prev?.allDepartures) return prev;
+      return { ...prev, allDepartures: prev.allDepartures.map((p) => p.isSelf ? { ...p, departureNote: newNote } : p) };
+    });
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -591,24 +609,6 @@ export default function MyTravel() {
         return !isNaN(t) && Math.abs(t - selfArrTime) <= TWO_HOURS_MS;
       })
     : [];
-
-  // Find self in allArrivals to keep the travelNote in sync after saves.
-  const handleNoteSaved = useCallback((newNote) => {
-    setMyTravelNote(newNote);
-    if (allArrivals) {
-      const selfEntry = allArrivals.find((p) => p.isSelf);
-      if (selfEntry) selfEntry.travelNote = newNote;
-    }
-  }, [allArrivals]);
-
-  // Keep departureNote in sync after saves.
-  const handleDepartureNoteSaved = useCallback((newNote) => {
-    setMyDepartureNote(newNote);
-    if (allDepartures) {
-      const selfEntry = allDepartures.find((p) => p.isSelf);
-      if (selfEntry) selfEntry.departureNote = newNote;
-    }
-  }, [allDepartures]);
 
   return (
     <div className="min-h-[80vh] bg-gray-50 px-4 py-8 sm:py-12">
