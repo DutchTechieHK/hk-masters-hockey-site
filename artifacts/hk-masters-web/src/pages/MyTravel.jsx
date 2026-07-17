@@ -96,180 +96,197 @@ function SquadBadge({ category }) {
   return null;
 }
 
-// SVG tear-line with punched semicircle notches at top & bottom.
-// Rendered as an absolutely-positioned overlay inside overflow-hidden card,
-// so the semicircles are cleanly clipped at the card edges — no bleed between cards.
-function TearLine({ color = "#d1d5db" }) {
+// Horizontal tear-line strip with semicircle notches on the left and right card edges.
+// The card parent must have overflow-hidden + rounded corners — this clips the
+// outer halves of the notch circles, leaving clean indentations at each side edge.
+function HorizontalTearLine({ color = "#d1d5db", bgColor = "#f9fafb" }) {
   return (
-    <div className="relative w-8 shrink-0 self-stretch bg-gray-50 overflow-hidden">
-      {/* Top notch: circle whose centre is at the card's top edge; overflow-hidden clips the top half */}
+    <div className="relative h-7 flex items-center" style={{ backgroundColor: bgColor }}>
+      {/* Left notch — left half clipped by card's overflow-hidden */}
       <div
-        className="absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 bg-gray-50 z-10"
-        style={{ top: -14, borderColor: color }}
+        className="absolute left-0 -translate-x-1/2 w-7 h-7 rounded-full border-2 z-10"
+        style={{ borderColor: color, backgroundColor: bgColor }}
       />
-      {/* Dashed perforation line */}
+      {/* Dashed horizontal perforation */}
+      <div className="w-full border-t-2 border-dashed" style={{ borderColor: color }} />
+      {/* Right notch — right half clipped by card's overflow-hidden */}
       <div
-        className="absolute inset-y-0 left-1/2 -translate-x-1/2 border-l-2 border-dashed w-0"
-        style={{ borderColor: color }}
-      />
-      {/* Bottom notch */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 w-7 h-7 rounded-full border-2 bg-gray-50 z-10"
-        style={{ bottom: -14, borderColor: color }}
+        className="absolute right-0 translate-x-1/2 w-7 h-7 rounded-full border-2 z-10"
+        style={{ borderColor: color, backgroundColor: bgColor }}
       />
     </div>
   );
 }
 
-// Boarding-pass card for one travel-window group (arrivals).
+// Shared passenger row used by both boarding pass types.
+function PassengerRow({ p, isNearSelf, selfBg, selfName, selfNote, contactEl }) {
+  return (
+    <div className={`flex items-center gap-2 ${p.isSelf ? `rounded-lg ${selfBg} -mx-2 px-2 py-1` : ""}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-sm font-semibold ${p.isSelf ? selfName : "text-gray-900"}`}>
+            {p.name}
+            {p.isSelf && <span className={`ml-1 text-xs font-normal ${selfNote}`}>(you)</span>}
+          </span>
+          <SquadBadge category={p.teamCategory} />
+          {isNearSelf && (
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
+              Near you
+            </span>
+          )}
+        </div>
+        {(p.travelNote || p.departureNote) && (
+          <p className="text-xs text-gray-400 italic mt-0.5">"{p.travelNote || p.departureNote}"</p>
+        )}
+      </div>
+      {contactEl}
+    </div>
+  );
+}
+
+// Boarding-pass card — top banner layout, arrivals.
 function ArrivalBoardingPass({ group, selfArrivalTime }) {
   const isMulti = group.length > 1;
-  const hasSelf = group.some((p) => p.isSelf);
+  const hasSelf  = group.some((p) => p.isSelf);
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
   const time = formatTimeOnly(group[0].arrival);
   const city = group[0].arrivalCity;
-  const stubBg    = hasSelf ? "bg-green-800" : isMulti ? "bg-green-700" : "bg-slate-500";
+
+  const bannerBg   = hasSelf ? "bg-green-800" : isMulti ? "bg-green-700" : "bg-slate-500";
   const cardBorder = hasSelf ? "border-green-300" : isMulti ? "border-green-200" : "border-gray-200";
-  const tearColor  = hasSelf ? "#86efac" : isMulti ? "#bbf7d0" : "#e2e8f0";
-  const bannerColor = hasSelf ? "text-green-800" : isMulti ? "text-green-700" : "text-slate-500";
-  const selfBg    = "bg-green-50";
-  const selfName  = "text-green-800";
-  const selfNote  = "text-green-600";
+  const tearColor  = hasSelf ? "#4ade80" : isMulti ? "#86efac" : "#cbd5e1";
+  const groupLabel = hasSelf ? "text-green-800" : isMulti ? "text-green-700" : "text-slate-500";
+  const selfBg     = "bg-green-50";
+  const selfName   = "text-green-800";
+  const selfNote   = "text-green-600";
 
   return (
-    <div className={`flex rounded-xl overflow-hidden shadow border ${cardBorder}`}>
-      {/* TICKET STUB */}
-      <div className={`w-28 shrink-0 ${stubBg} flex flex-col items-center justify-center py-5 px-3 gap-0.5 select-none`}>
-        <p className="text-white/50 text-[9px] font-black uppercase tracking-[0.18em]">Arrival</p>
-        <p className="text-white text-[1.55rem] font-mono font-bold tabular-nums leading-none">
-          {time ?? "—"}
-        </p>
-        {city && (
-          <p className="text-white/70 text-[10px] text-center uppercase tracking-wide leading-tight mt-1 px-1">
-            {city}
+    <div className={`flex flex-col rounded-xl overflow-hidden shadow border ${cardBorder}`}>
+
+      {/* TOP BANNER */}
+      <div className={`${bannerBg} px-4 py-3.5 flex items-center justify-between gap-4 select-none`}>
+        {/* Left: icon + label + big time */}
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-white/50 text-2xl leading-none shrink-0">✈</span>
+          <div className="min-w-0">
+            <p className="text-white/50 text-[9px] font-black uppercase tracking-[0.22em]">Arrival</p>
+            <p className="text-white text-[1.75rem] font-mono font-bold tabular-nums leading-none">
+              {time ?? "—"}
+            </p>
+          </div>
+        </div>
+        {/* Right: city + route */}
+        <div className="text-right shrink-0">
+          {city && (
+            <p className="text-white/80 text-xs font-semibold uppercase tracking-wide leading-tight">
+              {city}
+            </p>
+          )}
+          <p className="text-white/25 text-[9px] font-bold tracking-wider mt-0.5">
+            HKG ──✈── RTM
           </p>
-        )}
-        <p className="mt-3 text-white/25 text-[9px] font-bold tracking-wider">
-          HKG ✈ RTM
-        </p>
+        </div>
       </div>
 
-      {/* Tear line with notches */}
-      <TearLine color={tearColor} />
+      {/* HORIZONTAL TEAR LINE */}
+      <HorizontalTearLine color={tearColor} bgColor="#f9fafb" />
 
-      {/* BOARDING BODY */}
-      <div className="flex-1 bg-white py-3.5 px-4 min-w-0">
+      {/* BODY — passenger list */}
+      <div className="bg-white px-4 py-3 space-y-2.5">
         {isMulti && (
-          <p className={`text-[10px] font-black uppercase tracking-widest mb-2.5 ${bannerColor}`}>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${groupLabel}`}>
             ✈ Arrive together — coordinate travel
           </p>
         )}
-        <div className="space-y-2.5">
-          {group.map((p) => {
-            const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
-              ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
-              : false;
-            return (
-              <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? `rounded-lg ${selfBg} -mx-1 px-1.5 py-1` : ""}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-sm font-semibold ${p.isSelf ? selfName : "text-gray-900"}`}>
-                      {p.name}
-                      {p.isSelf && <span className={`ml-1 text-xs font-normal ${selfNote}`}>(you)</span>}
-                    </span>
-                    <SquadBadge category={p.teamCategory} />
-                    {isNearSelf && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
-                        Near you
-                      </span>
-                    )}
-                  </div>
-                  {p.travelNote && (
-                    <p className="text-xs text-gray-400 italic mt-0.5">"{p.travelNote}"</p>
-                  )}
-                </div>
-                {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
-              </div>
-            );
-          })}
-        </div>
+        {group.map((p) => {
+          const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
+            ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
+            : false;
+          return (
+            <PassengerRow
+              key={p.id}
+              p={p}
+              isNearSelf={isNearSelf}
+              selfBg={selfBg}
+              selfName={selfName}
+              selfNote={selfNote}
+              contactEl={!p.isSelf ? <ContactButton phone={p.phone} email={p.email} name={p.name} /> : null}
+            />
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// Boarding-pass card for one travel-window group (departures).
+// Boarding-pass card — top banner layout, departures.
 function DepartureBoardingPass({ group, selfDepartureTime }) {
   const isMulti = group.length > 1;
-  const hasSelf = group.some((p) => p.isSelf);
+  const hasSelf  = group.some((p) => p.isSelf);
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
   const time = formatTimeOnly(group[0].departure);
   const city = group[0].departureCity;
-  const stubBg    = hasSelf ? "bg-blue-800" : isMulti ? "bg-blue-700" : "bg-slate-500";
+
+  const bannerBg   = hasSelf ? "bg-blue-800" : isMulti ? "bg-blue-700" : "bg-slate-500";
   const cardBorder = hasSelf ? "border-blue-300" : isMulti ? "border-blue-200" : "border-gray-200";
-  const tearColor  = hasSelf ? "#93c5fd" : isMulti ? "#bfdbfe" : "#e2e8f0";
-  const bannerColor = hasSelf ? "text-blue-800" : isMulti ? "text-blue-700" : "text-slate-500";
-  const selfBg    = "bg-blue-50";
-  const selfName  = "text-blue-800";
-  const selfNote  = "text-blue-600";
+  const tearColor  = hasSelf ? "#60a5fa" : isMulti ? "#93c5fd" : "#cbd5e1";
+  const groupLabel = hasSelf ? "text-blue-800" : isMulti ? "text-blue-700" : "text-slate-500";
+  const selfBg     = "bg-blue-50";
+  const selfName   = "text-blue-800";
+  const selfNote   = "text-blue-600";
 
   return (
-    <div className={`flex rounded-xl overflow-hidden shadow border ${cardBorder}`}>
-      {/* TICKET STUB */}
-      <div className={`w-28 shrink-0 ${stubBg} flex flex-col items-center justify-center py-5 px-3 gap-0.5 select-none`}>
-        <p className="text-white/50 text-[9px] font-black uppercase tracking-[0.18em]">Departure</p>
-        <p className="text-white text-[1.55rem] font-mono font-bold tabular-nums leading-none">
-          {time ?? "—"}
-        </p>
-        {city && (
-          <p className="text-white/70 text-[10px] text-center uppercase tracking-wide leading-tight mt-1 px-1">
-            {city}
+    <div className={`flex flex-col rounded-xl overflow-hidden shadow border ${cardBorder}`}>
+
+      {/* TOP BANNER */}
+      <div className={`${bannerBg} px-4 py-3.5 flex items-center justify-between gap-4 select-none`}>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-white/50 text-2xl leading-none shrink-0">✈</span>
+          <div className="min-w-0">
+            <p className="text-white/50 text-[9px] font-black uppercase tracking-[0.22em]">Departure</p>
+            <p className="text-white text-[1.75rem] font-mono font-bold tabular-nums leading-none">
+              {time ?? "—"}
+            </p>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          {city && (
+            <p className="text-white/80 text-xs font-semibold uppercase tracking-wide leading-tight">
+              {city}
+            </p>
+          )}
+          <p className="text-white/25 text-[9px] font-bold tracking-wider mt-0.5">
+            RTM ──✈── HKG
           </p>
-        )}
-        <p className="mt-3 text-white/25 text-[9px] font-bold tracking-wider">
-          RTM ✈ HKG
-        </p>
+        </div>
       </div>
 
-      {/* Tear line with notches */}
-      <TearLine color={tearColor} />
+      {/* HORIZONTAL TEAR LINE */}
+      <HorizontalTearLine color={tearColor} bgColor="#f9fafb" />
 
-      {/* BOARDING BODY */}
-      <div className="flex-1 bg-white py-3.5 px-4 min-w-0">
+      {/* BODY — passenger list */}
+      <div className="bg-white px-4 py-3 space-y-2.5">
         {isMulti && (
-          <p className={`text-[10px] font-black uppercase tracking-widest mb-2.5 ${bannerColor}`}>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${groupLabel}`}>
             ✈ Depart together — coordinate travel
           </p>
         )}
-        <div className="space-y-2.5">
-          {group.map((p) => {
-            const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
-              ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
-              : false;
-            return (
-              <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? `rounded-lg ${selfBg} -mx-1 px-1.5 py-1` : ""}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-sm font-semibold ${p.isSelf ? selfName : "text-gray-900"}`}>
-                      {p.name}
-                      {p.isSelf && <span className={`ml-1 text-xs font-normal ${selfNote}`}>(you)</span>}
-                    </span>
-                    <SquadBadge category={p.teamCategory} />
-                    {isNearSelf && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
-                        Near you
-                      </span>
-                    )}
-                  </div>
-                  {p.departureNote && (
-                    <p className="text-xs text-gray-400 italic mt-0.5">"{p.departureNote}"</p>
-                  )}
-                </div>
-                {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
-              </div>
-            );
-          })}
-        </div>
+        {group.map((p) => {
+          const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
+            ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
+            : false;
+          return (
+            <PassengerRow
+              key={p.id}
+              p={p}
+              isNearSelf={isNearSelf}
+              selfBg={selfBg}
+              selfName={selfName}
+              selfNote={selfNote}
+              contactEl={!p.isSelf ? <ContactButton phone={p.phone} email={p.email} name={p.name} /> : null}
+            />
+          );
+        })}
       </div>
     </div>
   );
