@@ -96,80 +96,141 @@ function SquadBadge({ category }) {
   return null;
 }
 
-// A single player row inside the team arrivals timeline.
-function ArrivalRow({ p, isFirst, isLast, showGroupNudge, isNearSelf }) {
-  const isSelf = p.isSelf;
+// Boarding-pass card for one travel-window group (arrivals).
+function ArrivalBoardingPass({ group, selfArrivalTime }) {
+  const isMulti = group.length > 1;
+  const hasSelf = group.some((p) => p.isSelf);
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const time = formatTimeOnly(group[0].arrival);
+  const city = group[0].arrivalCity;
+
   return (
-    <li
-      className={`py-2.5 flex items-start gap-3 text-sm ${
-        isSelf ? "bg-green-50 -mx-4 px-4 rounded-lg" : isNearSelf ? "bg-sky-50/60 -mx-4 px-4 rounded-lg" : ""
-      } ${!isLast ? "border-b border-gray-50" : ""}`}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`font-semibold ${isSelf ? "text-green-800" : "text-gray-900"}`}>
-            {p.name}{isSelf && <span className="ml-1 text-xs font-normal text-green-600">(you)</span>}
-          </span>
-          <SquadBadge category={p.teamCategory} />
-          {isNearSelf && !isSelf && (
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
-              Near your arrival
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-xs text-gray-500 font-medium">
-            {formatTimeOnly(p.arrival)}
-            {p.arrivalCity && <span className="text-gray-400"> · {p.arrivalCity}</span>}
-          </span>
-          {p.travelNote && (
-            <span className="text-xs text-gray-600 italic">"{p.travelNote}"</span>
-          )}
+    <div className={`flex rounded-2xl overflow-hidden shadow-sm border ${
+      hasSelf ? "border-green-300" : isMulti ? "border-green-200" : "border-gray-200"
+    }`}>
+      {/* Left strip — time + city */}
+      <div className={`w-20 sm:w-24 flex flex-col items-center justify-center py-4 px-2 shrink-0 ${
+        hasSelf ? "bg-green-700" : isMulti ? "bg-green-600" : "bg-gray-400"
+      }`}>
+        <span className="text-white text-sm font-bold tabular-nums leading-tight">{time ?? "—"}</span>
+        {city && (
+          <span className="text-white/70 text-[10px] text-center leading-tight mt-1 uppercase tracking-wide">{city}</span>
+        )}
+        <span className="text-white/50 text-base mt-2 leading-none">✈</span>
+      </div>
+
+      {/* Perforated divider */}
+      <div className="relative flex flex-col items-center shrink-0 w-5 bg-gray-50">
+        <div className="absolute -top-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-b-full border-b border-x border-gray-200" />
+        <div className="flex-1 w-px border-l-2 border-dashed border-gray-200" />
+        <div className="absolute -bottom-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-t-full border-t border-x border-gray-200" />
+      </div>
+
+      {/* Right — passenger list */}
+      <div className="flex-1 bg-white py-3 px-3 min-w-0">
+        {isMulti && (
+          <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2">
+            ✈ Arrive together — coordinate travel
+          </p>
+        )}
+        <div className="space-y-2">
+          {group.map((p) => {
+            const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
+              ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
+              : false;
+            return (
+              <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? "rounded-lg bg-green-50 -mx-1 px-1 py-0.5" : ""}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-sm font-semibold ${p.isSelf ? "text-green-800" : "text-gray-900"}`}>
+                      {p.name}
+                      {p.isSelf && <span className="ml-1 text-xs font-normal text-green-600">(you)</span>}
+                    </span>
+                    <SquadBadge category={p.teamCategory} />
+                    {isNearSelf && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">Near you</span>
+                    )}
+                  </div>
+                  {p.travelNote && (
+                    <p className="text-xs text-gray-500 italic mt-0.5">"{p.travelNote}"</p>
+                  )}
+                </div>
+                {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
+              </div>
+            );
+          })}
         </div>
       </div>
-      {!isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
-      {showGroupNudge && isLast && isSelf && (
-        <span className="shrink-0 text-xs text-green-700 font-medium self-center whitespace-nowrap">
-          Travel together →
-        </span>
-      )}
-    </li>
+    </div>
   );
 }
 
-// A single player row inside the team departures timeline.
-function DepartureRow({ p, isLast, isNearSelf }) {
-  const isSelf = p.isSelf;
+// Boarding-pass card for one travel-window group (departures).
+function DepartureBoardingPass({ group, selfDepartureTime }) {
+  const isMulti = group.length > 1;
+  const hasSelf = group.some((p) => p.isSelf);
+  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+  const time = formatTimeOnly(group[0].departure);
+  const city = group[0].departureCity;
+
   return (
-    <li
-      className={`py-2.5 flex items-start gap-3 text-sm ${
-        isSelf ? "bg-blue-50 -mx-4 px-4 rounded-lg" : isNearSelf ? "bg-sky-50/60 -mx-4 px-4 rounded-lg" : ""
-      } ${!isLast ? "border-b border-gray-50" : ""}`}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`font-semibold ${isSelf ? "text-blue-800" : "text-gray-900"}`}>
-            {p.name}{isSelf && <span className="ml-1 text-xs font-normal text-blue-600">(you)</span>}
-          </span>
-          <SquadBadge category={p.teamCategory} />
-          {isNearSelf && !isSelf && (
-            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
-              Near your departure
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-xs text-gray-500 font-medium">
-            {formatTimeOnly(p.departure)}
-            {p.departureCity && <span className="text-gray-400"> · {p.departureCity}</span>}
-          </span>
-          {p.departureNote && (
-            <span className="text-xs text-gray-600 italic">"{p.departureNote}"</span>
-          )}
+    <div className={`flex rounded-2xl overflow-hidden shadow-sm border ${
+      hasSelf ? "border-blue-300" : isMulti ? "border-blue-200" : "border-gray-200"
+    }`}>
+      {/* Left strip — time + city */}
+      <div className={`w-20 sm:w-24 flex flex-col items-center justify-center py-4 px-2 shrink-0 ${
+        hasSelf ? "bg-blue-700" : isMulti ? "bg-blue-600" : "bg-gray-400"
+      }`}>
+        <span className="text-white text-sm font-bold tabular-nums leading-tight">{time ?? "—"}</span>
+        {city && (
+          <span className="text-white/70 text-[10px] text-center leading-tight mt-1 uppercase tracking-wide">{city}</span>
+        )}
+        <span className="text-white/50 text-base mt-2 leading-none">✈</span>
+      </div>
+
+      {/* Perforated divider */}
+      <div className="relative flex flex-col items-center shrink-0 w-5 bg-gray-50">
+        <div className="absolute -top-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-b-full border-b border-x border-gray-200" />
+        <div className="flex-1 w-px border-l-2 border-dashed border-gray-200" />
+        <div className="absolute -bottom-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-t-full border-t border-x border-gray-200" />
+      </div>
+
+      {/* Right — passenger list */}
+      <div className="flex-1 bg-white py-3 px-3 min-w-0">
+        {isMulti && (
+          <p className="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-2">
+            ✈ Depart together — coordinate travel
+          </p>
+        )}
+        <div className="space-y-2">
+          {group.map((p) => {
+            const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
+              ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
+              : false;
+            return (
+              <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? "rounded-lg bg-blue-50 -mx-1 px-1 py-0.5" : ""}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`text-sm font-semibold ${p.isSelf ? "text-blue-800" : "text-gray-900"}`}>
+                      {p.name}
+                      {p.isSelf && <span className="ml-1 text-xs font-normal text-blue-600">(you)</span>}
+                    </span>
+                    <SquadBadge category={p.teamCategory} />
+                    {isNearSelf && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">Near you</span>
+                    )}
+                  </div>
+                  {p.departureNote && (
+                    <p className="text-xs text-gray-500 italic mt-0.5">"{p.departureNote}"</p>
+                  )}
+                </div>
+                {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
+              </div>
+            );
+          })}
         </div>
       </div>
-      {!isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
-    </li>
+    </div>
   );
 }
 
@@ -335,7 +396,7 @@ function TravelNoteEditor({ initial, playerId, token, onSaved }) {
   );
 }
 
-// Day-by-day team arrivals timeline.
+// Day-by-day team arrivals timeline — boarding pass style, upcoming dates only.
 function TeamArrivalsTimeline({ allArrivals, selfArrivalTime }) {
   if (!allArrivals || allArrivals.length === 0) {
     return (
@@ -345,25 +406,25 @@ function TeamArrivalsTimeline({ allArrivals, selfArrivalTime }) {
     );
   }
 
-  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
-  // Group by calendar day.
+  const todayKey = new Date().toISOString().slice(0, 10);
   const days = [];
   const byDay = {};
   for (const p of allArrivals) {
     const dk = dayKey(p.arrival);
-    if (!dk) continue;
+    if (!dk || dk < todayKey) continue;
     if (!byDay[dk]) { byDay[dk] = []; days.push(dk); }
     byDay[dk].push(p);
   }
   days.sort();
 
+  if (days.length === 0) {
+    return <p className="text-sm text-gray-500">No upcoming arrivals recorded yet.</p>;
+  }
+
   return (
     <div className="space-y-6">
       {days.map((dk) => {
         const players = byDay[dk].slice().sort((a, b) => (a.arrival || "").localeCompare(b.arrival || ""));
-
-        // Identify travel-window groups: consecutive players within 60 min of the group's first.
         const groups = [];
         let currentGroup = [];
         for (const p of players) {
@@ -378,38 +439,10 @@ function TeamArrivalsTimeline({ allArrivals, selfArrivalTime }) {
 
         return (
           <div key={dk}>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">{dayHeading(dk)}</p>
-            <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{dayHeading(dk)}</p>
+            <div className="space-y-3">
               {groups.map((group, gi) => (
-                <div
-                  key={gi}
-                  className={`bg-white rounded-xl border ${
-                    group.length > 1 ? "border-green-100" : "border-gray-100"
-                  } px-4 py-1 shadow-sm`}
-                >
-                  {group.length > 1 && (
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-green-600 pt-2 -mb-1">
-                      Arrive within an hour · coordinate travel
-                    </p>
-                  )}
-                  <ul>
-                    {group.map((p, i) => {
-                      const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
-                        ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
-                        : false;
-                      return (
-                        <ArrivalRow
-                          key={p.id}
-                          p={p}
-                          isFirst={i === 0}
-                          isLast={i === group.length - 1}
-                          showGroupNudge={false}
-                          isNearSelf={isNearSelf}
-                        />
-                      );
-                    })}
-                  </ul>
-                </div>
+                <ArrivalBoardingPass key={gi} group={group} selfArrivalTime={selfArrivalTime} />
               ))}
             </div>
           </div>
@@ -419,7 +452,7 @@ function TeamArrivalsTimeline({ allArrivals, selfArrivalTime }) {
   );
 }
 
-// Day-by-day team departures timeline.
+// Day-by-day team departures timeline — boarding pass style, upcoming dates only.
 function TeamDeparturesTimeline({ allDepartures, selfDepartureTime }) {
   if (!allDepartures || allDepartures.length === 0) {
     return (
@@ -429,25 +462,25 @@ function TeamDeparturesTimeline({ allDepartures, selfDepartureTime }) {
     );
   }
 
-  const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-
-  // Group by calendar day.
+  const todayKey = new Date().toISOString().slice(0, 10);
   const days = [];
   const byDay = {};
   for (const p of allDepartures) {
     const dk = dayKey(p.departure);
-    if (!dk) continue;
+    if (!dk || dk < todayKey) continue;
     if (!byDay[dk]) { byDay[dk] = []; days.push(dk); }
     byDay[dk].push(p);
   }
   days.sort();
 
+  if (days.length === 0) {
+    return <p className="text-sm text-gray-500">No upcoming departures recorded yet.</p>;
+  }
+
   return (
     <div className="space-y-6">
       {days.map((dk) => {
         const players = byDay[dk].slice().sort((a, b) => (a.departure || "").localeCompare(b.departure || ""));
-
-        // Identify travel-window groups: consecutive players departing within 60 min of the group's first.
         const groups = [];
         let currentGroup = [];
         for (const p of players) {
@@ -462,36 +495,10 @@ function TeamDeparturesTimeline({ allDepartures, selfDepartureTime }) {
 
         return (
           <div key={dk}>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">{dayHeading(dk)}</p>
-            <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{dayHeading(dk)}</p>
+            <div className="space-y-3">
               {groups.map((group, gi) => (
-                <div
-                  key={gi}
-                  className={`bg-white rounded-xl border ${
-                    group.length > 1 ? "border-blue-100" : "border-gray-100"
-                  } px-4 py-1 shadow-sm`}
-                >
-                  {group.length > 1 && (
-                    <p className="text-[10px] font-bold uppercase tracking-wide text-blue-600 pt-2 -mb-1">
-                      Depart within an hour · coordinate travel
-                    </p>
-                  )}
-                  <ul>
-                    {group.map((p, i) => {
-                      const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
-                        ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
-                        : false;
-                      return (
-                        <DepartureRow
-                          key={p.id}
-                          p={p}
-                          isLast={i === group.length - 1}
-                          isNearSelf={isNearSelf}
-                        />
-                      );
-                    })}
-                  </ul>
-                </div>
+                <DepartureBoardingPass key={gi} group={group} selfDepartureTime={selfDepartureTime} />
               ))}
             </div>
           </div>
