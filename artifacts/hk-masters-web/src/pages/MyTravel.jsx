@@ -97,70 +97,87 @@ function SquadBadge({ category }) {
 }
 
 // Boarding-pass card for one travel-window group (arrivals).
+// Uses a "punched notch" tear-line: two bg-gray-50 circles positioned at the
+// fold point outside the card's overflow-hidden boundary, creating a real
+// boarding-pass cutout illusion.
 function ArrivalBoardingPass({ group, selfArrivalTime }) {
   const isMulti = group.length > 1;
   const hasSelf = group.some((p) => p.isSelf);
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
   const time = formatTimeOnly(group[0].arrival);
   const city = group[0].arrivalCity;
+  const stubBg   = hasSelf ? "bg-green-800"  : isMulti ? "bg-green-700"  : "bg-slate-500";
+  const cardBorder = hasSelf ? "border-green-300" : isMulti ? "border-green-200" : "border-gray-200";
+  const bannerColor = hasSelf ? "text-green-800" : isMulti ? "text-green-700" : "text-slate-500";
+  const selfBg   = "bg-green-50";
+  const selfName = "text-green-800";
+  const selfNote = "text-green-600";
 
   return (
-    <div className={`flex rounded-2xl overflow-hidden shadow-sm border ${
-      hasSelf ? "border-green-300" : isMulti ? "border-green-200" : "border-gray-200"
-    }`}>
-      {/* Left strip — time + city */}
-      <div className={`w-20 sm:w-24 flex flex-col items-center justify-center py-4 px-2 shrink-0 ${
-        hasSelf ? "bg-green-700" : isMulti ? "bg-green-600" : "bg-gray-400"
-      }`}>
-        <span className="text-white text-sm font-bold tabular-nums leading-tight">{time ?? "—"}</span>
-        {city && (
-          <span className="text-white/70 text-[10px] text-center leading-tight mt-1 uppercase tracking-wide">{city}</span>
-        )}
-        <span className="text-white/50 text-base mt-2 leading-none">✈</span>
-      </div>
-
-      {/* Perforated divider */}
-      <div className="relative flex flex-col items-center shrink-0 w-5 bg-gray-50">
-        <div className="absolute -top-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-b-full border-b border-x border-gray-200" />
-        <div className="flex-1 w-px border-l-2 border-dashed border-gray-200" />
-        <div className="absolute -bottom-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-t-full border-t border-x border-gray-200" />
-      </div>
-
-      {/* Right — passenger list */}
-      <div className="flex-1 bg-white py-3 px-3 min-w-0">
-        {isMulti && (
-          <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-2">
-            ✈ Arrive together — coordinate travel
+    // relative wrapper lets notch circles overflow the card edge
+    <div className="relative">
+      <div className={`flex rounded-xl overflow-hidden shadow border ${cardBorder}`}>
+        {/* TICKET STUB — left spine */}
+        <div className={`w-28 shrink-0 ${stubBg} flex flex-col items-center justify-center py-5 px-3 gap-0.5`}>
+          <p className="text-white/50 text-[9px] font-black uppercase tracking-[0.18em]">Arrival</p>
+          <p className="text-white text-[1.6rem] font-mono font-bold tabular-nums leading-none tracking-tight">
+            {time ?? "—"}
           </p>
-        )}
-        <div className="space-y-2">
-          {group.map((p) => {
-            const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
-              ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
-              : false;
-            return (
-              <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? "rounded-lg bg-green-50 -mx-1 px-1 py-0.5" : ""}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-sm font-semibold ${p.isSelf ? "text-green-800" : "text-gray-900"}`}>
-                      {p.name}
-                      {p.isSelf && <span className="ml-1 text-xs font-normal text-green-600">(you)</span>}
-                    </span>
-                    <SquadBadge category={p.teamCategory} />
-                    {isNearSelf && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">Near you</span>
+          {city && (
+            <p className="text-white/70 text-[10px] text-center uppercase tracking-wide leading-tight mt-1 px-1">
+              {city}
+            </p>
+          )}
+          <div className="mt-3 flex items-center gap-0.5 text-white/30 text-[9px] font-bold tracking-wider">
+            <span>HKG</span><span className="font-normal mx-0.5">──✈──</span><span>RTM</span>
+          </div>
+        </div>
+
+        {/* Dashed tear line (between notch circles) */}
+        <div className="shrink-0 w-px my-4 border-l-2 border-dashed border-gray-300" />
+
+        {/* BOARDING BODY — passenger list */}
+        <div className="flex-1 bg-white py-3.5 px-4 min-w-0">
+          {isMulti && (
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-2.5 ${bannerColor}`}>
+              ✈ Arrive together — coordinate travel
+            </p>
+          )}
+          <div className="space-y-2.5">
+            {group.map((p) => {
+              const isNearSelf = selfArrivalTime != null && !p.isSelf && p.arrival
+                ? Math.abs(new Date(p.arrival).getTime() - selfArrivalTime) <= TWO_HOURS_MS
+                : false;
+              return (
+                <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? `rounded-lg ${selfBg} -mx-1 px-1.5 py-1` : ""}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-sm font-semibold ${p.isSelf ? selfName : "text-gray-900"}`}>
+                        {p.name}
+                        {p.isSelf && <span className={`ml-1 text-xs font-normal ${selfNote}`}>(you)</span>}
+                      </span>
+                      <SquadBadge category={p.teamCategory} />
+                      {isNearSelf && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
+                          Near you
+                        </span>
+                      )}
+                    </div>
+                    {p.travelNote && (
+                      <p className="text-xs text-gray-400 italic mt-0.5">"{p.travelNote}"</p>
                     )}
                   </div>
-                  {p.travelNote && (
-                    <p className="text-xs text-gray-500 italic mt-0.5">"{p.travelNote}"</p>
-                  )}
+                  {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
                 </div>
-                {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Punched notch circles — positioned on the tear line, colored to match page bg */}
+      <div className="absolute top-0 left-28 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-50 border border-gray-300 z-10 shadow-inner" />
+      <div className="absolute bottom-0 left-28 -translate-x-1/2 translate-y-1/2 w-5 h-5 rounded-full bg-gray-50 border border-gray-300 z-10 shadow-inner" />
     </div>
   );
 }
@@ -172,64 +189,77 @@ function DepartureBoardingPass({ group, selfDepartureTime }) {
   const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
   const time = formatTimeOnly(group[0].departure);
   const city = group[0].departureCity;
+  const stubBg    = hasSelf ? "bg-blue-800"   : isMulti ? "bg-blue-700"   : "bg-slate-500";
+  const cardBorder = hasSelf ? "border-blue-300" : isMulti ? "border-blue-200" : "border-gray-200";
+  const bannerColor = hasSelf ? "text-blue-800" : isMulti ? "text-blue-700" : "text-slate-500";
+  const selfBg    = "bg-blue-50";
+  const selfName  = "text-blue-800";
+  const selfNote  = "text-blue-600";
 
   return (
-    <div className={`flex rounded-2xl overflow-hidden shadow-sm border ${
-      hasSelf ? "border-blue-300" : isMulti ? "border-blue-200" : "border-gray-200"
-    }`}>
-      {/* Left strip — time + city */}
-      <div className={`w-20 sm:w-24 flex flex-col items-center justify-center py-4 px-2 shrink-0 ${
-        hasSelf ? "bg-blue-700" : isMulti ? "bg-blue-600" : "bg-gray-400"
-      }`}>
-        <span className="text-white text-sm font-bold tabular-nums leading-tight">{time ?? "—"}</span>
-        {city && (
-          <span className="text-white/70 text-[10px] text-center leading-tight mt-1 uppercase tracking-wide">{city}</span>
-        )}
-        <span className="text-white/50 text-base mt-2 leading-none">✈</span>
-      </div>
-
-      {/* Perforated divider */}
-      <div className="relative flex flex-col items-center shrink-0 w-5 bg-gray-50">
-        <div className="absolute -top-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-b-full border-b border-x border-gray-200" />
-        <div className="flex-1 w-px border-l-2 border-dashed border-gray-200" />
-        <div className="absolute -bottom-px left-1/2 -translate-x-1/2 w-3 h-1.5 bg-gray-50 rounded-t-full border-t border-x border-gray-200" />
-      </div>
-
-      {/* Right — passenger list */}
-      <div className="flex-1 bg-white py-3 px-3 min-w-0">
-        {isMulti && (
-          <p className="text-[10px] font-bold text-blue-700 uppercase tracking-widest mb-2">
-            ✈ Depart together — coordinate travel
+    <div className="relative">
+      <div className={`flex rounded-xl overflow-hidden shadow border ${cardBorder}`}>
+        {/* TICKET STUB */}
+        <div className={`w-28 shrink-0 ${stubBg} flex flex-col items-center justify-center py-5 px-3 gap-0.5`}>
+          <p className="text-white/50 text-[9px] font-black uppercase tracking-[0.18em]">Departure</p>
+          <p className="text-white text-[1.6rem] font-mono font-bold tabular-nums leading-none tracking-tight">
+            {time ?? "—"}
           </p>
-        )}
-        <div className="space-y-2">
-          {group.map((p) => {
-            const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
-              ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
-              : false;
-            return (
-              <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? "rounded-lg bg-blue-50 -mx-1 px-1 py-0.5" : ""}`}>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className={`text-sm font-semibold ${p.isSelf ? "text-blue-800" : "text-gray-900"}`}>
-                      {p.name}
-                      {p.isSelf && <span className="ml-1 text-xs font-normal text-blue-600">(you)</span>}
-                    </span>
-                    <SquadBadge category={p.teamCategory} />
-                    {isNearSelf && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">Near you</span>
+          {city && (
+            <p className="text-white/70 text-[10px] text-center uppercase tracking-wide leading-tight mt-1 px-1">
+              {city}
+            </p>
+          )}
+          <div className="mt-3 flex items-center gap-0.5 text-white/30 text-[9px] font-bold tracking-wider">
+            <span>RTM</span><span className="font-normal mx-0.5">──✈──</span><span>HKG</span>
+          </div>
+        </div>
+
+        {/* Dashed tear line */}
+        <div className="shrink-0 w-px my-4 border-l-2 border-dashed border-gray-300" />
+
+        {/* BOARDING BODY */}
+        <div className="flex-1 bg-white py-3.5 px-4 min-w-0">
+          {isMulti && (
+            <p className={`text-[10px] font-black uppercase tracking-widest mb-2.5 ${bannerColor}`}>
+              ✈ Depart together — coordinate travel
+            </p>
+          )}
+          <div className="space-y-2.5">
+            {group.map((p) => {
+              const isNearSelf = selfDepartureTime != null && !p.isSelf && p.departure
+                ? Math.abs(new Date(p.departure).getTime() - selfDepartureTime) <= TWO_HOURS_MS
+                : false;
+              return (
+                <div key={p.id} className={`flex items-start gap-2 ${p.isSelf ? `rounded-lg ${selfBg} -mx-1 px-1.5 py-1` : ""}`}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-sm font-semibold ${p.isSelf ? selfName : "text-gray-900"}`}>
+                        {p.name}
+                        {p.isSelf && <span className={`ml-1 text-xs font-normal ${selfNote}`}>(you)</span>}
+                      </span>
+                      <SquadBadge category={p.teamCategory} />
+                      {isNearSelf && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-700 shrink-0">
+                          Near you
+                        </span>
+                      )}
+                    </div>
+                    {p.departureNote && (
+                      <p className="text-xs text-gray-400 italic mt-0.5">"{p.departureNote}"</p>
                     )}
                   </div>
-                  {p.departureNote && (
-                    <p className="text-xs text-gray-500 italic mt-0.5">"{p.departureNote}"</p>
-                  )}
+                  {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
                 </div>
-                {!p.isSelf && <ContactButton phone={p.phone} email={p.email} name={p.name} />}
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      {/* Punched notch circles */}
+      <div className="absolute top-0 left-28 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-gray-50 border border-gray-300 z-10 shadow-inner" />
+      <div className="absolute bottom-0 left-28 -translate-x-1/2 translate-y-1/2 w-5 h-5 rounded-full bg-gray-50 border border-gray-300 z-10 shadow-inner" />
     </div>
   );
 }
