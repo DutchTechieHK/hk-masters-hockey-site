@@ -66,6 +66,21 @@ function setPassportAck(playerId: number) {
     localStorage.setItem(PASSPORT_ACK_KEY, JSON.stringify(ack))
   } catch { /* noop */ }
 }
+
+const HKID_ACK_KEY = "hkm_hkid_ack"
+function getHkidAck(): Record<number, number> {
+  try {
+    const raw = localStorage.getItem(HKID_ACK_KEY)
+    return raw ? (JSON.parse(raw) as Record<number, number>) : {}
+  } catch { return {} }
+}
+function setHkidAck(playerId: number) {
+  try {
+    const ack = getHkidAck()
+    ack[playerId] = Date.now()
+    localStorage.setItem(HKID_ACK_KEY, JSON.stringify(ack))
+  } catch { /* noop */ }
+}
 async function adminLogin(password: string): Promise<string> {
   const res = await fetch("/api/admin/auth", {
     method: "POST",
@@ -186,6 +201,7 @@ export default function Players() {
     return "all"
   })
   const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
+  const [hkidAck, setHkidAckState] = useState<Record<number, number>>(() => getHkidAck())
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
   const [insuranceReminderModalOpen, setInsuranceReminderModalOpen] = useState(false)
   const [insuranceReminderSending, setInsuranceReminderSending] = useState(false)
@@ -193,6 +209,11 @@ export default function Players() {
   const acknowledgePassport = (playerId: number) => {
     setPassportAck(playerId)
     setPassportAckState(prev => ({ ...prev, [playerId]: Date.now() }))
+  }
+
+  const acknowledgeHkid = (playerId: number) => {
+    setHkidAck(playerId)
+    setHkidAckState(prev => ({ ...prev, [playerId]: Date.now() }))
   }
 
   const getPassportBadge = (player: { id: number; passportCopyUploadedAt?: string | null; passportCopyUploadedIsUpdate?: boolean | null }): "new" | "updated" | null => {
@@ -203,8 +224,17 @@ export default function Players() {
     return player.passportCopyUploadedIsUpdate ? "updated" : "new"
   }
 
+  const getHkidBadge = (player: { id: number; hkidCopyUploadedAt?: string | null; hkidCopyUploadedIsUpdate?: boolean | null }): "new" | "updated" | null => {
+    if (!player.hkidCopyUploadedAt) return null
+    const uploadedMs = new Date(player.hkidCopyUploadedAt).getTime()
+    const ackedMs = hkidAck[player.id] ?? 0
+    if (uploadedMs <= ackedMs) return null
+    return player.hkidCopyUploadedIsUpdate ? "updated" : "new"
+  }
+
   useEffect(() => {
     setPassportAckState(getPassportAck())
+    setHkidAckState(getHkidAck())
   }, [])
 
   const { data: teams = [] } = useListTeams()
@@ -328,6 +358,7 @@ export default function Players() {
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
     if (player.passportCopyUploadedAt) acknowledgePassport(player.id)
+    if (player.hkidCopyUploadedAt) acknowledgeHkid(player.id)
     reset({
       teamId: player.teamId,
       name: player.name,
@@ -488,21 +519,6 @@ export default function Players() {
   const [uploadingPassportFor, setUploadingPassportFor] = useState<number | null>(null)
   const [uploadingHkidFor, setUploadingHkidFor] = useState<number | null>(null)
 
-  const HKID_ACK_KEY = "hkm_hkid_ack"
-  const getHkidAck = (): Record<number, number> => {
-    try {
-      const raw = localStorage.getItem(HKID_ACK_KEY)
-      return raw ? (JSON.parse(raw) as Record<number, number>) : {}
-    } catch { return {} }
-  }
-  const setHkidAck = (playerId: number) => {
-    try {
-      const ack = getHkidAck()
-      ack[playerId] = Date.now()
-      localStorage.setItem(HKID_ACK_KEY, JSON.stringify(ack))
-    } catch { /* noop */ }
-  }
-
   const handleAdminUploadHkid = (player: Player) => {
     if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
       toast({ title: "Upload service not ready yet — try again in a moment", variant: "destructive" })
@@ -555,7 +571,7 @@ export default function Players() {
             },
           })
           queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-          setHkidAck(player.id)
+          acknowledgeHkid(player.id)
           if (editingPlayer && editingPlayer.id === player.id) {
             setEditingPlayer({ ...editingPlayer, hkidCopyUrl: url, hkidCopyReviewed: true })
             setValue("hkidCopyReviewed" as any, true, { shouldDirty: false })
@@ -862,8 +878,15 @@ export default function Players() {
                                 const badge = getPassportBadge(player)
                                 if (!badge) return null
                                 return badge === "updated"
-                                  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200 leading-none">Updated</span>
-                                  : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200 leading-none">New</span>
+                                  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200 leading-none">Passport Updated</span>
+                                  : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200 leading-none">Passport New</span>
+                              })()}
+                              {(() => {
+                                const badge = getHkidBadge(player)
+                                if (!badge) return null
+                                return badge === "updated"
+                                  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200 leading-none">HKID Updated</span>
+                                  : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200 leading-none">HKID New</span>
                               })()}
                             </div>
                             <div className="text-muted-foreground text-xs sm:hidden">{player.teamName}</div>

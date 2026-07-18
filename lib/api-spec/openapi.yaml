@@ -1194,6 +1194,12 @@ components:
         hkidCopyReviewed:
           type: boolean
           nullable: true
+        hkidCopyUploadedAt:
+          type: string
+          nullable: true
+        hkidCopyUploadedIsUpdate:
+          type: boolean
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:

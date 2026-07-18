@@ -26,6 +26,8 @@ export interface Player {
   passportCopyUploadedIsUpdate?: boolean | null;
   hkidCopyUrl?: string | null;
   hkidCopyReviewed?: boolean | null;
+  hkidCopyUploadedAt?: string | null;
+  hkidCopyUploadedIsUpdate?: boolean | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
