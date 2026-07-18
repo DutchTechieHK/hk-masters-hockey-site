@@ -28,7 +28,7 @@ type ImportResult = { rowNum: number; title: string; ok: boolean; error?: string
 
 const ROTTERDAM_TZ = "Europe/Amsterdam"
 const HK_TZ = "Asia/Hong_Kong"
-const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time"]
+const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time", "warmup", "game"]
 
 const TEMPLATE_CSV = `kind,title,starts_at,ends_at,location,description,team,is_public
 training,Wednesday Training,2026-04-02 18:00,2026-04-02 20:00,HKFC Astro,,MO40,false
@@ -256,7 +256,7 @@ function validateRows(raw: string[][], teams: Team[], forceHkTz = false): Parsed
     const errors: string[] = []
 
     const kindNorm = kind.toLowerCase().trim()
-    if (!ALLOWED_KINDS.includes(kindNorm)) errors.push(`kind must be training, meeting, social, physio, team_dinner, dinner or free_time (got "${kind}")`)
+    if (!ALLOWED_KINDS.includes(kindNorm)) errors.push(`kind must be training, meeting, social, physio, team_dinner, dinner, free_time, warmup or game (got "${kind}")`)
 
     const titleTrim = title.trim()
     if (!titleTrim) errors.push("title is required")

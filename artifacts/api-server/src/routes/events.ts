@@ -19,7 +19,7 @@ async function requireAdminOrPlayer(req: Request, res: Response, next: NextFunct
   return requirePlayerSession(req, res, next);
 }
 
-const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time"] as const;
+const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time", "warmup", "game"] as const;
 type EventKind = typeof ALLOWED_KINDS[number];
 
 type RsvpCounts = { yes: number; no: number; maybe: number };
@@ -66,7 +66,7 @@ function parseBody(body: unknown): {
   const b = body as Record<string, unknown>;
   const kind = String(b.kind ?? "");
   if (!ALLOWED_KINDS.includes(kind as EventKind)) {
-    return { error: "kind must be training, meeting, social, physio, team_dinner, dinner or free_time" };
+    return { error: "kind must be training, meeting, social, physio, team_dinner, dinner, free_time, warmup or game" };
   }
   const title = typeof b.title === "string" ? b.title.trim() : "";
   if (!title) return { error: "title required" };

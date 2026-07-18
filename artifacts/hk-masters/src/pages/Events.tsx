@@ -16,7 +16,7 @@ import ProgrammeDayPlanner from "@/components/ui/ProgrammeDayPlanner"
 
 type EventRow = {
   id: number
-  kind: "training" | "meeting" | "social" | "physio" | "team_dinner" | "dinner" | "free_time"
+  kind: "training" | "meeting" | "social" | "physio" | "team_dinner" | "dinner" | "free_time" | "warmup" | "game"
   title: string
   startsAt: string
   endsAt: string | null
@@ -47,7 +47,7 @@ type RsvpRoster = {
 }
 
 type FormState = {
-  kind: "training" | "meeting" | "social" | "physio" | "team_dinner" | "dinner" | "free_time"
+  kind: "training" | "meeting" | "social" | "physio" | "team_dinner" | "dinner" | "free_time" | "warmup" | "game"
   title: string
   startsAt: string
   endsAt: string
