@@ -1173,7 +1173,7 @@ export default function Players() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Room Sharing With (Player Name)</label>
+              <label className="text-sm font-semibold">Room Sharing With</label>
               <Input {...register("roomSharingWith")} placeholder="Preferred roommate" />
             </div>
             <div className="space-y-2 md:col-span-2">
