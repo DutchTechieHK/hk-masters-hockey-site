@@ -159,6 +159,17 @@ export const IDENTITY_COLUMNS: ReportColumn[] = [
   { key: "nationality", header: "Nationality", value: p => v(p.nationality) },
   { key: "dateOfBirth", header: "Date of Birth", value: p => v(p.dateOfBirth) },
   { key: "hkidNumber", header: "HK ID Card Number", value: p => v(p.hkidNumber) },
+  {
+    key: "hkidCopyUrl",
+    header: "HKID Copy",
+    value: p => (p.hkidCopyUrl ? "Uploaded" : "Missing"),
+    pdfStatus: p => (p.hkidCopyUrl ? "ok" : "missing"),
+  },
+  {
+    key: "hkidCopyReviewed",
+    header: "HKID Copy Reviewed",
+    value: p => (p.hkidCopyReviewed ? "Yes" : "No"),
+  },
   { key: "passportNumber", header: "Passport Number", value: p => v(p.passportNumber) },
   { key: "passportExpiry", header: "Passport Expiry", value: p => v(p.passportExpiry) },
   {
@@ -166,6 +177,17 @@ export const IDENTITY_COLUMNS: ReportColumn[] = [
     header: "Passport Status",
     value: p => PASSPORT_STATUS_LABEL[passportStatus(p.passportExpiry)],
     pdfStatus: p => passportStatus(p.passportExpiry),
+  },
+  {
+    key: "passportCopyUrl",
+    header: "Passport Copy",
+    value: p => (p.passportCopyUrl ? "Uploaded" : "Missing"),
+    pdfStatus: p => (p.passportCopyUrl ? "ok" : "missing"),
+  },
+  {
+    key: "passportCopyReviewed",
+    header: "Passport Copy Reviewed",
+    value: p => (p.passportCopyReviewed ? "Yes" : "No"),
   },
 ]
 
@@ -235,6 +257,28 @@ export const ALL_REPORT_COLUMNS: ReportColumn[] = [
     header: "Passport Status",
     value: p => PASSPORT_STATUS_LABEL[passportStatus(p.passportExpiry)],
     pdfStatus: p => passportStatus(p.passportExpiry),
+  },
+  {
+    key: "passportCopyUrl",
+    header: "Passport Copy",
+    value: p => (p.passportCopyUrl ? "Uploaded" : "Missing"),
+    pdfStatus: p => (p.passportCopyUrl ? "ok" : "missing"),
+  },
+  {
+    key: "passportCopyReviewed",
+    header: "Passport Copy Reviewed",
+    value: p => (p.passportCopyReviewed ? "Yes" : "No"),
+  },
+  {
+    key: "hkidCopyUrl",
+    header: "HKID Copy",
+    value: p => (p.hkidCopyUrl ? "Uploaded" : "Missing"),
+    pdfStatus: p => (p.hkidCopyUrl ? "ok" : "missing"),
+  },
+  {
+    key: "hkidCopyReviewed",
+    header: "HKID Copy Reviewed",
+    value: p => (p.hkidCopyReviewed ? "Yes" : "No"),
   },
   { key: "emergencyContactName", header: "Emergency Contact", value: p => v(p.emergencyContactName) },
   { key: "emergencyContactPhone", header: "Emergency Contact Phone", value: p => v(p.emergencyContactPhone) },
