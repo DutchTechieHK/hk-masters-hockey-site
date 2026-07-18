@@ -28,6 +28,7 @@ registerRoute(
     denylist: [
       /^\/api(?:\/|$)/,        // API calls
       /^\/admin(?:\/|$)/,      // Admin portal (separate SPA)
+      /^\/hk-masters(?:\/|$)/,  // Admin app (path-routed SPA)
       /^\/admin-video-series(?:\/|$)/,  // Admin tutorial video artifact
       /^\/admin-tutorial-videos(?:\/|$)/,  // Admin tutorial video artifact
       /^\/pwa-install-video(?:\/|$)/,  // Video artifact
