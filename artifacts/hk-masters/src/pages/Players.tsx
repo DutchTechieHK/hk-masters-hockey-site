@@ -672,6 +672,25 @@ export default function Players() {
     }
   }
 
+  const handleToggleHkidReviewed = async (player: Player) => {
+    try {
+      await updateMutation.mutateAsync({
+        id: player.id,
+        data: {
+          name: player.name,
+          teamId: player.teamId,
+          email: player.email,
+          feePaid: player.feePaid,
+          hkidCopyReviewed: !player.hkidCopyReviewed,
+        },
+      })
+      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+      toast({ title: player.hkidCopyReviewed ? "HKID marked as not reviewed" : "HKID marked as reviewed" })
+    } catch {
+      toast({ title: "Failed to update HKID review status", variant: "destructive" })
+    }
+  }
+
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this player?")) return
     try {
@@ -1008,6 +1027,34 @@ export default function Players() {
                               {player.passportCopyReviewed
                                 ? <><CheckCircle className="w-3 h-3" /> Reviewed</>
                                 : <><Clock className="w-3 h-3" /> Unreviewed</>
+                              }
+                            </button>
+                          </div>
+                        )}
+                        {player.hkidCopyUrl && (
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            <a
+                              href={cloudinaryViewUrl(player.hkidCopyUrl)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                              onClick={(e) => { e.stopPropagation(); acknowledgeHkid(player.id) }}
+                            >
+                              <LinkIcon className="w-3 h-3" />
+                              View HKID
+                            </a>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleToggleHkidReviewed(player) }}
+                              title={player.hkidCopyReviewed ? "HKID reviewed — click to unmark" : "HKID not yet reviewed — click to mark as reviewed"}
+                              className={`inline-flex items-center gap-1 text-xs font-medium rounded px-1.5 py-0.5 border transition-colors ${
+                                player.hkidCopyReviewed
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                  : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                              }`}
+                            >
+                              {player.hkidCopyReviewed
+                                ? <><CheckCircle className="w-3 h-3" /> HKID Rev.</>
+                                : <><Clock className="w-3 h-3" /> HKID Unrev.</>
                               }
                             </button>
                           </div>
