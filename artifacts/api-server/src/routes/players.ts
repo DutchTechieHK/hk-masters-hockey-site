@@ -336,12 +336,25 @@ router.patch("/self/:token", async (req, res) => {
     });
   }
 
-  if (updatedFields.length > 0) {
+  const changedFields = updatedFields
+    .filter(f => f !== "passportCopyUrl")
+    .map(f => ({
+      key: f,
+      oldValue: (existing as Record<string, unknown>)[f] ?? null,
+      newValue: updates[f] ?? null,
+    }))
+    .filter(({ oldValue, newValue }) => {
+      const oldStr = (oldValue === null || oldValue === undefined || oldValue === "") ? "" : String(oldValue);
+      const newStr = (newValue === null || newValue === undefined || newValue === "") ? "" : String(newValue);
+      return oldStr !== newStr;
+    });
+
+  if (changedFields.length > 0) {
     sendProfileUpdateNotificationEmail({
       playerName: updated.name,
       playerEmail: updated.email,
       teamName: team?.name ?? "Unknown Team",
-      updatedFields,
+      changedFields,
     }).catch((err) => {
       console.error("[profile-update-notify] Failed to send notification email:", err);
     });

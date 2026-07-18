@@ -5,7 +5,7 @@ const FALLBACK_FROM = "HK Masters Hockey <onboarding@resend.dev>";
 const EMAIL_OVERRIDE = process.env.EMAIL_OVERRIDE?.trim() || null;
 
 const ADMIN_APP_URL =
-  process.env.ADMIN_APP_URL || "https://masters-world-hub.replit.app";
+  process.env.ADMIN_APP_URL || "https://masters-world-hub.replit.app/hk-masters";
 const PUBLIC_URL =
   process.env.PUBLIC_URL || "https://www.hkmastershockey.com";
 
@@ -1224,67 +1224,106 @@ The HK Masters Hockey Team`;
   });
 }
 
-const PROFILE_FIELD_SECTIONS: Record<string, string> = {
-  name: "Personal details",
-  phone: "Personal details",
-  dateOfBirth: "Personal details",
-  nationality: "Personal details",
-  dietaryRequirements: "Personal details",
-  medicalNotes: "Personal details",
-  passportNumber: "Passport",
-  passportExpiry: "Passport",
-  passportCopyUrl: "Passport",
-  emergencyContactName: "Emergency contact",
-  emergencyContactPhone: "Emergency contact",
-  flightArrivalDateTime: "Travel & flights",
-  flightDepartureDateTime: "Travel & flights",
-  arrivalCity: "Travel & flights",
-  outboundFlightNumber: "Travel & flights",
-  outboundDepartureDateTime: "Travel & flights",
-  returnFlightNumber: "Travel & flights",
-  returnArrivalDateTime: "Travel & flights",
-  roomSharingPreference: "Accommodation",
-  accommodationName: "Accommodation",
-  accommodationAddress: "Accommodation",
-  accommodationPhone: "Accommodation",
-  accommodationEmail: "Accommodation",
-  insuranceProvider: "Insurance",
-  insurancePolicyNumber: "Insurance",
-  insuranceEmergencyPhone: "Insurance",
-  insurancePolicyHolder: "Insurance",
-  insuranceExpiry: "Insurance",
-  insuranceEmail: "Insurance",
-  shirtSize: "Kit sizes",
-  shortsSize: "Kit sizes",
-  jacketSize: "Kit sizes",
-  poloSize: "Kit sizes",
-  trackTopSize: "Kit sizes",
-  goalieSmockSize: "Kit sizes",
-  instagramHandle: "Social handles",
-  facebookHandle: "Social handles",
+const PROFILE_FIELD_LABELS: Record<string, string> = {
+  name: "Full name",
+  phone: "Phone number",
+  dateOfBirth: "Date of birth",
+  nationality: "Nationality",
+  dietaryRequirements: "Dietary requirements",
+  medicalNotes: "Medical notes",
+  passportNumber: "Passport number",
+  passportExpiry: "Passport expiry",
+  passportCopyUrl: "Passport copy",
+  emergencyContactName: "Emergency contact name",
+  emergencyContactPhone: "Emergency contact phone",
+  flightArrivalDateTime: "Arrives (local time) — return leg",
+  flightDepartureDateTime: "Departs (local time) — return leg",
+  arrivalCity: "Arrival city / airport",
+  outboundFlightNumber: "Outbound flight number",
+  outboundDepartureDateTime: "Departs (local time) — outbound",
+  returnFlightNumber: "Return flight number",
+  returnArrivalDateTime: "Arrives (local time) — return leg",
+  travelDates: "Travel dates",
+  roomSharingPreference: "Room sharing preference",
+  accommodationName: "Accommodation name",
+  accommodationAddress: "Accommodation address",
+  accommodationPhone: "Accommodation phone",
+  accommodationEmail: "Accommodation email",
+  insuranceProvider: "Insurance provider",
+  insurancePolicyNumber: "Policy number",
+  insuranceEmergencyPhone: "Insurance emergency phone",
+  insurancePolicyHolder: "Policy holder",
+  insuranceExpiry: "Insurance expiry",
+  insuranceEmail: "Insurance email",
+  shirtSize: "Shirt size",
+  shortsSize: "Shorts size",
+  jacketSize: "Jacket size",
+  poloSize: "Polo size",
+  trackTopSize: "Track top size",
+  goalieSmockSize: "Goalie smock size",
+  instagramHandle: "Instagram",
+  facebookHandle: "Facebook",
 };
+
+function formatProfileFieldValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "(blank)";
+  if (value instanceof Date) {
+    const d = value;
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  }
+  if (typeof value === "string") {
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+      try {
+        const [datePart, timePart] = value.split("T");
+        const [yr, mo, dy] = datePart.split("-").map(Number);
+        return `${dy} ${months[mo - 1]} ${yr}, ${timePart.slice(0, 5)}`;
+      } catch { return value; }
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      try {
+        const [yr, mo, dy] = value.split("-").map(Number);
+        return `${dy} ${months[mo - 1]} ${yr}`;
+      } catch { return value; }
+    }
+    return value;
+  }
+  return String(value);
+}
 
 export async function sendProfileUpdateNotificationEmail(opts: {
   playerName: string;
   playerEmail: string;
   teamName: string;
-  updatedFields: string[];
+  changedFields: Array<{ key: string; oldValue: unknown; newValue: unknown }>;
 }): Promise<boolean> {
-  if (opts.updatedFields.length === 0) return false;
+  if (opts.changedFields.length === 0) return false;
 
   const adminPlayersUrl = `${ADMIN_APP_URL}/players`;
   const safeName = escapeHtml(opts.playerName);
   const safeTeam = escapeHtml(opts.teamName);
   const safeEmail = escapeHtml(opts.playerEmail);
 
-  const sections = [...new Set(
-    opts.updatedFields.map(f => PROFILE_FIELD_SECTIONS[f] ?? "Other")
-  )];
+  const diffRows = opts.changedFields.map((f, i) => {
+    const label = PROFILE_FIELD_LABELS[f.key] ?? f.key;
+    const oldVal = formatProfileFieldValue(f.oldValue);
+    const newVal = formatProfileFieldValue(f.newValue);
+    const rowBg = i % 2 === 0 ? ' style="background-color:#f9fafb;"' : "";
+    return `
+    <tr${rowBg}>
+      <td style="padding:9px 14px;font-size:13px;font-weight:600;color:#374151;width:38%;border-top:${i === 0 ? "none" : "1px solid #e5e7eb"};">${escapeHtml(label)}</td>
+      <td style="padding:9px 14px;font-size:13px;color:#9ca3af;width:31%;border-top:${i === 0 ? "none" : "1px solid #e5e7eb"};">${escapeHtml(oldVal)}</td>
+      <td style="padding:9px 14px;font-size:13px;font-weight:600;color:#059669;width:31%;border-top:${i === 0 ? "none" : "1px solid #e5e7eb"};">${escapeHtml(newVal)}</td>
+    </tr>`;
+  }).join("");
 
-  const sectionRows = sections.map((s, i) => `
-    <tr${i % 2 === 0 ? ' style="background-color:#f9fafb;"' : ""}>
-      <td style="padding:8px 16px;font-size:14px;color:#374151;">✓ ${escapeHtml(s)}</td>
-    </tr>`).join("");
+  const textLines = opts.changedFields.map(f => {
+    const label = PROFILE_FIELD_LABELS[f.key] ?? f.key;
+    const oldVal = formatProfileFieldValue(f.oldValue);
+    const newVal = formatProfileFieldValue(f.newValue);
+    return `  ${label}: ${oldVal} → ${newVal}`;
+  }).join("\n");
 
   const html = emailShell(
     "#1e3a5f",
@@ -1307,9 +1346,14 @@ export async function sendProfileUpdateNotificationEmail(opts: {
         <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeTeam}</td>
       </tr>
     </table>
-    <p style="margin:0 0 10px 0;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">Sections updated</p>
+    <p style="margin:0 0 10px 0;font-size:13px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;">What changed</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
-      ${sectionRows}
+      <tr style="background-color:#1e3a5f;">
+        <td style="padding:8px 14px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.06em;width:38%;">Field</td>
+        <td style="padding:8px 14px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.06em;width:31%;">Was</td>
+        <td style="padding:8px 14px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.75);text-transform:uppercase;letter-spacing:0.06em;width:31%;">Now</td>
+      </tr>
+      ${diffRows}
     </table>
     <p style="margin:0 0 20px 0;text-align:center;">
       <a href="${escapeHtml(adminPlayersUrl)}" style="display:inline-block;background-color:#1e3a5f;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Open Players list</a>
@@ -1318,10 +1362,11 @@ export async function sendProfileUpdateNotificationEmail(opts: {
 
   const text = `Player Profile Updated
 
-${opts.playerName} (${opts.teamName}) has just updated their profile.
-
+${opts.playerName} (${opts.teamName}) has updated their profile.
 Email: ${opts.playerEmail}
-Sections updated: ${sections.join(", ")}
+
+Changes:
+${textLines}
 
 Open Players list: ${adminPlayersUrl}
 
