@@ -55,6 +55,7 @@ const SECTIONS = [
       { key: "accommodationAddress", label: "Address", type: "text", placeholder: "e.g. Weena 686, 3012 CN Rotterdam" },
       { key: "accommodationPhone", label: "Phone number", type: "tel", placeholder: "+31 10 430 4300" },
       { key: "accommodationEmail", label: "Email address", type: "email", placeholder: "hotel@example.com" },
+      { key: "roomSharingWith", label: "Room sharing with", type: "text", placeholder: "Preferred roommate" },
     ],
   },
   {
@@ -86,7 +87,6 @@ const SECTIONS = [
         { value: "shared", label: "Shared room" },
         { value: "single", label: "Single room" },
       ] },
-      { key: "roomSharingWith", label: "Room sharing with", type: "text", placeholder: "Preferred roommate" },
       { key: "dietaryRequirements", label: "Dietary requirements", type: "text", placeholder: "None, vegetarian, halal, etc." },
       { key: "medicalNotes", label: "Medical notes", type: "textarea", placeholder: "Allergies, conditions, medication..." },
     ],
