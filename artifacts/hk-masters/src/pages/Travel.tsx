@@ -618,18 +618,18 @@ export default function Travel() {
             </div>
           </div>
 
-          <SectionHeading>Outbound Flight (Hong Kong → Europe)</SectionHeading>
+          <SectionHeading>Outbound</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Flight Number</label>
               <Input {...register("outboundFlightNumber")} placeholder="e.g. KL888" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Departs Hong Kong (HKT)</label>
+              <label className="text-sm font-semibold">Departs (local time)</label>
               <Input type="datetime-local" {...register("outboundDepartureDateTime")} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrives in Europe (local time)</label>
+              <label className="text-sm font-semibold">Arrives (local time)</label>
               <Input type="datetime-local" {...register("flightArrivalDateTime")} />
             </div>
             <div className="space-y-2">
@@ -638,7 +638,7 @@ export default function Travel() {
             </div>
           </div>
 
-          <SectionHeading>Return Flight (Europe → Hong Kong)</SectionHeading>
+          <SectionHeading>Return</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Flight Number</label>

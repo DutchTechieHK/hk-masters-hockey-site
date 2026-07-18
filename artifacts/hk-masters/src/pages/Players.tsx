@@ -1131,34 +1131,34 @@ export default function Players() {
               <label className="text-sm font-semibold">Travel Dates (Summary)</label>
               <Input {...register("travelDates")} placeholder="e.g. 10 Jul – 25 Jul" />
             </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Outbound (Hong Kong → Europe)</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Outbound</p>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Flight Number</label>
               <Input {...register("outboundFlightNumber")} placeholder="e.g. KL888" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Departs Hong Kong (HKT)</label>
+              <label className="text-sm font-semibold">Departs (local time)</label>
               <Input type="datetime-local" {...register("outboundDepartureDateTime")} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrives in Europe (local time)</label>
+              <label className="text-sm font-semibold">Arrives (local time)</label>
               <Input type="datetime-local" {...register("flightArrivalDateTime")} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Arrival City/Airport</label>
               <Input {...register("arrivalCity")} placeholder="e.g. Amsterdam Schiphol (AMS)" />
             </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Return (Europe → Hong Kong)</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Return</p>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Flight Number</label>
               <Input {...register("returnFlightNumber")} placeholder="e.g. KL887" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Departs Europe (local time)</label>
+              <label className="text-sm font-semibold">Departs (local time)</label>
               <Input type="datetime-local" {...register("flightDepartureDateTime")} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrives Hong Kong (HKT)</label>
+              <label className="text-sm font-semibold">Arrives (local time)</label>
               <Input type="datetime-local" {...register("returnArrivalDateTime")} />
             </div>
           </div>
