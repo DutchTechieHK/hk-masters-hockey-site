@@ -32,7 +32,7 @@ channel = "stable-25_05"
 [userenv.shared]
 VITE_CLOUDINARY_UPLOAD_PRESET = "MAGe4GOu+qUO4h4OTNwDTyC+KRf5vPAzKaFVykguiH2oXB4r9Esw9UEvwtZ7TDiowAnTITQGDXrr3HvSO6xYIg=="
 VAPID_PUBLIC_KEY = "BENjY6mR0RhebZ3pCSZg8Z_6oxmuxWYdEOUo_lkya0oRE5LMi6jgAsmbaDzhUVpB1g8iBALaSR519SFj063_Byc"
-ADMIN_APP_URL = "https://masters-world-hub.replit.app/hk-masters"
+ADMIN_APP_URL = "https://masters-world-hub.replit.app/admin"
 
 [userenv.production]
 VITE_PUBLIC_SITE_URL = "https://hkmastershockey.com"

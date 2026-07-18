@@ -5,7 +5,7 @@ const FALLBACK_FROM = "HK Masters Hockey <onboarding@resend.dev>";
 const EMAIL_OVERRIDE = process.env.EMAIL_OVERRIDE?.trim() || null;
 
 const ADMIN_APP_URL =
-  process.env.ADMIN_APP_URL || "https://masters-world-hub.replit.app/hk-masters";
+  process.env.ADMIN_APP_URL || "https://masters-world-hub.replit.app/admin";
 const PUBLIC_URL =
   process.env.PUBLIC_URL || "https://www.hkmastershockey.com";
 
