@@ -548,10 +548,9 @@ export default function Dashboard() {
                       <p className="text-sm text-gray-500">Policy: {player.insurancePolicyNumber}</p>
                     )}
                     {expiryStr && (
-                      <p className={`text-sm ${expired ? "text-red-600 font-medium" : expirySoon ? "text-yellow-700 font-medium" : "text-gray-500"}`}>
+                      <p className={`text-sm ${expired ? "text-red-600 font-medium" : "text-gray-500"}`}>
                         {expired ? "Expired" : "Expires"}: {expiryStr}
                         {expired && " — please update your policy"}
-                        {!expired && expirySoon && " — expiring soon"}
                       </p>
                     )}
                   </div>
