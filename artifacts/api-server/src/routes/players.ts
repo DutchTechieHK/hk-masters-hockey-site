@@ -21,7 +21,7 @@ import {
   DeletePlayerPaymentParams,
   SendBulkEmailBody,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
@@ -54,6 +54,10 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     passportCopyReviewed: player.passportCopyReviewed,
     passportCopyUploadedAt: player.passportCopyUploadedAt?.toISOString() ?? null,
     passportCopyUploadedIsUpdate: player.passportCopyUploadedIsUpdate,
+    hkidCopyUrl: player.hkidCopyUrl,
+    hkidCopyReviewed: player.hkidCopyReviewed,
+    hkidCopyUploadedAt: player.hkidCopyUploadedAt?.toISOString() ?? null,
+    hkidCopyUploadedIsUpdate: player.hkidCopyUploadedIsUpdate,
     emergencyContactName: player.emergencyContactName,
     emergencyContactPhone: player.emergencyContactPhone,
     flightArrivalDateTime: player.flightArrivalDateTime,
@@ -166,6 +170,7 @@ const SELF_EDITABLE_FIELDS = [
   "passportNumber",
   "passportExpiry",
   "passportCopyUrl",
+  "hkidCopyUrl",
   "emergencyContactName",
   "emergencyContactPhone",
   "flightArrivalDateTime",
@@ -217,6 +222,7 @@ function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: stri
     passportNumber: player.passportNumber ?? undefined,
     passportExpiry: player.passportExpiry ?? undefined,
     passportCopyUrl: player.passportCopyUrl ?? undefined,
+    hkidCopyUrl: player.hkidCopyUrl ?? undefined,
     emergencyContactName: player.emergencyContactName ?? undefined,
     emergencyContactPhone: player.emergencyContactPhone ?? undefined,
     flightArrivalDateTime: player.flightArrivalDateTime ?? undefined,
@@ -309,6 +315,13 @@ router.patch("/self/:token", async (req, res) => {
     typeof newPassportCopyUrl === "string" &&
     newPassportCopyUrl.length > 0;
 
+  const newHkidCopyUrl = updates.hkidCopyUrl as string | null | undefined;
+  const hkidCopyChanged =
+    "hkidCopyUrl" in updates &&
+    newHkidCopyUrl !== existing.hkidCopyUrl &&
+    typeof newHkidCopyUrl === "string" &&
+    newHkidCopyUrl.length > 0;
+
   // If the player is uploading a new (or replacement) passport copy, clear the
   // admin's reviewed flag automatically — the admin must review the new file.
   if (passportCopyChanged) {
@@ -316,6 +329,14 @@ router.patch("/self/:token", async (req, res) => {
     updates.passportCopyReviewed = false;
     updates.passportCopyUploadedAt = new Date();
     updates.passportCopyUploadedIsUpdate = isUpdate;
+  }
+
+  // Same for HKID copy.
+  if (hkidCopyChanged) {
+    const isUpdate = existing.hkidCopyUrl !== null && existing.hkidCopyUrl !== "";
+    updates.hkidCopyReviewed = false;
+    updates.hkidCopyUploadedAt = new Date();
+    updates.hkidCopyUploadedIsUpdate = isUpdate;
   }
 
   const allUpdates = { ...updates, lastPortalAccessAt: new Date() };
@@ -337,8 +358,20 @@ router.patch("/self/:token", async (req, res) => {
     });
   }
 
+  if (hkidCopyChanged) {
+    sendHkidUploadNotificationEmail({
+      playerName: updated.name,
+      playerEmail: updated.email,
+      teamName: team?.name ?? "Unknown Team",
+      hkidCopyUrl: newHkidCopyUrl as string,
+      isUpdate: existing.hkidCopyUrl !== null && existing.hkidCopyUrl !== "",
+    }).catch((err) => {
+      console.error("[hkid-notify] Failed to send notification email:", err);
+    });
+  }
+
   const changedFields = updatedFields
-    .filter(f => f !== "passportCopyUrl")
+    .filter(f => f !== "passportCopyUrl" && f !== "hkidCopyUrl")
     .map(f => ({
       key: f,
       oldValue: (existing as Record<string, unknown>)[f] ?? null,

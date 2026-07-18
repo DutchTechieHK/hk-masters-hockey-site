@@ -410,6 +410,195 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
   );
 }
 
+function HkidUploadPanel({ token, hkidCopyUrl, onUploaded }) {
+  const [uploading, setUploading] = useState(false);
+  const [widgetOpen, setWidgetOpen] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const widgetRef = useRef(null);
+  const onUploadedRef = useRef(onUploaded);
+  onUploadedRef.current = onUploaded;
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+
+  useEffect(() => {
+    let cancelled = false;
+    let timerId = null;
+
+    const tryInit = () => {
+      if (cancelled || widgetRef.current) return;
+      if (!window.cloudinary) {
+        timerId = setTimeout(tryInit, 100);
+        return;
+      }
+      widgetRef.current = window.cloudinary.createUploadWidget(
+        {
+          cloudName: CLOUDINARY_CLOUD_NAME,
+          uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+          sources: ["local", "camera"],
+          multiple: false,
+          resourceType: "auto",
+          accessMode: "public",
+          clientAllowedFormats: ["jpg", "jpeg", "png", "pdf", "heic", "webp"],
+          maxFileSize: 10000000,
+          folder: "hkid-copies",
+          cropping: false,
+          showAdvancedOptions: false,
+          showPoweredBy: false,
+          styles: {
+            palette: {
+              window: "#FFFFFF",
+              windowBorder: "#E5E7EB",
+              tabIcon: "#006B3C",
+              menuIcons: "#6B7280",
+              textDark: "#111827",
+              textLight: "#FFFFFF",
+              link: "#006B3C",
+              action: "#006B3C",
+              inactiveTabIcon: "#9CA3AF",
+              error: "#EF4444",
+              inProgress: "#006B3C",
+              complete: "#10B981",
+              sourceBg: "#F9FAFB",
+            },
+          },
+        },
+        async (error, result) => {
+          if (error) {
+            setUploading(false);
+            setUploadError("Upload failed. Please try again.");
+            return;
+          }
+          if (result.event === "upload-added") {
+            setUploading(true);
+          }
+          if (result.event === "close") {
+            setWidgetOpen(false);
+            setUploading(false);
+          }
+          if (result.event === "success") {
+            const url = result.info.secure_url;
+            setUploading(false);
+            try {
+              const res = await fetch(
+                `${API_BASE}/api/players/self/${encodeURIComponent(tokenRef.current)}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ hkidCopyUrl: url }),
+                }
+              );
+              if (!res.ok) throw new Error("Could not save HKID copy URL.");
+              const updated = await res.json();
+              onUploadedRef.current(updated);
+              setUploadSuccess(true);
+            } catch {
+              setUploadError("File uploaded but could not be saved. Please try again.");
+            }
+          }
+        }
+      );
+    };
+
+    tryInit();
+    return () => {
+      cancelled = true;
+      if (timerId) clearTimeout(timerId);
+    };
+  }, []);
+
+  const openWidget = () => {
+    if (widgetOpen) return;
+    setUploadError("");
+    setUploadSuccess(false);
+    if (!widgetRef.current) {
+      setUploadError("Upload service unavailable. Please refresh and try again.");
+      return;
+    }
+    setWidgetOpen(true);
+    widgetRef.current.open();
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+      <div className="flex items-start justify-between mb-1 gap-3 flex-wrap">
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">HKID card copy</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Upload a photo or scan of your Hong Kong Identity Card. This is required for tournament registration.
+          </p>
+        </div>
+        {hkidCopyUrl && (
+          <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full shrink-0">
+            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-8 8a1 1 0 01-1.4 0l-4-4a1 1 0 011.4-1.4L8 12.6l7.3-7.3a1 1 0 011.4 0z" clipRule="evenodd"/></svg>
+            Uploaded
+          </span>
+        )}
+      </div>
+
+      {hkidCopyUrl && (
+        <div className="mt-3 mb-4 flex items-center gap-3 bg-gray-50 rounded-xl p-3">
+          <svg className="w-8 h-8 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-800 truncate">HKID copy on file</p>
+            <a
+              href={cloudinaryViewUrl(hkidCopyUrl)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#006B3C] hover:underline"
+            >
+              View uploaded file ↗
+            </a>
+          </div>
+        </div>
+      )}
+
+      {uploadSuccess && !uploadError && (
+        <div className="mb-4 flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+          <svg className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-emerald-800">HKID copy saved successfully</p>
+            <p className="text-xs text-emerald-700 mt-0.5">Your admin can now see it and access the file above.</p>
+          </div>
+        </div>
+      )}
+
+      {uploadError && (
+        <p className="text-sm text-red-600 mb-3">{uploadError}</p>
+      )}
+
+      <button
+        type="button"
+        onClick={openWidget}
+        disabled={uploading || widgetOpen}
+        className="inline-flex items-center gap-2 bg-gray-900 text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {uploading ? (
+          <>
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            Uploading…
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            {hkidCopyUrl ? "Replace HKID copy" : "Upload HKID copy"}
+          </>
+        )}
+      </button>
+      <p className="text-xs text-gray-400 mt-2">Accepted: JPG, PNG, PDF, HEIC · Max 10 MB</p>
+    </div>
+  );
+}
+
 function buildInitialForm(data) {
   const form = {};
   for (const key of ALL_FIELDS) {
@@ -555,6 +744,16 @@ export default function MyDetails() {
         <PassportUploadPanel
           token={token}
           passportCopyUrl={player.passportCopyUrl}
+          onUploaded={(updated) => {
+            setPlayer(updated);
+            setForm(buildInitialForm(updated));
+          }}
+        />
+
+        {/* HKID copy upload */}
+        <HkidUploadPanel
+          token={token}
+          hkidCopyUrl={player.hkidCopyUrl}
           onUploaded={(updated) => {
             setPlayer(updated);
             setForm(buildInitialForm(updated));

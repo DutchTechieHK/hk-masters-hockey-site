@@ -20,6 +20,7 @@ export interface SelfPlayer {
   passportNumber?: string;
   passportExpiry?: string;
   passportCopyUrl?: string | null;
+  hkidCopyUrl?: string | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;

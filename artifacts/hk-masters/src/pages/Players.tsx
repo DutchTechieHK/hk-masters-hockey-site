@@ -486,6 +486,89 @@ export default function Players() {
   }
 
   const [uploadingPassportFor, setUploadingPassportFor] = useState<number | null>(null)
+  const [uploadingHkidFor, setUploadingHkidFor] = useState<number | null>(null)
+
+  const HKID_ACK_KEY = "hkm_hkid_ack"
+  const getHkidAck = (): Record<number, number> => {
+    try {
+      const raw = localStorage.getItem(HKID_ACK_KEY)
+      return raw ? (JSON.parse(raw) as Record<number, number>) : {}
+    } catch { return {} }
+  }
+  const setHkidAck = (playerId: number) => {
+    try {
+      const ack = getHkidAck()
+      ack[playerId] = Date.now()
+      localStorage.setItem(HKID_ACK_KEY, JSON.stringify(ack))
+    } catch { /* noop */ }
+  }
+
+  const handleAdminUploadHkid = (player: Player) => {
+    if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
+      toast({ title: "Upload service not ready yet — try again in a moment", variant: "destructive" })
+      return
+    }
+    if (uploadingHkidFor !== null) return
+    setUploadingHkidFor(player.id)
+    window.cloudinary.openUploadWidget(
+      {
+        cloudName: CLOUDINARY_CLOUD_NAME,
+        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+        sources: ["local", "camera"],
+        multiple: false,
+        resourceType: "auto",
+        accessMode: "public",
+        clientAllowedFormats: ["jpg", "jpeg", "png", "pdf", "heic", "webp"],
+        maxFileSize: 10000000,
+        folder: "hkid-copies",
+        cropping: false,
+        showAdvancedOptions: false,
+        showPoweredBy: false,
+      },
+      async (error, result) => {
+        if (error) {
+          setUploadingHkidFor(null)
+          toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" })
+          return
+        }
+        if (result.event === "close") {
+          setUploadingHkidFor(null)
+          return
+        }
+        if (result.event !== "success") return
+        const url = result.info?.secure_url
+        if (!url) {
+          setUploadingHkidFor(null)
+          toast({ title: "Upload failed", description: "No file URL returned.", variant: "destructive" })
+          return
+        }
+        try {
+          await updateMutation.mutateAsync({
+            id: player.id,
+            data: {
+              name: player.name,
+              teamId: player.teamId,
+              email: player.email,
+              feePaid: player.feePaid,
+              hkidCopyUrl: url,
+              hkidCopyReviewed: true,
+            },
+          })
+          queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+          setHkidAck(player.id)
+          if (editingPlayer && editingPlayer.id === player.id) {
+            setEditingPlayer({ ...editingPlayer, hkidCopyUrl: url, hkidCopyReviewed: true })
+            setValue("hkidCopyReviewed" as any, true, { shouldDirty: false })
+          }
+          toast({ title: `HKID copy uploaded for ${player.name}` })
+        } catch {
+          toast({ title: "File uploaded but could not be saved", variant: "destructive" })
+        } finally {
+          setUploadingHkidFor(null)
+        }
+      },
+    )
+  }
 
   const handleAdminUploadPassport = (player: Player) => {
     if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
@@ -1106,6 +1189,82 @@ export default function Players() {
                     />
                     <label htmlFor="passportCopyReviewed" className="font-semibold cursor-pointer text-sm">
                       Passport copy reviewed and valid
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <SectionHeading>HKID Card Copy</SectionHeading>
+          <div className="grid grid-cols-1 gap-4">
+            {editingPlayer && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-2.5 border flex-wrap">
+                  <Shield className={`w-4 h-4 shrink-0 ${editingPlayer.hkidCopyUrl ? "text-emerald-600" : "text-muted-foreground"}`} />
+                  <span className="text-sm text-muted-foreground flex-1 min-w-[8rem]">
+                    {editingPlayer.hkidCopyUrl ? "HKID copy on file" : "No HKID copy uploaded yet"}
+                  </span>
+                  {editingPlayer.hkidCopyUrl && (
+                    <a
+                      href={cloudinaryViewUrl(editingPlayer.hkidCopyUrl)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+                    >
+                      <LinkIcon className="w-3.5 h-3.5" />
+                      View
+                    </a>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => editingPlayer && handleAdminUploadHkid(editingPlayer)}
+                    disabled={uploadingHkidFor === editingPlayer.id}
+                    className="shrink-0"
+                  >
+                    <Upload className="w-3.5 h-3.5 mr-1.5" />
+                    {uploadingHkidFor === editingPlayer.id
+                      ? "Uploading…"
+                      : editingPlayer.hkidCopyUrl
+                        ? "Replace on behalf of player"
+                        : "Upload on behalf of player"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Use this if a player emailed you their HKID card because the in-app upload didn't work for them. The file will be marked as reviewed automatically.
+                </p>
+                {editingPlayer.hkidCopyUrl && (
+                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-xl border">
+                    <input
+                      type="checkbox"
+                      id="hkidCopyReviewed"
+                      className="w-5 h-5 rounded border-2 text-primary focus:ring-primary accent-primary"
+                      checked={editingPlayer.hkidCopyReviewed ?? false}
+                      onChange={async (e) => {
+                        const checked = e.target.checked
+                        try {
+                          await updateMutation.mutateAsync({
+                            id: editingPlayer.id,
+                            data: {
+                              name: editingPlayer.name,
+                              teamId: editingPlayer.teamId,
+                              email: editingPlayer.email,
+                              feePaid: editingPlayer.feePaid,
+                              hkidCopyReviewed: checked,
+                            },
+                          })
+                          queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+                          setEditingPlayer({ ...editingPlayer, hkidCopyReviewed: checked })
+                          toast({ title: checked ? "HKID copy marked as reviewed" : "Marked as not reviewed" })
+                        } catch {
+                          toast({ title: "Failed to update review status", variant: "destructive" })
+                        }
+                      }}
+                    />
+                    <label htmlFor="hkidCopyReviewed" className="font-semibold cursor-pointer text-sm">
+                      HKID copy reviewed and valid
                     </label>
                   </div>
                 )}

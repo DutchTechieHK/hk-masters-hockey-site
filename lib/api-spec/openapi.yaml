@@ -1188,6 +1188,12 @@ components:
         passportCopyUploadedIsUpdate:
           type: boolean
           nullable: true
+        hkidCopyUrl:
+          type: string
+          nullable: true
+        hkidCopyReviewed:
+          type: boolean
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1316,6 +1322,23 @@ components:
           nullable: true
         passportCopyReviewed:
           type: boolean
+        passportCopyUploadedAt:
+          type: string
+          nullable: true
+        passportCopyUploadedIsUpdate:
+          type: boolean
+          nullable: true
+        hkidCopyUrl:
+          type: string
+          nullable: true
+        hkidCopyReviewed:
+          type: boolean
+        hkidCopyUploadedAt:
+          type: string
+          nullable: true
+        hkidCopyUploadedIsUpdate:
+          type: boolean
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1426,6 +1449,9 @@ components:
         passportCopyUrl:
           type: string
           nullable: true
+        hkidCopyUrl:
+          type: string
+          nullable: true
         emergencyContactName:
           type: string
         emergencyContactPhone:
@@ -1505,6 +1531,9 @@ components:
         passportExpiry:
           type: string
         passportCopyUrl:
+          type: string
+          nullable: true
+        hkidCopyUrl:
           type: string
           nullable: true
         emergencyContactName:

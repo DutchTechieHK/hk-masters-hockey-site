@@ -20,6 +20,12 @@ export interface CreatePlayer {
   passportExpiry?: string;
   passportCopyUrl?: string | null;
   passportCopyReviewed?: boolean;
+  passportCopyUploadedAt?: string | null;
+  passportCopyUploadedIsUpdate?: boolean | null;
+  hkidCopyUrl?: string | null;
+  hkidCopyReviewed?: boolean;
+  hkidCopyUploadedAt?: string | null;
+  hkidCopyUploadedIsUpdate?: boolean | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;

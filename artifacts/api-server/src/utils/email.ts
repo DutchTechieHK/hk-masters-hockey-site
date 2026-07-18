@@ -1224,6 +1224,84 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendHkidUploadNotificationEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  teamName: string;
+  hkidCopyUrl: string;
+  isUpdate: boolean;
+}): Promise<boolean> {
+  const adminPlayersUrl = `${ADMIN_APP_URL}/players`;
+  const safeName = escapeHtml(opts.playerName);
+  const safeTeam = escapeHtml(opts.teamName);
+  const safeEmail = escapeHtml(opts.playerEmail);
+  const action = opts.isUpdate ? "updated" : "uploaded";
+  const actionLabel = opts.isUpdate ? "Updated" : "New";
+
+  const safeHkidUrl = /^https:\/\//.test(opts.hkidCopyUrl)
+    ? escapeHtml(opts.hkidCopyUrl)
+    : null;
+  const hkidLinkHtml = safeHkidUrl
+    ? `<p style="margin:0 0 16px 0;text-align:center;">
+      <a href="${safeHkidUrl}" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;margin-right:8px;">View HKID copy</a>
+    </p>`
+    : `<p style="margin:0 0 16px 0;font-size:13px;color:#6b7280;text-align:center;">(HKID copy URL could not be verified — check the admin Players list)</p>`;
+
+  const html = emailShell(
+    "#1e3a5f",
+    `HKID copy ${action}`,
+    `<p style="margin:0 0 20px 0;font-size:16px;font-weight:700;color:#1f2937;">${actionLabel} HKID Copy</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      A player has ${action} their HKID card copy on the <strong>HK 2026 Masters World Cup</strong> player portal.
+    </p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px 0;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;width:100px;">Player</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeName}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;">Email</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeEmail}</td>
+      </tr>
+      <tr style="background-color:#f9fafb;">
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;">Team</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${safeTeam}</td>
+      </tr>
+      <tr>
+        <td style="padding:10px 16px;font-size:13px;font-weight:600;color:#6b7280;">Status</td>
+        <td style="padding:10px 16px;font-size:14px;color:#1f2937;">${opts.isUpdate ? "Replaced existing copy" : "First upload"}</td>
+      </tr>
+    </table>
+    ${hkidLinkHtml}
+    <p style="margin:16px 0 0 0;text-align:center;">
+      <a href="${escapeHtml(adminPlayersUrl)}" style="font-size:13px;color:#1e3a5f;text-decoration:underline;">Open Players list in admin</a>
+    </p>`
+  );
+
+  const hkidUrlForText = safeHkidUrl ?? "(URL not available — check admin Players list)";
+
+  const text = `${actionLabel} HKID Copy
+
+A player has ${action} their HKID card copy on the HK 2026 Masters World Cup player portal.
+
+Player: ${opts.playerName}
+Email: ${opts.playerEmail}
+Team: ${opts.teamName}
+Status: ${opts.isUpdate ? "Replaced existing copy" : "First upload"}
+
+View HKID copy: ${hkidUrlForText}
+Open Players list: ${adminPlayersUrl}
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: ADMIN_EMAIL,
+    subject: `[${actionLabel}] HKID copy — ${opts.playerName} (${opts.teamName})`,
+    html,
+    text,
+  });
+}
+
 const PROFILE_FIELD_LABELS: Record<string, string> = {
   name: "Full name",
   phone: "Phone number",

@@ -151,6 +151,8 @@ export interface Player {
   passportCopyReviewed?: boolean | null;
   passportCopyUploadedAt?: string | null;
   passportCopyUploadedIsUpdate?: boolean | null;
+  hkidCopyUrl?: string | null;
+  hkidCopyReviewed?: boolean | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -210,6 +212,12 @@ export interface CreatePlayer {
   passportExpiry?: string;
   passportCopyUrl?: string | null;
   passportCopyReviewed?: boolean;
+  passportCopyUploadedAt?: string | null;
+  passportCopyUploadedIsUpdate?: boolean | null;
+  hkidCopyUrl?: string | null;
+  hkidCopyReviewed?: boolean;
+  hkidCopyUploadedAt?: string | null;
+  hkidCopyUploadedIsUpdate?: boolean | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -263,6 +271,7 @@ export interface SelfPlayer {
   passportNumber?: string;
   passportExpiry?: string;
   passportCopyUrl?: string | null;
+  hkidCopyUrl?: string | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
@@ -300,6 +309,7 @@ export interface UpdateSelfPlayer {
   passportNumber?: string;
   passportExpiry?: string;
   passportCopyUrl?: string | null;
+  hkidCopyUrl?: string | null;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
   flightArrivalDateTime?: string;
