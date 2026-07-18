@@ -497,7 +497,12 @@ function TeamArrivalsTimeline({ allArrivals, selfArrivalTime }) {
 
         return (
           <div key={dk}>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{dayHeading(dk)}</p>
+            <div className="flex items-center gap-3 mb-4">
+              <p className="text-[13px] font-black uppercase tracking-widest text-gray-800 shrink-0 leading-none">
+                {dayHeading(dk)}
+              </p>
+              <div className="flex-1 h-px bg-gray-300" />
+            </div>
             <div className="space-y-3">
               {groups.map((group, gi) => (
                 <ArrivalBoardingPass key={gi} group={group} selfArrivalTime={selfArrivalTime} />
@@ -553,7 +558,12 @@ function TeamDeparturesTimeline({ allDepartures, selfDepartureTime }) {
 
         return (
           <div key={dk}>
-            <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{dayHeading(dk)}</p>
+            <div className="flex items-center gap-3 mb-4">
+              <p className="text-[13px] font-black uppercase tracking-widest text-gray-800 shrink-0 leading-none">
+                {dayHeading(dk)}
+              </p>
+              <div className="flex-1 h-px bg-gray-300" />
+            </div>
             <div className="space-y-3">
               {groups.map((group, gi) => (
                 <DepartureBoardingPass key={gi} group={group} selfDepartureTime={selfDepartureTime} />
