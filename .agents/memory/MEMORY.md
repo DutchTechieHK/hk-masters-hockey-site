@@ -12,3 +12,4 @@
 - [openapi.yaml schema drift](openapi-schema-drift.md) — missing schema crashes boot; missing *field* on existing schema silently strips it from validation on codegen rerun (data loss). Diff generated output before trusting a regen.
 - [hk-masters admin auth testing](hk-masters-admin-auth-testing.md) — no dev bypass for the team-password gate; insert an admin_sessions row + temp-patch AdminAuthGate to e2e-test admin pages, then fully revert.
 - [Email send throttle & failure visibility](email-send-throttle.md) — bulk email loops must pace ~500ms (Resend ~2/sec) and report a `failed` count; unthrottled loops 429 silently and drop sends.
+- [Admin app URL & custom domain](admin-app-url.md) — admin portal is at app.hkmastershockey.com/admin/ in prod; ADMIN_APP_URL must be split dev/prod env vars, never shared.
