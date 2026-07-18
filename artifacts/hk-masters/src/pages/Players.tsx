@@ -684,6 +684,7 @@ export default function Players() {
           hkidCopyReviewed: !player.hkidCopyReviewed,
         },
       })
+      if (!player.hkidCopyReviewed) acknowledgeHkid(player.id)
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
       toast({ title: player.hkidCopyReviewed ? "HKID marked as not reviewed" : "HKID marked as reviewed" })
     } catch {
