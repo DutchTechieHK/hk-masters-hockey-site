@@ -176,6 +176,7 @@ const SELF_EDITABLE_FIELDS = [
   "returnFlightNumber",
   "returnArrivalDateTime",
   "roomSharingPreference",
+  "roomSharingWith",
   "accommodationName",
   "accommodationAddress",
   "accommodationPhone",

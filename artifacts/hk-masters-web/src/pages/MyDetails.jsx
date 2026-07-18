@@ -86,6 +86,7 @@ const SECTIONS = [
         { value: "shared", label: "Shared room" },
         { value: "single", label: "Single room" },
       ] },
+      { key: "roomSharingWith", label: "Room sharing with", type: "text", placeholder: "Preferred roommate" },
       { key: "dietaryRequirements", label: "Dietary requirements", type: "text", placeholder: "None, vegetarian, halal, etc." },
       { key: "medicalNotes", label: "Medical notes", type: "textarea", placeholder: "Allergies, conditions, medication..." },
     ],
