@@ -336,7 +336,7 @@ function PassportUploadPanel({ token, passportCopyUrl, onUploaded }) {
         <div>
           <h2 className="text-lg font-bold text-gray-900">Passport copy</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Upload a photo or scan of your passport's photo page. This helps the admin process your tournament registration.
+            Upload a photo or scan of your passport's photo page. <strong className="text-gray-700">Do not upload your HKID card here</strong> — there is a separate section below for that.
           </p>
         </div>
         {passportCopyUrl && (
@@ -525,7 +525,7 @@ function HkidUploadPanel({ token, hkidCopyUrl, onUploaded }) {
         <div>
           <h2 className="text-lg font-bold text-gray-900">HKID card copy</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            Upload a photo or scan of your Hong Kong Identity Card. This is required for tournament registration.
+            Hong Kong residents: upload your HK Identity Card here. <strong className="text-gray-700">This is separate from your passport</strong> — please complete both sections.
           </p>
         </div>
         {hkidCopyUrl && (
