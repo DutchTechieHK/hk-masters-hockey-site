@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, LayoutList, CalendarRange } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, LayoutList, CalendarRange, Zap, Trophy } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -78,6 +78,8 @@ const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: 
   team_dinner: { label: "Team Dinner", icon: Utensils,  colour: "bg-orange-100 text-orange-800" },
   dinner:      { label: "Dinner",      icon: Utensils,  colour: "bg-orange-50 text-orange-700" },
   free_time:   { label: "Free Time",   icon: Sun,       colour: "bg-yellow-100 text-yellow-800" },
+  warmup:      { label: "Warmup & Stretch", icon: Zap,  colour: "bg-teal-100 text-teal-800" },
+  game:        { label: "Game",        icon: Trophy,    colour: "bg-red-100 text-red-800" },
 }
 
 const HK_TZ        = "Asia/Hong_Kong"
@@ -735,6 +737,8 @@ export default function Events() {
               <option value="team_dinner">Team Dinner</option>
               <option value="dinner">Dinner</option>
               <option value="free_time">Free Time</option>
+              <option value="warmup">Warmup &amp; Stretch</option>
+              <option value="game">Game</option>
             </Select>
           </div>
 

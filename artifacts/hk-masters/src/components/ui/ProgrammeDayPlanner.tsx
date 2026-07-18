@@ -33,6 +33,8 @@ const KIND_META: Record<string, { label: string; colour: string }> = {
   team_dinner: { label: "Team Dinner", colour: "bg-orange-100 text-orange-800 border-orange-200" },
   dinner:      { label: "Dinner",      colour: "bg-orange-50 text-orange-700 border-orange-100" },
   free_time:   { label: "Free Time",   colour: "bg-yellow-100 text-yellow-800 border-yellow-200" },
+  warmup:      { label: "Warmup & Stretch", colour: "bg-teal-100 text-teal-800 border-teal-200" },
+  game:        { label: "Game",        colour: "bg-red-100 text-red-800 border-red-200" },
 }
 
 export type EventRow = {
