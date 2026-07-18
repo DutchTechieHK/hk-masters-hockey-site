@@ -44,6 +44,20 @@ export const GRID_CRITERIA: GridCriterion[] = [
     pass: (p) => !!p.passportCopyUrl && p.passportCopyReviewed === true,
   },
   {
+    key: "hkid-copy",
+    label: "HKID copy uploaded",
+    short: "HKID",
+    severity: "amber",
+    pass: (p) => !!p.hkidCopyUrl,
+  },
+  {
+    key: "hkid-reviewed",
+    label: "HKID copy reviewed",
+    short: "HKID Rev",
+    severity: "amber",
+    pass: (p) => !!p.hkidCopyUrl && p.hkidCopyReviewed === true,
+  },
+  {
     key: "flights",
     label: "Flights entered",
     short: "Flights",
