@@ -233,6 +233,7 @@ function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: stri
     returnFlightNumber: player.returnFlightNumber ?? undefined,
     returnArrivalDateTime: player.returnArrivalDateTime ?? undefined,
     roomSharingPreference: player.roomSharingPreference ?? undefined,
+    roomSharingWith: player.roomSharingWith ?? undefined,
     accommodationName: player.accommodationName ?? undefined,
     accommodationAddress: player.accommodationAddress ?? undefined,
     accommodationPhone: player.accommodationPhone ?? undefined,
