@@ -3,7 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
-import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X, Pencil, Globe, Clock } from "lucide-react"
+import { Plus, Trash2, CheckCircle2, RefreshCw, PackageOpen, MapPin, Users, DollarSign, Settings, List, History, Search, X, Pencil, Globe, Clock, Trophy } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { format, parseISO } from "date-fns"
 
@@ -214,7 +214,9 @@ export default function LegoJar() {
   const [squad, setSquad] = useState<SquadPlayer[]>([])
   const [prizes, setPrizes] = useState<Prize[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<"overview" | "guesses" | "config">("overview")
+  const [activeTab, setActiveTab] = useState<"overview" | "guesses" | "results" | "config">("overview")
+  const [resultActualCount, setResultActualCount] = useState("")
+  const [resultSaving, setResultSaving] = useState(false)
 
   // Pass jar dialog
   const [passJarOpen, setPassJarOpen] = useState(false)
@@ -392,6 +394,7 @@ export default function LegoJar() {
         status: cfg?.status ?? "active",
         imageUrl: cfg?.imageUrl ?? "",
       })
+      setResultActualCount(cfg?.actualCount != null ? String(cfg.actualCount) : "")
       const pzArr: Prize[] = Array.isArray(pzs) ? pzs : []
       setPrizes(pzArr)
       const forms: Record<number, { title: string; description: string; imageUrl: string; imageAlt: string }> = {}
@@ -677,6 +680,30 @@ export default function LegoJar() {
     }
   }
 
+  // Save actual count from Results tab
+  const handleSaveResultCount = async () => {
+    const parsed = parseInt(resultActualCount.trim(), 10)
+    if (!resultActualCount.trim() && config?.actualCount == null) {
+      toast({ title: "Please enter a number", variant: "destructive" }); return
+    }
+    setResultSaving(true)
+    try {
+      const payload: Record<string, unknown> = {
+        pricePerGuess: Number(config?.pricePerGuess ?? 50),
+        status: config?.status ?? "active",
+        imageUrl: config?.imageUrl ?? null,
+        actualCount: resultActualCount.trim() ? parsed : null,
+      }
+      await apiFetch("/api/admin/lego-jar/config", { method: "PUT", body: JSON.stringify(payload) })
+      toast({ title: "Actual count saved" })
+      await load()
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to save", variant: "destructive" })
+    } finally {
+      setResultSaving(false)
+    }
+  }
+
   // Save config
   const handleSaveConfig = async () => {
     setConfigSaving(true)
@@ -745,6 +772,7 @@ export default function LegoJar() {
         {([
           { id: "overview", label: "Overview", icon: PackageOpen },
           { id: "guesses", label: `All Guesses (${totalGuesses})`, icon: List },
+          { id: "results", label: "Results", icon: Trophy },
           { id: "config", label: "Settings", icon: Settings },
         ] as const).map(({ id, label, icon: Icon }) => (
           <button
@@ -1096,6 +1124,159 @@ export default function LegoJar() {
           </div>
         </div>
       )}
+
+      {/* RESULTS TAB */}
+      {activeTab === "results" && (() => {
+        const actual = config?.actualCount ?? null
+
+        // Build ranked list sorted by distance from actual
+        const withRanks = (() => {
+          const mapped = guesses.map((g) => ({
+            ...g,
+            distance: actual != null ? Math.abs(g.guessNumber - actual) : null,
+          }))
+          if (actual == null) return mapped.map((g, i) => ({ ...g, rank: i + 1 }))
+          const sorted = [...mapped].sort((a, b) => {
+            const da = a.distance as number
+            const db = b.distance as number
+            if (da !== db) return da - db
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          })
+          // competition ranking: same distance = same rank
+          let rank = 1
+          return sorted.map((g, idx, arr) => {
+            if (idx > 0 && (g.distance as number) !== (arr[idx - 1].distance as number)) rank = idx + 1
+            return { ...g, rank }
+          })
+        })()
+
+        const winners = withRanks.filter((g) => g.rank === 1)
+        const exactWinners = winners.filter((g) => g.distance === 0)
+
+        return (
+          <div className="space-y-6">
+            {/* Actual count input */}
+            <div className="bg-white rounded-2xl border border-border p-6 shadow-sm">
+              <h3 className="font-bold text-foreground mb-1">Actual LEGO count</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Enter the true number of LEGO pieces in the jar. Rankings update instantly once saved.
+              </p>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1 max-w-xs">
+                  <label className="block text-sm font-semibold mb-1.5">Number of pieces</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 1847"
+                    value={resultActualCount}
+                    onChange={(e) => setResultActualCount(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSaveResultCount() }}
+                  />
+                </div>
+                <Button onClick={handleSaveResultCount} disabled={resultSaving}>
+                  {resultSaving ? "Saving…" : actual != null ? "Update" : "Reveal"}
+                </Button>
+                {actual != null && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <Trophy className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="text-sm font-bold text-emerald-800">{actual.toLocaleString()} pieces</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {actual == null ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Trophy className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm font-medium">Enter the actual count above to see the rankings.</p>
+              </div>
+            ) : (
+              <>
+                {/* Winner banner */}
+                <div className={`rounded-2xl border-2 p-6 ${exactWinners.length > 0 ? "border-yellow-300 bg-yellow-50" : "border-emerald-200 bg-emerald-50/60"}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Trophy className={`w-5 h-5 ${exactWinners.length > 0 ? "text-yellow-500" : "text-emerald-600"}`} />
+                    <span className="font-bold text-lg text-foreground">
+                      {exactWinners.length > 0 ? "🎉 Exact match!" : "🥇 Closest guess"}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {winners.map((w) => (
+                      <div key={w.id} className="flex items-center gap-3">
+                        <span className="font-bold text-foreground text-lg">{w.guesserName}</span>
+                        <span className="font-mono text-muted-foreground">{w.guessNumber.toLocaleString()}</span>
+                        {w.distance === 0
+                          ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-200 text-yellow-800">Exact!</span>
+                          : <span className="text-xs text-muted-foreground">off by {(w.distance as number).toLocaleString()}</span>
+                        }
+                        {!w.paid && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Unpaid</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Full rankings table */}
+                <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+                  <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                    <h3 className="font-bold text-foreground">Full rankings — {withRanks.length} guess{withRanks.length !== 1 ? "es" : ""}</h3>
+                    <span className="text-xs text-muted-foreground">Actual: <strong>{actual.toLocaleString()}</strong></span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40">
+                        <tr>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">Rank</th>
+                          <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</th>
+                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guess</th>
+                          <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Distance</th>
+                          <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Paid</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {withRanks.map((g) => {
+                          const isTop3 = g.rank <= 3
+                          const rankLabel = g.rank === 1 ? "🥇" : g.rank === 2 ? "🥈" : g.rank === 3 ? "🥉" : `#${g.rank}`
+                          return (
+                            <tr
+                              key={g.id}
+                              className={`transition-colors ${
+                                !g.paid ? "opacity-50" : isTop3 ? "bg-emerald-50/40 hover:bg-emerald-50" : "hover:bg-muted/30"
+                              }`}
+                            >
+                              <td className="px-4 py-3 font-bold text-foreground">{rankLabel}</td>
+                              <td className="px-4 py-3">
+                                <span className={`font-medium ${g.paid ? "text-foreground" : "text-muted-foreground"}`}>
+                                  {g.guesserName}
+                                </span>
+                                {!g.paid && <span className="ml-2 text-xs text-amber-600">(unpaid)</span>}
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono font-semibold text-foreground">
+                                {g.guessNumber.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                {(g.distance as number) === 0
+                                  ? <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800">Exact!</span>
+                                  : <span className="text-muted-foreground">{(g.distance as number).toLocaleString()}</span>
+                                }
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                {g.paid
+                                  ? <span className="inline-block w-4 h-4 rounded-full bg-emerald-500" title="Paid" />
+                                  : <span className="inline-block w-4 h-4 rounded-full bg-amber-300" title="Unpaid" />
+                                }
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })()}
 
       {/* CONFIG TAB */}
       {activeTab === "config" && (
