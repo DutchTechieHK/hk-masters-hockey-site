@@ -80,6 +80,7 @@ const PLEDGE_CATEGORY_LABELS: Record<string, string> = {
   mo40: "MO40 Team",
   mo50: "MO50 Team",
   general: "General",
+  personal: "Personal",
 }
 
 const payoutSchema = z.object({
@@ -699,6 +700,7 @@ export default function Payouts() {
                 <option value="mo40">MO40 Team</option>
                 <option value="mo50">MO50 Team</option>
                 <option value="general">General</option>
+                <option value="personal">Personal</option>
               </select>
             </div>
           )}

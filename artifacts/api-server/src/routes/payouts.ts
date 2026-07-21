@@ -7,7 +7,7 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 const VALID_METHODS = ["fps", "payme", "bank_transfer", "cash", "cheque", "other"] as const;
 const VALID_SOURCES = ["fundraising", "lego_jar", "fun_run", "general"] as const;
 // Only meaningful when source === "fundraising" — which pledge bucket this payout draws down.
-const VALID_PLEDGE_CATEGORIES = ["mo40", "mo50", "general"] as const;
+const VALID_PLEDGE_CATEGORIES = ["mo40", "mo50", "general", "personal"] as const;
 type Method = typeof VALID_METHODS[number];
 type Source = typeof VALID_SOURCES[number];
 type PledgeCategory = typeof VALID_PLEDGE_CATEGORIES[number];
