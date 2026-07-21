@@ -90,7 +90,7 @@ const payoutSchema = z.object({
   payoutDate: z.string().min(1, "Date is required"),
   method: z.enum(["fps", "payme", "bank_transfer", "cash", "cheque", "other"]),
   source: z.enum(["fundraising", "lego_jar", "fun_run", "general"]),
-  pledgeCategory: z.enum(["mo40", "mo50", "general"]).nullable().optional(),
+  pledgeCategory: z.enum(["mo40", "mo50", "general", "personal"]).nullable().optional(),
   reference: z.string().optional(),
   notes: z.string().optional(),
 })
