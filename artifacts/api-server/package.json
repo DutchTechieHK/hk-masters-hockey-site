@@ -27,6 +27,7 @@
     "node-cron": "^4.2.1",
     "notion-to-md": "^3.1.9",
     "resend": "^6.12.2",
+    "sharp": "^0.35.3",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

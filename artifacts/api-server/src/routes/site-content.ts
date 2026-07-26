@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { siteContentTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import sharp from "sharp";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router = Router();
@@ -129,8 +130,32 @@ router.post(
       res.status(400).json({ error: "Only image files are allowed (JPEG, PNG, WebP, GIF)" });
       return;
     }
+    // Resize/compress server-side so pages load fast. Animated GIFs are kept
+    // as-is (resizing would drop animation); everything else is capped at
+    // 2000px wide and re-encoded as JPEG (or WebP if the source had alpha).
+    let buffer = req.file.buffer;
+    let contentType = req.file.mimetype;
+    if (contentType !== "image/gif") {
+      try {
+        const meta = await sharp(buffer).metadata();
+        const pipeline = sharp(buffer)
+          .rotate() // apply EXIF orientation before stripping metadata
+          .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true });
+        if (meta.hasAlpha) {
+          buffer = await pipeline.webp({ quality: 80 }).toBuffer();
+          contentType = "image/webp";
+        } else {
+          buffer = await pipeline.jpeg({ quality: 80, mozjpeg: true }).toBuffer();
+          contentType = "image/jpeg";
+        }
+      } catch (err) {
+        console.error("Image processing failed:", err);
+        res.status(400).json({ error: "Could not process image — is the file a valid image?" });
+        return;
+      }
+    }
     const storage = new ObjectStorageService();
-    const objectPath = await storage.uploadObjectEntity(req.file.buffer, req.file.mimetype);
+    const objectPath = await storage.uploadObjectEntity(buffer, contentType);
     const imageUrl = `/api/site-content/image${objectPath}`;
     res.json({ imageUrl });
   }
