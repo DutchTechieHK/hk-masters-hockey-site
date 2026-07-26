@@ -7,7 +7,8 @@
     "dev": "NODE_ENV=development tsx ./src/index.ts",
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "backfill-slugs": "tsx ./src/scripts/backfill-slugs.ts"
+    "backfill-slugs": "tsx ./src/scripts/backfill-slugs.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",
@@ -35,8 +36,11 @@
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
     "@types/node-cron": "^3.0.11",
+    "@types/supertest": "^7.2.1",
     "@types/web-push": "^3.6.4",
     "esbuild": "^0.27.3",
-    "tsx": "catalog:"
+    "supertest": "^7.2.2",
+    "tsx": "catalog:",
+    "vitest": "^4.1.10"
   }
 }
