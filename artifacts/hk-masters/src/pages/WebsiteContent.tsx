@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Upload, Trash2, Plus, Globe, ImageIcon, GripVertical } from "lucide-react"
+import { Upload, Trash2, Plus, Globe, ImageIcon, GripVertical, Star, AlertTriangle } from "lucide-react"
 
 const ADMIN_SESSION_KEY = "hkm_admin_session"
 const API_BASE = import.meta.env.VITE_API_BASE ?? ""
@@ -48,6 +48,22 @@ async function saveContent(content: Partial<SiteContent>): Promise<SiteContent> 
   })
   if (!res.ok) throw new Error("Failed to save")
   return res.json() as Promise<SiteContent>
+}
+
+function useIsPortrait(url: string) {
+  const [isPortrait, setIsPortrait] = useState(false)
+  useEffect(() => {
+    setIsPortrait(false)
+    if (!url) return
+    let cancelled = false
+    const img = new Image()
+    img.onload = () => {
+      if (!cancelled) setIsPortrait(img.naturalHeight > img.naturalWidth)
+    }
+    img.src = url
+    return () => { cancelled = true }
+  }, [url])
+  return isPortrait
 }
 
 function PhotoCard({
@@ -132,6 +148,7 @@ export default function WebsiteContent() {
   const [uploadingField, setUploadingField] = useState<string | null>(null)
   const [savingGallery, setSavingGallery] = useState(false)
   const galleryFileRef = useRef<HTMLInputElement>(null)
+  const heroIsPortrait = useIsPortrait(content?.heroImage ?? "")
   const [addingToGallery, setAddingToGallery] = useState(false)
 
   const load = useCallback(async () => {
@@ -229,6 +246,20 @@ export default function WebsiteContent() {
     }
   }
 
+  const handleSetAsHero = async (url: string) => {
+    if (!content) return
+    setUploadingField("heroImage")
+    try {
+      const updated = await saveContent({ heroImage: url })
+      setContent(updated)
+      toast({ title: "Hero photo updated" })
+    } catch {
+      toast({ title: "Failed to set hero photo", variant: "destructive" })
+    } finally {
+      setUploadingField(null)
+    }
+  }
+
   const handleGalleryReplace = async (index: number, file: File) => {
     if (!content) return
     setSavingGallery(true)
@@ -283,6 +314,12 @@ export default function WebsiteContent() {
               onUpload={(f) => handlePhotoUpload("heroImage", f)}
               onClear={() => handlePhotoClear("heroImage")}
             />
+            {heroIsPortrait && (
+              <div className="mt-3 flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-700">
+                <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <p>This photo is portrait (taller than wide). Landscape photos look best here.</p>
+              </div>
+            )}
           </div>
         </section>
 
@@ -358,6 +395,8 @@ export default function WebsiteContent() {
                   caption={img.caption ?? ""}
                   index={i}
                   disabled={savingGallery}
+                  isHero={content.heroImage === img.url}
+                  onSetAsHero={() => handleSetAsHero(img.url)}
                   onRemove={() => handleGalleryRemove(i)}
                   onReplace={(f) => handleGalleryReplace(i, f)}
                   onCaption={(c) => handleGalleryCaption(i, c)}
@@ -402,6 +441,8 @@ function GalleryThumb({
   caption,
   index,
   disabled,
+  isHero,
+  onSetAsHero,
   onRemove,
   onReplace,
   onCaption,
@@ -410,6 +451,8 @@ function GalleryThumb({
   caption: string
   index: number
   disabled: boolean
+  isHero: boolean
+  onSetAsHero: () => void
   onRemove: () => void
   onReplace: (f: File) => void
   onCaption: (caption: string) => void
@@ -431,6 +474,14 @@ function GalleryThumb({
       <img src={url} alt={caption || `Gallery photo ${index + 1}`} className="w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
         <button
+          onClick={onSetAsHero}
+          disabled={disabled || isHero}
+          title={isHero ? "Current hero photo" : "Set as hero"}
+          className="p-1.5 bg-white/90 rounded-lg text-amber-500 hover:bg-white transition-colors disabled:opacity-50"
+        >
+          <Star className={`w-3.5 h-3.5 ${isHero ? "fill-amber-400" : ""}`} />
+        </button>
+        <button
           onClick={() => fileRef.current?.click()}
           disabled={disabled}
           title="Replace"
@@ -450,6 +501,12 @@ function GalleryThumb({
       <div className="absolute top-1.5 left-1.5 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
         {index + 1}
       </div>
+      {isHero && (
+        <div className="absolute top-1.5 right-1.5 bg-amber-400 text-amber-900 text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+          <Star className="w-2.5 h-2.5 fill-amber-900" />
+          Hero
+        </div>
+      )}
       <input
         ref={fileRef}
         type="file"
