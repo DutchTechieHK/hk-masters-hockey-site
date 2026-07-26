@@ -116,11 +116,14 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
     const [existing] = await db.select().from(newsPostsTable).where(eq(newsPostsTable.id, id));
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
 
+    // Only an explicit status change touches publishedAt; omitting status keeps it as-is.
     const wasPublished = existing.status === "published";
-    const nowPublished = status === "published";
-    const publishedAt = nowPublished
-      ? (wasPublished ? existing.publishedAt : new Date())
-      : null;
+    let publishedAt = existing.publishedAt;
+    if (status !== undefined) {
+      const nowPublished = status === "published";
+      if (nowPublished && !wasPublished) publishedAt = new Date();
+      else if (!nowPublished) publishedAt = null;
+    }
 
     const [row] = await db.update(newsPostsTable).set({
       title: title?.trim() ?? existing.title,
