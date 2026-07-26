@@ -33,7 +33,7 @@ const STATIC_DEFAULTS = {
 function formatRow(row: typeof siteContentTable.$inferSelect) {
   // Parse gallery — return exactly what's stored (may be []).
   // Null/parse-error falls back to static defaults (first-boot case only).
-  let galleryImages: { url: string }[] | null = null;
+  let galleryImages: { url: string; caption?: string }[] | null = null;
   try {
     const parsed = JSON.parse(row.galleryImages);
     if (Array.isArray(parsed)) galleryImages = parsed;
@@ -75,8 +75,18 @@ router.put("/", requireAdminAccess, async (req, res) => {
     heroImage?: string;
     mo40Photo?: string;
     mo50Photo?: string;
-    galleryImages?: { url: string }[];
+    galleryImages?: { url: string; caption?: string }[];
   };
+
+  // Sanitize gallery entries: keep only url + optional caption strings
+  const sanitizedGallery = Array.isArray(body.galleryImages)
+    ? body.galleryImages
+        .filter((img) => img && typeof img.url === "string" && img.url)
+        .map((img) => {
+          const caption = typeof img.caption === "string" ? img.caption.trim() : "";
+          return caption ? { url: img.url, caption } : { url: img.url };
+        })
+    : null;
 
   const row = await getOrCreateRow();
   const [updated] = await db
@@ -85,8 +95,8 @@ router.put("/", requireAdminAccess, async (req, res) => {
       heroImage: typeof body.heroImage === "string" ? body.heroImage : row.heroImage,
       mo40Photo: typeof body.mo40Photo === "string" ? body.mo40Photo : row.mo40Photo,
       mo50Photo: typeof body.mo50Photo === "string" ? body.mo50Photo : row.mo50Photo,
-      galleryImages: Array.isArray(body.galleryImages)
-        ? JSON.stringify(body.galleryImages)
+      galleryImages: sanitizedGallery
+        ? JSON.stringify(sanitizedGallery)
         : row.galleryImages,
     })
     .where(eq(siteContentTable.id, row.id))

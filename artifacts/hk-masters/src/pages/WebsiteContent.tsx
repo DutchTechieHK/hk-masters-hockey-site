@@ -11,7 +11,7 @@ interface SiteContent {
   heroImage: string
   mo40Photo: string
   mo50Photo: string
-  galleryImages: { url: string }[]
+  galleryImages: { url: string; caption?: string }[]
 }
 
 function getToken() {
@@ -179,7 +179,7 @@ export default function WebsiteContent() {
     if (!content) return
     setAddingToGallery(true)
     try {
-      const newUrls: { url: string }[] = []
+      const newUrls: { url: string; caption?: string }[] = []
       for (const file of Array.from(files)) {
         const imageUrl = await uploadImage(file)
         newUrls.push({ url: imageUrl })
@@ -210,12 +210,31 @@ export default function WebsiteContent() {
     }
   }
 
+  const handleGalleryCaption = async (index: number, caption: string) => {
+    if (!content) return
+    const current = content.galleryImages[index]?.caption ?? ""
+    if (caption.trim() === current.trim()) return
+    setSavingGallery(true)
+    try {
+      const newGallery = content.galleryImages.map((img, i) =>
+        i === index ? { url: img.url, caption: caption.trim() || undefined } : img
+      )
+      const updated = await saveContent({ galleryImages: newGallery })
+      setContent(updated)
+      toast({ title: caption.trim() ? "Caption saved" : "Caption removed" })
+    } catch {
+      toast({ title: "Failed to save caption", variant: "destructive" })
+    } finally {
+      setSavingGallery(false)
+    }
+  }
+
   const handleGalleryReplace = async (index: number, file: File) => {
     if (!content) return
     setSavingGallery(true)
     try {
       const imageUrl = await uploadImage(file)
-      const newGallery = content.galleryImages.map((img, i) => i === index ? { url: imageUrl } : img)
+      const newGallery = content.galleryImages.map((img, i) => i === index ? { ...img, url: imageUrl } : img)
       const updated = await saveContent({ galleryImages: newGallery })
       setContent(updated)
       toast({ title: "Gallery photo replaced" })
@@ -336,10 +355,12 @@ export default function WebsiteContent() {
                 <GalleryThumb
                   key={`${img.url}-${i}`}
                   url={img.url}
+                  caption={img.caption ?? ""}
                   index={i}
                   disabled={savingGallery}
                   onRemove={() => handleGalleryRemove(i)}
                   onReplace={(f) => handleGalleryReplace(i, f)}
+                  onCaption={(c) => handleGalleryCaption(i, c)}
                 />
               ))}
 
@@ -378,21 +399,36 @@ export default function WebsiteContent() {
 
 function GalleryThumb({
   url,
+  caption,
   index,
   disabled,
   onRemove,
   onReplace,
+  onCaption,
 }: {
   url: string
+  caption: string
   index: number
   disabled: boolean
   onRemove: () => void
   onReplace: (f: File) => void
+  onCaption: (caption: string) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(caption)
+
+  useEffect(() => { setDraft(caption) }, [caption])
+
+  const commit = () => {
+    setEditing(false)
+    onCaption(draft)
+  }
+
   return (
+    <div>
     <div className="relative h-32 rounded-xl overflow-hidden group bg-gray-100">
-      <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+      <img src={url} alt={caption || `Gallery photo ${index + 1}`} className="w-full h-full object-cover" />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
         <button
           onClick={() => fileRef.current?.click()}
@@ -425,6 +461,34 @@ function GalleryThumb({
           e.target.value = ""
         }}
       />
+    </div>
+    {editing ? (
+      <input
+        autoFocus
+        type="text"
+        value={draft}
+        maxLength={200}
+        placeholder="Add a caption…"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit()
+          if (e.key === "Escape") { setDraft(caption); setEditing(false) }
+        }}
+        className="mt-1.5 w-full text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    ) : (
+      <button
+        onClick={() => { if (!disabled) setEditing(true) }}
+        disabled={disabled}
+        title={caption ? "Edit caption" : "Add caption"}
+        className={`mt-1.5 w-full text-left text-xs px-2 py-1 rounded-md truncate transition-colors ${
+          caption ? "text-gray-700 hover:bg-gray-100" : "text-gray-400 italic hover:bg-gray-100 hover:text-gray-600"
+        } disabled:opacity-50`}
+      >
+        {caption || "Add caption…"}
+      </button>
+    )}
     </div>
   )
 }

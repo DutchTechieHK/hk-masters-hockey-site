@@ -445,13 +445,19 @@ export default function Home() {
                 <button
                   key={i}
                   onClick={() => setUserSelectedPhoto(img.url)}
-                  className={`h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none ${
+                  title={img.caption || undefined}
+                  className={`group relative h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none ${
                     activePhoto === img.url
                       ? "ring-2 ring-[#5B9FE0] ring-offset-2 ring-offset-[#16305D]"
                       : "opacity-75 hover:opacity-100"
                   }`}
                 >
                   <img src={cloudinaryResize(img.url, 400, 250)} alt={img.caption || "Club photo"} className="w-full h-full object-cover" />
+                  {img.caption && (
+                    <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-2 pb-1.5 pt-5 text-left text-[11px] leading-tight text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                      {img.caption}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
