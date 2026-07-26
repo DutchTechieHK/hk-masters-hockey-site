@@ -27,13 +27,17 @@ const replitPlugins =
       ]
     : [];
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: basePath,
   define: {
-    // Only inject the Replit dev-domain URL during local development.
-    // Production builds must NOT set this so API calls go to the same origin
-    // where the API server artifact is deployed under /api.
-    ...(isReplit && replitDevDomain && !process.env.VITE_API_BASE_URL && process.env.NODE_ENV !== "production"
+    // Only inject the Replit dev-domain URL for the local dev server
+    // (`vite` / command === "serve"). Any build — including deployment
+    // builds, where REPLIT_DEV_DOMAIN may point at the .replit.app domain —
+    // must NOT bake this in, so API calls go to the same origin where the
+    // API server artifact is deployed under /api. Relying on NODE_ENV here
+    // previously let a deployment build bake masters-world-hub.replit.app
+    // into the bundle.
+    ...(isReplit && replitDevDomain && !process.env.VITE_API_BASE_URL && command === "serve"
       ? { "import.meta.env.VITE_API_BASE_URL": JSON.stringify(`https://${replitDevDomain}`) }
       : {}),
   },
@@ -105,4 +109,4 @@ export default defineConfig({
     host: "0.0.0.0",
     allowedHosts: true,
   },
-});
+}));
