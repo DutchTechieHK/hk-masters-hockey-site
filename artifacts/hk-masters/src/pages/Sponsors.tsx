@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Star, Lock, ExternalLink, ImageOff, Upload, RefreshCw } from "lucide-react"
+import { Plus, Trash2, Edit2, Star, Lock, ExternalLink, ImageOff, Upload } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -71,27 +71,7 @@ export default function Sponsors() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [loginLoading, setLoginLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [backfilling, setBackfilling] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
-
-  const handleBackfillLogos = async () => {
-    if (!sessionToken) return
-    setBackfilling(true)
-    try {
-      const res = await fetch("/api/sponsors/backfill-logos", {
-        method: "POST",
-        headers: { "x-session-token": sessionToken },
-      })
-      if (!res.ok) throw new Error("Request failed")
-      const data = await res.json() as { updated: number }
-      queryClient.invalidateQueries({ queryKey: getListSponsorsQueryKey() })
-      toast({ title: `Backfill complete — ${data.updated} logo${data.updated !== 1 ? "s" : ""} updated` })
-    } catch {
-      toast({ title: "Backfill failed", variant: "destructive" })
-    } finally {
-      setBackfilling(false)
-    }
-  }
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -282,15 +262,9 @@ export default function Sponsors() {
       title="Sponsors"
       description="Manage sponsors displayed on the public website."
       action={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleBackfillLogos} disabled={backfilling}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${backfilling ? "animate-spin" : ""}`} />
-            {backfilling ? "Backfilling…" : "Backfill Logos"}
-          </Button>
-          <Button onClick={openAddModal}>
-            <Plus className="w-5 h-5 mr-2" /> Add Sponsor
-          </Button>
-        </div>
+        <Button onClick={openAddModal}>
+          <Plus className="w-5 h-5 mr-2" /> Add Sponsor
+        </Button>
       }
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

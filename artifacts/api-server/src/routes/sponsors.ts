@@ -5,7 +5,6 @@ import { sponsorsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { CreateSponsorBody, UpdateSponsorParams, DeleteSponsorParams } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { backfillSponsorLogos } from "../utils/backfillSponsorLogos";
 import { ObjectStorageService } from "../lib/objectStorage";
 
 const router = Router();
@@ -83,11 +82,6 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteSponsorParams.parse(req.params);
   await db.delete(sponsorsTable).where(eq(sponsorsTable.id, id));
   res.status(204).send();
-});
-
-router.post("/backfill-logos", requireAdminAccess, async (_req, res) => {
-  const updated = await backfillSponsorLogos();
-  res.json({ updated });
 });
 
 router.post("/image-upload", requireAdminAccess, (req: Request, res: Response, next: NextFunction) => {

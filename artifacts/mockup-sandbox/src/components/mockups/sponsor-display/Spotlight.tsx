@@ -2,7 +2,7 @@
 import React from "react";
 // Rich dark stage, logo large with a glowing radial halo, metallic tier label
 
-const WALLEM_LOGO = "https://res.cloudinary.com/djyvdrhal/image/upload/f_auto/Wallem-Wordmark-Light_1_.jpg";
+const WALLEM_LOGO = "/api/site-content/image/objects/uploads/2cd28042-c81d-476e-9117-168e528578bb";
 
 // Styled placeholder that mimics the Wallem dark-navy logo for mockup fidelity
 function WallemPlaceholder({ large = false }: { large?: boolean }) {

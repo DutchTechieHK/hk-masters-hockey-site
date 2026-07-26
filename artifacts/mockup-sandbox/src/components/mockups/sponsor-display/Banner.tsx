@@ -2,7 +2,7 @@
 import React from "react";
 // Crisp full-width card: HK green panel on left with tier/headline, white panel on right with large logo
 
-const WALLEM_LOGO = "https://res.cloudinary.com/djyvdrhal/image/upload/f_auto/Wallem-Wordmark-Light_1_.jpg";
+const WALLEM_LOGO = "/api/site-content/image/objects/uploads/2cd28042-c81d-476e-9117-168e528578bb";
 
 function WallemPlaceholder({ large = false }: { large?: boolean }) {
   return (

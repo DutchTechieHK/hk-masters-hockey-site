@@ -3,7 +3,7 @@ import React from "react";
 // White canvas, dramatic spotlight glow radiating from behind the logo centre,
 // sponsor name below in refined typography — awards-night presentation feel
 
-const WALLEM_LOGO = "https://res.cloudinary.com/djyvdrhal/image/upload/f_auto/Wallem-Wordmark-Light_1_.jpg";
+const WALLEM_LOGO = "/api/site-content/image/objects/uploads/2cd28042-c81d-476e-9117-168e528578bb";
 
 function WallemPlaceholder() {
   return (

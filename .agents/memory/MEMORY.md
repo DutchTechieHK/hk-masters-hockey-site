@@ -14,3 +14,4 @@
 - [Email send throttle & failure visibility](email-send-throttle.md) — bulk email loops must pace ~500ms (Resend ~2/sec) and report a `failed` count; unthrottled loops 429 silently and drop sends.
 - [Admin app URL & custom domain](admin-app-url.md) — admin portal is at app.hkmastershockey.com/admin/ in prod; ADMIN_APP_URL must be split dev/prod env vars, never shared.
 - [Shared object storage dev/prod](shared-object-storage.md) — one bucket for both; workspace scripts can fix prod objects in place instantly, but dev deletions also hit prod.
+- [Prod contribution writes send emails](prod-contribution-writes.md) — contributions PUT always re-emails authors on approved/declined; no email-free prod bulk-rewrite path exists.

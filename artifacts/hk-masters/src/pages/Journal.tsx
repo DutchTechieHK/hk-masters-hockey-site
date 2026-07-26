@@ -15,9 +15,6 @@ import { format, parseISO } from "date-fns"
 const SESSION_KEY = "hkm_admin_session"
 const PUBLIC_SITE_URL = ((import.meta.env.VITE_PUBLIC_SITE_URL as string | undefined) ?? "/hk-masters-web").replace(/\/$/, "")
 
-const CLOUDINARY_CLOUD_NAME = "djyvdrhal"
-const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned"
-
 function getStoredToken(): string | null {
   try { return localStorage.getItem(SESSION_KEY) } catch { return null }
 }
@@ -225,6 +222,7 @@ export default function Journal() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteReason, setDeleteReason] = useState("")
   const [isUploadingPhotos, setIsUploadingPhotos] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const token = getStoredToken()
@@ -429,44 +427,43 @@ export default function Journal() {
   }
 
   const handleAddPhotos = () => {
-    if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
-      toast({ title: "Upload service not ready yet — try again in a moment", variant: "destructive" })
-      return
-    }
     if (isUploadingPhotos) return
+    photoInputRef.current?.click()
+  }
+
+  const handlePhotoFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ""
+    if (files.length === 0 || !sessionToken) return
     setIsUploadingPhotos(true)
-    window.cloudinary.openUploadWidget(
-      {
-        cloudName: CLOUDINARY_CLOUD_NAME,
-        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-        sources: ["local", "camera"],
-        multiple: true,
-        resourceType: "image",
-        accessMode: "public",
-        clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "heic"],
-        maxFileSize: 10000000,
-        folder: "journal-photos",
-        cropping: false,
-        showAdvancedOptions: false,
-        showPoweredBy: false,
-      },
-      (error, result) => {
-        if (error) {
-          setIsUploadingPhotos(false)
-          toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" })
-          return
+    let failed = 0
+    for (const file of files) {
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        const res = await fetch("/api/site-content/upload-image", {
+          method: "POST",
+          headers: { "x-session-token": sessionToken },
+          body: formData,
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          throw new Error((data as { error?: string }).error ?? `Upload failed: ${res.status}`)
         }
-        if (result.event === "close") {
-          setIsUploadingPhotos(false)
-          return
-        }
-        if (result.event !== "success") return
-        const url = result.info?.secure_url
-        if (url) {
-          setEditPhotoUrls((prev) => [...prev, url])
-        }
-      },
-    )
+        const { imageUrl } = await res.json() as { imageUrl: string }
+        setEditPhotoUrls((prev) => [...prev, imageUrl])
+      } catch {
+        failed++
+      }
+    }
+    setIsUploadingPhotos(false)
+    if (failed > 0) {
+      toast({
+        title: `Failed to upload ${failed} photo${failed !== 1 ? "s" : ""}`,
+        description: "Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleDecision = (status: "approved" | "declined") => {
@@ -934,6 +931,14 @@ export default function Journal() {
             )}
 
             <div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={handlePhotoFilesSelected}
+              />
               <Button
                 type="button"
                 variant="outline"
