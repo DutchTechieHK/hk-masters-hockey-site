@@ -16,18 +16,20 @@ const STATIC_DEFAULTS = {
   heroImage: "/images/hero-squad.jpg",
   mo40Photo: "/images/mo40-squad.jpg",
   mo50Photo: "/images/mo50-squad.jpg",
+  // Self-hosted in object storage (migrated from Cloudinary, recompressed to
+  // max 2000px / q80 like regular uploads).
   galleryImages: [
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853920/HK_M50_d4-0212_ynxitw.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853981/WhatsApp_Image_2026-03-24_at_21.24.25_1_x7zsqm.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853981/WhatsApp_Image_2026-03-24_at_21.24.26_viwxfc.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853981/WhatsApp_Image_2026-03-24_at_21.24.24_phzwyj.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853921/HK_M50_d4-1425_1_gexlx7.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774854986/58BC6C97-2F7F-4CD1-8F97-C014A864ECC3_moxvd3.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853921/HK_M50_d4-0855_lj4mgz.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853985/WhatsApp_Image_2026-03-24_at_21.24.36_larlup.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853921/HK_M50_d4-0536_veln0s.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1774853919/A32I6153_pwqfwv.jpg" },
-    { url: "https://res.cloudinary.com/djyvdrhal/image/upload/v1777016038/Wajid_mbg2po.jpg" },
+    { url: "/api/site-content/image/objects/uploads/bc8ae3bc-6adf-42ab-9832-b369623b2dd9" },
+    { url: "/api/site-content/image/objects/uploads/a33269a0-9c67-4452-926b-ca9256e24cfc" },
+    { url: "/api/site-content/image/objects/uploads/1c87afd8-10b5-4895-ad75-b2a1a29131a1" },
+    { url: "/api/site-content/image/objects/uploads/0e6e6c31-1ba0-4d0d-8fcf-60d27e07e70e" },
+    { url: "/api/site-content/image/objects/uploads/a73f02d5-78c7-4b5e-b166-d9e5f36f7504" },
+    { url: "/api/site-content/image/objects/uploads/457f5e09-9bd4-4005-9a14-c069a922447b" },
+    { url: "/api/site-content/image/objects/uploads/ea849591-8217-4d21-8ffa-73beec1f5830" },
+    { url: "/api/site-content/image/objects/uploads/6aa0fe25-17e9-4c5a-bf7a-16563c6bea50" },
+    { url: "/api/site-content/image/objects/uploads/ea4a5259-5bff-4dea-a414-5a10f8763713" },
+    { url: "/api/site-content/image/objects/uploads/5f2dadc6-733b-4740-ab16-839a90ec6cb2" },
+    { url: "/api/site-content/image/objects/uploads/988594b5-06b6-40d4-93c1-09111fdf6f9e" },
   ],
 };
 
