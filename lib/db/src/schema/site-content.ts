@@ -6,6 +6,8 @@ export const siteContentTable = pgTable("site_content", {
   mo40Photo: text("mo40_photo"),
   mo50Photo: text("mo50_photo"),
   galleryImages: text("gallery_images").notNull().default("[]"),
+  // JSON array of { name, photos: string[] } — null means "never set" (use static defaults)
+  mediaAlbums: text("media_albums"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

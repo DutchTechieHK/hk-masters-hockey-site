@@ -7,8 +7,12 @@ CREATE TABLE IF NOT EXISTS site_content (
   mo40_photo TEXT,
   mo50_photo TEXT,
   gallery_images TEXT NOT NULL DEFAULT '[]',
+  media_albums TEXT,
   updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
+
+-- For databases created before media_albums existed (schema diff also handles this on publish)
+ALTER TABLE site_content ADD COLUMN IF NOT EXISTS media_albums TEXT;
 
 -- Seed with one row so GET always returns something (gallery pre-filled with defaults)
 INSERT INTO site_content (hero_image, mo40_photo, mo50_photo, gallery_images)

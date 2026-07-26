@@ -3,6 +3,7 @@ import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Upload, Trash2, Plus, Globe, ImageIcon, GripVertical, Star, AlertTriangle } from "lucide-react"
+import { MediaAlbumsManager } from "@/components/MediaAlbumsManager"
 
 const ADMIN_SESSION_KEY = "hkm_admin_session"
 const API_BASE = import.meta.env.VITE_API_BASE ?? ""
@@ -420,6 +421,17 @@ export default function WebsiteContent() {
               </button>
             </div>
           )}
+        </section>
+
+        {/* ── Media Page Albums ────────────────────────────────── */}
+        <section>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Media Page Albums</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Photo &amp; video albums shown on the public Media page — uploads are stored on Cloudinary automatically
+            </p>
+          </div>
+          <MediaAlbumsManager />
         </section>
 
         {/* Info banner */}
