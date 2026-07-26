@@ -402,26 +402,20 @@ export default function Home() {
 
             {/* Hero Photo */}
             <div>
-              <div className="relative h-56 sm:h-72 lg:h-80 w-full rounded-2xl overflow-hidden shadow-2xl transition-all duration-300">
-                {activePhoto ? (
-                  <>
-                    {/* Blurred backdrop fills the frame so portrait photos aren't cropped */}
-                    <img
-                      src={cloudinaryResize(activePhoto, 1200, 640)}
-                      alt=""
-                      aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
-                    />
-                    <img
-                      src={cloudinaryResize(activePhoto, 1200, 640)}
-                      alt="HK Masters Hockey team"
-                      className="relative w-full h-full object-contain"
-                    />
-                  </>
-                ) : (
+              {activePhoto ? (
+                <div className="flex h-56 sm:h-72 lg:h-80 items-center justify-center">
+                  {/* Frame hugs the photo: no cropping, no filler panels */}
+                  <img
+                    src={cloudinaryResize(activePhoto, 1200, 640)}
+                    alt="HK Masters Hockey team"
+                    className="max-h-full max-w-full w-auto h-auto rounded-2xl shadow-2xl object-contain transition-all duration-300"
+                  />
+                </div>
+              ) : (
+                <div className="h-56 sm:h-72 lg:h-80 w-full rounded-2xl overflow-hidden shadow-2xl">
                   <PhotoPlaceholder label="Add your team photo via CMS → Home Page → Hero Photo" />
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
           </div>
