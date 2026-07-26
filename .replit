@@ -41,6 +41,10 @@ ADMIN_APP_URL = "https://app.hkmastershockey.com/admin"
 ADMIN_APP_URL = "https://masters-world-hub.replit.app/admin"
 
 [[ports]]
+localPort = 3002
+externalPort = 3002
+
+[[ports]]
 localPort = 8080
 externalPort = 8080
 
