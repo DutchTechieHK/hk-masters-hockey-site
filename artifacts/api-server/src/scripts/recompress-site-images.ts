@@ -55,13 +55,13 @@ async function recompress(objectPath: string): Promise<void> {
   if (!dl.ok) throw new Error(`Download failed (${dl.status}) for ${objectPath}`);
   const original = Buffer.from(await dl.arrayBuffer());
 
-  const meta = await sharp(original).metadata();
+  const meta = await sharp(original, { limitInputPixels: false }).metadata();
   if (meta.format === "gif" && (meta.pages ?? 1) > 1) {
     console.log(`SKIP ${objectPath}: animated GIF`);
     return;
   }
 
-  const pipeline = sharp(original)
+  const pipeline = sharp(original, { limitInputPixels: false })
     .rotate()
     .resize({ width: 2000, height: 2000, fit: "inside", withoutEnlargement: true });
   let recompressed: Buffer;
