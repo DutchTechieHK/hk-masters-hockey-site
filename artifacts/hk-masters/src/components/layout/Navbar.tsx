@@ -1,5 +1,5 @@
 import { Link, useRoute, useLocation } from "wouter"
-import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut, CalendarClock, Megaphone, History, FolderOpen, Gavel, Package, HandCoins, Footprints, ChevronRight, BarChart2, PlayCircle, FileText, ArrowDownToLine, Search, Newspaper } from "lucide-react"
+import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut, CalendarClock, Megaphone, History, FolderOpen, Gavel, Package, HandCoins, Footprints, ChevronRight, BarChart2, PlayCircle, FileText, ArrowDownToLine, Search, Newspaper, Globe } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -40,6 +40,7 @@ const NAV_ITEMS = [
   { href: "/arrivals", label: "Transfers", icon: Plane },
   { href: "/journal", label: "Journal", icon: BookOpen },
   { href: "/documents", label: "Documents", icon: FolderOpen },
+  { href: "/website", label: "Website", icon: Globe },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/tutorials", label: "Tutorials", icon: PlayCircle },
 ]

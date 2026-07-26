@@ -1,0 +1,430 @@
+import { useState, useRef, useEffect, useCallback } from "react"
+import { PageLayout } from "@/components/layout/PageLayout"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
+import { Upload, Trash2, Plus, Globe, ImageIcon, GripVertical } from "lucide-react"
+
+const ADMIN_SESSION_KEY = "hkm_admin_session"
+const API_BASE = import.meta.env.VITE_API_BASE ?? ""
+
+interface SiteContent {
+  heroImage: string
+  mo40Photo: string
+  mo50Photo: string
+  galleryImages: { url: string }[]
+}
+
+function getToken() {
+  return typeof localStorage !== "undefined" ? localStorage.getItem(ADMIN_SESSION_KEY) : null
+}
+
+async function uploadImage(file: File): Promise<string> {
+  const token = getToken()
+  const formData = new FormData()
+  formData.append("file", file)
+  const headers: Record<string, string> = {}
+  if (token) headers["x-session-token"] = token
+  const res = await fetch(`${API_BASE}/api/site-content/upload-image`, {
+    method: "POST",
+    headers,
+    body: formData,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error || "Upload failed")
+  }
+  const { imageUrl } = await res.json()
+  return imageUrl as string
+}
+
+async function saveContent(content: Partial<SiteContent>): Promise<SiteContent> {
+  const token = getToken()
+  const headers: Record<string, string> = { "Content-Type": "application/json" }
+  if (token) headers["x-session-token"] = token
+  const res = await fetch(`${API_BASE}/api/site-content`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(content),
+  })
+  if (!res.ok) throw new Error("Failed to save")
+  return res.json() as Promise<SiteContent>
+}
+
+function PhotoCard({
+  label,
+  description,
+  url,
+  onUpload,
+  onClear,
+  uploading,
+}: {
+  label: string
+  description: string
+  url: string
+  onUpload: (file: File) => void
+  onClear: () => void
+  uploading: boolean
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+      <div className="relative h-48 bg-gray-100">
+        {url ? (
+          <img src={url} alt={label} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-gray-400">
+            <ImageIcon className="w-10 h-10 opacity-40" />
+            <p className="text-xs">No photo set</p>
+          </div>
+        )}
+        {uploading && (
+          <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+      </div>
+      <div className="p-4">
+        <p className="font-semibold text-sm text-gray-900 mb-0.5">{label}</p>
+        <p className="text-xs text-gray-500 mb-3">{description}</p>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="flex-1"
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
+            {url ? "Replace" : "Upload"}
+          </Button>
+          {url && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onClear}
+              disabled={uploading}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 border-red-200"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onUpload(f)
+          e.target.value = ""
+        }}
+      />
+    </div>
+  )
+}
+
+export default function WebsiteContent() {
+  const { toast } = useToast()
+  const [content, setContent] = useState<SiteContent | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [uploadingField, setUploadingField] = useState<string | null>(null)
+  const [savingGallery, setSavingGallery] = useState(false)
+  const galleryFileRef = useRef<HTMLInputElement>(null)
+  const [addingToGallery, setAddingToGallery] = useState(false)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/site-content`)
+      if (res.ok) setContent(await res.json())
+    } catch {
+      toast({ title: "Failed to load site content", variant: "destructive" })
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => { load() }, [load])
+
+  const handlePhotoUpload = async (field: "heroImage" | "mo40Photo" | "mo50Photo", file: File) => {
+    setUploadingField(field)
+    try {
+      const imageUrl = await uploadImage(file)
+      const updated = await saveContent({ [field]: imageUrl })
+      setContent(updated)
+      toast({ title: "Photo updated successfully" })
+    } catch (e) {
+      toast({ title: (e as Error).message || "Upload failed", variant: "destructive" })
+    } finally {
+      setUploadingField(null)
+    }
+  }
+
+  const handlePhotoClear = async (field: "heroImage" | "mo40Photo" | "mo50Photo") => {
+    if (!content) return
+    setUploadingField(field)
+    try {
+      const updated = await saveContent({ [field]: "" })
+      setContent(updated)
+      toast({ title: "Photo removed" })
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" })
+    } finally {
+      setUploadingField(null)
+    }
+  }
+
+  const handleGalleryAdd = async (files: FileList) => {
+    if (!content) return
+    setAddingToGallery(true)
+    try {
+      const newUrls: { url: string }[] = []
+      for (const file of Array.from(files)) {
+        const imageUrl = await uploadImage(file)
+        newUrls.push({ url: imageUrl })
+      }
+      const newGallery = [...content.galleryImages, ...newUrls]
+      const updated = await saveContent({ galleryImages: newGallery })
+      setContent(updated)
+      toast({ title: `${newUrls.length} photo${newUrls.length > 1 ? "s" : ""} added to gallery` })
+    } catch (e) {
+      toast({ title: (e as Error).message || "Upload failed", variant: "destructive" })
+    } finally {
+      setAddingToGallery(false)
+    }
+  }
+
+  const handleGalleryRemove = async (index: number) => {
+    if (!content) return
+    setSavingGallery(true)
+    try {
+      const newGallery = content.galleryImages.filter((_, i) => i !== index)
+      const updated = await saveContent({ galleryImages: newGallery })
+      setContent(updated)
+      toast({ title: "Photo removed from gallery" })
+    } catch {
+      toast({ title: "Failed to remove photo", variant: "destructive" })
+    } finally {
+      setSavingGallery(false)
+    }
+  }
+
+  const handleGalleryReplace = async (index: number, file: File) => {
+    if (!content) return
+    setSavingGallery(true)
+    try {
+      const imageUrl = await uploadImage(file)
+      const newGallery = content.galleryImages.map((img, i) => i === index ? { url: imageUrl } : img)
+      const updated = await saveContent({ galleryImages: newGallery })
+      setContent(updated)
+      toast({ title: "Gallery photo replaced" })
+    } catch (e) {
+      toast({ title: (e as Error).message || "Upload failed", variant: "destructive" })
+    } finally {
+      setSavingGallery(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <PageLayout title="Website" description="Manage public website photos">
+        <div className="flex items-center justify-center h-64 text-gray-400">Loading…</div>
+      </PageLayout>
+    )
+  }
+
+  if (!content) {
+    return (
+      <PageLayout title="Website" description="Manage public website photos">
+        <div className="flex items-center justify-center h-64 text-red-500">Failed to load content</div>
+      </PageLayout>
+    )
+  }
+
+  return (
+    <PageLayout
+      title="Website"
+      description="Manage photos shown on the public website — changes go live immediately"
+    >
+      <div className="space-y-10 max-w-5xl">
+
+        {/* ── Hero Photo ──────────────────────────────────────── */}
+        <section>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Homepage Hero Photo</h2>
+            <p className="text-sm text-gray-500 mt-0.5">The large photo shown in the homepage banner</p>
+          </div>
+          <div className="max-w-md">
+            <PhotoCard
+              label="Hero Photo"
+              description="Shown on the right side of the homepage banner. Landscape photos work best."
+              url={content.heroImage}
+              uploading={uploadingField === "heroImage"}
+              onUpload={(f) => handlePhotoUpload("heroImage", f)}
+              onClear={() => handlePhotoClear("heroImage")}
+            />
+          </div>
+        </section>
+
+        {/* ── Squad Photos ────────────────────────────────────── */}
+        <section>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Squad Photos</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Team photos shown on the Teams page</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
+            <PhotoCard
+              label="MO40 Squad Photo"
+              description="Shown on the Teams page alongside the MO40 squad details."
+              url={content.mo40Photo}
+              uploading={uploadingField === "mo40Photo"}
+              onUpload={(f) => handlePhotoUpload("mo40Photo", f)}
+              onClear={() => handlePhotoClear("mo40Photo")}
+            />
+            <PhotoCard
+              label="MO50 Squad Photo"
+              description="Shown on the Teams page alongside the MO50 squad details."
+              url={content.mo50Photo}
+              uploading={uploadingField === "mo50Photo"}
+              onUpload={(f) => handlePhotoUpload("mo50Photo", f)}
+              onClear={() => handlePhotoClear("mo50Photo")}
+            />
+          </div>
+        </section>
+
+        {/* ── Gallery Strip ────────────────────────────────────── */}
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Homepage Gallery Strip</h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                The scrollable photo strip below the homepage hero — {content.galleryImages.length} photo{content.galleryImages.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <div>
+              <Button
+                onClick={() => galleryFileRef.current?.click()}
+                disabled={addingToGallery || savingGallery}
+                size="sm"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Add Photos
+              </Button>
+              <input
+                ref={galleryFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files?.length) handleGalleryAdd(e.target.files)
+                  e.target.value = ""
+                }}
+              />
+            </div>
+          </div>
+
+          {content.galleryImages.length === 0 ? (
+            <div className="border-2 border-dashed border-gray-200 rounded-xl h-40 flex flex-col items-center justify-center gap-3 text-gray-400">
+              <ImageIcon className="w-8 h-8 opacity-40" />
+              <p className="text-sm">No gallery photos yet — click Add Photos to get started</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {content.galleryImages.map((img, i) => (
+                <GalleryThumb
+                  key={`${img.url}-${i}`}
+                  url={img.url}
+                  index={i}
+                  disabled={savingGallery}
+                  onRemove={() => handleGalleryRemove(i)}
+                  onReplace={(f) => handleGalleryReplace(i, f)}
+                />
+              ))}
+
+              {/* Add more tile */}
+              <button
+                onClick={() => galleryFileRef.current?.click()}
+                disabled={addingToGallery || savingGallery}
+                className="h-32 rounded-xl border-2 border-dashed border-gray-200 hover:border-gray-400 flex flex-col items-center justify-center gap-1.5 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40"
+              >
+                {addingToGallery ? (
+                  <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5" />
+                    <span className="text-xs font-medium">Add</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </section>
+
+        {/* Info banner */}
+        <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-700 max-w-2xl">
+          <Globe className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <p>
+            Changes to hero and squad photos go live on the public website immediately.
+            Gallery changes are also immediate. No need to republish the site.
+          </p>
+        </div>
+
+      </div>
+    </PageLayout>
+  )
+}
+
+function GalleryThumb({
+  url,
+  index,
+  disabled,
+  onRemove,
+  onReplace,
+}: {
+  url: string
+  index: number
+  disabled: boolean
+  onRemove: () => void
+  onReplace: (f: File) => void
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  return (
+    <div className="relative h-32 rounded-xl overflow-hidden group bg-gray-100">
+      <img src={url} alt={`Gallery ${index + 1}`} className="w-full h-full object-cover" />
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled}
+          title="Replace"
+          className="p-1.5 bg-white/90 rounded-lg text-gray-700 hover:bg-white transition-colors disabled:opacity-50"
+        >
+          <Upload className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={onRemove}
+          disabled={disabled}
+          title="Remove"
+          className="p-1.5 bg-white/90 rounded-lg text-red-600 hover:bg-white transition-colors disabled:opacity-50"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div className="absolute top-1.5 left-1.5 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+        {index + 1}
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onReplace(f)
+          e.target.value = ""
+        }}
+      />
+    </div>
+  )
+}

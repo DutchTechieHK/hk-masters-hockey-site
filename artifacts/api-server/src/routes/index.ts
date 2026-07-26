@@ -25,6 +25,7 @@ import { legoJarPublicRouter, legoJarAdminRouter } from "./lego-jar";
 import funRunRouter from "./fun-run";
 import pollsRouter from "./polls";
 import payoutsRouter from "./payouts";
+import siteContentRouter from "./site-content";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use("/admin/lego-jar", legoJarAdminRouter);
 router.use("/fun-run", funRunRouter);
 router.use("/polls", pollsRouter);
 router.use("/payouts", payoutsRouter);
+router.use("/site-content", siteContentRouter);
 
 export default router;

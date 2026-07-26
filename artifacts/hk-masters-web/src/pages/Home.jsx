@@ -10,6 +10,17 @@ import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import SponsorStrip from "../components/SponsorStrip";
 
+function useSiteContent() {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    fetch(`${API_BASE}/api/site-content`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setData(d); })
+      .catch(() => {});
+  }, []);
+  return data;
+}
+
 const ROTTERDAM_START   = new Date("2026-07-22T09:00:00+02:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 const isRotterdamMode = () => Date.now() < ROTTERDAM_MODE_END.getTime();
@@ -303,10 +314,30 @@ function LatestJournalCard() {
 }
 
 export default function Home() {
-  const hasHeroImage = content.hero_image && content.hero_image.trim() !== "";
-  const hasGallery   = content.gallery_images && content.gallery_images.length > 0;
-  const [activePhoto, setActivePhoto] = useState(hasHeroImage ? content.hero_image : null);
-  const [openSquad, setOpenSquad]     = useState(null);
+  const siteContent = useSiteContent();
+
+  // Prefer API-served photos; fall back to static JSON values
+  // When API has responded (siteContent !== null), trust it completely.
+  // When API hasn't responded yet or failed, fall back to static JSON.
+  const heroImage = siteContent !== null
+    ? (siteContent.heroImage || content.hero_image || null)
+    : (content.hero_image || null);
+
+  // If API responded, use its gallery (may be empty if admin cleared it).
+  // If API hasn't responded yet, fall back to static JSON.
+  const galleryImages = siteContent !== null
+    ? (siteContent.galleryImages || [])
+    : (content.gallery_images || []);
+
+  const hasHeroImage = Boolean(heroImage);
+  const hasGallery   = galleryImages.length > 0;
+
+  // Track which gallery image the user has explicitly clicked.
+  // When null, we follow the hero image from the API/static.
+  const [userSelectedPhoto, setUserSelectedPhoto] = useState(null);
+  const activePhoto = userSelectedPhoto || heroImage;
+
+  const [openSquad, setOpenSquad] = useState(null);
   const stripRef = useRef(null);
 
   const scrollStrip = (dir) => {
@@ -410,10 +441,10 @@ export default function Home() {
               className="flex flex-row gap-2 overflow-x-auto"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
-              {content.gallery_images.map((img, i) => (
+              {galleryImages.map((img, i) => (
                 <button
                   key={i}
-                  onClick={() => setActivePhoto(img.url)}
+                  onClick={() => setUserSelectedPhoto(img.url)}
                   className={`h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none ${
                     activePhoto === img.url
                       ? "ring-2 ring-[#5B9FE0] ring-offset-2 ring-offset-[#16305D]"

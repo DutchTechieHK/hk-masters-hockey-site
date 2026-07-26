@@ -7,6 +7,17 @@ import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import RichText from "../components/RichText";
 
+function useSiteContent() {
+  const [data, setData] = useState(null);
+  useEffect(() => {
+    fetch(`${API_BASE}/api/site-content`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) setData(d); })
+      .catch(() => {});
+  }, []);
+  return data;
+}
+
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 
 function useTeams() {
@@ -37,10 +48,19 @@ function mergeSquad(staticSquad, liveTeam) {
 export default function Teams() {
   const [openSquad, setOpenSquad] = useState(null);
   const liveTeams = useTeams();
+  const siteContent = useSiteContent();
   const rotterdamMode = new Date() < ROTTERDAM_MODE_END;
 
   // liveTeams is sorted by DB id; static squads are in the same order (MO40 first, MO50 second)
-  const squads = content.squads.map((s, i) => mergeSquad(s, liveTeams ? liveTeams[i] : null));
+  // Override squad photos from the API site-content (admin-managed) if available
+  const squads = content.squads.map((s, i) => {
+    const merged = { ...mergeSquad(s, liveTeams ? liveTeams[i] : null) };
+    if (siteContent) {
+      const apiPhoto = s.short_name === "MO40" ? siteContent.mo40Photo : siteContent.mo50Photo;
+      if (apiPhoto) merged.photo = apiPhoto;
+    }
+    return merged;
+  });
 
   return (
     <div>
