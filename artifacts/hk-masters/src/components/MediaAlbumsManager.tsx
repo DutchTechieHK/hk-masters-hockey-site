@@ -55,26 +55,31 @@ async function uploadMedia(file: File): Promise<string> {
   return url as string
 }
 
-async function saveAlbums(albums: Album[]): Promise<Album[]> {
+class ConflictError extends Error {}
+
+async function saveAlbums(albums: Album[], updatedAt: string | null): Promise<{ albums: Album[]; updatedAt: string | null }> {
   const token = getToken()
   const headers: Record<string, string> = { "Content-Type": "application/json" }
   if (token) headers["x-session-token"] = token
   const res = await fetch(`${API_BASE}/api/site-content/media-albums`, {
     method: "PUT",
     headers,
-    body: JSON.stringify({ albums }),
+    body: JSON.stringify({ albums, updatedAt }),
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error((err as { error?: string }).error || "Failed to save albums")
+    const message = (err as { error?: string }).error || "Failed to save albums"
+    if (res.status === 409) throw new ConflictError(message)
+    throw new Error(message)
   }
   const data = await res.json()
-  return data.albums as Album[]
+  return { albums: data.albums as Album[], updatedAt: (data.updatedAt as string | null) ?? null }
 }
 
 export function MediaAlbumsManager() {
   const { toast } = useToast()
   const [albums, setAlbums] = useState<Album[] | null>(null)
+  const [albumsUpdatedAt, setAlbumsUpdatedAt] = useState<string | null>(null)
   const [activeIndex, setActiveIndex] = useState(0)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -91,6 +96,7 @@ export function MediaAlbumsManager() {
       if (res.ok) {
         const data = await res.json()
         setAlbums(data.albums)
+        setAlbumsUpdatedAt((data.updatedAt as string | null) ?? null)
       } else {
         setAlbums([])
       }
@@ -107,12 +113,18 @@ export function MediaAlbumsManager() {
     const prev = albums
     setAlbums(next) // optimistic
     try {
-      const savedAlbums = await saveAlbums(next)
-      setAlbums(savedAlbums)
+      const saved = await saveAlbums(next, albumsUpdatedAt)
+      setAlbums(saved.albums)
+      setAlbumsUpdatedAt(saved.updatedAt)
       toast({ title: successMsg })
     } catch (e) {
       setAlbums(prev)
-      toast({ title: (e as Error).message || "Failed to save", variant: "destructive" })
+      if (e instanceof ConflictError) {
+        toast({ title: "Save blocked", description: e.message, variant: "destructive" })
+        await load() // pull the latest albums so the admin can redo their edit
+      } else {
+        toast({ title: (e as Error).message || "Failed to save", variant: "destructive" })
+      }
     } finally {
       setSaving(false)
     }

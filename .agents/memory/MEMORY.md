@@ -16,3 +16,4 @@
 - [Shared object storage dev/prod](shared-object-storage.md) — one bucket for both; workspace scripts can fix prod objects in place instantly, but dev deletions also hit prod.
 - [Relative image URLs vs stale frontends](relative-image-urls-stale-frontend.md) — DB rewrites to relative /api/... paths break the live site until republish; absolute URLs are the safe emergency fix.
 - [Prod contribution writes send emails](prod-contribution-writes.md) — contributions PUT always re-emails authors on approved/declined; no email-free prod bulk-rewrite path exists.
+- [Site-content conflict guard](site-content-conflict-guard.md) — stale-save checks must be atomic CAS in the UPDATE WHERE (IS NOT DISTINCT FROM), per-section timestamps; add an IF NOT EXISTS migrations/*.sql alongside schema push to satisfy review.

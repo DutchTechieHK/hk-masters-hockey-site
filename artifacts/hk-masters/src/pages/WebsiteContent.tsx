@@ -14,7 +14,10 @@ interface SiteContent {
   mo40Photo: string
   mo50Photo: string
   galleryImages: { url: string; caption?: string }[]
+  galleryUpdatedAt?: string | null
 }
+
+class ConflictError extends Error {}
 
 function getToken() {
   return typeof localStorage !== "undefined" ? localStorage.getItem(ADMIN_SESSION_KEY) : null
@@ -48,7 +51,12 @@ async function saveContent(content: Partial<SiteContent>): Promise<SiteContent> 
     headers,
     body: JSON.stringify(content),
   })
-  if (!res.ok) throw new Error("Failed to save")
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const message = (err as { error?: string }).error || "Failed to save"
+    if (res.status === 409) throw new ConflictError(message)
+    throw new Error(message)
+  }
   return res.json() as Promise<SiteContent>
 }
 
@@ -194,6 +202,28 @@ export default function WebsiteContent() {
     }
   }
 
+  // Saves a new gallery list with an optimistic-concurrency check. If another
+  // admin changed the gallery since this page loaded, the server rejects the
+  // save (409) — we surface the message and reload the latest content.
+  const saveGallery = useCallback(async (newGallery: { url: string; caption?: string }[]) => {
+    if (!content) throw new Error("Not loaded")
+    try {
+      const updated = await saveContent({
+        galleryImages: newGallery,
+        galleryUpdatedAt: content.galleryUpdatedAt ?? null,
+      })
+      setContent(updated)
+      return true
+    } catch (e) {
+      if (e instanceof ConflictError) {
+        toast({ title: "Save blocked", description: e.message, variant: "destructive" })
+        await load() // pull the latest gallery so the admin can redo their edit
+        return false
+      }
+      throw e
+    }
+  }, [content, load, toast])
+
   const handleGalleryAdd = async (files: FileList) => {
     if (!content) return
     setAddingToGallery(true)
@@ -204,9 +234,9 @@ export default function WebsiteContent() {
         newUrls.push({ url: imageUrl })
       }
       const newGallery = [...content.galleryImages, ...newUrls]
-      const updated = await saveContent({ galleryImages: newGallery })
-      setContent(updated)
-      toast({ title: `${newUrls.length} photo${newUrls.length > 1 ? "s" : ""} added to gallery` })
+      if (await saveGallery(newGallery)) {
+        toast({ title: `${newUrls.length} photo${newUrls.length > 1 ? "s" : ""} added to gallery` })
+      }
     } catch (e) {
       toast({ title: (e as Error).message || "Upload failed", variant: "destructive" })
     } finally {
@@ -219,9 +249,9 @@ export default function WebsiteContent() {
     setSavingGallery(true)
     try {
       const newGallery = content.galleryImages.filter((_, i) => i !== index)
-      const updated = await saveContent({ galleryImages: newGallery })
-      setContent(updated)
-      toast({ title: "Photo removed from gallery" })
+      if (await saveGallery(newGallery)) {
+        toast({ title: "Photo removed from gallery" })
+      }
     } catch {
       toast({ title: "Failed to remove photo", variant: "destructive" })
     } finally {
@@ -238,9 +268,9 @@ export default function WebsiteContent() {
       const newGallery = content.galleryImages.map((img, i) =>
         i === index ? { url: img.url, caption: caption.trim() || undefined } : img
       )
-      const updated = await saveContent({ galleryImages: newGallery })
-      setContent(updated)
-      toast({ title: caption.trim() ? "Caption saved" : "Caption removed" })
+      if (await saveGallery(newGallery)) {
+        toast({ title: caption.trim() ? "Caption saved" : "Caption removed" })
+      }
     } catch {
       toast({ title: "Failed to save caption", variant: "destructive" })
     } finally {
@@ -268,9 +298,9 @@ export default function WebsiteContent() {
     try {
       const imageUrl = await uploadImage(file)
       const newGallery = content.galleryImages.map((img, i) => i === index ? { ...img, url: imageUrl } : img)
-      const updated = await saveContent({ galleryImages: newGallery })
-      setContent(updated)
-      toast({ title: "Gallery photo replaced" })
+      if (await saveGallery(newGallery)) {
+        toast({ title: "Gallery photo replaced" })
+      }
     } catch (e) {
       toast({ title: (e as Error).message || "Upload failed", variant: "destructive" })
     } finally {

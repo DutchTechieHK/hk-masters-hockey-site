@@ -11,6 +11,10 @@ export const siteContentTable = pgTable("site_content", {
   // JSON array of { youtube_id, title, description? } — null means "never set" (use static defaults)
   mediaVideos: text("media_videos"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+  // Per-section timestamps used for optimistic-concurrency checks so two admins
+  // don't silently overwrite each other's edits.
+  galleryUpdatedAt: timestamp("gallery_updated_at", { withTimezone: true }),
+  mediaAlbumsUpdatedAt: timestamp("media_albums_updated_at", { withTimezone: true }),
 });
 
 export type SiteContent = typeof siteContentTable.$inferSelect;

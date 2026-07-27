@@ -2,7 +2,7 @@ import { Router, type Request, type Response, type NextFunction } from "express"
 import multer from "multer";
 import { db } from "@workspace/db";
 import { siteContentTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, sql, type SQL } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import sharp from "sharp";
 import { ObjectStorageService } from "../lib/objectStorage";
@@ -181,6 +181,7 @@ function formatRow(row: typeof siteContentTable.$inferSelect) {
     // not when admin explicitly cleared it to [].
     galleryImages: galleryImages ?? STATIC_DEFAULTS.galleryImages,
     updatedAt: row.updatedAt?.toISOString(),
+    galleryUpdatedAt: row.galleryUpdatedAt?.toISOString() ?? null,
   };
 }
 
@@ -208,6 +209,7 @@ router.put("/", requireAdminAccess, async (req, res) => {
     mo40Photo?: string;
     mo50Photo?: string;
     galleryImages?: { url: string; caption?: string }[];
+    galleryUpdatedAt?: string | null;
   };
 
   // Sanitize gallery entries: keep only url + optional caption strings
@@ -221,6 +223,20 @@ router.put("/", requireAdminAccess, async (req, res) => {
     : null;
 
   const row = await getOrCreateRow();
+
+  // Conflict guard: when the client is replacing the gallery and tells us which
+  // version it based its edit on, enforce that version *in the UPDATE itself*
+  // so concurrent saves can't both slip past a pre-check — only one writer
+  // succeeds per version, the other gets a 409.
+  const guardGallery = Boolean(sanitizedGallery) && body.galleryUpdatedAt !== undefined;
+  const conditions: SQL[] = [eq(siteContentTable.id, row.id)];
+  if (guardGallery) {
+    const expected = body.galleryUpdatedAt ? new Date(body.galleryUpdatedAt) : null;
+    conditions.push(
+      sql`${siteContentTable.galleryUpdatedAt} IS NOT DISTINCT FROM ${expected}`
+    );
+  }
+
   const [updated] = await db
     .update(siteContentTable)
     .set({
@@ -230,9 +246,18 @@ router.put("/", requireAdminAccess, async (req, res) => {
       galleryImages: sanitizedGallery
         ? JSON.stringify(sanitizedGallery)
         : row.galleryImages,
+      ...(sanitizedGallery ? { galleryUpdatedAt: new Date() } : {}),
     })
-    .where(eq(siteContentTable.id, row.id))
+    .where(and(...conditions))
     .returning();
+
+  if (!updated) {
+    res.status(409).json({
+      error:
+        "Someone else changed the gallery since you loaded this page — please reload to see the latest version before saving.",
+    });
+    return;
+  }
 
   res.json(formatRow(updated));
 });
@@ -241,12 +266,15 @@ router.put("/", requireAdminAccess, async (req, res) => {
 router.get("/media-albums", async (_req, res) => {
   const row = await getOrCreateRow();
   const albums = parseMediaAlbums(row.mediaAlbums) ?? MEDIA_ALBUM_DEFAULTS;
-  res.json({ albums });
+  res.json({ albums, updatedAt: row.mediaAlbumsUpdatedAt?.toISOString() ?? null });
 });
 
 // PUT /api/site-content/media-albums — admin only, replaces the album list
 router.put("/media-albums", requireAdminAccess, async (req, res) => {
-  const body = req.body as { albums?: { name?: string; photos?: unknown }[] };
+  const body = req.body as {
+    albums?: { name?: string; photos?: unknown }[];
+    updatedAt?: string | null;
+  };
   if (!Array.isArray(body.albums)) {
     res.status(400).json({ error: "albums must be an array" });
     return;
@@ -261,11 +289,34 @@ router.put("/media-albums", requireAdminAccess, async (req, res) => {
     }));
 
   const row = await getOrCreateRow();
-  await db
+
+  // Conflict guard: enforce the expected version in the UPDATE's WHERE clause
+  // (atomic compare-and-set) so two concurrent saves from the same baseline
+  // can't both succeed — the loser gets a 409 instead of silently overwriting.
+  const conditions: SQL[] = [eq(siteContentTable.id, row.id)];
+  if (body.updatedAt !== undefined) {
+    const expected = body.updatedAt ? new Date(body.updatedAt) : null;
+    conditions.push(
+      sql`${siteContentTable.mediaAlbumsUpdatedAt} IS NOT DISTINCT FROM ${expected}`
+    );
+  }
+
+  const mediaAlbumsUpdatedAt = new Date();
+  const updatedRows = await db
     .update(siteContentTable)
-    .set({ mediaAlbums: JSON.stringify(sanitized) })
-    .where(eq(siteContentTable.id, row.id));
-  res.json({ albums: sanitized });
+    .set({ mediaAlbums: JSON.stringify(sanitized), mediaAlbumsUpdatedAt })
+    .where(and(...conditions))
+    .returning({ id: siteContentTable.id });
+
+  if (updatedRows.length === 0) {
+    res.status(409).json({
+      error:
+        "Someone else changed the albums since you loaded this page — please reload to see the latest version before saving.",
+    });
+    return;
+  }
+
+  res.json({ albums: sanitized, updatedAt: mediaAlbumsUpdatedAt.toISOString() });
 });
 
 // GET /api/site-content/media-videos — public, returns Media page YouTube videos
