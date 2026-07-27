@@ -127,6 +127,30 @@ const MEDIA_ALBUM_DEFAULTS: { name: string; photos: string[] }[] = [
   },
 ];
 
+// Default YouTube videos matching the previously static media.json
+const MEDIA_VIDEO_DEFAULTS: { youtube_id: string; title: string; description?: string }[] = [
+  {
+    youtube_id: "https://www.youtube.com/watch?v=_JVBkjoumW8",
+    title: "HK Masters Hockey — MO50 vs South Korea MO50 | Pool Match | Asia Championship 2025",
+  },
+  {
+    youtube_id: "https://youtu.be/52ZTz6MCbGk",
+    title: "HK Masters Hockey — HKG O60 Men vs  SGP | WMH Asia Championship 2025",
+    description: "Hong Kong over 60's in a very determined match against the Singapore Team.",
+  },
+];
+
+function parseJsonArray(raw: string | null): unknown[] | null {
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed;
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
 function parseMediaAlbums(raw: string | null): { name: string; photos: string[] }[] | null {
   if (raw == null) return null;
   try {
@@ -242,6 +266,44 @@ router.put("/media-albums", requireAdminAccess, async (req, res) => {
     .set({ mediaAlbums: JSON.stringify(sanitized) })
     .where(eq(siteContentTable.id, row.id));
   res.json({ albums: sanitized });
+});
+
+// GET /api/site-content/media-videos — public, returns Media page YouTube videos
+router.get("/media-videos", async (_req, res) => {
+  const row = await getOrCreateRow();
+  const videos = parseJsonArray(row.mediaVideos) ?? MEDIA_VIDEO_DEFAULTS;
+  res.json({ videos });
+});
+
+// PUT /api/site-content/media-videos — admin only, replaces the video list
+router.put("/media-videos", requireAdminAccess, async (req, res) => {
+  const body = req.body as { videos?: { youtube_id?: unknown; title?: unknown; description?: unknown }[] };
+  if (!Array.isArray(body.videos)) {
+    res.status(400).json({ error: "videos must be an array" });
+    return;
+  }
+  const sanitized = body.videos
+    .filter(
+      (v) =>
+        v &&
+        typeof v.youtube_id === "string" && (v.youtube_id as string).trim() &&
+        typeof v.title === "string" && (v.title as string).trim()
+    )
+    .map((v) => {
+      const description = typeof v.description === "string" ? (v.description as string).trim() : "";
+      return {
+        youtube_id: (v.youtube_id as string).trim(),
+        title: (v.title as string).trim(),
+        ...(description ? { description } : {}),
+      };
+    });
+
+  const row = await getOrCreateRow();
+  await db
+    .update(siteContentTable)
+    .set({ mediaVideos: JSON.stringify(sanitized) })
+    .where(eq(siteContentTable.id, row.id));
+  res.json({ videos: sanitized });
 });
 
 // POST /api/site-content/upload-media — admin only. Uploads a photo or video

@@ -35,6 +35,18 @@ function useMediaAlbums() {
   return albums;
 }
 
+function useMediaVideos() {
+  // Baked-in videos are only a fallback while the API hasn't responded.
+  const [videos, setVideos] = useState(null);
+  useEffect(() => {
+    fetch(`${API_BASE}/api/site-content/media-videos`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d && Array.isArray(d.videos)) setVideos(d.videos); })
+      .catch(() => {});
+  }, []);
+  return videos;
+}
+
 function useCommunityAlbum() {
   const [album, setAlbum] = useState(null);
   useEffect(() => {
@@ -58,10 +70,11 @@ export default function Media() {
   const [activeAlbum, setActiveAlbum] = useState(null);
   const communityAlbum = useCommunityAlbum();
   const apiAlbums = useMediaAlbums();
+  const apiVideos = useMediaVideos();
 
   const baseAlbums  = apiAlbums ?? (content.albums || []);
   const albums      = communityAlbum ? [...baseAlbums, communityAlbum] : baseAlbums;
-  const videos      = content.videos || [];
+  const videos      = apiVideos ?? (content.videos || []);
   const displayAlbum = activeAlbum ?? (albums.length > 0 ? albums[0] : null);
 
   return (
