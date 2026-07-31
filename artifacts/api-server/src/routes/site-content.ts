@@ -162,7 +162,26 @@ function parseMediaAlbums(raw: string | null): { name: string; photos: string[] 
   return null;
 }
 
-function formatRow(row: typeof siteContentTable.$inferSelect) {
+// Public origin of this API for the current request (works in dev and prod,
+// behind the proxy). Used to turn stored relative "/api/..." image paths into
+// absolute URLs — relative paths break on the public site, which lives on a
+// different domain than the API.
+function requestBase(req: Request): string {
+  const forwarded = req.headers["x-forwarded-proto"];
+  const proto =
+    (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") ||
+    req.protocol ||
+    "https";
+  return `${proto}://${req.get("host")}`;
+}
+
+function absolutizeUrl(url: string, base: string): string {
+  // Only API-served images belong on the API origin; other relative paths
+  // (e.g. the static "/images/..." fallback) are site assets and must stay relative.
+  return url.startsWith("/api/") ? `${base}${url}` : url;
+}
+
+function formatRow(row: typeof siteContentTable.$inferSelect, base: string) {
   // Parse gallery — return exactly what's stored (may be []).
   // Null/parse-error falls back to static defaults (first-boot case only).
   let galleryImages: { url: string; caption?: string }[] | null = null;
@@ -174,12 +193,15 @@ function formatRow(row: typeof siteContentTable.$inferSelect) {
   }
 
   return {
-    heroImage: row.heroImage || STATIC_DEFAULTS.heroImage,
-    mo40Photo: row.mo40Photo || STATIC_DEFAULTS.mo40Photo,
-    mo50Photo: row.mo50Photo || STATIC_DEFAULTS.mo50Photo,
+    heroImage: absolutizeUrl(row.heroImage || STATIC_DEFAULTS.heroImage, base),
+    mo40Photo: absolutizeUrl(row.mo40Photo || STATIC_DEFAULTS.mo40Photo, base),
+    mo50Photo: absolutizeUrl(row.mo50Photo || STATIC_DEFAULTS.mo50Photo, base),
     // Use static defaults only when gallery has never been set (null/parse error),
     // not when admin explicitly cleared it to [].
-    galleryImages: galleryImages ?? STATIC_DEFAULTS.galleryImages,
+    galleryImages: (galleryImages ?? STATIC_DEFAULTS.galleryImages).map((img) => ({
+      ...img,
+      url: absolutizeUrl(img.url, base),
+    })),
     updatedAt: row.updatedAt?.toISOString(),
     galleryUpdatedAt: row.galleryUpdatedAt?.toISOString() ?? null,
   };
@@ -197,9 +219,9 @@ async function getOrCreateRow() {
 }
 
 // GET /api/site-content — public, returns current photo config
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   const row = await getOrCreateRow();
-  res.json(formatRow(row));
+  res.json(formatRow(row, requestBase(req)));
 });
 
 // PUT /api/site-content — admin only, updates photo config
@@ -259,7 +281,7 @@ router.put("/", requireAdminAccess, async (req, res) => {
     return;
   }
 
-  res.json(formatRow(updated));
+  res.json(formatRow(updated, requestBase(req)));
 });
 
 // GET /api/site-content/media-albums — public, returns Media page albums
@@ -473,7 +495,7 @@ router.post(
     }
     const storage = new ObjectStorageService();
     const objectPath = await storage.uploadObjectEntity(buffer, contentType);
-    const imageUrl = `/api/site-content/image${objectPath}`;
+    const imageUrl = `${requestBase(req)}/api/site-content/image${objectPath}`;
     res.json({ imageUrl });
   }
 );
