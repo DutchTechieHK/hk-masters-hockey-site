@@ -140,6 +140,8 @@ const MEDIA_VIDEO_DEFAULTS: { youtube_id: string; title: string; description?: s
   },
 ];
 
+import { PAGE_TEXT_DEFAULTS, PAGE_TEXT_PAGES } from "../data/pageTextDefaults";
+
 function parseJsonArray(raw: string | null): unknown[] | null {
   if (raw == null) return null;
   try {
@@ -339,6 +341,219 @@ router.put("/media-albums", requireAdminAccess, async (req, res) => {
   }
 
   res.json({ albums: sanitized, updatedAt: mediaAlbumsUpdatedAt.toISOString() });
+});
+
+// ─── Page texts (Home, About, Teams, Rotterdam, Contact + Events/Media intros) ───
+
+function parsePageTexts(raw: string | null): Record<string, Record<string, unknown>> | null {
+  if (raw == null) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+  } catch {
+    // fall through
+  }
+  return null;
+}
+
+// Merge stored page texts over the defaults, page by page and field by field,
+// so newly added fields always have a value even for rows saved earlier.
+function mergedPageTexts(raw: string | null): Record<string, Record<string, unknown>> {
+  const stored = parsePageTexts(raw) ?? {};
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const page of PAGE_TEXT_PAGES) {
+    out[page] = mergePageOverDefaults(page, stored[page] ?? {});
+  }
+  return out;
+}
+
+// Field-by-field merge of a stored page over its defaults; nested objects
+// (e.g. contact.social) are deep-merged so a partial save never wipes the
+// other keys.
+function mergePageOverDefaults(
+  page: string,
+  stored: Record<string, unknown>
+): Record<string, unknown> {
+  const defaults = PAGE_TEXT_DEFAULTS[page] ?? {};
+  const out: Record<string, unknown> = { ...defaults, ...stored };
+  for (const [key, defVal] of Object.entries(defaults)) {
+    const sVal = stored[key];
+    if (
+      defVal && typeof defVal === "object" && !Array.isArray(defVal) &&
+      sVal && typeof sVal === "object" && !Array.isArray(sVal)
+    ) {
+      out[key] = { ...(defVal as Record<string, unknown>), ...(sVal as Record<string, unknown>) };
+    }
+  }
+  return out;
+}
+
+// The public site renders these fields through a Markdown component that
+// allows raw HTML, so submitted text must be scrubbed of anything that could
+// execute script. Only a small formatting allowlist of tags survives; all
+// other tags, event-handler attributes, and javascript:/data: URLs are
+// stripped.
+const ALLOWED_TAGS = new Set(["b", "i", "u", "em", "strong", "br", "p", "ul", "ol", "li"]);
+function sanitizeText(input: string): string {
+  let out = input.replace(/<\s*\/?\s*([a-zA-Z][a-zA-Z0-9-]*)((?:[^>"']|"[^"]*"|'[^']*')*?)>/g, (match, tag) => {
+    if (!ALLOWED_TAGS.has(String(tag).toLowerCase())) return "";
+    // keep the tag but drop all attributes (removes on* handlers, style, etc.)
+    const closing = /^<\s*\//.test(match);
+    return closing ? `</${String(tag).toLowerCase()}>` : `<${String(tag).toLowerCase()}>`;
+  });
+  // Neutralize javascript:/data:/vbscript: markdown links
+  out = out.replace(/\]\(\s*(javascript|data|vbscript):[^)]*\)/gi, "](#)");
+  return out;
+}
+
+// Fields that must be a URL (or empty). Applies to top-level string fields
+// and to every value of the named nested object.
+const URL_FIELDS = new Set(["maps_embed_src", "social"]);
+function sanitizeUrl(value: string): string {
+  // Strip all control characters and whitespace — browsers normalize ASCII
+  // tabs/newlines inside schemes, so "java\nscript:" would otherwise slip
+  // through any scheme check.
+  const v = value.replace(/[\u0000-\u0020\u007f]/g, "");
+  if (!v) return "";
+  // Bare domain ("fb.com/x") — normalize to https so it can't be scheme-relative
+  const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(v) ? v : `https://${v}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.href;
+  } catch {
+    // fall through
+  }
+  return "";
+}
+
+// Sanitize a submitted page-text object against the default shape for that
+// page: only known fields are kept, and each must match the default's type
+// (string, array of flat string-record objects, or flat string-record object).
+function sanitizePageTexts(page: string, input: unknown): Record<string, unknown> | null {
+  const defaults = PAGE_TEXT_DEFAULTS[page];
+  if (!defaults || !input || typeof input !== "object" || Array.isArray(input)) return null;
+  const body = input as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const [key, defVal] of Object.entries(defaults)) {
+    const val = body[key];
+    if (val === undefined) continue;
+    if (typeof defVal === "string") {
+      if (typeof val === "string") {
+        out[key] = URL_FIELDS.has(key) ? sanitizeUrl(val) : sanitizeText(val);
+      }
+    } else if (Array.isArray(defVal)) {
+      if (Array.isArray(val)) {
+        const template = (defVal[0] ?? {}) as Record<string, unknown>;
+        out[key] = val
+          .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+          .map((item) => {
+            const row: Record<string, unknown> = {};
+            for (const field of Object.keys(template)) {
+              const v = (item as Record<string, unknown>)[field];
+              if (typeof v === "string") row[field] = sanitizeText(v);
+            }
+            return row;
+          })
+          .filter((row) => Object.values(row).some((v) => typeof v === "string" && v.trim()));
+      }
+    } else if (defVal && typeof defVal === "object") {
+      if (val && typeof val === "object" && !Array.isArray(val)) {
+        const nested: Record<string, unknown> = {};
+        for (const field of Object.keys(defVal as Record<string, unknown>)) {
+          const v = (val as Record<string, unknown>)[field];
+          if (typeof v === "string") {
+            nested[field] = URL_FIELDS.has(key) ? sanitizeUrl(v) : sanitizeText(v);
+          }
+        }
+        out[key] = nested;
+      }
+    }
+  }
+  return out;
+}
+
+// GET /api/site-content/page-texts — public, returns editable page text for all pages
+router.get("/page-texts", async (_req, res) => {
+  const row = await getOrCreateRow();
+  res.json({
+    pages: mergedPageTexts(row.pageTexts),
+    updatedAt: row.pageTextsUpdatedAt?.toISOString() ?? null,
+  });
+});
+
+// PUT /api/site-content/page-texts — admin only, replaces one page's text
+router.put("/page-texts", requireAdminAccess, async (req, res) => {
+  const body = req.body as {
+    page?: string;
+    texts?: unknown;
+    updatedAt?: string | null;
+  };
+  const page = typeof body.page === "string" ? body.page : "";
+  if (!PAGE_TEXT_PAGES.includes(page)) {
+    res.status(400).json({ error: `page must be one of: ${PAGE_TEXT_PAGES.join(", ")}` });
+    return;
+  }
+  const sanitized = sanitizePageTexts(page, body.texts);
+  if (!sanitized) {
+    res.status(400).json({ error: "texts must be an object of editable fields" });
+    return;
+  }
+
+  // The conflict guard is mandatory: the client must echo back the version it
+  // loaded (null for a never-saved row) so a stale save can never silently win.
+  if (body.updatedAt === undefined) {
+    res.status(400).json({ error: "updatedAt is required (use null for the first save)" });
+    return;
+  }
+  const expected = body.updatedAt ? new Date(body.updatedAt) : null;
+  if (expected && isNaN(expected.getTime())) {
+    res.status(400).json({ error: "updatedAt must be a valid ISO timestamp or null" });
+    return;
+  }
+
+  const row = await getOrCreateRow();
+  const stored = parsePageTexts(row.pageTexts) ?? {};
+  // Deep-merge nested objects so a partial save (e.g. only one social link)
+  // never drops the sibling keys.
+  const prevPage = (stored[page] ?? {}) as Record<string, unknown>;
+  const mergedPage: Record<string, unknown> = { ...prevPage, ...sanitized };
+  for (const [key, val] of Object.entries(sanitized)) {
+    const prevVal = prevPage[key] ?? (PAGE_TEXT_DEFAULTS[page] ?? {})[key];
+    if (
+      val && typeof val === "object" && !Array.isArray(val) &&
+      prevVal && typeof prevVal === "object" && !Array.isArray(prevVal)
+    ) {
+      mergedPage[key] = { ...(prevVal as Record<string, unknown>), ...(val as Record<string, unknown>) };
+    }
+  }
+  const next = { ...stored, [page]: mergedPage };
+
+  // Conflict guard: atomic compare-and-set on the page-texts timestamp so two
+  // concurrent saves from the same baseline can't both succeed.
+  const conditions: SQL[] = [
+    eq(siteContentTable.id, row.id),
+    sql`${siteContentTable.pageTextsUpdatedAt} IS NOT DISTINCT FROM ${expected}`,
+  ];
+
+  const pageTextsUpdatedAt = new Date();
+  const updatedRows = await db
+    .update(siteContentTable)
+    .set({ pageTexts: JSON.stringify(next), pageTextsUpdatedAt })
+    .where(and(...conditions))
+    .returning({ id: siteContentTable.id });
+
+  if (updatedRows.length === 0) {
+    res.status(409).json({
+      error:
+        "Someone else changed the page text since you loaded this page — please reload to see the latest version before saving.",
+    });
+    return;
+  }
+
+  res.json({
+    pages: mergedPageTexts(JSON.stringify(next)),
+    updatedAt: pageTextsUpdatedAt.toISOString(),
+  });
 });
 
 // GET /api/site-content/media-videos — public, returns Media page YouTube videos

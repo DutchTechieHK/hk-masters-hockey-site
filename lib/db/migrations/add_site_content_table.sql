@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS site_content (
 
 -- For databases created before media_albums existed (schema diff also handles this on publish)
 ALTER TABLE site_content ADD COLUMN IF NOT EXISTS media_albums TEXT;
+ALTER TABLE site_content ADD COLUMN IF NOT EXISTS page_texts TEXT;
+ALTER TABLE site_content ADD COLUMN IF NOT EXISTS page_texts_updated_at TIMESTAMP WITH TIME ZONE;
 
 -- Seed with one row so GET always returns something (gallery pre-filled with defaults)
 INSERT INTO site_content (hero_image, mo40_photo, mo50_photo, gallery_images)

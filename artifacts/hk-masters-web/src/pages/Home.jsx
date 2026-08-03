@@ -5,6 +5,7 @@ import content from "../content/home.json";
 import RichText from "../components/RichText";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
+import { usePageTexts } from "../utils/pageTexts";
 import teamsContent from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
@@ -315,6 +316,7 @@ function LatestJournalCard() {
 
 export default function Home() {
   const siteContent = useSiteContent();
+  const t = usePageTexts("home", content);
 
   // Prefer API-served photos; fall back to static JSON values
   // When API has responded (siteContent !== null), trust it completely.
@@ -354,35 +356,37 @@ export default function Home() {
             {isRotterdamMode() ? (
               <div>
                 <span className="inline-block bg-[#DE2910] text-white text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-5">
-                  Rotterdam 2026 Masters World Cup
+                  {t.rtm_badge || "Rotterdam 2026 Masters World Cup"}
                 </span>
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-                  Two Teams Representing<br />Hong Kong
+                  {(t.rtm_title || "Two Teams Representing\nHong Kong").split("\n").map((line, i, arr) => (
+                    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
+                  ))}
                 </h1>
                 <p className="text-lg sm:text-xl text-[#D6E8F7] mb-3 font-medium">
-                  MO40 · MO50 &mdash; at the World Masters Hockey World Cup
+                  {t.rtm_subtitle || "MO40 · MO50 — at the World Masters Hockey World Cup"}
                 </p>
                 <p className="text-[#BFD9F5] mb-8 max-w-xl leading-relaxed">
-                  Hong Kong Masters Hockey is proud to send two squads to Rotterdam this July. Two categories, one city, one flag — competing on the world stage from 22 July to 1 August 2026.
+                  {t.rtm_intro || "Hong Kong Masters Hockey is proud to send two squads to Rotterdam this July. Two categories, one city, one flag — competing on the world stage from 22 July to 1 August 2026."}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="/rotterdam-2026#squads"
                     className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
                   >
-                    Meet the Squads &rarr;
+                    {t.rtm_button || "Meet the Squads →"}
                   </Link>
                 </div>
               </div>
             ) : (
               <div>
                 <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-4">
-                  {content.hero_title}
+                  {t.hero_title}
                 </h1>
                 <p className="text-lg sm:text-xl text-[#D6E8F7] mb-3 font-medium">
-                  {content.hero_tagline}
+                  {t.hero_tagline}
                 </p>
-                <RichText content={content.hero_intro} className="text-[#BFD9F5] mb-8 max-w-xl leading-relaxed" />
+                <RichText content={t.hero_intro} className="text-[#BFD9F5] mb-8 max-w-xl leading-relaxed" />
                 <div className="flex flex-wrap gap-3">
                   <Link
                     href="/rotterdam-2026"
@@ -490,7 +494,7 @@ export default function Home() {
 
         {/* Stats Bar */}
         <div className="mt-4 grid grid-cols-3 divide-x divide-[#5B9FE0]/20 max-w-sm mx-auto">
-          {content.stats.map((item, i) => (
+          {(t.stats || content.stats).map((item, i) => (
             <div key={item.label} className="reveal text-center py-3" style={{ animationDelay: `${i * 0.12}s` }}>
               <p className="text-3xl font-extrabold text-white">{item.stat}</p>
               <p className="text-[#8FBDE8] text-xs font-medium mt-0.5">{item.label}</p>
@@ -550,8 +554,8 @@ export default function Home() {
         <section className="bg-[#F2E8D5] py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="max-w-3xl mx-auto text-center">
-              <h2 className="reveal text-3xl font-bold text-[#1E3A6E] mb-4">{content.welcome_heading}</h2>
-              <RichText content={content.welcome_text} className="text-[#5A4F45] leading-relaxed text-lg" />
+              <h2 className="reveal text-3xl font-bold text-[#1E3A6E] mb-4">{t.welcome_heading}</h2>
+              <RichText content={t.welcome_text} className="text-[#5A4F45] leading-relaxed text-lg" />
             </div>
           </div>
         </section>

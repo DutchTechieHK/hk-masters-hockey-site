@@ -7,6 +7,7 @@ import RichText from "../components/RichText";
 import SponsorStrip from "../components/SponsorStrip";
 import NextMatchWidget from "../components/NextMatchWidget";
 import { API_BASE } from "../utils/api";
+import { usePageTexts } from "../utils/pageTexts";
 import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
@@ -55,6 +56,7 @@ function downloadEventIcs(ev) {
 }
 
 export default function Rotterdam2026() {
+  const t = usePageTexts("rotterdam", content);
   const teamManagementUrl = "https://app.hkmastershockey.com";
   const [expandedSquad, setExpandedSquad] = useState(null);
   const [liveSquads, setLiveSquads] = useState(new Map());
@@ -119,7 +121,7 @@ export default function Rotterdam2026() {
       <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
-            {content.header_badge}
+            {t.header_badge}
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Rotterdam 2026</h1>
           <p className="text-[#BFD9F5] text-lg max-w-2xl">
@@ -136,15 +138,15 @@ export default function Rotterdam2026() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2">
             <h2 className="text-2xl font-bold text-[#1E3A6E] mb-4">About the Tournament</h2>
-            <RichText content={content.overview_p1} className="text-gray-600 leading-relaxed mb-4" />
-            <RichText content={content.overview_p2} className="text-gray-600 leading-relaxed mb-4" />
-            <RichText content={content.overview_p3} className="text-gray-600 leading-relaxed" />
+            <RichText content={t.overview_p1} className="text-gray-600 leading-relaxed mb-4" />
+            <RichText content={t.overview_p2} className="text-gray-600 leading-relaxed mb-4" />
+            <RichText content={t.overview_p3} className="text-gray-600 leading-relaxed" />
           </div>
 
           <div className="bg-white rounded-2xl p-6 border border-[#D9C9A8] shadow-sm">
             <h3 className="font-bold text-[#1E3A6E] mb-4">Quick Facts</h3>
             <dl className="space-y-3">
-              {content.quick_facts.map(({ label, value }) => (
+              {(t.quick_facts || content.quick_facts).map(({ label, value }) => (
                 <div key={label} className="flex justify-between gap-2">
                   <dt className="text-sm text-gray-500">{label}</dt>
                   <dd className="text-sm font-medium text-gray-900 text-right"><AutoLink text={value} /></dd>

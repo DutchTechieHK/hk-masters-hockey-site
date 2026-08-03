@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import content from "../content/media.json";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
+import { usePageTexts } from "../utils/pageTexts";
 
 function isVideo(url) {
   return url && url.includes("/video/upload/");
@@ -66,6 +67,7 @@ function useCommunityAlbum() {
 }
 
 export default function Media() {
+  const t = usePageTexts("media", content);
   const [lightbox, setLightbox]       = useState(null);
   const [activeAlbum, setActiveAlbum] = useState(null);
   const communityAlbum = useCommunityAlbum();
@@ -84,7 +86,7 @@ export default function Media() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h1 className="text-4xl font-extrabold mb-3">Media</h1>
           <p className="text-[#BFD9F5] text-lg max-w-xl">
-            Photos, videos, and highlights from Hong Kong Masters Hockey.
+            {t.intro || "Photos, videos, and highlights from Hong Kong Masters Hockey."}
           </p>
         </div>
       </div>

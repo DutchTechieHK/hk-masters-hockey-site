@@ -3,6 +3,7 @@ import content from "../content/events.json";
 import RichText from "../components/RichText";
 import SponsorStrip from "../components/SponsorStrip";
 import { API_BASE } from "../utils/api";
+import { usePageTexts } from "../utils/pageTexts";
 
 const HK_TZ         = "Asia/Hong_Kong";
 const ROTTERDAM_TZ  = "Europe/Amsterdam";
@@ -264,6 +265,7 @@ function FunRunBanner({ data, muted = false }) {
 const TABS = ["All", "Training", "Programme", "Social"];
 
 export default function Events() {
+  const t = usePageTexts("events", content);
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading]     = useState(true);
   const [tab, setTab]             = useState("All");
@@ -310,7 +312,7 @@ export default function Events() {
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-white mb-2 leading-none">Events</h1>
           <p className="text-[#BFD9F5] text-lg max-w-xl">
-            The full tournament programme, club events, and social nights — all in one place.
+            {t.intro || "The full tournament programme, club events, and social nights — all in one place."}
           </p>
         </div>
       </div>

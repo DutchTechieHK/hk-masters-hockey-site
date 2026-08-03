@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { API_BASE } from "../utils/api";
 import content from "../content/teams.json";
+import { usePageTexts } from "../utils/pageTexts";
 import { cloudinaryResize } from "../utils/cloudinary";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
@@ -49,6 +50,7 @@ export default function Teams() {
   const [openSquad, setOpenSquad] = useState(null);
   const liveTeams = useTeams();
   const siteContent = useSiteContent();
+  const t = usePageTexts("teams", content);
   const rotterdamMode = new Date() < ROTTERDAM_MODE_END;
 
   // liveTeams is sorted by DB id; static squads are in the same order (MO40 first, MO50 second)
@@ -78,7 +80,7 @@ export default function Teams() {
           <p className="text-[#BFD9F5] text-lg max-w-xl">
             {rotterdamMode
               ? "Two HK squads competing at the World Masters Hockey Cup — Rotterdam, Netherlands."
-              : content.page_subtitle}
+              : t.page_subtitle}
           </p>
         </div>
       </div>
@@ -168,8 +170,8 @@ export default function Teams() {
             </>
           ) : (
             <>
-              <h2 className="reveal text-3xl font-extrabold text-white mb-4">{content.join_heading}</h2>
-              <RichText content={content.join_text} className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed" />
+              <h2 className="reveal text-3xl font-extrabold text-white mb-4">{t.join_heading}</h2>
+              <RichText content={t.join_text} className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed" />
               <Link
                 href="/contact"
                 className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"

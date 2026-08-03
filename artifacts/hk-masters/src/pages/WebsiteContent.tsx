@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { Upload, Trash2, Plus, Globe, ImageIcon, GripVertical, Star, AlertTriangle } from "lucide-react"
 import { MediaAlbumsManager } from "@/components/MediaAlbumsManager"
+import { PageTextsManager } from "@/components/PageTextsManager"
 import { YouTubeVideosManager } from "@/components/YouTubeVideosManager"
 
 const ADMIN_SESSION_KEY = "hkm_admin_session"
@@ -452,6 +453,17 @@ export default function WebsiteContent() {
               </button>
             </div>
           )}
+        </section>
+
+        {/* ── Page Text ────────────────────────────────────────── */}
+        <section>
+          <div className="mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Page Text</h2>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Edit the written content of the public website pages — headings, intros, timelines, and contact details
+            </p>
+          </div>
+          <PageTextsManager />
         </section>
 
         {/* ── Media Page Albums ────────────────────────────────── */}
