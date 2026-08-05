@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useListTeams } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, LayoutList, CalendarRange, Zap, Trophy } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, LayoutList, CalendarRange, Zap, Trophy, X, Image as ImageIcon } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -25,6 +25,7 @@ type EventRow = {
   teamId: number | null
   teamName: string | null
   isPublic: boolean
+  photoUrl?: string | null
   rsvpCounts?: { yes: number; no: number; maybe: number }
 }
 
@@ -56,6 +57,7 @@ type FormState = {
   teamId: string
   isPublic: boolean
   sendNotify: boolean
+  photoUrl: string  // empty string = no photo
 }
 
 const EMPTY_FORM: FormState = {
@@ -68,6 +70,7 @@ const EMPTY_FORM: FormState = {
   teamId: "",
   isPublic: false,
   sendNotify: true,
+  photoUrl: "",
 }
 
 const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: string }> = {
@@ -300,6 +303,8 @@ export default function Events() {
   const [bulkWorking, setBulkWorking] = useState(false)
   const [showPast, setShowPast] = useState(false)
   const [view, setView] = useState<"list" | "programme">("list")
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const openRoster = async (id: number) => {
     setRosterEventId(id)
@@ -456,6 +461,7 @@ export default function Events() {
       teamId: e.teamId ? String(e.teamId) : "",
       isPublic: e.isPublic ?? false,
       sendNotify: true,
+      photoUrl: e.photoUrl ?? "",
     })
     setFormError(null)
     setIsModalOpen(true)
@@ -477,6 +483,39 @@ export default function Events() {
     setSelected(allSelected ? new Set() : new Set(allIds))
   }
 
+  const handlePhotoUpload = async (file: File) => {
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if (!allowed.includes(file.type)) {
+      toast({ title: "Only image files are allowed (JPEG, PNG, GIF, WebP)", variant: "destructive" })
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Image too large — max 10 MB", variant: "destructive" })
+      return
+    }
+    setPhotoUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/events/image-upload", {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? "Upload failed")
+      }
+      const data = await res.json() as { url: string }
+      setForm(prev => ({ ...prev, photoUrl: data.url }))
+    } catch (err) {
+      toast({ title: (err as Error).message, variant: "destructive" })
+    } finally {
+      setPhotoUploading(false)
+      if (photoInputRef.current) photoInputRef.current.value = ""
+    }
+  }
+
   const handleBulkSetPublic = async (isPublic: boolean) => {
     setBulkWorking(true)
     let ok = 0; let fail = 0
@@ -484,6 +523,8 @@ export default function Events() {
       const ev = events.find(e => e.id === id)
       if (!ev) continue
       try {
+        // Note: photoUrl is intentionally omitted so the server preserves the
+        // existing value (PATCH treats absent photoUrl as "unchanged").
         const res = await fetch(`/api/events/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json", ...authHeaders() },
@@ -539,6 +580,8 @@ export default function Events() {
         description: form.description.trim() || null,
         teamId: form.teamId ? Number(form.teamId) : null,
         isPublic: form.isPublic,
+        // Always send photoUrl so the server knows whether to set or clear it.
+        photoUrl: form.photoUrl || null,
       }
       if (!editing) {
         payload.sendNotify = form.sendNotify
@@ -830,11 +873,64 @@ export default function Events() {
             </label>
           )}
 
+          {/* ── Photo upload ── */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold flex items-center gap-1">
+              <ImageIcon className="w-3.5 h-3.5" /> Photo (optional)
+            </label>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handlePhotoUpload(file)
+              }}
+            />
+            {form.photoUrl ? (
+              <div className="relative w-full h-32 rounded-lg overflow-hidden border border-border group">
+                <img src={form.photoUrl} alt="Event photo" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={photoUploading}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/90 text-gray-900 text-xs font-semibold hover:bg-white transition disabled:opacity-50"
+                  >
+                    <Upload className="w-3.5 h-3.5" /> Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, photoUrl: "" }))}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/90 text-rose-600 text-xs font-semibold hover:bg-white transition"
+                  >
+                    <X className="w-3.5 h-3.5" /> Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoUploading}
+                className="w-full border-2 border-dashed border-border rounded-lg p-5 flex flex-col items-center gap-2 hover:border-[#006B3C] hover:bg-[#006B3C]/5 transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-6 h-6 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground font-medium">
+                  {photoUploading ? "Uploading…" : "Click to upload a photo"}
+                </span>
+                <span className="text-xs text-muted-foreground">JPEG, PNG, GIF, WebP · max 10 MB</span>
+              </button>
+            )}
+            <p className="text-xs text-muted-foreground">Shown on the public Events page. Leave empty to use the category default image.</p>
+          </div>
+
           {formError && <p className="text-sm text-destructive">{formError}</p>}
 
           <div className="pt-4 flex justify-end gap-3 border-t">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || photoUploading}>
               {saving ? "Saving..." : editing ? "Update Event" : "Add Event"}
             </Button>
           </div>

@@ -1,12 +1,28 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
+import multer from "multer";
 import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus } from "@workspace/db";
 import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
 import { sendPushToAll, sendPushToTeam } from "../utils/push";
 import { requirePlayerSession } from "../middleware/playerSession";
+import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+
+// Derive the absolute origin of this API from the incoming request (works in
+// dev behind the Replit proxy and in prod with x-forwarded-proto headers).
+function requestBase(req: Request): string {
+  const forwarded = req.headers["x-forwarded-proto"];
+  const proto =
+    (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") ||
+    req.protocol ||
+    "https";
+  return `${proto}://${req.get("host")}`;
+}
 
 // GET /api/events accepts either an admin session OR a player session.
 // - Admin callers see every event (used by the admin Events page).
@@ -44,6 +60,7 @@ function serialize(
     teamId: row.teamId,
     teamName: teamName ?? null,
     isPublic: row.isPublic,
+    photoUrl: row.photoUrl ?? null,
     createdAt: row.createdAt.toISOString(),
     rsvpCounts: extras?.rsvpCounts ?? emptyCounts(),
     myRsvp: extras?.myRsvp ?? null,
@@ -61,6 +78,10 @@ function parseBody(body: unknown): {
   teamId: number | null;
   isPublic: boolean;
   sendNotify: boolean;
+  // undefined = not provided by caller (PATCH: leave existing value unchanged)
+  // null      = explicitly cleared
+  // string    = new URL to store
+  photoUrl: string | null | undefined;
 } | { error: string } {
   if (!body || typeof body !== "object") return { error: "Invalid body" };
   const b = body as Record<string, unknown>;
@@ -87,6 +108,12 @@ function parseBody(body: unknown): {
     if (!Number.isInteger(n) || n <= 0) return { error: "Invalid teamId" };
     teamId = n;
   }
+  // photoUrl: absent key → undefined (PATCH preserves existing); null or "" → null (clear); string → store
+  let photoUrl: string | null | undefined = undefined;
+  if ("photoUrl" in b) {
+    const raw = b.photoUrl;
+    photoUrl = typeof raw === "string" && raw.trim() ? raw.trim() : null;
+  }
   return {
     kind: kind as EventKind,
     title,
@@ -97,6 +124,7 @@ function parseBody(body: unknown): {
     teamId,
     isPublic: b.isPublic === true,
     sendNotify: b.sendNotify !== false && b.sendNotify !== "false",
+    photoUrl,
   };
 }
 
@@ -140,13 +168,16 @@ async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<nu
 }
 
 // Public, unauthenticated: events explicitly marked as public, for the public website.
-router.get("/public", (async (_req, res) => {
+// photoUrl is returned as an absolute URL so it resolves correctly from the
+// public website (served by Netlify on a different domain from this API).
+router.get("/public", (async (req, res) => {
   const rows = await db
     .select({ event: eventsTable, teamCategory: teamsTable.category })
     .from(eventsTable)
     .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
     .where(eq(eventsTable.isPublic, true))
     .orderBy(asc(eventsTable.startsAt));
+  const base = requestBase(req);
   res.json(rows.map(({ event: r, teamCategory }) => ({
     id: r.id,
     kind: r.kind,
@@ -157,6 +188,8 @@ router.get("/public", (async (_req, res) => {
     description: r.description,
     teamId: r.teamId,
     teamCategory: teamCategory ?? null,
+    // Relative stored path → absolute URL; null if no photo set.
+    photoUrl: r.photoUrl ? `${base}${r.photoUrl}` : null,
   })));
 }) as (req: Request, res: Response) => Promise<void>);
 
@@ -180,8 +213,9 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
 router.post("/", requireAdminAccess, async (req, res) => {
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
-  const { sendNotify, ...eventValues } = parsed;
-  const [row] = await db.insert(eventsTable).values(eventValues).returning();
+  const { sendNotify, photoUrl, ...coreValues } = parsed;
+  // For POST, undefined photoUrl means no photo (store null); explicit value stored as-is.
+  const [row] = await db.insert(eventsTable).values({ ...coreValues, photoUrl: photoUrl ?? null }).returning();
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
     : null;
@@ -264,8 +298,12 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
-  const { sendNotify: _sendNotify, ...eventValues } = parsed;
-  const [row] = await db.update(eventsTable).set(eventValues).where(eq(eventsTable.id, id)).returning();
+  const { sendNotify: _sendNotify, photoUrl, ...coreValues } = parsed;
+  // Only update photoUrl in DB if the caller explicitly sent the key.
+  // This makes bulk PATCH (e.g. toggle isPublic) safe — omitting photoUrl preserves the existing value.
+  const updateValues: Record<string, unknown> = { ...coreValues };
+  if (photoUrl !== undefined) updateValues.photoUrl = photoUrl;
+  const [row] = await db.update(eventsTable).set(updateValues).where(eq(eventsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Event not found" });
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
@@ -278,6 +316,63 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   await db.delete(eventsTable).where(eq(eventsTable.id, id));
   res.status(204).send();
+});
+
+// ── Image upload / serve ────────────────────────────────────────────────────
+
+// Admin: upload a photo for an event. Returns the relative serve path to store.
+router.post(
+  "/image-upload",
+  requireAdminAccess,
+  (req: Request, res: Response, next: NextFunction) => {
+    upload.single("file")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          res.status(413).json({ error: "Image too large — max 10 MB" }); return;
+        }
+        res.status(400).json({ error: err.message }); return;
+      }
+      if (err) { next(err); return; }
+      next();
+    });
+  },
+  async (req: Request, res: Response) => {
+    if (!req.file) { res.status(400).json({ error: "No file provided" }); return; }
+    if (!ALLOWED_IMAGE_TYPES.has(req.file.mimetype)) {
+      res.status(400).json({ error: "Only image files are allowed (JPEG, PNG, GIF, WebP)" }); return;
+    }
+    try {
+      const storage = new ObjectStorageService();
+      const objectPath = await storage.uploadObjectEntity(req.file.buffer, req.file.mimetype);
+      const objectId = objectPath.replace("/objects/uploads/", "");
+      // Return the relative serve path — callers store this in the DB and the
+      // /public serialiser absolutises it at response time.
+      const serveUrl = `/api/events/serve-image/${objectId}`;
+      res.json({ url: serveUrl });
+    } catch (err) {
+      console.error("[events] image upload failed:", err);
+      res.status(500).json({ error: "Upload failed" });
+    }
+  },
+);
+
+// Public: stream event photo from object storage.
+router.get("/serve-image/:objectId", async (req: Request, res: Response) => {
+  const { objectId } = req.params;
+  if (!objectId || !/^[\w-]+$/.test(objectId)) {
+    res.status(400).json({ error: "Invalid objectId" }); return;
+  }
+  try {
+    const storage = new ObjectStorageService();
+    const signedUrl = await storage.getObjectEntityDownloadURL(`/objects/uploads/${objectId}`);
+    res.redirect(302, signedUrl);
+  } catch (err) {
+    if (err instanceof ObjectNotFoundError) {
+      res.status(404).json({ error: "Image not found" }); return;
+    }
+    console.error("[events] serve-image failed:", err);
+    res.status(502).json({ error: "Could not retrieve image" });
+  }
 });
 
 // Admin-only: roster of who RSVP'd what for a single event.
