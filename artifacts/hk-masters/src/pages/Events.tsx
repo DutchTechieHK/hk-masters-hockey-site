@@ -192,6 +192,7 @@ function EventMonthSection({
                 )}
                 {past && <th className="px-4 py-3 w-8" />}
                 <th className="px-6 py-3 font-semibold">When</th>
+                <th className="px-4 py-3 font-semibold">Photo</th>
                 <th className="px-6 py-3 font-semibold">Kind</th>
                 <th className="px-6 py-3 font-semibold">Title</th>
                 <th className="px-6 py-3 font-semibold">Where</th>
@@ -230,6 +231,19 @@ function EventMonthSection({
                           {isRtm ? "RTM" : "HKT"}
                         </span>
                       </div>
+                    </td>
+                    <td className="px-4 py-4">
+                      {ev.photoUrl ? (
+                        <img
+                          src={ev.photoUrl}
+                          alt={ev.title}
+                          className="w-10 h-10 rounded object-cover border border-border shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded border border-dashed border-border bg-muted/30 flex items-center justify-center">
+                          <ImageIcon className="w-4 h-4 text-muted-foreground/40" />
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <Badge className={`${meta.colour} border-0 inline-flex items-center gap-1`}>
