@@ -560,11 +560,11 @@ export default function Home() {
         </section>
       )}
 
-      {/* Latest News (from Notion) */}
-      <LatestNewsSection />
-
       {/* Latest Journal Article */}
       <LatestJournalCard />
+
+      {/* Latest News (from Notion) */}
+      <LatestNewsSection />
 
 
       {/* Sponsor Logos Strip */}
