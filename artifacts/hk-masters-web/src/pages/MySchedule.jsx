@@ -299,6 +299,11 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [noteText, setNoteText] = useState(ev.myNote ?? "");
 
+  // photoUrl from the player-auth endpoint is a relative /api/... path; make it absolute.
+  const photoSrc = ev.photoUrl
+    ? (ev.photoUrl.startsWith("http") ? ev.photoUrl : `${API_BASE}${ev.photoUrl}`)
+    : null;
+
   const handleOption = (key) => {
     if (key === "maybe") {
       setNoteText(ev.myNote ?? "");
@@ -334,13 +339,22 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
           {ev.location && <p className="text-sm text-gray-600 mt-0.5">📍 {ev.location}</p>}
           {ev.description && <p className="text-sm text-gray-600 mt-2 whitespace-pre-line">{ev.description}</p>}
         </div>
-        <button
-          onClick={() => downloadIcs([ev], `hk-${ev.kind}-${ev.id}.ics`, ev.title)}
-          title="Add this event to my calendar"
-          className="text-xs text-green-700 hover:text-green-900 hover:underline whitespace-nowrap shrink-0"
-        >
-          + Calendar
-        </button>
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          {photoSrc && (
+            <img
+              src={photoSrc}
+              alt={ev.title}
+              className="w-16 h-16 rounded-xl object-cover border border-gray-100 shadow-sm"
+            />
+          )}
+          <button
+            onClick={() => downloadIcs([ev], `hk-${ev.kind}-${ev.id}.ics`, ev.title)}
+            title="Add this event to my calendar"
+            className="text-xs text-green-700 hover:text-green-900 hover:underline whitespace-nowrap"
+          >
+            + Calendar
+          </button>
+        </div>
       </div>
       {/* RSVP */}
       <div className="mt-4 pt-4 border-t border-gray-100">

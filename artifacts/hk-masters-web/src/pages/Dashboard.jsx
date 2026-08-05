@@ -345,6 +345,13 @@ export default function Dashboard() {
                   <p className="text-xs text-blue-200 mt-0.5">📍 {nextSession.location}</p>
                 )}
               </div>
+              {nextSession.photoUrl && (
+                <img
+                  src={nextSession.photoUrl.startsWith("http") ? nextSession.photoUrl : `${API_BASE}${nextSession.photoUrl}`}
+                  alt={nextSession.title}
+                  className="w-14 h-14 rounded-xl object-cover shrink-0 border border-white/20 shadow"
+                />
+              )}
             </div>
             {/* Button row */}
             <div className="flex items-center gap-2 pl-9">
