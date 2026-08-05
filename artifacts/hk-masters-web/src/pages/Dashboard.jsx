@@ -347,7 +347,7 @@ export default function Dashboard() {
               </div>
               {nextSession.photoUrl && (
                 <img
-                  src={nextSession.photoUrl.startsWith("http") ? nextSession.photoUrl : `${API_BASE}${nextSession.photoUrl}`}
+                  src={/* API returns absolute photoUrl; fallback for any stale relative path */ nextSession.photoUrl.startsWith("http") ? nextSession.photoUrl : `${API_BASE}${nextSession.photoUrl}`}
                   alt={nextSession.title}
                   className="w-14 h-14 rounded-xl object-cover shrink-0 border border-white/20 shadow"
                 />

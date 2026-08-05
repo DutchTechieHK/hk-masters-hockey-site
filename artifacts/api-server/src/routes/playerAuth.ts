@@ -7,7 +7,7 @@ import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
 import { mapPlayer } from "./players";
-import { listEventsForPlayer, playerRsvpHandler } from "./events";
+import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
 
 const router: IRouter = Router();
 
@@ -151,7 +151,7 @@ router.get("/me", requirePlayerSession, async (req, res) => {
 });
 
 router.get("/my-schedule", requirePlayerSession, async (req, res) => {
-  const events = await listEventsForPlayer(req.player!.teamId ?? null, req.player!.id);
+  const events = await listEventsForPlayer(req.player!.teamId ?? null, req.player!.id, requestBase(req));
   res.json({ events });
 });
 

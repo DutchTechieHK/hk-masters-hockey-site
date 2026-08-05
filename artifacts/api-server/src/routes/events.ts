@@ -16,13 +16,26 @@ const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "im
 
 // Derive the absolute origin of this API from the incoming request (works in
 // dev behind the Replit proxy and in prod with x-forwarded-proto headers).
-function requestBase(req: Request): string {
+export function requestBase(req: Request): string {
   const forwarded = req.headers["x-forwarded-proto"];
   const proto =
     (typeof forwarded === "string" ? forwarded.split(",")[0].trim() : "") ||
     req.protocol ||
     "https";
   return `${proto}://${req.get("host")}`;
+}
+
+/**
+ * Convention: all event photoUrl values returned to clients are ABSOLUTE URLs.
+ * Relative /api/... paths stored in the DB are prefixed with the request origin
+ * so they resolve correctly across domains (public site on Netlify, player app,
+ * admin portal). Already-absolute values (e.g. migrated legacy URLs) pass through
+ * unchanged so there is never a risk of double-prefixing.
+ */
+export function resolvePhotoUrl(base: string, photoUrl: string | null | undefined): string | null {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith("http")) return photoUrl;
+  return `${base}${photoUrl}`;
 }
 
 // GET /api/events accepts either an admin session OR a player session.
@@ -49,6 +62,7 @@ function serialize(
   row: typeof eventsTable.$inferSelect,
   teamName?: string | null,
   extras?: { rsvpCounts?: RsvpCounts; myRsvp?: RsvpStatus | null; myNote?: string | null },
+  base?: string,
 ) {
   return {
     id: row.id,
@@ -61,7 +75,7 @@ function serialize(
     teamId: row.teamId,
     teamName: teamName ?? null,
     isPublic: row.isPublic,
-    photoUrl: row.photoUrl ?? null,
+    photoUrl: base ? resolvePhotoUrl(base, row.photoUrl) : (row.photoUrl ?? null),
     createdAt: row.createdAt.toISOString(),
     rsvpCounts: extras?.rsvpCounts ?? emptyCounts(),
     myRsvp: extras?.myRsvp ?? null,
@@ -169,8 +183,7 @@ async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<nu
 }
 
 // Public, unauthenticated: events explicitly marked as public, for the public website.
-// photoUrl is returned as an absolute URL so it resolves correctly from the
-// public website (served by Netlify on a different domain from this API).
+// photoUrl is resolved to an absolute URL via resolvePhotoUrl (see convention comment above).
 router.get("/public", (async (req, res) => {
   const rows = await db
     .select({ event: eventsTable, teamCategory: teamsTable.category })
@@ -189,13 +202,13 @@ router.get("/public", (async (req, res) => {
     description: r.description,
     teamId: r.teamId,
     teamCategory: teamCategory ?? null,
-    // Relative stored path → absolute URL; null if no photo set.
-    photoUrl: r.photoUrl ? `${base}${r.photoUrl}` : null,
+    photoUrl: resolvePhotoUrl(base, r.photoUrl),
   })));
 }) as (req: Request, res: Response) => Promise<void>);
 
 router.get("/", requireAdminOrPlayer, (async (req, res) => {
   const isAdmin = (req as Request & { isAdmin?: boolean }).isAdmin === true;
+  const base = requestBase(req);
   if (isAdmin) {
     const rows = await db
       .select({ event: eventsTable, teamName: teamsTable.name })
@@ -204,10 +217,10 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
       .orderBy(asc(eventsTable.startsAt));
     const counts = await loadRsvpCounts(rows.map((r) => r.event.id));
     res.json(rows.map(({ event, teamName }) =>
-      serialize(event, teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() })));
+      serialize(event, teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() }, base)));
     return;
   }
-  const filtered = await listEventsForPlayer(req.player?.teamId ?? null, req.player?.id ?? null);
+  const filtered = await listEventsForPlayer(req.player?.teamId ?? null, req.player?.id ?? null, base);
   res.json(filtered);
 }) as (req: Request, res: Response) => Promise<void>);
 
@@ -567,7 +580,7 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
 
 export const playerRsvpHandler = upsertOwnRsvp;
 
-export async function listEventsForPlayer(playerTeamId: number | null, playerId: number | null) {
+export async function listEventsForPlayer(playerTeamId: number | null, playerId: number | null, base?: string) {
   const rows = await db
     .select({ event: eventsTable, teamName: teamsTable.name })
     .from(eventsTable)
@@ -588,7 +601,7 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
       rsvpCounts: counts.get(event.id) ?? emptyCounts(),
       myRsvp: mine.get(event.id)?.status ?? null,
       myNote: mine.get(event.id)?.note ?? null,
-    }),
+    }, base),
   );
 }
 

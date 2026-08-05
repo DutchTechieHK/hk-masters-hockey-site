@@ -299,7 +299,8 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [noteText, setNoteText] = useState(ev.myNote ?? "");
 
-  // photoUrl from the player-auth endpoint is a relative /api/... path; make it absolute.
+  // The API serializes photoUrl as absolute. Defensive fallback: if an older
+  // cached response still has a relative /api/... path, prepend API_BASE.
   const photoSrc = ev.photoUrl
     ? (ev.photoUrl.startsWith("http") ? ev.photoUrl : `${API_BASE}${ev.photoUrl}`)
     : null;
