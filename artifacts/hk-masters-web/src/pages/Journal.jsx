@@ -57,7 +57,7 @@ function ArticleCard({ contribution }) {
             {contribution.contentType === "both" && "Article + Photos"}
           </span>
           <span className="text-xs text-gray-400">
-            {format(parseISO(contribution.createdAt), "d MMM yyyy")}
+            {format(contribution.reportDate ? parseISO(contribution.reportDate.slice(0, 10)) : parseISO(contribution.createdAt), "d MMM yyyy")}
           </span>
         </div>
 

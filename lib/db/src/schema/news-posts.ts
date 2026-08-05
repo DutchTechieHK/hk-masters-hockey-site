@@ -11,6 +11,7 @@ export const newsPostsTable = pgTable("news_posts", {
   author: text("author"),
   status: text("status").notNull().default("draft"),
   publishedAt: timestamp("published_at"),
+  reportDate: timestamp("report_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

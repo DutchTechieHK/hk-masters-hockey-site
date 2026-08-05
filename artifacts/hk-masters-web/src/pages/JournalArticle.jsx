@@ -164,7 +164,7 @@ export default function JournalArticle() {
               {article.contentType === "both" && "Article + Photos"}
             </span>
             <span className="text-xs text-[#8FBDE8]">
-              {format(parseISO(article.createdAt), "d MMM yyyy")}
+              {format(article.reportDate ? parseISO(article.reportDate.slice(0, 10)) : parseISO(article.createdAt), "d MMM yyyy")}
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold leading-tight mb-2">

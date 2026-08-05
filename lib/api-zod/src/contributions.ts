@@ -15,6 +15,11 @@ export const UpdateContributionBody = z.object({
   title: z.string().min(1).optional(),
   articleBody: z.string().optional(),
   photoUrls: z.array(z.string().url()).optional(),
+  reportDate: z
+    .string()
+    .refine((v) => !Number.isNaN(Date.parse(v)), "Invalid date")
+    .nullable()
+    .optional(),
 });
 
 export const UpdateContributionParams = z.object({

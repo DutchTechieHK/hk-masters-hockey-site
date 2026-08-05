@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { db } from "@workspace/db";
 import { newsPostsTable } from "@workspace/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { requireSession } from "../middleware/adminSession";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
@@ -34,6 +34,7 @@ function mapPost(row: typeof newsPostsTable.$inferSelect) {
     author: row.author,
     status: row.status,
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    reportDate: row.reportDate?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -46,7 +47,7 @@ router.get("/", async (_req, res) => {
       .select()
       .from(newsPostsTable)
       .where(eq(newsPostsTable.status, "published"))
-      .orderBy(desc(newsPostsTable.publishedAt));
+      .orderBy(desc(sql`COALESCE(${newsPostsTable.reportDate}, ${newsPostsTable.publishedAt})`));
     res.set("Cache-Control", "public, max-age=30");
     res.json({ configured: true, posts: rows.map(mapPost) });
   } catch (err) {
@@ -71,7 +72,11 @@ router.get("/admin/all", requireSession, requireAdminAccess, async (_req, res) =
 
 /* ── Admin: create post ───────────────────────────────── */
 router.post("/", requireSession, requireAdminAccess, async (req, res) => {
-  const { title, slug, excerpt, bodyHtml, coverImage, category, author, status } = req.body ?? {};
+  const { title, slug, excerpt, bodyHtml, coverImage, category, author, status, reportDate } = req.body ?? {};
+  if (reportDate != null && (typeof reportDate !== "string" || Number.isNaN(Date.parse(reportDate)))) {
+    res.status(400).json({ error: "Invalid reportDate" });
+    return;
+  }
   if (!title?.trim()) {
     res.status(400).json({ error: "title required" });
     return;
@@ -93,6 +98,7 @@ router.post("/", requireSession, requireAdminAccess, async (req, res) => {
       author: author?.trim() || null,
       status: status === "published" ? "published" : "draft",
       publishedAt,
+      reportDate: reportDate ? new Date(reportDate) : null,
     }).returning();
     res.status(201).json(mapPost(row));
   } catch (err: any) {
@@ -110,7 +116,11 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const { title, slug, excerpt, bodyHtml, coverImage, category, author, status } = req.body ?? {};
+  const { title, slug, excerpt, bodyHtml, coverImage, category, author, status, reportDate } = req.body ?? {};
+  if (reportDate !== undefined && reportDate !== null && (typeof reportDate !== "string" || Number.isNaN(Date.parse(reportDate)))) {
+    res.status(400).json({ error: "Invalid reportDate" });
+    return;
+  }
 
   try {
     const [existing] = await db.select().from(newsPostsTable).where(eq(newsPostsTable.id, id));
@@ -135,6 +145,8 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
       author: author !== undefined ? (author?.trim() || null) : existing.author,
       status: status ?? existing.status,
       publishedAt,
+      reportDate:
+        reportDate === undefined ? existing.reportDate : reportDate === null ? null : new Date(reportDate),
       updatedAt: new Date(),
     }).where(eq(newsPostsTable.id, id)).returning();
     res.json(mapPost(row));

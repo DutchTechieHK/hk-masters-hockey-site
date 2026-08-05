@@ -40,6 +40,7 @@ interface Contribution {
   status: Status
   adminNote?: string
   createdAt: string
+  reportDate?: string
   reviewedAt?: string
   deletedAt?: string
 }
@@ -107,7 +108,7 @@ async function purgeContribution(token: string, id: number): Promise<void> {
 async function updateContribution(
   token: string,
   id: number,
-  body: { status: "approved" | "declined"; adminNote?: string; title?: string; articleBody?: string; photoUrls?: string[] }
+  body: { status: "approved" | "declined"; adminNote?: string; title?: string; articleBody?: string; photoUrls?: string[]; reportDate?: string | null }
 ): Promise<Contribution> {
   const res = await fetch(`/api/contributions/${id}`, {
     method: "PUT",
@@ -210,6 +211,7 @@ export default function Journal() {
   const [editTitle, setEditTitle] = useState("")
   const [editArticleBody, setEditArticleBody] = useState("")
   const [editPhotoUrls, setEditPhotoUrls] = useState<string[]>([])
+  const [editReportDate, setEditReportDate] = useState("")
   const editDragIndex = useRef<number | null>(null)
   const [editTouchDrag, setEditTouchDrag] = useState<{ from: number | null; over: number | null }>({ from: null, over: null })
   const [editDragPos, setEditDragPos] = useState<{ x: number; y: number } | null>(null)
@@ -269,8 +271,8 @@ export default function Journal() {
   })
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status, note, title, articleBody, photoUrls }: { id: number; status: "approved" | "declined"; note?: string; title?: string; articleBody?: string; photoUrls?: string[] }) =>
-      updateContribution(sessionToken!, id, { status, adminNote: note, title, articleBody, photoUrls }),
+    mutationFn: ({ id, status, note, title, articleBody, photoUrls, reportDate }: { id: number; status: "approved" | "declined"; note?: string; title?: string; articleBody?: string; photoUrls?: string[]; reportDate?: string | null }) =>
+      updateContribution(sessionToken!, id, { status, adminNote: note, title, articleBody, photoUrls, reportDate }),
     onSuccess: (updated) => {
       queryClient.setQueryData<Contribution[]>(["contributions", sessionToken], (old = []) =>
         old.map((c) => (c.id === updated.id ? updated : c))
@@ -420,6 +422,7 @@ export default function Journal() {
     setEditTitle(c.title)
     setEditArticleBody(c.articleBody ?? "")
     setEditPhotoUrls(c.photoUrls)
+    setEditReportDate(c.reportDate ? c.reportDate.slice(0, 10) : "")
   }
 
   const toggleSection = (status: Status) => {
@@ -472,6 +475,8 @@ export default function Journal() {
     const articleBodyChanged = editArticleBody !== (selectedContribution.articleBody ?? "")
     const photosChanged = editPhotoUrls.length !== selectedContribution.photoUrls.length ||
       editPhotoUrls.some((url, i) => url !== selectedContribution.photoUrls[i])
+    const existingDate = selectedContribution.reportDate ? selectedContribution.reportDate.slice(0, 10) : ""
+    const reportDateChanged = editReportDate !== existingDate
     updateMutation.mutate({
       id: selectedContribution.id,
       status,
@@ -479,6 +484,7 @@ export default function Journal() {
       title: titleChanged ? editTitle.trim() : undefined,
       articleBody: articleBodyChanged ? editArticleBody : undefined,
       photoUrls: photosChanged ? editPhotoUrls : undefined,
+      reportDate: reportDateChanged ? (editReportDate ? `${editReportDate}T12:00:00.000Z` : null) : undefined,
     })
   }
 
@@ -958,6 +964,21 @@ export default function Journal() {
                 <p className="text-sm">{selectedContribution.adminNote}</p>
               </div>
             )}
+
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+                Report Date
+              </label>
+              <Input
+                type="date"
+                value={editReportDate}
+                onChange={(e) => setEditReportDate(e.target.value)}
+                className="w-full sm:w-56"
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Optional. Set this to the match date to backdate a report — it's shown on the website and used for chronological order. Leave blank to use the submission date.
+              </p>
+            </div>
 
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">

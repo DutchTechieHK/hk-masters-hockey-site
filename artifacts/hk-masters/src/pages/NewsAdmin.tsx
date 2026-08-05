@@ -44,6 +44,7 @@ type NewsPost = {
   author: string | null
   status: "draft" | "published"
   publishedAt: string | null
+  reportDate: string | null
   createdAt: string
   updatedAt: string
 }
@@ -56,6 +57,7 @@ type PostForm = {
   category: string
   author: string
   status: "draft" | "published"
+  reportDate: string
 }
 
 const EMPTY_FORM: PostForm = {
@@ -66,6 +68,7 @@ const EMPTY_FORM: PostForm = {
   category: "",
   author: "",
   status: "draft",
+  reportDate: "",
 }
 
 function slugify(title: string): string {
@@ -454,6 +457,7 @@ export default function NewsAdmin() {
       category: post.category ?? "",
       author: post.author ?? "",
       status: post.status,
+      reportDate: post.reportDate ? post.reportDate.slice(0, 10) : "",
     })
     setBodyHtml(post.bodyHtml ?? "")
     setFormError(null)
@@ -475,6 +479,7 @@ export default function NewsAdmin() {
         category: form.category.trim() || null,
         author: form.author.trim() || null,
         status: form.status,
+        reportDate: form.reportDate ? `${form.reportDate}T12:00:00.000Z` : null,
       }
       const url = editingPost ? `/api/news/${editingPost.id}` : "/api/news"
       const method = editingPost ? "PATCH" : "POST"
@@ -628,6 +633,11 @@ export default function NewsAdmin() {
                 <label className="text-sm font-medium text-gray-700">Category</label>
                 <Input className="mt-1" placeholder="e.g. Match report, Announcement" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} />
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700">Report date <span className="text-gray-400 font-normal">(shown on the website and used for ordering — set a past date to backdate)</span></label>
+              <Input type="date" className="mt-1 sm:w-56" value={form.reportDate} onChange={(e) => setForm((f) => ({ ...f, reportDate: e.target.value }))} />
             </div>
 
             <div>

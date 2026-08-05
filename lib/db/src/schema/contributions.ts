@@ -14,6 +14,7 @@ export const contributionsTable = pgTable("contributions", {
   status: text("status").notNull().default("pending"),
   adminNote: text("admin_note"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  reportDate: timestamp("report_date"),
   reviewedAt: timestamp("reviewed_at"),
   deletedAt: timestamp("deleted_at"),
 });

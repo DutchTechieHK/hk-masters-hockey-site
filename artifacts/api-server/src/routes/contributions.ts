@@ -29,6 +29,7 @@ function mapContributionAdmin(row: typeof contributionsTable.$inferSelect) {
     status: row.status,
     adminNote: row.adminNote ?? undefined,
     createdAt: row.createdAt.toISOString(),
+    reportDate: row.reportDate?.toISOString() ?? undefined,
     reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
     deletedAt: row.deletedAt?.toISOString() ?? undefined,
   };
@@ -44,6 +45,7 @@ function mapContributionPublic(row: typeof contributionsTable.$inferSelect) {
     articleBody: row.articleBody ?? undefined,
     photoUrls: row.photoUrls ?? [],
     createdAt: row.createdAt.toISOString(),
+    reportDate: row.reportDate?.toISOString() ?? undefined,
     reviewedAt: row.reviewedAt?.toISOString() ?? undefined,
   };
 }
@@ -91,7 +93,7 @@ router.get("/approved", async (_req, res) => {
     .select()
     .from(contributionsTable)
     .where(sql`${contributionsTable.status} = 'approved' AND ${contributionsTable.deletedAt} IS NULL`)
-    .orderBy(desc(contributionsTable.reviewedAt));
+    .orderBy(desc(sql`COALESCE(${contributionsTable.reportDate}, ${contributionsTable.reviewedAt})`));
   res.json(rows.map(mapContributionPublic));
 });
 
@@ -211,6 +213,9 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   if (body.title !== undefined) updateValues.title = body.title;
   if (body.articleBody !== undefined) updateValues.articleBody = body.articleBody;
   if (body.photoUrls !== undefined) updateValues.photoUrls = body.photoUrls;
+  if (body.reportDate !== undefined) {
+    updateValues.reportDate = body.reportDate === null ? null : new Date(body.reportDate);
+  }
 
   if (body.title !== undefined && existing.status === "pending") {
     updateValues.slug = await generateUniqueSlug(body.title, async (candidate) => {

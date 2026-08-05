@@ -123,7 +123,11 @@ export default function NewsArticle() {
     );
   }
 
-  const dateStr = post.publishedAt ? format(parseISO(post.publishedAt), "d MMM yyyy") : null;
+  const dateStr = post.reportDate
+    ? format(parseISO(post.reportDate.slice(0, 10)), "d MMM yyyy")
+    : post.publishedAt
+    ? format(parseISO(post.publishedAt), "d MMM yyyy")
+    : null;
   const cover = proxiedImage(post.coverImage);
 
   return (
