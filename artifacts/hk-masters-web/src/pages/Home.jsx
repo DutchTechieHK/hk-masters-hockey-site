@@ -334,9 +334,11 @@ export default function Home() {
   const hasGallery   = galleryImages.length > 0;
 
   // Track which gallery image the user has explicitly clicked.
-  // When null, we follow the hero image from the API/static.
+  // Stored as { url, caption } or null; when null we follow the hero image from the API/static.
   const [userSelectedPhoto, setUserSelectedPhoto] = useState(null);
-  const activePhoto = userSelectedPhoto || heroImage;
+  const activePhoto = userSelectedPhoto ? userSelectedPhoto.url : heroImage;
+  // Only show a caption overlay when the user has explicitly selected a gallery photo with a caption.
+  const activeCaption = userSelectedPhoto ? (userSelectedPhoto.caption || "") : "";
 
   const [openSquad, setOpenSquad] = useState(null);
   const stripRef = useRef(null);
@@ -407,12 +409,30 @@ export default function Home() {
             <div>
               {activePhoto ? (
                 <div className="flex h-56 sm:h-72 lg:h-80 items-center justify-center">
-                  {/* Frame hugs the photo: no cropping, no filler panels */}
-                  <img
-                    src={cloudinaryResize(activePhoto, 1200, 640)}
-                    alt="HK Masters Hockey team"
-                    className="max-h-full max-w-full w-auto h-auto rounded-2xl shadow-2xl object-contain transition-all duration-300"
-                  />
+                  {/*
+                    Inner wrapper shrinks to the rendered image size so the caption
+                    overlay is always glued to the photo's bottom edge, even when the
+                    image is shorter than the container (object-contain on narrow screens).
+                    overflow-hidden + rounded-2xl clips the caption to the photo shape.
+                  */}
+                  {/*
+                    w-fit shrinks the wrapper to the image's intrinsic width;
+                    max-w-full caps it at the column width on narrow viewports
+                    so landscape images cannot overflow horizontally.
+                    No flex-shrink-0 — the wrapper is allowed to shrink.
+                  */}
+                  <div className="relative w-fit max-w-full overflow-hidden rounded-2xl shadow-2xl">
+                    <img
+                      src={cloudinaryResize(activePhoto, 1200, 640)}
+                      alt="HK Masters Hockey team"
+                      className="block max-h-56 sm:max-h-72 lg:max-h-80 max-w-full w-auto h-auto transition-all duration-300"
+                    />
+                    {activeCaption && (
+                      <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-4 pb-3 pt-8 text-sm text-white/90 leading-snug text-center font-medium transition-opacity duration-300">
+                        {activeCaption}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="h-56 sm:h-72 lg:h-80 w-full rounded-2xl overflow-hidden shadow-2xl">
@@ -450,7 +470,7 @@ export default function Home() {
               {galleryImages.map((img, i) => (
                 <button
                   key={i}
-                  onClick={() => setUserSelectedPhoto(img.url)}
+                  onClick={() => setUserSelectedPhoto({ url: img.url, caption: img.caption || "" })}
                   title={img.caption || undefined}
                   className={`group relative h-28 w-44 flex-shrink-0 rounded-lg overflow-hidden focus:outline-none ${
                     activePhoto === img.url
