@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, DragEvent } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -161,6 +161,8 @@ export default function WebsiteContent() {
   const galleryFileRef = useRef<HTMLInputElement>(null)
   const heroIsPortrait = useIsPortrait(content?.heroImage ?? "")
   const [addingToGallery, setAddingToGallery] = useState(false)
+  const dragIndexRef = useRef<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -292,6 +294,56 @@ export default function WebsiteContent() {
       setUploadingField(null)
     }
   }
+
+  const handleGalleryReorder = useCallback(async (fromIndex: number, toIndex: number) => {
+    if (!content || fromIndex === toIndex) return
+    const newGallery = [...content.galleryImages]
+    const [moved] = newGallery.splice(fromIndex, 1)
+    newGallery.splice(toIndex, 0, moved)
+    setSavingGallery(true)
+    try {
+      if (await saveGallery(newGallery)) {
+        toast({ title: "Gallery order saved" })
+      }
+    } catch {
+      toast({ title: "Failed to reorder gallery", variant: "destructive" })
+    } finally {
+      setSavingGallery(false)
+    }
+  }, [content, saveGallery, toast])
+
+  const handleDragStart = useCallback((e: DragEvent<HTMLDivElement>, index: number) => {
+    dragIndexRef.current = index
+    e.dataTransfer.effectAllowed = "move"
+    // Use a transparent 1×1 pixel as ghost to avoid the default image ghost
+    const ghost = document.createElement("div")
+    ghost.style.position = "fixed"
+    ghost.style.top = "-1000px"
+    document.body.appendChild(ghost)
+    e.dataTransfer.setDragImage(ghost, 0, 0)
+    setTimeout(() => ghost.remove(), 0)
+  }, [])
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverIndex(index)
+  }, [])
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>, toIndex: number) => {
+    e.preventDefault()
+    const fromIndex = dragIndexRef.current
+    dragIndexRef.current = null
+    setDragOverIndex(null)
+    if (fromIndex !== null && fromIndex !== toIndex) {
+      void handleGalleryReorder(fromIndex, toIndex)
+    }
+  }, [handleGalleryReorder])
+
+  const handleDragEnd = useCallback(() => {
+    dragIndexRef.current = null
+    setDragOverIndex(null)
+  }, [])
 
   const handleGalleryReplace = async (index: number, file: File) => {
     if (!content) return
@@ -429,10 +481,15 @@ export default function WebsiteContent() {
                   index={i}
                   disabled={savingGallery}
                   isHero={content.heroImage === img.url}
+                  isDragOver={dragOverIndex === i}
                   onSetAsHero={() => handleSetAsHero(img.url)}
                   onRemove={() => handleGalleryRemove(i)}
                   onReplace={(f) => handleGalleryReplace(i, f)}
                   onCaption={(c) => handleGalleryCaption(i, c)}
+                  onDragStart={(e) => handleDragStart(e, i)}
+                  onDragOver={(e) => handleDragOver(e, i)}
+                  onDrop={(e) => handleDrop(e, i)}
+                  onDragEnd={handleDragEnd}
                 />
               ))}
 
@@ -508,20 +565,30 @@ function GalleryThumb({
   index,
   disabled,
   isHero,
+  isDragOver,
   onSetAsHero,
   onRemove,
   onReplace,
   onCaption,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: {
   url: string
   caption: string
   index: number
   disabled: boolean
   isHero: boolean
+  isDragOver: boolean
   onSetAsHero: () => void
   onRemove: () => void
   onReplace: (f: File) => void
   onCaption: (caption: string) => void
+  onDragStart: (e: DragEvent<HTMLDivElement>) => void
+  onDragOver: (e: DragEvent<HTMLDivElement>) => void
+  onDrop: (e: DragEvent<HTMLDivElement>) => void
+  onDragEnd: (e: DragEvent<HTMLDivElement>) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState(false)
@@ -535,9 +602,21 @@ function GalleryThumb({
   }
 
   return (
-    <div>
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={`transition-all ${isDragOver ? "ring-2 ring-primary ring-offset-1 rounded-xl scale-[1.02]" : ""}`}
+    >
     <div className="relative h-32 rounded-xl overflow-hidden group bg-gray-100">
-      <img src={url} alt={caption || `Gallery photo ${index + 1}`} className="w-full h-full object-cover" />
+      <img
+        src={url}
+        alt={caption || `Gallery photo ${index + 1}`}
+        className="w-full h-full object-cover"
+        draggable={false}
+      />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100">
         <button
           onClick={onSetAsHero}
@@ -573,6 +652,13 @@ function GalleryThumb({
           Hero
         </div>
       )}
+      {/* Drag handle — bottom-left, visible on hover */}
+      <div
+        className="absolute bottom-1.5 left-1.5 p-1 bg-black/50 rounded text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        title="Drag to reorder"
+      >
+        <GripVertical className="w-3 h-3" />
+      </div>
       <input
         ref={fileRef}
         type="file"
