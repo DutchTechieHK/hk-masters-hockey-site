@@ -158,6 +158,7 @@ export default function WebsiteContent() {
   const [loading, setLoading] = useState(true)
   const [uploadingField, setUploadingField] = useState<string | null>(null)
   const [savingGallery, setSavingGallery] = useState(false)
+  const [savingCaptionIndex, setSavingCaptionIndex] = useState<number | null>(null)
   const galleryFileRef = useRef<HTMLInputElement>(null)
   const heroIsPortrait = useIsPortrait(content?.heroImage ?? "")
   const [addingToGallery, setAddingToGallery] = useState(false)
@@ -267,6 +268,7 @@ export default function WebsiteContent() {
     const current = content.galleryImages[index]?.caption ?? ""
     if (caption.trim() === current.trim()) return
     setSavingGallery(true)
+    setSavingCaptionIndex(index)
     try {
       const newGallery = content.galleryImages.map((img, i) =>
         i === index ? { url: img.url, caption: caption.trim() || undefined } : img
@@ -278,6 +280,7 @@ export default function WebsiteContent() {
       toast({ title: "Failed to save caption", variant: "destructive" })
     } finally {
       setSavingGallery(false)
+      setSavingCaptionIndex(null)
     }
   }
 
@@ -480,6 +483,7 @@ export default function WebsiteContent() {
                   caption={img.caption ?? ""}
                   index={i}
                   disabled={savingGallery}
+                  savingCaption={savingCaptionIndex === i}
                   isHero={content.heroImage === img.url}
                   isDragOver={dragOverIndex === i}
                   onSetAsHero={() => handleSetAsHero(img.url)}
@@ -564,6 +568,7 @@ function GalleryThumb({
   caption,
   index,
   disabled,
+  savingCaption,
   isHero,
   isDragOver,
   onSetAsHero,
@@ -579,6 +584,7 @@ function GalleryThumb({
   caption: string
   index: number
   disabled: boolean
+  savingCaption: boolean
   isHero: boolean
   isDragOver: boolean
   onSetAsHero: () => void
@@ -671,7 +677,12 @@ function GalleryThumb({
         }}
       />
     </div>
-    {editing ? (
+    {savingCaption ? (
+      <div className="mt-1.5 w-full flex items-center gap-1.5 px-2 py-1 text-xs text-gray-400">
+        <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+        <span className="truncate">Saving…</span>
+      </div>
+    ) : editing ? (
       <input
         autoFocus
         type="text"
@@ -684,13 +695,13 @@ function GalleryThumb({
           if (e.key === "Enter") commit()
           if (e.key === "Escape") { setDraft(caption); setEditing(false) }
         }}
-        className="mt-1.5 w-full text-xs px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+        className="mt-1.5 w-full text-xs px-2 py-1 border border-primary rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
       />
     ) : (
       <button
         onClick={() => { if (!disabled) setEditing(true) }}
         disabled={disabled}
-        title={caption ? "Edit caption" : "Add caption"}
+        title={caption ? "Click to edit caption" : "Click to add caption"}
         className={`mt-1.5 w-full text-left text-xs px-2 py-1 rounded-md truncate transition-colors ${
           caption ? "text-gray-700 hover:bg-gray-100" : "text-gray-400 italic hover:bg-gray-100 hover:text-gray-600"
         } disabled:opacity-50`}
