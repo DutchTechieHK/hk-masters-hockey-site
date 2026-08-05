@@ -210,7 +210,7 @@ function formatRow(row: typeof siteContentTable.$inferSelect, base: string) {
 }
 
 async function getOrCreateRow() {
-  const rows = await db.select().from(siteContentTable).limit(1);
+  const rows = await db.select().from(siteContentTable).orderBy(siteContentTable.id).limit(1);
   if (rows.length > 0) return rows[0];
   // Seed the first row with the static gallery so the public site has
   // real content before an admin touches anything.

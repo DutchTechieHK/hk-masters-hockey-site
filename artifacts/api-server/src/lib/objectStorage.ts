@@ -31,11 +31,7 @@ export class ObjectNotFoundError extends Error {
 
 export class ObjectStorageService {
   private getPrivateObjectDir(): string {
-    const dir = process.env.PRIVATE_OBJECT_DIR || "";
-    if (!dir) {
-      throw new Error("PRIVATE_OBJECT_DIR not set");
-    }
-    return dir;
+    return getPrivateObjectDir();
   }
 
   async uploadObjectEntity(buffer: Buffer, contentType: string): Promise<string> {
@@ -91,6 +87,70 @@ export class ObjectStorageService {
   }
 }
 
+// ── Shared upload-object helpers ─────────────────────────────────────────────
+
+/**
+ * Extract the upload UUID from any URL format this app stores:
+ *   /api/events/serve-image/<uuid>
+ *   /api/news/serve-image/<uuid>
+ *   /api/sponsors/image/objects/uploads/<uuid>
+ *   /api/auction/image/objects/uploads/<uuid>
+ *   /objects/uploads/<uuid>          (raw logical path)
+ *   https://host/api/.../uploads/<uuid>
+ *
+ * Returns null for null/undefined, empty strings, external URLs that don't
+ * contain the uploads segment, or anything that doesn't match.
+ */
+export function extractUploadObjectId(url: string | null | undefined): string | null {
+  if (!url) return null;
+
+  // serve-image/<uuid> pattern (events, news)
+  const serveMatch = url.match(/\/serve-image\/([\w-]+)\/?$/);
+  if (serveMatch) return serveMatch[1];
+
+  // uploads/<uuid> pattern (sponsors, auction, site-content, raw logical path)
+  const uploadsMatch = url.match(/\/uploads\/([\w-]+)\/?$/);
+  if (uploadsMatch) return uploadsMatch[1];
+
+  return null;
+}
+
+/**
+ * Best-effort delete of a GCS upload object identified by its UUID.
+ * Never throws. Treats 404 as success (already gone). Logs unexpected failures.
+ * Dev and prod share one bucket — only call this with an objectId you own
+ * (read from the DB row before mutating it).
+ */
+export async function tryDeleteUploadObject(objectId: string | null | undefined): Promise<void> {
+  if (!objectId) return;
+  if (!/^[\w-]+$/.test(objectId)) {
+    console.warn(`[objectStorage] tryDeleteUploadObject: invalid objectId "${objectId}", skipping`);
+    return;
+  }
+  try {
+    const privateObjectDir = getPrivateObjectDir();
+    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const { bucketName, objectName } = parseObjectPath(fullPath);
+    const signedUrl = await signObjectURL({ bucketName, objectName, method: "DELETE", ttlSec: 60 });
+    const res = await fetch(signedUrl, { method: "DELETE", signal: AbortSignal.timeout(10_000) });
+    if (!res.ok && res.status !== 404) {
+      console.warn(`[objectStorage] tryDeleteUploadObject(${objectId}): GCS returned ${res.status} — orphan may remain`);
+    }
+  } catch (err) {
+    console.error(`[objectStorage] tryDeleteUploadObject(${objectId}) failed — orphan may remain:`, err);
+  }
+}
+
+// ── Internal helpers ──────────────────────────────────────────────────────────
+
+function getPrivateObjectDir(): string {
+  const dir = process.env.PRIVATE_OBJECT_DIR || "";
+  if (!dir) {
+    throw new Error("PRIVATE_OBJECT_DIR not set");
+  }
+  return dir;
+}
+
 function parseObjectPath(path: string): { bucketName: string; objectName: string } {
   if (!path.startsWith("/")) {
     path = `/${path}`;
@@ -132,6 +192,6 @@ async function signObjectURL({
     throw new Error(`Failed to sign object URL: ${response.status}`);
   }
 
-  const { signed_url: signedURL } = await response.json();
-  return signedURL;
+  const body = await response.json() as { signed_url: string };
+  return body.signed_url;
 }

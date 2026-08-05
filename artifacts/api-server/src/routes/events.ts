@@ -6,7 +6,8 @@ import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
 import { sendPushToAll, sendPushToTeam } from "../utils/push";
 import { requirePlayerSession } from "../middleware/playerSession";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, extractUploadObjectId } from "../lib/objectStorage";
+import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
 
 const router: IRouter = Router();
 
@@ -302,20 +303,41 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
   // Only update photoUrl in DB if the caller explicitly sent the key.
   // This makes bulk PATCH (e.g. toggle isPublic) safe — omitting photoUrl preserves the existing value.
   const updateValues: Record<string, unknown> = { ...coreValues };
-  if (photoUrl !== undefined) updateValues.photoUrl = photoUrl;
+
+  // Read the old row before mutating so we can clean up an orphaned photo.
+  let oldPhotoUrl: string | null = null;
+  if (photoUrl !== undefined) {
+    const [existing] = await db.select({ photoUrl: eventsTable.photoUrl }).from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
+    if (existing) oldPhotoUrl = existing.photoUrl ?? null;
+    updateValues.photoUrl = photoUrl;
+  }
+
   const [row] = await db.update(eventsTable).set(updateValues).where(eq(eventsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Event not found" });
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
     : null;
   res.json(serialize(row, team?.name));
+
+  // Fire-and-forget: clean up the old photo if it changed (cross-entity ref check inside).
+  const oldId = extractUploadObjectId(oldPhotoUrl);
+  const newId = extractUploadObjectId(photoUrl ?? null);
+  if (oldId && oldId !== newId) {
+    cleanupOrphanedUpload(oldId).catch(() => {});
+  }
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  // Read the photo URL before deleting so we can clean up the storage object.
+  const [existing] = await db.select({ photoUrl: eventsTable.photoUrl }).from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
   await db.delete(eventsTable).where(eq(eventsTable.id, id));
   res.status(204).send();
+
+  // Fire-and-forget: clean up the orphaned photo (cross-entity ref check inside).
+  const oldId = extractUploadObjectId(existing?.photoUrl);
+  if (oldId) cleanupOrphanedUpload(oldId).catch(() => {});
 });
 
 // ── Image upload / serve ────────────────────────────────────────────────────

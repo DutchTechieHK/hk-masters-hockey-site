@@ -4,7 +4,8 @@ import { db } from "@workspace/db";
 import { auctionSettingsTable, auctionItemsTable, auctionBidsTable } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, extractUploadObjectId } from "../lib/objectStorage";
+import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -162,7 +163,15 @@ auctionAdminRouter.patch("/items/:id", requireAdminAccess, async (req, res) => {
   const updates: Record<string, unknown> = {};
   if (title !== undefined) updates.title = title.trim();
   if (description !== undefined) updates.description = description?.trim() || null;
-  if (imageUrl !== undefined) updates.imageUrl = imageUrl?.trim() || null;
+
+  // Read old imageUrl before updating so we can clean up storage.
+  let oldImageUrl: string | null = null;
+  if (imageUrl !== undefined) {
+    const [existing] = await db.select({ imageUrl: auctionItemsTable.imageUrl }).from(auctionItemsTable).where(eq(auctionItemsTable.id, id)).limit(1);
+    if (existing) oldImageUrl = existing.imageUrl ?? null;
+    updates.imageUrl = imageUrl?.trim() || null;
+  }
+
   if (startingPrice !== undefined) updates.startingPrice = String(parseFloat(startingPrice) || 0);
   if (minIncrement !== undefined) updates.minIncrement = String(parseFloat(minIncrement) || 100);
   if (reservePrice !== undefined) {
@@ -175,14 +184,25 @@ auctionAdminRouter.patch("/items/:id", requireAdminAccess, async (req, res) => {
   const [item] = await db.update(auctionItemsTable).set(updates).where(eq(auctionItemsTable.id, id)).returning();
   if (!item) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ ...item, opensAt: item.opensAt?.toISOString() ?? null, closesAt: item.closesAt?.toISOString() ?? null, createdAt: item.createdAt.toISOString() });
+
+  // Fire-and-forget: clean up old image if it changed (cross-entity ref check inside).
+  const oldId = extractUploadObjectId(oldImageUrl);
+  const newId = extractUploadObjectId(imageUrl?.trim() || null);
+  if (oldId && oldId !== newId) cleanupOrphanedUpload(oldId).catch(() => {});
 });
 
 auctionAdminRouter.delete("/items/:id", requireAdminAccess, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  // Read the image URL before deleting so we can clean up storage.
+  const [existing] = await db.select({ imageUrl: auctionItemsTable.imageUrl }).from(auctionItemsTable).where(eq(auctionItemsTable.id, id)).limit(1);
   await db.delete(auctionBidsTable).where(eq(auctionBidsTable.itemId, id));
   await db.delete(auctionItemsTable).where(eq(auctionItemsTable.id, id));
   res.status(204).send();
+
+  // Fire-and-forget: clean up the orphaned image (cross-entity ref check inside).
+  const oldId = extractUploadObjectId(existing?.imageUrl);
+  if (oldId) cleanupOrphanedUpload(oldId).catch(() => {});
 });
 
 auctionAdminRouter.get("/items/:id/bids", requireAdminAccess, async (req, res) => {

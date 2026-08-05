@@ -5,7 +5,8 @@ import { sponsorsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { CreateSponsorBody, UpdateSponsorParams, DeleteSponsorParams } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { ObjectStorageService } from "../lib/objectStorage";
+import { ObjectStorageService, extractUploadObjectId } from "../lib/objectStorage";
+import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
 
 const router = Router();
 
@@ -54,6 +55,8 @@ router.post("/", requireAdminAccess, async (req, res) => {
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateSponsorParams.parse(req.params);
   const body = CreateSponsorBody.parse(req.body);
+  // Read the old logo before updating so we can clean up storage.
+  const [existing] = await db.select({ logoUrl: sponsorsTable.logoUrl }).from(sponsorsTable).where(eq(sponsorsTable.id, id)).limit(1);
   const [sponsor] = await db.update(sponsorsTable).set({
     name: body.name,
     logoUrl: body.logoUrl || null,
@@ -76,12 +79,25 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     contributionAmount: sponsor.contributionAmount != null ? Number(sponsor.contributionAmount) : null,
     createdAt: sponsor.createdAt?.toISOString(),
   });
+
+  // Fire-and-forget: clean up the old logo if it changed (cross-entity ref check inside).
+  const oldId = extractUploadObjectId(existing?.logoUrl ?? null);
+  const newId = extractUploadObjectId(body.logoUrl || null);
+  if (oldId && oldId !== newId) {
+    cleanupOrphanedUpload(oldId).catch(() => {});
+  }
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteSponsorParams.parse(req.params);
+  // Read the logo before deleting so we can clean up storage.
+  const [existing] = await db.select({ logoUrl: sponsorsTable.logoUrl }).from(sponsorsTable).where(eq(sponsorsTable.id, id)).limit(1);
   await db.delete(sponsorsTable).where(eq(sponsorsTable.id, id));
   res.status(204).send();
+
+  // Fire-and-forget: clean up the orphaned logo (cross-entity ref check inside).
+  const oldId = extractUploadObjectId(existing?.logoUrl ?? null);
+  if (oldId) cleanupOrphanedUpload(oldId).catch(() => {});
 });
 
 router.post("/image-upload", requireAdminAccess, (req: Request, res: Response, next: NextFunction) => {

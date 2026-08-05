@@ -5,7 +5,8 @@ import { newsPostsTable } from "@workspace/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { requireSession } from "../middleware/adminSession";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
+import { ObjectStorageService, ObjectNotFoundError, extractUploadObjectId } from "../lib/objectStorage";
+import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -135,12 +136,13 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
       else if (!nowPublished) publishedAt = null;
     }
 
+    const newCoverImage = coverImage !== undefined ? (coverImage?.trim() || null) : existing.coverImage;
     const [row] = await db.update(newsPostsTable).set({
       title: title?.trim() ?? existing.title,
       slug: slug?.trim() || existing.slug,
       excerpt: excerpt !== undefined ? (excerpt?.trim() || null) : existing.excerpt,
       bodyHtml: bodyHtml !== undefined ? (bodyHtml || null) : existing.bodyHtml,
-      coverImage: coverImage !== undefined ? (coverImage?.trim() || null) : existing.coverImage,
+      coverImage: newCoverImage,
       category: category !== undefined ? (category?.trim() || null) : existing.category,
       author: author !== undefined ? (author?.trim() || null) : existing.author,
       status: status ?? existing.status,
@@ -150,6 +152,13 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
       updatedAt: new Date(),
     }).where(eq(newsPostsTable.id, id)).returning();
     res.json(mapPost(row));
+
+    // Fire-and-forget: clean up old cover image if replaced/cleared (cross-entity ref check inside).
+    if (coverImage !== undefined) {
+      const oldId = extractUploadObjectId(existing.coverImage);
+      const newId = extractUploadObjectId(newCoverImage);
+      if (oldId && oldId !== newId) cleanupOrphanedUpload(oldId).catch(() => {});
+    }
   } catch (err: any) {
     if (err?.code === "23505") {
       res.status(409).json({ error: "A post with this slug already exists" });
@@ -165,8 +174,13 @@ router.delete("/:id", requireSession, requireAdminAccess, async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
+    // Read existing cover image before deleting so we can clean up storage.
+    const [existing] = await db.select({ coverImage: newsPostsTable.coverImage }).from(newsPostsTable).where(eq(newsPostsTable.id, id)).limit(1);
     await db.delete(newsPostsTable).where(eq(newsPostsTable.id, id));
     res.json({ ok: true });
+    // Fire-and-forget: clean up the orphaned cover image (cross-entity ref check inside).
+    const oldId = extractUploadObjectId(existing?.coverImage);
+    if (oldId) cleanupOrphanedUpload(oldId).catch(() => {});
   } catch (err) {
     console.error("[news] delete failed:", err);
     res.status(500).json({ error: "Failed to delete post" });
