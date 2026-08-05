@@ -5,7 +5,6 @@ import teamsContent from "../content/teams.json";
 import AutoLink from "../components/AutoLink";
 import RichText from "../components/RichText";
 import SponsorStrip from "../components/SponsorStrip";
-import NextMatchWidget from "../components/NextMatchWidget";
 import { API_BASE } from "../utils/api";
 import { usePageTexts } from "../utils/pageTexts";
 import { themeFor } from "../utils/teamTheme";
@@ -129,9 +128,6 @@ export default function Rotterdam2026() {
           </p>
         </div>
       </div>
-
-      {/* Next Match Widget */}
-      <NextMatchWidget />
 
       {/* Tournament Overview */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
