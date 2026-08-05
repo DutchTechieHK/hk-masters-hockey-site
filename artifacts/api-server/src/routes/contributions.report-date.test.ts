@@ -33,15 +33,6 @@ const { default: contributionsRouter } = await import("./contributions");
 const app = express();
 app.use(express.json());
 app.use("/api/contributions", contributionsRouter);
-// Mirror the global ZodError→400 handler from app.ts
-app.use((err: unknown, _req: any, res: any, _next: any) => {
-  if (err != null && typeof err === "object" && "name" in err && (err as any).name === "ZodError") {
-    res.status(400).json({ error: "Validation error", details: (err as any).errors });
-    return;
-  }
-  console.error(err);
-  res.status(500).json({ error: "Internal server error" });
-});
 
 // ── Shared test data ──────────────────────────────────────────────────────────
 

@@ -193,8 +193,19 @@ router.get("/", requireAdminAccess, async (req, res) => {
 });
 
 router.put("/:id", requireAdminAccess, async (req, res) => {
-  const { id } = UpdateContributionParams.parse(req.params);
-  const body = UpdateContributionBody.parse(req.body);
+  const paramsResult = UpdateContributionParams.safeParse(req.params);
+  if (!paramsResult.success) {
+    res.status(400).json({ error: "Validation error", details: paramsResult.error.errors });
+    return;
+  }
+  const { id } = paramsResult.data;
+
+  const bodyResult = UpdateContributionBody.safeParse(req.body);
+  if (!bodyResult.success) {
+    res.status(400).json({ error: "Validation error", details: bodyResult.error.errors });
+    return;
+  }
+  const body = bodyResult.data;
 
   const [existing] = await db
     .select()
