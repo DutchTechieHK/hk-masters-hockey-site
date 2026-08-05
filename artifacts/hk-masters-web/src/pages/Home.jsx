@@ -6,6 +6,7 @@ import RichText from "../components/RichText";
 import { cloudinaryResize } from "../utils/cloudinary";
 import { API_BASE } from "../utils/api";
 import { usePageTexts } from "../utils/pageTexts";
+import { newsDisplayDate, contributionDisplayDate } from "../utils/dates";
 import teamsContent from "../content/teams.json";
 import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
@@ -170,9 +171,7 @@ function LatestNewsSection() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           {posts.map((post) => {
             const cover = proxyNotionImage(post.coverImage);
-            const dateStr = post.publishedAt
-              ? format(parseISO(post.publishedAt), "d MMM yyyy")
-              : null;
+            const dateStr = newsDisplayDate(post.reportDate, post.publishedAt);
             return (
               <Link
                 key={post.id}
@@ -287,7 +286,7 @@ function LatestJournalCard() {
                 {article.contentType === "photo" ? "Photos" : article.contentType === "both" ? "Article + Photos" : "Article"}
               </span>
               <span className="text-xs text-[#8A7A6A]">
-                {format(parseISO(article.createdAt), "d MMM yyyy")}
+                {contributionDisplayDate(article.reportDate, article.createdAt)}
               </span>
             </div>
             <h3 className="text-xl font-bold text-[#1E3A6E] mb-1 leading-snug">
