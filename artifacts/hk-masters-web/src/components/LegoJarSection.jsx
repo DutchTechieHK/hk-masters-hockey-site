@@ -326,6 +326,7 @@ export default function LegoJarSection() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState(null);
+  const [challengeEnded, setChallengeEnded] = useState(false);
 
   // Shared lightbox — stores { src, alt } or null when closed
   const [lightbox, setLightbox] = useState(null);
@@ -411,6 +412,10 @@ export default function LegoJarSection() {
           totalAmountPaid: tierTotal,
         }),
       });
+      if (res.status === 409) {
+        setChallengeEnded(true);
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || "Something went wrong. Please try again.");
@@ -553,14 +558,14 @@ export default function LegoJarSection() {
 
           {/* Right: Form or success */}
           <div>
-            {winner ? (
+            {winner || challengeEnded ? (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
                 <div className="w-14 h-14 bg-[#F5C518]/20 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="text-2xl">🏆</span>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">The challenge has ended</h3>
                 <p className="text-sm text-gray-600 leading-relaxed max-w-sm mx-auto">
-                  Guessing is now closed{winner.name ? <> — congratulations to <span className="font-bold text-[#1E3A6E]">{winner.name}</span>!</> : "."}{" "}
+                  Guessing is now closed{winner?.name ? <> — congratulations to <span className="font-bold text-[#1E3A6E]">{winner.name}</span>!</> : "."}{" "}
                   Thank you to everyone who took part and supported the road to Rotterdam 2026.
                 </p>
               </div>
