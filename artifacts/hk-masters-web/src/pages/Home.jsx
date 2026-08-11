@@ -12,6 +12,54 @@ import rotterdamContent from "../content/rotterdam.json";
 import SquadModal from "../components/SquadModal";
 import SponsorStrip from "../components/SponsorStrip";
 
+const LEGO_WINNER_BANNER_KEY = "legoJarWinnerBannerDismissed";
+
+function LegoWinnerBanner() {
+  const [winner, setWinner] = useState(null);
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(LEGO_WINNER_BANNER_KEY) === "1"; } catch { return false; }
+  });
+
+  useEffect(() => {
+    fetch(`${API_BASE}/api/lego-jar/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.winner) setWinner(d.winner); })
+      .catch(() => {});
+  }, []);
+
+  if (!winner || dismissed) return null;
+
+  return (
+    <div className="bg-[#DE2910] text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex items-center justify-between gap-3">
+        <Link
+          href="/support#legochallenge"
+          className="flex items-center gap-2 min-w-0 group"
+        >
+          <span className="shrink-0">🧱</span>
+          <span className="text-sm font-semibold truncate group-hover:underline">
+            The LEGO Jar has a winner{winner.name ? ` — congratulations ${winner.name}!` : "!"}{" "}
+            <span className="font-bold whitespace-nowrap">See the results →</span>
+          </span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setDismissed(true);
+            try { localStorage.setItem(LEGO_WINNER_BANNER_KEY, "1"); } catch { /* ignore */ }
+          }}
+          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/15 transition-colors"
+          aria-label="Dismiss announcement"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function useSiteContent() {
   const [data, setData] = useState(null);
   useEffect(() => {
@@ -349,6 +397,9 @@ export default function Home() {
 
   return (
     <div>
+      {/* ── LEGO Jar winner announcement banner ───────────────── */}
+      <LegoWinnerBanner />
+
       {/* ── Hero Section ──────────────────────────────────────── */}
       <section className="relative bg-[#1E3A6E] text-white">
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">

@@ -32,6 +32,10 @@ type Config = {
   actualCount: number | null
   status: string
   imageUrl: string | null
+  winnerAnnounced?: boolean
+  winnerName?: string | null
+  winnerGuess?: number | null
+  winnerMessage?: string | null
 }
 
 type Prize = {
@@ -242,6 +246,11 @@ export default function LegoJar() {
   const [configForm, setConfigForm] = useState({ pricePerGuess: "50", actualCount: "", status: "active", imageUrl: "" })
   const [configSaving, setConfigSaving] = useState(false)
 
+  // Winner announcement panel (Results tab)
+  const [winnerForm, setWinnerForm] = useState({ name: "", guess: "", message: "" })
+  const [winnerSaving, setWinnerSaving] = useState(false)
+  const [announceConfirmOpen, setAnnounceConfirmOpen] = useState(false)
+
   // Prizes panel — one form entry per prize rank
   const [prizeForms, setPrizeForms] = useState<Record<number, { title: string; description: string; imageUrl: string; imageAlt: string }>>({})
   const [prizeSaving, setPrizeSaving] = useState<Record<number, boolean>>({})
@@ -395,6 +404,11 @@ export default function LegoJar() {
         imageUrl: cfg?.imageUrl ?? "",
       })
       setResultActualCount(cfg?.actualCount != null ? String(cfg.actualCount) : "")
+      setWinnerForm({
+        name: cfg?.winnerName ?? "",
+        guess: cfg?.winnerGuess != null ? String(cfg.winnerGuess) : "",
+        message: cfg?.winnerMessage ?? "",
+      })
       const pzArr: Prize[] = Array.isArray(pzs) ? pzs : []
       setPrizes(pzArr)
       const forms: Record<number, { title: string; description: string; imageUrl: string; imageAlt: string }> = {}
@@ -701,6 +715,41 @@ export default function LegoJar() {
       toast({ title: (err as Error).message || "Failed to save", variant: "destructive" })
     } finally {
       setResultSaving(false)
+    }
+  }
+
+  // Save winner details (without changing announced state)
+  const saveWinner = async (announce?: boolean) => {
+    const name = winnerForm.name.trim()
+    const guessParsed = winnerForm.guess.trim() ? parseInt(winnerForm.guess.trim(), 10) : null
+    if (announce) {
+      if (!name) { toast({ title: "Enter the winner's name first", variant: "destructive" }); return }
+      if (config?.actualCount == null) { toast({ title: "Enter and save the actual LEGO count first", variant: "destructive" }); return }
+    }
+    if (winnerForm.guess.trim() && (isNaN(guessParsed as number) || (guessParsed as number) < 1)) {
+      toast({ title: "Winning guess must be a positive number", variant: "destructive" }); return
+    }
+    setWinnerSaving(true)
+    try {
+      const payload: Record<string, unknown> = {
+        winnerName: name || null,
+        winnerGuess: guessParsed,
+        winnerMessage: winnerForm.message.trim() || null,
+      }
+      if (announce !== undefined) payload.winnerAnnounced = announce
+      await apiFetch("/api/admin/lego-jar/config", { method: "PUT", body: JSON.stringify(payload) })
+      toast({
+        title:
+          announce === true ? "Winner announced! It's now live on the website 🎉"
+          : announce === false ? "Announcement taken down"
+          : "Winner details saved",
+      })
+      await load()
+    } catch (err) {
+      toast({ title: (err as Error).message || "Failed to save winner", variant: "destructive" })
+    } finally {
+      setWinnerSaving(false)
+      setAnnounceConfirmOpen(false)
     }
   }
 
@@ -1212,6 +1261,90 @@ export default function LegoJar() {
                         {!w.paid && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 font-medium">Unpaid</span>}
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Winner announcement panel */}
+                <div className={`rounded-2xl border-2 p-6 ${config?.winnerAnnounced ? "border-emerald-300 bg-emerald-50/50" : "border-border bg-white"} shadow-sm`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+                    <h3 className="font-bold text-foreground flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-amber-500" /> Website winner announcement
+                    </h3>
+                    {config?.winnerAnnounced ? (
+                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">LIVE on the website</span>
+                    ) : (
+                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground">Not announced</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    When you announce, the public Support page shows a celebration with the winner's name, their guess vs. the actual count — and a banner appears on the homepage. You can take it down anytime.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5">Winner's name</label>
+                      <Input
+                        value={winnerForm.name}
+                        placeholder="e.g. Jane Chan"
+                        onChange={(e) => setWinnerForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold mb-1.5">Their winning guess</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={winnerForm.guess}
+                        placeholder="e.g. 1850"
+                        onChange={(e) => setWinnerForm((f) => ({ ...f, guess: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  {winners.length > 0 && (
+                    <div className="mb-4 flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Quick fill from rankings:</span>
+                      {winners.map((w) => (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => setWinnerForm((f) => ({ ...f, name: w.guesserName, guess: String(w.guessNumber) }))}
+                          className="text-xs font-semibold px-2.5 py-1 rounded-full border border-border hover:bg-muted transition-colors"
+                        >
+                          {w.guesserName} · {w.guessNumber.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="mb-4">
+                    <label className="block text-sm font-semibold mb-1.5">Message (optional)</label>
+                    <Input
+                      value={winnerForm.message}
+                      placeholder="e.g. Thanks to everyone who guessed — see you in Rotterdam!"
+                      onChange={(e) => setWinnerForm((f) => ({ ...f, message: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button variant="outline" onClick={() => saveWinner()} disabled={winnerSaving}>
+                      {winnerSaving ? "Saving…" : "Save details"}
+                    </Button>
+                    {config?.winnerAnnounced ? (
+                      <Button variant="destructive" onClick={() => saveWinner(false)} disabled={winnerSaving}>
+                        Take down announcement
+                      </Button>
+                    ) : announceConfirmOpen ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">Go live on the public website now?</span>
+                        <Button onClick={() => saveWinner(true)} disabled={winnerSaving}>
+                          {winnerSaving ? "Announcing…" : "Yes, announce 🎉"}
+                        </Button>
+                        <Button variant="outline" onClick={() => setAnnounceConfirmOpen(false)} disabled={winnerSaving}>
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button onClick={() => setAnnounceConfirmOpen(true)} disabled={winnerSaving}>
+                        <Trophy className="w-4 h-4 mr-1.5" /> Announce winner
+                      </Button>
+                    )}
                   </div>
                 </div>
 

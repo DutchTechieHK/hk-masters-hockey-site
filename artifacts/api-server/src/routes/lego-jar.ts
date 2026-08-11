@@ -187,11 +187,21 @@ legoJarPublicRouter.get("/stats", async (_req, res) => {
     config: config
       ? {
           pricePerGuess,
-          actualCount: config.actualCount ?? null,
+          // Never reveal the actual count publicly until the winner has been
+          // announced — otherwise a guaranteed-winning guess could be submitted.
+          actualCount: config.winnerAnnounced ? config.actualCount ?? null : null,
           status: config.status,
           imageUrl: config.imageUrl ?? null,
         }
       : { pricePerGuess: 50, actualCount: null, status: "active", imageUrl: null },
+    winner: config?.winnerAnnounced
+      ? {
+          name: config.winnerName ?? null,
+          guess: config.winnerGuess ?? null,
+          actualCount: config.actualCount ?? null,
+          message: config.winnerMessage ?? null,
+        }
+      : null,
     currentRound: currentRound
       ? {
           id: currentRound.id,
@@ -250,8 +260,15 @@ legoJarPublicRouter.post("/guesses", async (req, res) => {
 
   // Online submissions are attributed to the dedicated "Website" designation,
   // not to whoever is physically holding the jar right now.
-  const websiteRound = await getWebsiteRound();
   const config = await getConfig();
+
+  // Reject submissions once the challenge is over or the winner is announced.
+  if (config?.winnerAnnounced || config?.status === "completed") {
+    res.status(409).json({ error: "The LEGO Jar Challenge has ended — guessing is closed." });
+    return;
+  }
+
+  const websiteRound = await getWebsiteRound();
   const pricePerGuess = Number(config?.pricePerGuess ?? 50);
 
   // Single-item model: store the full bet amount on the first row and 0 on the
@@ -381,9 +398,24 @@ legoJarAdminRouter.get("/config", async (_req, res) => {
 
 // PUT /api/admin/lego-jar/config
 legoJarAdminRouter.put("/config", async (req, res) => {
-  const { pricePerGuess, actualCount, status, imageUrl } = req.body ?? {};
+  const { pricePerGuess, actualCount, status, imageUrl, winnerAnnounced, winnerName, winnerGuess, winnerMessage } = req.body ?? {};
 
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
+  if (winnerAnnounced !== undefined) {
+    if (typeof winnerAnnounced !== "boolean") { res.status(400).json({ error: "winnerAnnounced must be a boolean" }); return; }
+    updateData.winnerAnnounced = winnerAnnounced;
+  }
+  if (winnerName !== undefined) updateData.winnerName = typeof winnerName === "string" && winnerName.trim() ? winnerName.trim() : null;
+  if (winnerGuess !== undefined) {
+    if (winnerGuess === null || winnerGuess === "") {
+      updateData.winnerGuess = null;
+    } else {
+      const g = parseInt(winnerGuess, 10);
+      if (isNaN(g) || g < 1) { res.status(400).json({ error: "winnerGuess must be a positive integer" }); return; }
+      updateData.winnerGuess = g;
+    }
+  }
+  if (winnerMessage !== undefined) updateData.winnerMessage = typeof winnerMessage === "string" && winnerMessage.trim() ? winnerMessage.trim() : null;
   if (pricePerGuess !== undefined) {
     const p = parseFloat(pricePerGuess);
     if (isNaN(p) || p <= 0) { res.status(400).json({ error: "pricePerGuess must be a positive number" }); return; }
@@ -404,6 +436,10 @@ legoJarAdminRouter.put("/config", async (req, res) => {
       actualCount: actualCount ?? null,
       status: status ?? "active",
       imageUrl: imageUrl ?? null,
+      winnerAnnounced: (updateData.winnerAnnounced as boolean | undefined) ?? false,
+      winnerName: (updateData.winnerName as string | null | undefined) ?? null,
+      winnerGuess: (updateData.winnerGuess as number | null | undefined) ?? null,
+      winnerMessage: (updateData.winnerMessage as string | null | undefined) ?? null,
     }).returning();
     res.json(row);
   } else {

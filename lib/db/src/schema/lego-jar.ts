@@ -18,6 +18,10 @@ export const legoJarConfigTable = pgTable("lego_jar_config", {
   actualCount: integer("actual_count"),
   status: text("status").notNull().default("active"),
   imageUrl: text("image_url"),
+  winnerAnnounced: boolean("winner_announced").notNull().default(false),
+  winnerName: text("winner_name"),
+  winnerGuess: integer("winner_guess"),
+  winnerMessage: text("winner_message"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

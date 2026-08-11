@@ -228,6 +228,89 @@ function PrizesSection({ prizes, onZoom }) {
   );
 }
 
+const CONFETTI_COLORS = ["#DE2910", "#F5C518", "#1E3A6E", "#3BA55D", "#E77728", "#8FBDE8"];
+
+function ConfettiOverlay() {
+  // Deterministic pseudo-random layout so re-renders don't reshuffle pieces.
+  const pieces = Array.from({ length: 36 }, (_, i) => {
+    const left = ((i * 37) % 100);
+    const delay = ((i * 53) % 40) / 10;
+    const duration = 3.2 + ((i * 29) % 25) / 10;
+    const size = 6 + ((i * 17) % 7);
+    const color = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    const rotate = (i * 47) % 360;
+    return { left, delay, duration, size, color, rotate, round: i % 3 === 0 };
+  });
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <style>{`
+        @keyframes lj-confetti-fall {
+          0% { transform: translateY(-10%) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(720px) rotate(540deg); opacity: 0; }
+        }
+      `}</style>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="absolute top-0 block"
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.round ? p.size : p.size * 0.45,
+            backgroundColor: p.color,
+            borderRadius: p.round ? "9999px" : "2px",
+            transform: `rotate(${p.rotate}deg)`,
+            animation: `lj-confetti-fall ${p.duration}s linear ${p.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function WinnerReveal({ winner, totalRaised, totalGuesses }) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl bg-[#1E3A6E] text-white shadow-xl mb-10">
+      <ConfettiOverlay />
+      <div className="relative px-6 py-10 sm:px-12 sm:py-14 text-center">
+        <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-widest">
+          The results are in
+        </span>
+        <h3 className="text-3xl sm:text-4xl font-extrabold mb-2 flex items-center justify-center gap-3 flex-wrap">
+          🎉 We have a winner! <LegoBrickIcon className="w-10 h-7" />
+        </h3>
+        {winner.name && (
+          <p className="text-2xl sm:text-3xl font-extrabold text-[#F5C518] mb-4">{winner.name}</p>
+        )}
+        <div className="flex items-stretch justify-center gap-3 sm:gap-5 flex-wrap mb-5">
+          {winner.guess != null && (
+            <div className="bg-white/10 border border-white/20 rounded-2xl px-5 py-3 min-w-[120px]">
+              <p className="text-2xl font-extrabold tabular-nums">{Number(winner.guess).toLocaleString()}</p>
+              <p className="text-xs text-[#BFD9F5] font-semibold uppercase tracking-wide mt-0.5">Their guess</p>
+            </div>
+          )}
+          {winner.actualCount != null && (
+            <div className="bg-white/10 border border-white/20 rounded-2xl px-5 py-3 min-w-[120px]">
+              <p className="text-2xl font-extrabold tabular-nums">{Number(winner.actualCount).toLocaleString()}</p>
+              <p className="text-xs text-[#BFD9F5] font-semibold uppercase tracking-wide mt-0.5">Bricks in the jar</p>
+            </div>
+          )}
+          <div className="bg-white/10 border border-white/20 rounded-2xl px-5 py-3 min-w-[120px]">
+            <p className="text-2xl font-extrabold tabular-nums">HK${Math.round(totalRaised).toLocaleString()}</p>
+            <p className="text-xs text-[#BFD9F5] font-semibold uppercase tracking-wide mt-0.5">Raised for Rotterdam</p>
+          </div>
+        </div>
+        {winner.message && (
+          <p className="text-[#D6E8F7] max-w-xl mx-auto leading-relaxed">{winner.message}</p>
+        )}
+        <p className="text-xs text-[#8FBDE8] mt-5">
+          Thank you to all {totalGuesses > 0 ? totalGuesses.toLocaleString() : ""} guessers for supporting HK Masters Hockey.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function LegoJarSection() {
   const { stats, prizes, error } = useLegoJarData();
 
@@ -261,6 +344,7 @@ export default function LegoJarSection() {
   const currentRound = stats?.currentRound ?? null;
   const rounds = stats?.rounds ?? [];
   const pastRounds = rounds.filter((r) => r.endedAt !== null);
+  const winner = stats?.winner ?? null;
   const jarImageUrl = stats?.config?.imageUrl ?? "/lego-jar.jpg";
   const jarVideoUrl = "/lego-jar.mp4";
 
@@ -352,12 +436,20 @@ export default function LegoJarSection() {
           <h2 id="legochallenge" className="text-3xl font-extrabold text-gray-900 mb-3 flex items-center gap-3">
             <LegoBrickIcon className="w-10 h-7 shrink-0" /> LEGO Jar Challenge
           </h2>
-          <p className="text-gray-600 max-w-2xl leading-relaxed">
-            How many LEGO bricks are in the jar? Guess the exact number for{" "}
-            <span className="font-semibold text-[#1E3A6E]">HK${Number(pricePerGuess).toLocaleString()}</span> — the closest guess wins!
-            The LEGO jar rotates between members of the squad to raise funds for our 2026 World Cup in Rotterdam.
-          </p>
+          {winner ? (
+            <p className="text-gray-600 max-w-2xl leading-relaxed">
+              The LEGO Jar Challenge has ended — thank you to everyone who guessed and helped raise funds for our 2026 World Cup in Rotterdam.
+            </p>
+          ) : (
+            <p className="text-gray-600 max-w-2xl leading-relaxed">
+              How many LEGO bricks are in the jar? Guess the exact number for{" "}
+              <span className="font-semibold text-[#1E3A6E]">HK${Number(pricePerGuess).toLocaleString()}</span> — the closest guess wins!
+              The LEGO jar rotates between members of the squad to raise funds for our 2026 World Cup in Rotterdam.
+            </p>
+          )}
         </div>
+
+        {winner && <WinnerReveal winner={winner} totalRaised={totalRaised} totalGuesses={totalGuesses} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
           {/* Left: Stats + jar info */}
@@ -461,7 +553,18 @@ export default function LegoJarSection() {
 
           {/* Right: Form or success */}
           <div>
-            {submitted ? (
+            {winner ? (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                <div className="w-14 h-14 bg-[#F5C518]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">🏆</span>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">The challenge has ended</h3>
+                <p className="text-sm text-gray-600 leading-relaxed max-w-sm mx-auto">
+                  Guessing is now closed{winner.name ? <> — congratulations to <span className="font-bold text-[#1E3A6E]">{winner.name}</span>!</> : "."}{" "}
+                  Thank you to everyone who took part and supported the road to Rotterdam 2026.
+                </p>
+              </div>
+            ) : submitted ? (
               <div className="space-y-5">
                 <div className="bg-[#1E3A6E]/5 border border-[#1E3A6E]/20 rounded-2xl p-6 text-center">
                   <div className="w-12 h-12 bg-[#1E3A6E] rounded-full flex items-center justify-center mx-auto mb-3">
