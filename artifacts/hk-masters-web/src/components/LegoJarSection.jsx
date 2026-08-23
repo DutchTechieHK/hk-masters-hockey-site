@@ -106,24 +106,6 @@ const FALLBACK_PRIZES = [
     imageUrl: "/bali-villa.jpg",
     imageAlt: "The Starling Villa, Bali — private pool and tropical gardens",
   },
-  {
-    rank: 2,
-    badge: "2nd Prize",
-    badgeColor: "bg-gray-200 text-gray-700",
-    title: "To be announced",
-    description: "Watch this space — we're lining up something great for second place.",
-    imageUrl: null,
-    imageAlt: null,
-  },
-  {
-    rank: 3,
-    badge: "3rd Prize",
-    badgeColor: "bg-orange-100 text-orange-700",
-    title: "To be announced",
-    description: "A special prize for the runner-up. Stay tuned!",
-    imageUrl: null,
-    imageAlt: null,
-  },
 ];
 
 function useLegoJarData() {
@@ -147,7 +129,9 @@ function useLegoJarData() {
 }
 
 function PrizesSection({ prizes, onZoom }) {
-  const [first, ...rest] = prizes;
+  // The public challenge has one confirmed prize. The admin may retain older
+  // prize records for internal history, but they must not be promoted publicly.
+  const first = prizes.find((prize) => prize.rank === 1) ?? prizes[0];
   if (!first) return null;
 
   return (
@@ -199,30 +183,6 @@ function PrizesSection({ prizes, onZoom }) {
           </div>
         </div>
 
-        {/* 2nd + 3rd prizes side by side */}
-        {rest.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 mt-3">
-            {rest.map((prize) => (
-              <div key={prize.rank} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                {prize.imageUrl && (
-                  <button
-                    type="button"
-                    onClick={() => onZoom(prize.imageUrl, prize.imageAlt)}
-                    className="block w-full mb-2 rounded-lg overflow-hidden cursor-zoom-in bg-white"
-                    aria-label={`Expand ${prize.badge} photo`}
-                  >
-                    <img src={prize.imageUrl} alt={prize.imageAlt ?? prize.title} className="w-full h-56 object-contain p-2" />
-                  </button>
-                )}
-                <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold mb-2 ${prize.badgeColor}`}>
-                  {prize.badge}
-                </span>
-                <p className="font-semibold text-gray-800 text-sm leading-snug mb-1">{prize.title}</p>
-                <p className="text-xs text-gray-500 leading-relaxed">{prize.description}</p>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
