@@ -1,5 +1,5 @@
 import { format } from "date-fns"
-import type { Player } from "@workspace/api-client-react"
+import type { FundraisingEntry, Player } from "@workspace/api-client-react"
 
 export const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
@@ -316,3 +316,162 @@ export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   { key: "insuranceExpiry", header: "Policy Expiry", value: p => v(p.insuranceExpiry) },
   { key: "insuranceEmail", header: "Insurance Email", value: p => v(p.insuranceEmail) },
 ]
+
+export type PledgeTierKey = "champ" | "patron" | "friend" | "supporter" | "untiered"
+
+export type PledgeTier = {
+  key: PledgeTierKey
+  label: string
+  threshold: number
+  deliverables: string
+  accent: string
+}
+
+export type PledgeReportRow = FundraisingEntry & {
+  tier: PledgeTier
+  beneficiaryLabel: string
+  balanceDue: number
+}
+
+export const PLEDGE_TIERS: PledgeTier[] = [
+  {
+    key: "champ",
+    label: "Champ",
+    threshold: 5000,
+    deliverables: "All of the above + recognition on the public website and team kit (subject to design approval).",
+    accent: "amber",
+  },
+  {
+    key: "patron",
+    label: "Patron",
+    threshold: 2500,
+    deliverables: "Friend benefits + a signed team photo from Rotterdam.",
+    accent: "teal",
+  },
+  {
+    key: "friend",
+    label: "Friend of the Team",
+    threshold: 1000,
+    deliverables: "Supporter wall + a personal thank-you from the team captains.",
+    accent: "blue",
+  },
+  {
+    key: "supporter",
+    label: "Supporter",
+    threshold: 500,
+    deliverables: "Your name added to the team's official supporter wall.",
+    accent: "slate",
+  },
+]
+
+export function pledgeTierForAmount(amount: number): PledgeTier {
+  return PLEDGE_TIERS.find(tier => amount >= tier.threshold) ?? {
+    key: "untiered",
+    label: "Below tier",
+    threshold: 0,
+    deliverables: "No tier deliverables assigned",
+    accent: "muted",
+  }
+}
+
+export function pledgeBeneficiaryLabel(entry: FundraisingEntry): string {
+  return entry.beneficiary?.trim() || entry.teamName?.trim() || "General"
+}
+
+export function toPledgeReportRow(entry: FundraisingEntry): PledgeReportRow {
+  return {
+    ...entry,
+    tier: pledgeTierForAmount(Number(entry.amountPledged) || 0),
+    beneficiaryLabel: pledgeBeneficiaryLabel(entry),
+    balanceDue: Math.max(0, (Number(entry.amountPledged) || 0) - (Number(entry.amountReceived) || 0)),
+  }
+}
+
+function pledgeDate(value?: string | null): string {
+  if (!value) return "—"
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : format(date, "d MMM yyyy")
+}
+
+function pledgeCurrency(value: number): string {
+  return `HK$${(Number(value) || 0).toLocaleString("en-HK", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+}
+
+function pledgeStatusLabel(status: FundraisingEntry["status"]): string {
+  return status === "received" ? "Received" : status === "confirmed" ? "Confirmed" : "Pending"
+}
+
+export function exportPledgeReportCSV(rows: PledgeReportRow[], filenameBase = "pledge-supporter-report") {
+  const headers = [
+    "Donor",
+    "Email",
+    "Tier",
+    "Deliverables",
+    "Beneficiary",
+    "Team",
+    "Pledged",
+    "Received",
+    "Outstanding",
+    "Payment status",
+    "Pledge date",
+    "Paid at",
+    "Notes",
+  ]
+  const values = rows.map(row => [
+    row.donorName,
+    row.donorEmail ?? "",
+    row.tier.label,
+    row.tier.deliverables,
+    row.beneficiaryLabel,
+    row.teamName ?? "",
+    pledgeCurrency(row.amountPledged),
+    pledgeCurrency(row.amountReceived),
+    pledgeCurrency(row.balanceDue),
+    pledgeStatusLabel(row.status),
+    pledgeDate(row.date ?? row.createdAt),
+    pledgeDate(row.paidAt),
+    row.notes ?? "",
+  ])
+  const csv = [headers, ...values]
+    .map(row => row.map(cell => `"${csvSafe(String(cell)).replace(/"/g, '""')}"`).join(","))
+    .join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = `${filenameBase}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+export function exportPledgeReportPDF(rows: PledgeReportRow[], title = "Pledge & supporter tier report") {
+  const generatedAt = format(new Date(), "d MMM yyyy 'at' HH:mm")
+  const body = rows.map(row => `
+    <tr>
+      <td><strong>${escapeHtml(row.donorName)}</strong><br><span class="sub">${escapeHtml(row.donorEmail ?? "No email")}</span></td>
+      <td><span class="tier tier-${row.tier.key}">${escapeHtml(row.tier.label)}</span><br><span class="sub">${escapeHtml(row.tier.deliverables)}</span></td>
+      <td>${escapeHtml(row.beneficiaryLabel)}${row.teamName ? `<br><span class="sub">${escapeHtml(row.teamName)}</span>` : ""}</td>
+      <td class="money">${escapeHtml(pledgeCurrency(row.amountPledged))}<br><span class="sub">Received ${escapeHtml(pledgeCurrency(row.amountReceived))}</span></td>
+      <td><span class="status status-${row.status}">${escapeHtml(pledgeStatusLabel(row.status))}</span><br><span class="sub">${escapeHtml(pledgeDate(row.date ?? row.createdAt))}</span></td>
+    </tr>`).join("")
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>
+    <style>
+      *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#163043;margin:30px;font-size:11px}
+      .header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #e1a52d;padding-bottom:12px;margin-bottom:18px}
+      h1{font-size:21px;margin:0 0 4px}.meta,.sub{color:#60727b;font-size:10px}.count{font-weight:bold}
+      table{width:100%;border-collapse:collapse}th{text-align:left;background:#edf4f5;padding:8px;border-bottom:1px solid #c8d8da;font-size:9px;text-transform:uppercase;letter-spacing:.07em}
+      td{padding:8px;border-bottom:1px solid #e5ecec;vertical-align:top}.money{font-weight:bold}.status,.tier{display:inline-block;padding:3px 7px;border-radius:12px;font-weight:bold;font-size:9px}
+      .status-received{background:#d9f1e8;color:#14604c}.status-confirmed{background:#dcecf4;color:#1c526c}.status-pending{background:#fff0cf;color:#795514}
+      .tier-champ{background:#fce4a5;color:#735216}.tier-patron{background:#d6efec;color:#14645c}.tier-friend{background:#dcecf4;color:#1c526c}.tier-supporter{background:#e9eff0;color:#435961}.tier-untiered{background:#eef1f1;color:#697879}
+      .empty{padding:24px;text-align:center;color:#68777b}@media print{body{margin:12mm}thead{display:table-header-group}tr{page-break-inside:avoid}}
+    </style></head><body><div class="header"><div><h1>${escapeHtml(title)}</h1><div class="meta">Hong Kong Masters Hockey 2026 · Generated ${escapeHtml(generatedAt)}</div></div><div class="count">${rows.length} record${rows.length === 1 ? "" : "s"}</div></div>
+    ${rows.length ? `<table><thead><tr><th>Donor</th><th>Tier & deliverables</th><th>Beneficiary</th><th>Commitment</th><th>Payment</th></tr></thead><tbody>${body}</tbody></table>` : `<div class="empty">No pledge records to display.</div>`}
+    <script>window.onload=function(){window.focus();window.print()}<\/script></body></html>`
+  const win = window.open("", "_blank")
+  if (!win) return
+  win.document.open()
+  win.document.write(html)
+  win.document.close()
+}
