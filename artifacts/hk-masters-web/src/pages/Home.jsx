@@ -73,7 +73,11 @@ function useSiteContent() {
 
 const ROTTERDAM_START   = new Date("2026-07-22T09:00:00+02:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
-const isRotterdamMode = () => Date.now() < ROTTERDAM_MODE_END.getTime();
+// Development preview: append ?preview=standard to see the post-tournament homepage
+// without changing the real date-based switch.
+const isStandardPreview = import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("preview") === "standard";
+const isRotterdamMode = () => !isStandardPreview && Date.now() < ROTTERDAM_MODE_END.getTime();
 
 
 function useCountdown(target) {
@@ -574,7 +578,7 @@ export default function Home() {
       </section>
 
       {/* ── Rotterdam Countdown ───────────────────────────────── */}
-      <RotterdamCountdown />
+      {isRotterdamMode() && <RotterdamCountdown />}
 
       {/* ── Welcome / Rotterdam Squads ────────────────────────── */}
       {isRotterdamMode() ? (

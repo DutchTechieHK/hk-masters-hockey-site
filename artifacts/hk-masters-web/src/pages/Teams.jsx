@@ -20,6 +20,9 @@ function useSiteContent() {
 }
 
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
+// Development preview: append ?preview=standard to see the post-tournament teams page.
+const isStandardPreview = import.meta.env.DEV &&
+  new URLSearchParams(window.location.search).get("preview") === "standard";
 
 function useTeams() {
   const [teams, setTeams] = useState(null);
@@ -51,7 +54,7 @@ export default function Teams() {
   const liveTeams = useTeams();
   const siteContent = useSiteContent();
   const t = usePageTexts("teams", content);
-  const rotterdamMode = new Date() < ROTTERDAM_MODE_END;
+  const rotterdamMode = !isStandardPreview && new Date() < ROTTERDAM_MODE_END;
 
   // liveTeams is sorted by DB id; static squads are in the same order (MO40 first, MO50 second)
   // Override squad photos from the API site-content (admin-managed) if available
