@@ -19,7 +19,7 @@ function useSiteContent() {
   return data;
 }
 
-const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
+const ROTTERDAM_MODE_END = new Date("2026-08-02T00:00:00");
 // Development preview: append ?preview=standard to see the post-tournament teams page.
 const isStandardPreview = import.meta.env.DEV && (
   new URLSearchParams(window.location.search).get("preview") === "standard" ||
@@ -142,14 +142,12 @@ export default function Teams() {
                     </div>
                   </div>
 
-                  {rotterdamMode && (
-                    <button
-                      onClick={() => setOpenSquad({ category: squad.short_name, teamInfo: squad })}
-                      className="btn-shimmer inline-flex items-center gap-2 bg-[#1E3A6E] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-[#16305D] transition-colors duration-150 text-sm"
-                    >
-                      View Squad List →
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setOpenSquad({ category: squad.short_name, teamInfo: squad })}
+                    className="btn-shimmer inline-flex items-center gap-2 bg-[#1E3A6E] text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-[#16305D] transition-colors duration-150 text-sm"
+                  >
+                    View Squad List →
+                  </button>
                 </div>
               </div>
             );
@@ -177,12 +175,14 @@ export default function Teams() {
             <>
               <h2 className="reveal text-3xl font-extrabold text-white mb-4">{t.join_heading}</h2>
               <RichText content={t.join_text} className="text-[#D6E8F7] max-w-xl mx-auto mb-6 leading-relaxed" />
-              <Link
-                href="/contact"
+              <a
+                href="https://caramel-havarti-6da.notion.site/79a429c0d2cc4ccb96417607a58775f9?pvs=105"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-8 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
               >
-                Contact Us to Join
-              </Link>
+                Sign Up to Join →
+              </a>
             </>
           )}
         </div>

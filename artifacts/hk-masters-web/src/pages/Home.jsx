@@ -72,7 +72,7 @@ function useSiteContent() {
 }
 
 const ROTTERDAM_START   = new Date("2026-07-22T09:00:00+02:00");
-const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
+const ROTTERDAM_MODE_END = new Date("2026-08-02T00:00:00");
 // Development preview: append ?preview=standard to see the post-tournament homepage
 // without changing the real date-based switch.
 const isStandardPreview = import.meta.env.DEV && (
