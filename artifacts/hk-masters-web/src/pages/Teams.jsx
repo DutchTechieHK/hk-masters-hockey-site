@@ -71,25 +71,6 @@ export default function Teams() {
 
   return (
     <div>
-      {/* Page Header */}
-      <div className="bg-[#1E3A6E] text-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {rotterdamMode && (
-            <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
-              Rotterdam 2026 Masters World Cup
-            </span>
-          )}
-          <h1 className="text-4xl font-extrabold mb-3">
-            {rotterdamMode ? "Our Rotterdam 2026 Squads" : "Our Squads"}
-          </h1>
-          <p className="text-[#BFD9F5] text-lg max-w-xl">
-            {rotterdamMode
-              ? "Two HK squads competing at the World Masters Hockey Cup — Rotterdam, Netherlands."
-              : t.page_subtitle}
-          </p>
-        </div>
-      </div>
-
       {/* CTA */}
       <section className="bg-[#1E3A6E] py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -122,6 +103,25 @@ export default function Teams() {
           )}
         </div>
       </section>
+
+      {/* Page Header */}
+      <div className="bg-[#1E3A6E] text-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {rotterdamMode && (
+            <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
+              Rotterdam 2026 Masters World Cup
+            </span>
+          )}
+          <h1 className="text-4xl font-extrabold mb-3">
+            {rotterdamMode ? "Our Rotterdam 2026 Squads" : "Our Squads"}
+          </h1>
+          <p className="text-[#BFD9F5] text-lg max-w-xl">
+            {rotterdamMode
+              ? "Two HK squads competing at the World Masters Hockey Cup — Rotterdam, Netherlands."
+              : t.page_subtitle}
+          </p>
+        </div>
+      </div>
 
       {/* Squads */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
