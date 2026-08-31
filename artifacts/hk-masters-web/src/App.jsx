@@ -60,6 +60,8 @@ function Router() {
       <ScrollToTop />
       <Switch>
         <Route path="/" component={Home} />
+        <Route path="/preview/standard" component={Home} />
+        <Route path="/preview/standard/teams" component={Teams} />
         <Route path="/about" component={About} />
         <Route path="/teams" component={Teams} />
         <Route path="/events" component={Events} />

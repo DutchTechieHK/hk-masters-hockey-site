@@ -21,8 +21,10 @@ function useSiteContent() {
 
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 // Development preview: append ?preview=standard to see the post-tournament teams page.
-const isStandardPreview = import.meta.env.DEV &&
-  new URLSearchParams(window.location.search).get("preview") === "standard";
+const isStandardPreview = import.meta.env.DEV && (
+  new URLSearchParams(window.location.search).get("preview") === "standard" ||
+  window.location.pathname === "/preview/standard/teams"
+);
 
 function useTeams() {
   const [teams, setTeams] = useState(null);

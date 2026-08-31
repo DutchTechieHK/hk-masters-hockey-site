@@ -75,8 +75,10 @@ const ROTTERDAM_START   = new Date("2026-07-22T09:00:00+02:00");
 const ROTTERDAM_MODE_END = new Date("2026-09-15T00:00:00");
 // Development preview: append ?preview=standard to see the post-tournament homepage
 // without changing the real date-based switch.
-const isStandardPreview = import.meta.env.DEV &&
-  new URLSearchParams(window.location.search).get("preview") === "standard";
+const isStandardPreview = import.meta.env.DEV && (
+  new URLSearchParams(window.location.search).get("preview") === "standard" ||
+  window.location.pathname === "/preview/standard"
+);
 const isRotterdamMode = () => !isStandardPreview && Date.now() < ROTTERDAM_MODE_END.getTime();
 
 
