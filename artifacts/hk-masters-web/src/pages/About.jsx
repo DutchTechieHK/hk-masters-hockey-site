@@ -1,6 +1,5 @@
 import content from "../content/about.json";
 import RichText from "../components/RichText";
-import SponsorStrip from "../components/SponsorStrip";
 import { usePageTexts } from "../utils/pageTexts";
 
 export default function About() {
@@ -73,8 +72,6 @@ export default function About() {
         </div>
       </section>
 
-      {/* Sponsor Logos Strip */}
-      <SponsorStrip />
     </div>
   );
 }
