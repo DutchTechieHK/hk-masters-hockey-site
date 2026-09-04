@@ -447,16 +447,16 @@ export default function Home() {
                 <RichText content={t.hero_intro} className="text-[#BFD9F5] mb-8 max-w-xl leading-relaxed" />
                 <div className="flex flex-wrap gap-3">
                   <Link
-                    href="/rotterdam-2026"
-                    className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
-                  >
-                    Rotterdam 2026 &rarr;
-                  </Link>
-                  <Link
                     href="/about"
                     className="inline-block bg-white/10 border border-white/30 text-white font-semibold px-6 py-3 rounded-lg hover:bg-white/20 transition-colors duration-150"
                   >
                     About HK Masters
+                  </Link>
+                  <Link
+                    href="/rotterdam-2026"
+                    className="btn-shimmer inline-block bg-[#DE2910] text-white font-semibold px-6 py-3 rounded-lg hover:bg-red-700 transition-colors duration-150"
+                  >
+                    Rotterdam 2026 &rarr;
                   </Link>
                 </div>
               </div>
