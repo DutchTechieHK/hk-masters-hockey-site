@@ -154,7 +154,6 @@ const PAGES: PageDef[] = [
       },
       { kind: "text", key: "supporters_heading", label: "Supporter Wall — Heading" },
       { kind: "textarea", key: "supporters_text", label: "Supporter Wall — Thank-you Text" },
-      { kind: "text", key: "partner_text", label: "Partnership Prompt" },
     ],
   },
   {

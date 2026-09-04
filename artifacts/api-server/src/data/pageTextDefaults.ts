@@ -206,7 +206,6 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
     supporters_heading: "Our Supporters",
     supporters_text:
       "Thank you to everyone who pledged their support for Rotterdam 2026.",
-    partner_text: "Looking to partner with us?",
   },
   contact: {
     email: "play@hkmastershockey.com",
