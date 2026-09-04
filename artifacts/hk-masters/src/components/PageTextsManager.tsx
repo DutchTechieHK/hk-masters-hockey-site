@@ -42,10 +42,6 @@ const PAGES: PageDef[] = [
       { kind: "textarea", key: "hero_intro", label: "Hero Intro" },
       { kind: "text", key: "welcome_heading", label: "Welcome Heading" },
       { kind: "textarea", key: "welcome_text", label: "Welcome Text" },
-      {
-        kind: "array", key: "stats", label: "Stats Bar",
-        itemFields: [{ key: "stat", label: "Number" }, { key: "label", label: "Label" }],
-      },
       { kind: "text", key: "rtm_badge", label: "World Cup Hero — Badge", hint: "Shown while the site is in Rotterdam 2026 mode" },
       { kind: "textarea", key: "rtm_title", label: "World Cup Hero — Headline", hint: "Use a line break to split the headline over two lines" },
       { kind: "text", key: "rtm_subtitle", label: "World Cup Hero — Subtitle" },
@@ -111,9 +107,17 @@ const PAGES: PageDef[] = [
     title: "Rotterdam 2026",
     fields: [
       { kind: "text", key: "header_badge", label: "Header Badge (dates)" },
+      {
+        kind: "array", key: "stats", label: "Stats Bar",
+        itemFields: [{ key: "stat", label: "Number" }, { key: "label", label: "Label" }],
+      },
       { kind: "textarea", key: "overview_p1", label: "Overview (Paragraph 1)" },
       { kind: "textarea", key: "overview_p2", label: "Overview (Paragraph 2)" },
       { kind: "textarea", key: "overview_p3", label: "Overview (Paragraph 3)", hint: "Supports Markdown and links" },
+      { kind: "textarea", key: "mo40_description", label: "MO40 Archive Description" },
+      { kind: "textarea", key: "mo50_description", label: "MO50 Archive Description" },
+      { kind: "text", key: "fundraising_heading", label: "Fundraising — Heading" },
+      { kind: "textarea", key: "fundraising_text", label: "Fundraising — Text" },
       {
         kind: "array", key: "quick_facts", label: "Quick Facts",
         itemFields: [{ key: "label", label: "Label" }, { key: "value", label: "Value" }],

@@ -14,11 +14,6 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
     welcome_heading: "Welcome to HK Masters Hockey",
     welcome_text:
       "Hong Kong Masters Hockey has been at the forefront of masters-age field hockey in Asia for over two decades. We welcome players aged 35 and above who share a love for the game and a commitment to staying active, competitive, and connected to the global hockey community.",
-    stats: [
-      { stat: "36", label: "Registered Players" },
-      { stat: "2", label: "Competing Squads" },
-      { stat: "30+", label: "Caps" },
-    ],
     // Rotterdam-mode hero (shown until the site switches back to normal mode)
     rtm_badge: "Rotterdam 2026 Masters World Cup",
     rtm_title: "Two Teams Representing\nHong Kong",
@@ -127,12 +122,24 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
   },
   rotterdam: {
     header_badge: "22 July - 1 August 2026",
+    stats: [
+      { stat: "36", label: "Registered Players" },
+      { stat: "2", label: "Squads Competed" },
+      { stat: "30+", label: "Caps" },
+    ],
     overview_p1:
       "The World Masters Hockey Cup is the premier international field hockey tournament for masters-age players, held every four years and organized by World Hockey. Rotterdam 2026 will see over 50 nations compete across four age categories, Over-35, Over-40, Over-45 and Over-50, at the world-class facilities of the Hockey Club Rotterdam.",
     overview_p2:
       "Hong Kong Masters Hockey is proud to be sending two squads, MO40 and MO50 — competing at the highest level of masters hockey. Years of preparation, fundraising, and training have gone into building squads that we believe can genuinely challenge for medals.",
     overview_p3:
-      "For full tournament details including draw results, match schedules, and live scoring, visit the official World Hockey website once the tournament begins.\n\n**R\uFEFFOTTERDAM | MO50**\\\nhttps://worldmastershockey.org/wmhevents/2026-wct1-rotterdam\\\n\\\n**S\uFEFFCHIEDAM | MO40**\\\nhttps://worldmastershockey.org/wmhevents/2026-wc-schiedam",
+      "For full tournament details including draw results, match schedules, and live scoring, visit the official World Hockey website.\n\n**R\uFEFFOTTERDAM | MO50**\\\nhttps://worldmastershockey.org/wmhevents/2026-wct1-rotterdam\\\n\\\n**S\uFEFFCHIEDAM | MO40**\\\nhttps://worldmastershockey.org/wmhevents/2026-wc-schiedam",
+    mo40_description:
+      "The MO40 squad is a blend of experience and energy. With players drawn from Hong Kong's vibrant hockey community, this team delivered a strong showing in Rotterdam.",
+    mo50_description:
+      "The MO50 squad has a proud history on the international masters stage. Seasoned, tactical and never short of passion, this group flew the HK flag once again in Rotterdam.",
+    fundraising_heading: "Thank You for Supporting Rotterdam",
+    fundraising_text:
+      "We raised funds to send two HK squads to the World Masters Hockey Cup — thank you to everyone who contributed. Support is still welcome to help cover the final costs.",
     quick_facts: [
       { label: "Tournament", value: "World Masters Hockey Cup 2026" },
       {
@@ -142,7 +149,7 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
       { label: "Dates", value: "22 July – 1 August 2026" },
       { label: "HK Squads", value: "2 teams" },
       { label: "Organiser", value: "World Masters Hockey" },
-      { label: "Venue", value: "Hockeyclub Rotterdam (TBC)" },
+      { label: "Venue", value: "Hockeyclub Rotterdam" },
     ],
   },
   contact: {

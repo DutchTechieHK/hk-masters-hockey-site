@@ -147,6 +147,14 @@ export default function Rotterdam2026() {
           <p className="text-[#BFD9F5] text-lg max-w-2xl">
             World Masters Hockey Cup &mdash; Rotterdam, Netherlands
           </p>
+          <div className="mt-8 grid grid-cols-3 divide-x divide-[#5B9FE0]/20 max-w-sm">
+            {(t.stats || content.stats).map((item, i) => (
+              <div key={item.label} className="reveal text-center py-3" style={{ animationDelay: `${i * 0.12}s` }}>
+                <p className="text-3xl font-extrabold text-white">{item.stat}</p>
+                <p className="text-[#8FBDE8] text-xs font-medium mt-0.5">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -216,7 +224,10 @@ export default function Rotterdam2026() {
                     {squad.short_name}
                   </span>
                   <h3 className="text-3xl font-extrabold text-[#1E3A6E] mb-3">{squad.name}</h3>
-                  <RichText content={squad.description} className="text-[#5A4F45] leading-relaxed mb-5" />
+                  <RichText
+                    content={index === 0 ? t.mo40_description : t.mo50_description}
+                    className="text-[#5A4F45] leading-relaxed mb-5"
+                  />
 
                   <div className="grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-[#F2E8D5] rounded-lg p-3 text-center border border-[#E5D5BC]">
@@ -286,9 +297,9 @@ export default function Rotterdam2026() {
             <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wide">
               Support the Team
             </span>
-            <h2 className="text-2xl font-bold mb-2">Help Us Get to Rotterdam</h2>
+            <h2 className="text-2xl font-bold mb-2">{t.fundraising_heading}</h2>
             <p className="text-[#D6E8F7] leading-relaxed max-w-lg">
-              We're raising funds to send two HK squads to the World Masters Hockey Cup. Every pledge — big or small — makes a difference. See our progress and add your support.
+              {t.fundraising_text}
             </p>
           </div>
           <div className="shrink-0">

@@ -1,8 +1,26 @@
 {
   "header_badge": "22 July - 1 August 2026",
+  "stats": [
+    {
+      "stat": "36",
+      "label": "Registered Players"
+    },
+    {
+      "stat": "2",
+      "label": "Squads Competed"
+    },
+    {
+      "stat": "30+",
+      "label": "Caps"
+    }
+  ],
   "overview_p1": "The World Masters Hockey Cup is the premier international field hockey tournament for masters-age players, held every four years and organized by World Hockey. Rotterdam 2026 will see over 50 nations compete across four age categories, Over-35, Over-40, Over-45 and Over-50, at the world-class facilities of the Hockey Club Rotterdam.",
   "overview_p2": "Hong Kong Masters Hockey is proud to be sending two squads, MO40 and MO50 — competing at the highest level of masters hockey. Years of preparation, fundraising, and training have gone into building squads that we believe can genuinely challenge for medals.",
-  "overview_p3": "For full tournament details including draw results, match schedules, and live scoring, visit the official World Hockey website once the tournament begins.\n\n**R﻿OTTERDAM | MO50**\\\nhttps://worldmastershockey.org/wmhevents/2026-wct1-rotterdam\\\n\\\n**S﻿CHIEDAM | MO40**\\\nhttps://worldmastershockey.org/wmhevents/2026-wc-schiedam",
+  "overview_p3": "For full tournament details including draw results, match schedules, and live scoring, visit the official World Hockey website.\n\n**R﻿OTTERDAM | MO50**\\\nhttps://worldmastershockey.org/wmhevents/2026-wct1-rotterdam\\\n\\\n**S﻿CHIEDAM | MO40**\\\nhttps://worldmastershockey.org/wmhevents/2026-wc-schiedam",
+  "mo40_description": "The MO40 squad is a blend of experience and energy. With players drawn from Hong Kong's vibrant hockey community, this team delivered a strong showing in Rotterdam.",
+  "mo50_description": "The MO50 squad has a proud history on the international masters stage. Seasoned, tactical and never short of passion, this group flew the HK flag once again in Rotterdam.",
+  "fundraising_heading": "Thank You for Supporting Rotterdam",
+  "fundraising_text": "We raised funds to send two HK squads to the World Masters Hockey Cup — thank you to everyone who contributed. Support is still welcome to help cover the final costs.",
   "quick_facts": [
     {
       "label": "Tournament",
@@ -26,7 +44,7 @@
     },
     {
       "label": "Venue",
-      "value": "Hockeyclub Rotterdam (TBC)"
+      "value": "Hockeyclub Rotterdam"
     }
   ],
   "squads": [
