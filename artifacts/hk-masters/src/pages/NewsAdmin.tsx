@@ -234,7 +234,7 @@ function RichEditor({ value, onChange }: { value: string; onChange: (html: strin
 
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value, false)
+      editor.commands.setContent(value, { emitUpdate: false })
     }
   }, [])
 

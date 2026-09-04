@@ -6,7 +6,12 @@ import { format } from "date-fns"
 import { Clock, ChevronDown, ChevronUp, Mail, Users, User, AlertTriangle, CheckCircle2, RefreshCw, Send, CheckCircle, LogIn, ShieldCheck, HandCoins } from "lucide-react"
 import type { EmailBlastItem } from "@workspace/api-client-react"
 
-function audienceLabel(blast: EmailBlastItem): string {
+type EmailBlastHistoryItem = EmailBlastItem & {
+  recipientNames?: string[]
+  teamNames?: string[]
+}
+
+function audienceLabel(blast: EmailBlastHistoryItem): string {
   if (blast.audienceType === "onboarding") {
     try {
       const ids: number[] = JSON.parse(blast.playerIds ?? "[]")
@@ -145,9 +150,10 @@ function OnboardingLogSection({ items }: { items: OnboardingInviteLogItem[] }) {
 }
 
 export default function EmailHistory() {
-  const { data: blasts = [], isLoading, isError, refetch } = useListEmailBlasts()
+  const { data: blastData = [], isLoading, isError, refetch } = useListEmailBlasts()
   const { data: inviteLog = [] } = useListOnboardingInviteLog()
   const [expandedId, setExpandedId] = useState<number | null>(null)
+  const blasts = blastData as EmailBlastHistoryItem[]
 
   const toggle = (id: number) => setExpandedId((prev) => (prev === id ? null : id))
 

@@ -42,7 +42,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Write your mess
     if (!editor) return
     const currentHtml = editor.isEmpty ? "" : editor.getHTML()
     if (currentHtml !== value) {
-      editor.commands.setContent(value || "", false)
+      editor.commands.setContent(value || "", { emitUpdate: false })
     }
   }, [value, editor])
 
