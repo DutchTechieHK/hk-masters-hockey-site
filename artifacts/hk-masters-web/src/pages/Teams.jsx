@@ -40,7 +40,7 @@ export default function Teams() {
               />
             </div>
 
-            <aside className="bg-white rounded-2xl border border-[#D9C9A8] shadow-sm p-6 sm:p-8">
+            <aside className="bg-white rounded-2xl border border-[#D9C9A8] shadow-sm p-6 sm:p-8 lg:mt-10">
               <div className="w-12 h-1 rounded-full bg-[#5B9FE0] mb-5" />
               <h3 className="text-xl font-bold text-[#1E3A6E] mb-3">{t.trials_heading}</h3>
               <p className="text-[#5A4F45] leading-relaxed">

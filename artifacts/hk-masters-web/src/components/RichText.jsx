@@ -14,7 +14,7 @@ export default function RichText({ content, className = "", preserveLineBreaks =
         rehypePlugins={[rehypeRaw]}
         components={{
           p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-          br: () => <span className="block h-3" />,
+          br: () => preserveLineBreaks ? <br /> : <span className="block h-3" />,
           strong: ({ children }) => <strong className="font-bold">{children}</strong>,
           em: ({ children }) => <em className="italic">{children}</em>,
           u: ({ children }) => <u className="underline">{children}</u>,

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { Plus, Trash2, ChevronUp, ChevronDown, Loader2 } from "lucide-react"
+import { Plus, Trash2, ChevronUp, ChevronDown, Loader2, Bold, Italic, Link, List } from "lucide-react"
 
 const ADMIN_SESSION_KEY = "hkm_admin_session"
 const API_BASE = import.meta.env.VITE_API_BASE ?? ""
@@ -14,7 +14,7 @@ type PageTexts = Record<string, unknown>
 
 // ── Field schema (labels borrowed from the old CMS config) ──────────────
 
-interface TextField { kind: "text" | "textarea"; key: string; label: string; hint?: string }
+interface TextField { kind: "text" | "textarea" | "richtext"; key: string; label: string; hint?: string }
 interface ArrayField {
   kind: "array"
   key: string
@@ -80,7 +80,12 @@ const PAGES: PageDef[] = [
       { kind: "textarea", key: "header_subtitle", label: "Page Header — Subtitle" },
       { kind: "text", key: "mens_badge", label: "Men's Masters — Badge" },
       { kind: "text", key: "mens_heading", label: "Men's Masters — Heading" },
-      { kind: "textarea", key: "mens_text", label: "Men's Masters — Text" },
+      {
+        kind: "richtext",
+        key: "mens_text",
+        label: "Men's Masters — Text",
+        hint: "Press Enter for a line break. Leave a blank line between paragraphs.",
+      },
       { kind: "text", key: "trials_heading", label: "Trial Box — Heading" },
       { kind: "textarea", key: "trials_details", label: "Trial Box — Dates and Venue", hint: "Shown in bold" },
       { kind: "textarea", key: "trials_text", label: "Trial Box — Supporting Text" },
@@ -210,6 +215,96 @@ async function savePage(page: string, texts: PageTexts, updatedAt: string | null
 const inputCls =
   "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
 
+interface RichTextEditorProps {
+  value: string
+  onChange: (value: string) => void
+  rows: number
+}
+
+function RichTextEditor({ value, onChange, rows }: RichTextEditorProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  const applyFormat = (
+    prefix: string,
+    suffix: string,
+    placeholder: string,
+    transform?: (selection: string) => string,
+  ) => {
+    const textarea = textareaRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selection = value.slice(start, end)
+    const replacement = transform
+      ? transform(selection || placeholder)
+      : `${prefix}${selection || placeholder}${suffix}`
+
+    onChange(`${value.slice(0, start)}${replacement}${value.slice(end)}`)
+
+    requestAnimationFrame(() => {
+      textarea.focus()
+      if (selection || transform) {
+        textarea.setSelectionRange(start, start + replacement.length)
+      } else {
+        textarea.setSelectionRange(start + prefix.length, start + prefix.length + placeholder.length)
+      }
+    })
+  }
+
+  const tools = [
+    {
+      label: "Bold",
+      icon: Bold,
+      action: () => applyFormat("**", "**", "bold text"),
+    },
+    {
+      label: "Italic",
+      icon: Italic,
+      action: () => applyFormat("*", "*", "italic text"),
+    },
+    {
+      label: "Link",
+      icon: Link,
+      action: () => applyFormat("[", "](https://)", "link text"),
+    },
+    {
+      label: "Bulleted list",
+      icon: List,
+      action: () => applyFormat("", "", "List item", (selection) =>
+        selection.split("\n").map((line) => `- ${line}`).join("\n")
+      ),
+    },
+  ]
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-primary/40">
+      <div className="flex items-center gap-1 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+        <span className="mr-1 text-xs font-medium text-gray-500">Formatting</span>
+        {tools.map(({ label, icon: Icon, action }) => (
+          <button
+            key={label}
+            type="button"
+            onClick={action}
+            className="rounded p-1.5 text-gray-600 hover:bg-white hover:text-gray-900"
+            title={label}
+            aria-label={label}
+          >
+            <Icon className="h-4 w-4" />
+          </button>
+        ))}
+      </div>
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={rows}
+        className="w-full resize-y px-3 py-2 text-sm focus:outline-none"
+      />
+    </div>
+  )
+}
+
 export function PageTextsManager() {
   const { toast } = useToast()
   const [pages, setPages] = useState<Record<string, PageTexts> | null>(null)
@@ -303,13 +398,19 @@ export function PageTextsManager() {
         {def.note && <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">{def.note}</p>}
 
         {def.fields.map((field) => {
-          if (field.kind === "text" || field.kind === "textarea") {
+          if (field.kind === "text" || field.kind === "textarea" || field.kind === "richtext") {
             const value = typeof draft[field.key] === "string" ? (draft[field.key] as string) : ""
             return (
               <div key={field.key}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">{field.label}</label>
                 {field.kind === "text" ? (
                   <input value={value} onChange={(e) => setField(field.key, e.target.value)} className={inputCls} />
+                ) : field.kind === "richtext" ? (
+                  <RichTextEditor
+                    value={value}
+                    onChange={(next) => setField(field.key, next)}
+                    rows={Math.min(10, Math.max(5, value.split("\n").length + 1))}
+                  />
                 ) : (
                   <textarea
                     value={value}
