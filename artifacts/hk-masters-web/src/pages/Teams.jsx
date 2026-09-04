@@ -32,7 +32,7 @@ export default function Teams() {
               <h2 className="text-3xl font-extrabold text-[#1E3A6E] mb-4">
                 {t.mens_heading}
               </h2>
-              <p className="text-[#5A4F45] text-lg leading-relaxed">
+              <p className="text-[#5A4F45] text-lg leading-relaxed whitespace-pre-line">
                 {t.mens_text}
               </p>
             </div>
