@@ -1,4 +1,5 @@
 import content from "../content/teams.json";
+import RichText from "../components/RichText";
 import { usePageTexts } from "../utils/pageTexts";
 
 export default function Teams() {
@@ -32,9 +33,11 @@ export default function Teams() {
               <h2 className="text-3xl font-extrabold text-[#1E3A6E] mb-4">
                 {t.mens_heading}
               </h2>
-              <p className="text-[#5A4F45] text-lg leading-relaxed whitespace-pre-line">
-                {t.mens_text}
-              </p>
+              <RichText
+                content={t.mens_text}
+                preserveLineBreaks
+                className="text-[#5A4F45] text-lg leading-relaxed"
+              />
             </div>
 
             <aside className="bg-white rounded-2xl border border-[#D9C9A8] shadow-sm p-6 sm:p-8">

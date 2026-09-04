@@ -2,9 +2,11 @@ import ReactMarkdown from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import remarkGfm from "remark-gfm";
 
-export default function RichText({ content, className = "" }) {
+export default function RichText({ content, className = "", preserveLineBreaks = false }) {
   if (!content) return null;
-  const processed = content.replace(/\\\n/g, "  \n");
+  const processed = content
+    .replace(/\\\n/g, "  \n")
+    .replace(preserveLineBreaks ? /(?<!\n)\n(?!\n)/g : /$^/g, "  \n");
   return (
     <div className={className}>
       <ReactMarkdown
