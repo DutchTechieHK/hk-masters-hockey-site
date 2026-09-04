@@ -152,6 +152,62 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
       { label: "Venue", value: "Hockeyclub Rotterdam" },
     ],
   },
+  support: {
+    header_badge: "Rotterdam 2026",
+    header_title: "Thank You for Supporting the Team",
+    header_subtitle:
+      "Hong Kong's MO40 and MO50 squads competed at the World Masters Hockey Cup in Rotterdam, 22 July – 1 August 2026. Thank you to everyone who helped get them there.",
+    result_heading: "Final Result",
+    result_text: "Final fundraising result for the Rotterdam 2026 campaign.",
+    reasons_heading: "What your support covered",
+    reasons: [
+      {
+        title: "Tournament entry & officials",
+        body:
+          "Two HK squads competed at the World Masters Hockey Cup — entry fees, umpiring, and tournament administration.",
+      },
+      {
+        title: "Travel & accommodation",
+        body:
+          "Flights to Rotterdam and accommodation for the ~36 players, coaches and managers who made the trip.",
+      },
+      {
+        title: "Kit & equipment",
+        body:
+          "Match kit, training kit, training equipment, and team merchandise so the squads could represent HK with pride.",
+      },
+    ],
+    tiers_heading: "Supporter Tiers",
+    tiers_intro:
+      "Every contribution made a difference. Here's what each supporter wall badge below means.",
+    tiers: [
+      {
+        name: "Supporter",
+        amount: "HK$500",
+        blurb: "Your name added to the team's official supporter wall.",
+      },
+      {
+        name: "Friend of the Team",
+        amount: "HK$1,000",
+        blurb: "Supporter wall + a personal thank-you from the team captains.",
+      },
+      {
+        name: "Patron",
+        amount: "HK$2,500",
+        blurb: "Friend benefits + a signed team photo from Rotterdam.",
+      },
+      {
+        name: "Champ",
+        amount: "HK$5,000+",
+        blurb:
+          "All of the above + recognition on the public website and team kit (subject to design approval).",
+      },
+    ],
+    supporters_heading: "Our Supporters",
+    supporters_text:
+      "Thank you to everyone who pledged their support for Rotterdam 2026.",
+    partner_text: "Looking to partner with us?",
+  },
   contact: {
     email: "play@hkmastershockey.com",
     phone: "+852 9765 1133",

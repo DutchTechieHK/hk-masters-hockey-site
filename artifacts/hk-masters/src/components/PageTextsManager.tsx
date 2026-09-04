@@ -125,6 +125,39 @@ const PAGES: PageDef[] = [
     ],
   },
   {
+    page: "support",
+    title: "Support",
+    note: "Closed Rotterdam fundraising campaign copy, supporter badges, and evergreen partnership prompt.",
+    fields: [
+      { kind: "text", key: "header_badge", label: "Page Header — Badge" },
+      { kind: "text", key: "header_title", label: "Page Header — Title" },
+      { kind: "textarea", key: "header_subtitle", label: "Page Header — Subtitle" },
+      { kind: "text", key: "result_heading", label: "Final Result — Heading" },
+      { kind: "textarea", key: "result_text", label: "Final Result — Text" },
+      { kind: "text", key: "reasons_heading", label: "Covered Costs — Heading" },
+      {
+        kind: "array", key: "reasons", label: "Covered Costs",
+        itemFields: [
+          { key: "title", label: "Title" },
+          { key: "body", label: "Description", multiline: true },
+        ],
+      },
+      { kind: "text", key: "tiers_heading", label: "Supporter Tiers — Heading" },
+      { kind: "textarea", key: "tiers_intro", label: "Supporter Tiers — Introduction" },
+      {
+        kind: "array", key: "tiers", label: "Supporter Tier Cards",
+        itemFields: [
+          { key: "name", label: "Badge Name" },
+          { key: "amount", label: "Amount" },
+          { key: "blurb", label: "Description", multiline: true },
+        ],
+      },
+      { kind: "text", key: "supporters_heading", label: "Supporter Wall — Heading" },
+      { kind: "textarea", key: "supporters_text", label: "Supporter Wall — Thank-you Text" },
+      { kind: "text", key: "partner_text", label: "Partnership Prompt" },
+    ],
+  },
+  {
     page: "contact",
     title: "Contact",
     fields: [
