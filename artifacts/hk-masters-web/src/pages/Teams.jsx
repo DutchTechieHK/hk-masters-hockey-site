@@ -46,6 +46,45 @@ export default function Teams() {
               </p>
             </aside>
           </div>
+
+          <div className="mt-10 bg-white rounded-2xl border border-[#D9C9A8] shadow-sm p-6 sm:p-8">
+            <div className="w-12 h-1 rounded-full bg-[#5B9FE0] mb-5" />
+            <h3 className="text-2xl font-bold text-[#1E3A6E] mb-6">
+              {t.fees_heading}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="rounded-xl border border-[#D9C9A8] bg-[#FFFDF8] p-5">
+                <p className="text-3xl font-extrabold text-[#DE2910] mb-2">
+                  {t.registration_fee_amount}
+                </p>
+                <h4 className="text-lg font-bold text-[#1E3A6E] mb-2">
+                  {t.registration_fee_name}
+                </h4>
+                <p className="text-[#5A4F45] leading-relaxed">
+                  {t.registration_fee_description}
+                </p>
+              </div>
+              <div className="rounded-xl border border-[#D9C9A8] bg-[#FFFDF8] p-5">
+                <p className="text-3xl font-extrabold text-[#DE2910] mb-2">
+                  {t.active_fee_amount}
+                </p>
+                <h4 className="text-lg font-bold text-[#1E3A6E]">
+                  {t.active_fee_name}
+                </h4>
+              </div>
+              <div className="rounded-xl border border-[#D9C9A8] bg-[#FFFDF8] p-5">
+                <p className="text-3xl font-extrabold text-[#DE2910] mb-2">
+                  {t.division_one_fee_amount}
+                </p>
+                <h4 className="text-lg font-bold text-[#1E3A6E] mb-2">
+                  {t.division_one_fee_name}
+                </h4>
+                <p className="text-[#5A4F45] leading-relaxed">
+                  {t.division_one_fee_description}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
