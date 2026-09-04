@@ -119,8 +119,7 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
     join_text:
       "Come try out for HK's first men's Masters team in years.",
     join_button_label: "Sign Up to Join →",
-    join_url:
-      "https://caramel-havarti-6da.notion.site/79a429c0d2cc4ccb96417607a58775f9?pvs=105",
+    join_url: "/join",
     ladies_badge: "Ladies Masters",
     ladies_heading: "Three Teams Again This Season",
     ladies_text:

@@ -415,6 +415,7 @@ function sanitizeUrl(value: string): string {
   // through any scheme check.
   const v = value.replace(/[\u0000-\u0020\u007f]/g, "");
   if (!v) return "";
+  if (/^\/(?!\/)/.test(v)) return v;
   // Bare domain ("fb.com/x") — normalize to https so it can't be scheme-relative
   const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(v) ? v : `https://${v}`;
   try {

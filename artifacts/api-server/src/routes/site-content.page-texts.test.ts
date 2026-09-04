@@ -105,6 +105,19 @@ describe("PUT /api/site-content/page-texts", () => {
     expect(c.social.youtube).toMatch(/^https:\/\/youtube\.com\/@hkm/);
   });
 
+  it("keeps safe root-relative URLs", async () => {
+    const v = await currentVersion();
+    const res = await request(app)
+      .put("/api/site-content/page-texts")
+      .send({
+        page: "teams",
+        texts: { join_url: "/join" },
+        updatedAt: v,
+      });
+    expect(res.status).toBe(200);
+    expect(res.body.pages.teams.join_url).toBe("/join");
+  });
+
   it("deep-merges partial social saves without dropping sibling links", async () => {
     const v1 = await currentVersion();
     const seed = await request(app)
