@@ -31,6 +31,7 @@ registerRoute(
       /^\/admin-video-series(?:\/|$)/,  // Admin tutorial video artifact
       /^\/admin-tutorial-videos(?:\/|$)/,  // Admin tutorial video artifact
       /^\/pwa-install-video(?:\/|$)/,  // Video artifact
+      /^\/join(?:\/|$)/,        // Static join redirect page
     ],
   })
 );
