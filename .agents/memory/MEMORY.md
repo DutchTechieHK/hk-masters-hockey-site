@@ -19,3 +19,4 @@
 - [Prod contribution writes send emails](prod-contribution-writes.md) — contributions PUT always re-emails authors on approved/declined; no email-free prod bulk-rewrite path exists.
 - [Upload cleanup reference scan](upload-cleanup-reference-scan.md) — never delete a shared-bucket upload without a zero-reference scan over every URL-bearing field; new URL columns must be added to the scan.
 - [Site-content conflict guard](site-content-conflict-guard.md) — stale-save checks must be atomic CAS in the UPDATE WHERE (IS NOT DISTINCT FROM), per-section timestamps; add an IF NOT EXISTS migrations/*.sql alongside schema push to satisfy review.
+- [GitHub push authentication](github-push-auth.md) — connected GitHub OAuth does not authenticate git CLI; use repository Sync/manual push, not Git Data API commit emulation.
