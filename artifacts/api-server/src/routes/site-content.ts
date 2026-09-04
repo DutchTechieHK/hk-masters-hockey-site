@@ -408,7 +408,7 @@ function sanitizeText(input: string): string {
 
 // Fields that must be a URL (or empty). Applies to top-level string fields
 // and to every value of the named nested object.
-const URL_FIELDS = new Set(["maps_embed_src", "social"]);
+const URL_FIELDS = new Set(["maps_embed_src", "social", "join_url"]);
 function sanitizeUrl(value: string): string {
   // Strip all control characters and whitespace — browsers normalize ASCII
   // tabs/newlines inside schemes, so "java\nscript:" would otherwise slip

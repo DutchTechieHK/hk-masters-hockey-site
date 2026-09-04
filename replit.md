@@ -39,7 +39,7 @@ The `netlify.toml` has a redirect rule: any `/api/*` request to hkmastershockey.
 - **Monorepo**: pnpm workspaces, Node.js 24
 - **Frontend**: React + Vite (both apps), TailwindCSS, Shadcn-style components
 - **API**: Express 5, PostgreSQL + Drizzle ORM, Zod validation
-- **Public CMS**: Decap CMS — source files in `artifacts/hk-masters-web/netlify-cms/`, copied into `dist/public/admin/` **only by the Netlify build** (so the Replit-hosted PWA never ships the CMS). Content stored in `artifacts/hk-masters-web/src/content/*.json`.
+- **Public CMS**: The management app's **Website Content** editor manages API-backed public page text. Decap CMS remains available for file-backed content; its source lives in `artifacts/hk-masters-web/netlify-cms/` and is copied into `dist/public/admin/` **only by the Netlify build**. Public JSON files in `artifacts/hk-masters-web/src/content/` provide baked-in fallbacks.
 - **Media**: Cloudinary (cloud: `djyvdrhal`, API key: `467487618148569`)
 - **Email**: Resend (`RESEND_API_KEY` secret set). Domain hkmastershockey.com not yet verified in Resend — emails fall back to `onboarding@resend.dev`
 
@@ -83,6 +83,8 @@ lib/
 | `/api/...` | API server |
 
 ## Public Website Pages
+
+**CMS convention:** Any new or changed user-facing public website copy must also be exposed in the management app's Website Content editor, represented in the API page-text defaults, and backed by the public site's content fallback. Do not hardcode editable page copy only in a public React component.
 
 1. Home — hero, photo strip, Rotterdam countdown, squad cards, events, sponsors
 2. About

@@ -91,11 +91,29 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
     ],
   },
   teams: {
-    page_subtitle:
-      "Two squads, one club — representing Hong Kong Masters Hockey at Rotterdam 2026.",
-    join_heading: "Want to Play for HK Masters?",
+    header_badge: "2026/27 Season",
+    header_title: "Masters Teams — 2026/27 Season",
+    header_subtitle:
+      "A new men's team enters Division 1, and three ladies' teams return to the league this season.",
+    mens_badge: "New for 2026/27",
+    mens_heading: "Men's Masters Return to Division 1",
+    mens_text:
+      "For the first time in many years, HK Masters Hockey will field a men's team in the Hong Kong Hockey League, competing in the First Division. The season kicks off Friday 2 October, with fixtures every Friday night at 20:30 at the Hong Kong Football Club (HKFC).",
+    trials_heading: "Trial Information",
+    trials_details:
+      "Trials — Friday 18 September & Friday 25 September, 20:00 at HKFC.",
+    trials_text:
+      "All Masters-eligible players (35+) welcome, whatever your experience level.",
+    join_heading: "Trials Start 18 September",
     join_text:
-      "Are you 35 or above and passionate about field hockey? We welcome players of all abilities. Get in touch to find out more about joining one of our squads.",
+      "Come try out for HK's first men's Masters team in years.",
+    join_button_label: "Sign Up to Join →",
+    join_url:
+      "https://caramel-havarti-6da.notion.site/79a429c0d2cc4ccb96417607a58775f9?pvs=105",
+    ladies_badge: "Ladies Masters",
+    ladies_heading: "Three Teams Again This Season",
+    ladies_text:
+      "For another season, Hong Kong Masters Hockey fields three ladies' Masters teams (35+) in the Hong Kong Hockey League, drawn from our club's Premier League players. Masters A and Masters B compete in Division 1, Masters C in Division 2.",
   },
   rotterdam: {
     header_badge: "22 July - 1 August 2026",
