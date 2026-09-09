@@ -336,6 +336,15 @@ export function resolveNotionMemberSyncProfile(
   };
 }
 
+export function shouldSyncUnchangedNotionProfile(
+  submission: { matchStatus: string; matchedPlayerId: number | null } | null | undefined,
+  applicantValid: boolean,
+): submission is { matchStatus: string; matchedPlayerId: number } {
+  return applicantValid &&
+    Boolean(submission?.matchedPlayerId) &&
+    submission?.matchStatus !== "dismissed";
+}
+
 async function syncNotionMemberProfile(
   tx: any,
   applicant: NotionApplicant,
@@ -406,14 +415,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           ))
           .limit(1);
         if (isNotionSnapshotCurrent(existingSubmission?.sourceUpdatedAt ?? null, applicant.sourceUpdatedAt)) {
-          if (
-            existingSubmission?.matchStatus === "matched" ||
-            existingSubmission?.matchStatus === "dismissed"
-          ) {
-            counts.skipped++;
-            continue;
-          }
-          if (existingSubmission?.matchedPlayerId && isValidNotionApplicant(applicant)) {
+          if (shouldSyncUnchangedNotionProfile(existingSubmission, isValidNotionApplicant(applicant))) {
             const profile = await syncNotionMemberProfile(
               tx,
               applicant,

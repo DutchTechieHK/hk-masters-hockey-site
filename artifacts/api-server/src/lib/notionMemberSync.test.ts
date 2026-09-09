@@ -9,6 +9,7 @@ import {
   resolveNotionMemberProfile,
   resolveNotionMemberSyncProfile,
   resolveProfileSubmissionStatus,
+  shouldSyncUnchangedNotionProfile,
   shouldApplyImportedTier,
   validateNotionMemberProperties,
 } from "./notionMemberSync";
@@ -127,6 +128,47 @@ describe("Notion member sync rules", () => {
       },
       conflict: false,
     });
+  });
+
+  it("backfills an unchanged matched profile once, then becomes idempotent", () => {
+    const applicant = {
+      consent: true,
+      email: "member@example.com",
+      dateOfBirth: "1984-06-12",
+      position: "Forward, Midfield",
+    };
+    const submission = { matchStatus: "matched", matchedPlayerId: 42 };
+
+    expect(shouldSyncUnchangedNotionProfile(submission, true)).toBe(true);
+
+    const firstPass = resolveNotionMemberSyncProfile(
+      applicant,
+      { email: "member@example.com", dateOfBirth: null, position: null },
+      true,
+    );
+    expect(firstPass).toEqual({
+      updates: { dateOfBirth: "1984-06-12", position: "Forward, Midfield" },
+      conflict: false,
+    });
+
+    const secondPass = resolveNotionMemberSyncProfile(
+      applicant,
+      {
+        email: "member@example.com",
+        dateOfBirth: firstPass.updates.dateOfBirth ?? null,
+        position: firstPass.updates.position ?? null,
+      },
+      true,
+    );
+    expect(secondPass).toEqual({ updates: {}, conflict: false });
+    expect(resolveProfileSubmissionStatus(submission.matchStatus, secondPass.conflict)).toBeNull();
+  });
+
+  it("keeps dismissed unchanged submissions out of profile synchronization", () => {
+    expect(shouldSyncUnchangedNotionProfile(
+      { matchStatus: "dismissed", matchedPlayerId: 42 },
+      true,
+    )).toBe(false);
   });
 
   it("fills blank profile fields without overwriting a pre-existing member conflict", () => {
