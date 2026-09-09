@@ -223,6 +223,14 @@ export const ListPlayersResponseItem = zod.object({
   notes: zod.string().optional(),
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
+  memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipTier: zod.enum([
+    "awaiting_selection",
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
+  membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
   insuranceReminderSentAt: zod.string().nullish(),
@@ -292,6 +300,15 @@ export const CreatePlayerBody = zod.object({
   notes: zod.string().optional(),
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
+  memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
+  currentMembershipTier: zod
+    .enum([
+      "awaiting_selection",
+      "masters_registration",
+      "active_player",
+      "division_one_squad",
+    ])
+    .optional(),
 });
 
 /**
@@ -368,6 +385,117 @@ export const SendInsuranceRemindersResponse = zod.object({
 });
 
 /**
+ * @summary Create standard seasons and backfill existing member participation records
+ */
+export const InitializeMembershipsResponse = zod.object({
+  players: zod.number(),
+  rotterdamParticipations: zod.number(),
+  currentParticipations: zod.number(),
+  duplicateEmails: zod.array(zod.string()),
+});
+
+/**
+ * @summary List membership interest submissions
+ */
+export const ListMembershipInterestSubmissionsResponseItem = zod.object({
+  id: zod.number(),
+  submittedName: zod.string(),
+  submittedEmail: zod.string(),
+  submittedPhone: zod.string().nullish(),
+  membershipTier: zod.enum([
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
+  matchedPlayerId: zod.number().nullish(),
+  matchedPlayerName: zod.string().nullish(),
+  matchStatus: zod.enum([
+    "matched",
+    "unmatched",
+    "ambiguous",
+    "conflict",
+    "dismissed",
+  ]),
+  submittedAt: zod.string(),
+  reviewedAt: zod.string().nullish(),
+});
+export const ListMembershipInterestSubmissionsResponse = zod.array(
+  ListMembershipInterestSubmissionsResponseItem,
+);
+
+/**
+ * @summary Import and match membership interest submissions
+ */
+
+export const importMembershipInterestSubmissionsBodySubmissionsItemEmailMin = 3;
+
+export const ImportMembershipInterestSubmissionsBody = zod.object({
+  submissions: zod
+    .array(
+      zod.object({
+        name: zod.string().min(1),
+        email: zod
+          .string()
+          .min(importMembershipInterestSubmissionsBodySubmissionsItemEmailMin),
+        phone: zod.string().optional(),
+        membershipTier: zod.enum([
+          "masters_registration",
+          "active_player",
+          "division_one_squad",
+        ]),
+        rawData: zod.record(zod.string(), zod.unknown()).optional(),
+      }),
+    )
+    .min(1),
+});
+
+export const ImportMembershipInterestSubmissionsResponse = zod.object({
+  imported: zod.number(),
+  matched: zod.number(),
+  needsReview: zod.number(),
+});
+
+/**
+ * @summary Resolve an interest submission
+ */
+export const ResolveMembershipInterestSubmissionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ResolveMembershipInterestSubmissionBody = zod.object({
+  playerId: zod.number().nullish(),
+  membershipTier: zod.enum([
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
+  dismiss: zod.boolean().optional(),
+});
+
+export const ResolveMembershipInterestSubmissionResponse = zod.object({
+  id: zod.number(),
+  submittedName: zod.string(),
+  submittedEmail: zod.string(),
+  submittedPhone: zod.string().nullish(),
+  membershipTier: zod.enum([
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
+  matchedPlayerId: zod.number().nullish(),
+  matchedPlayerName: zod.string().nullish(),
+  matchStatus: zod.enum([
+    "matched",
+    "unmatched",
+    "ambiguous",
+    "conflict",
+    "dismissed",
+  ]),
+  submittedAt: zod.string(),
+  reviewedAt: zod.string().nullish(),
+});
+
+/**
  * @summary Get a player's editable details by access token (no auth)
  */
 export const GetSelfPlayerParams = zod.object({
@@ -410,6 +538,13 @@ export const GetSelfPlayerResponse = zod.object({
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
   feePaid: zod.boolean(),
+  memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipTier: zod.enum([
+    "awaiting_selection",
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
   paymentBalance: zod
@@ -506,6 +641,13 @@ export const UpdateSelfPlayerResponse = zod.object({
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
   feePaid: zod.boolean(),
+  memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipTier: zod.enum([
+    "awaiting_selection",
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
   paymentBalance: zod
@@ -527,6 +669,7 @@ export const ListPlayerPaymentsParams = zod.object({
 export const ListPlayerPaymentsResponseItem = zod.object({
   id: zod.number(),
   playerId: zod.number(),
+  seasonId: zod.number().nullish(),
   amount: zod.number(),
   paymentDate: zod.string(),
   method: zod.string().nullish(),
@@ -563,6 +706,33 @@ export const CreatePlayerPaymentBody = zod.object({
   method: zod.string().optional(),
   notes: zod.string().optional(),
 });
+
+/**
+ * @summary List current and archived participation records for a member
+ */
+export const ListPlayerParticipationsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPlayerParticipationsResponseItem = zod.object({
+  id: zod.number(),
+  playerId: zod.number(),
+  seasonId: zod.number(),
+  seasonSlug: zod.string(),
+  seasonName: zod.string(),
+  seasonKind: zod.string(),
+  seasonStatus: zod.string(),
+  teamId: zod.number().nullish(),
+  teamName: zod.string().nullish(),
+  participationStatus: zod.string(),
+  membershipTier: zod.string().nullish(),
+  source: zod.string(),
+  legacySnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+  createdAt: zod.string(),
+});
+export const ListPlayerParticipationsResponse = zod.array(
+  ListPlayerParticipationsResponseItem,
+);
 
 /**
  * @summary Delete a recorded payment for a player
@@ -647,6 +817,15 @@ export const UpdatePlayerBody = zod.object({
   notes: zod.string().optional(),
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
+  memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
+  currentMembershipTier: zod
+    .enum([
+      "awaiting_selection",
+      "masters_registration",
+      "active_player",
+      "division_one_squad",
+    ])
+    .optional(),
 });
 
 export const UpdatePlayerResponse = zod.object({
@@ -708,6 +887,14 @@ export const UpdatePlayerResponse = zod.object({
   notes: zod.string().optional(),
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
+  memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipTier: zod.enum([
+    "awaiting_selection",
+    "masters_registration",
+    "active_player",
+    "division_one_squad",
+  ]),
+  membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
   insuranceReminderSentAt: zod.string().nullish(),
@@ -717,7 +904,7 @@ export const UpdatePlayerResponse = zod.object({
 });
 
 /**
- * @summary Delete a player
+ * @summary Archive a member without deleting their permanent identity or linked history
  */
 export const DeletePlayerParams = zod.object({
   id: zod.coerce.number(),

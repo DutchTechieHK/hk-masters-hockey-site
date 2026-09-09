@@ -6,8 +6,4 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateEmailTemplateBody {
-  name: string;
-  subject: string;
-  body: string;
-}
+export type MembershipInterestInputRawData = { [key: string]: unknown };

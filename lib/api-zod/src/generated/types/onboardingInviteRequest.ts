@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SendFeeRemindersBody {
-  /** Specific player IDs to email. If omitted, emails all players whose fee is unpaid. */
+export interface OnboardingInviteRequest {
+  /** Specific player IDs to email. If omitted, emails all players who have not yet been sent an onboarding invite. */
   playerIds?: number[];
 }

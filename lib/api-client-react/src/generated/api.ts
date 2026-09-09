@@ -26,10 +26,12 @@ import type {
   CreateSponsor,
   CreateTeam,
   DashboardStats,
+  FeeReminderRequest,
   FeeReminderResult,
   FundraisingEntry,
   GetPlayerAccessToken200,
   HealthStatus,
+  InsuranceReminderRequest,
   KitDistribution,
   KitOrder,
   ListKitsParams,
@@ -38,16 +40,20 @@ import type {
   ListPlayersParams,
   LogisticsTask,
   Match,
+  MembershipInitializationResult,
+  MembershipInterestImport,
+  MembershipInterestImportResult,
+  MembershipInterestResolution,
+  MembershipInterestSubmission,
+  OnboardingInviteRequest,
   OnboardingInviteResult,
   Player,
+  PlayerParticipation,
   PlayerPayment,
   SelfPlayer,
-  SendFeeRemindersBody,
-  SendInsuranceRemindersBody,
-  SendOnboardingInvitesBody,
-  SendTravelRemindersBody,
   Sponsor,
   Team,
+  TravelReminderRequest,
   TravelReminderResult,
   UpdateSelfPlayer,
   UpsertKitDistribution,
@@ -722,14 +728,14 @@ export const getSendTravelRemindersUrl = () => {
 };
 
 export const sendTravelReminders = async (
-  sendTravelRemindersBody?: SendTravelRemindersBody,
+  travelReminderRequest?: TravelReminderRequest,
   options?: RequestInit,
 ): Promise<TravelReminderResult> => {
   return customFetch<TravelReminderResult>(getSendTravelRemindersUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(sendTravelRemindersBody),
+    body: JSON.stringify(travelReminderRequest),
   });
 };
 
@@ -740,14 +746,14 @@ export const getSendTravelRemindersMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendTravelReminders>>,
     TError,
-    { data: BodyType<SendTravelRemindersBody> },
+    { data: BodyType<TravelReminderRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof sendTravelReminders>>,
   TError,
-  { data: BodyType<SendTravelRemindersBody> },
+  { data: BodyType<TravelReminderRequest> },
   TContext
 > => {
   const mutationKey = ["sendTravelReminders"];
@@ -761,7 +767,7 @@ export const getSendTravelRemindersMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof sendTravelReminders>>,
-    { data: BodyType<SendTravelRemindersBody> }
+    { data: BodyType<TravelReminderRequest> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -774,7 +780,7 @@ export const getSendTravelRemindersMutationOptions = <
 export type SendTravelRemindersMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendTravelReminders>>
 >;
-export type SendTravelRemindersMutationBody = BodyType<SendTravelRemindersBody>;
+export type SendTravelRemindersMutationBody = BodyType<TravelReminderRequest>;
 export type SendTravelRemindersMutationError = ErrorType<void>;
 
 /**
@@ -787,14 +793,14 @@ export const useSendTravelReminders = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendTravelReminders>>,
     TError,
-    { data: BodyType<SendTravelRemindersBody> },
+    { data: BodyType<TravelReminderRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof sendTravelReminders>>,
   TError,
-  { data: BodyType<SendTravelRemindersBody> },
+  { data: BodyType<TravelReminderRequest> },
   TContext
 > => {
   return useMutation(getSendTravelRemindersMutationOptions(options));
@@ -808,14 +814,14 @@ export const getSendOnboardingInvitesUrl = () => {
 };
 
 export const sendOnboardingInvites = async (
-  sendOnboardingInvitesBody?: SendOnboardingInvitesBody,
+  onboardingInviteRequest?: OnboardingInviteRequest,
   options?: RequestInit,
 ): Promise<OnboardingInviteResult> => {
   return customFetch<OnboardingInviteResult>(getSendOnboardingInvitesUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(sendOnboardingInvitesBody),
+    body: JSON.stringify(onboardingInviteRequest),
   });
 };
 
@@ -826,14 +832,14 @@ export const getSendOnboardingInvitesMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendOnboardingInvites>>,
     TError,
-    { data: BodyType<SendOnboardingInvitesBody> },
+    { data: BodyType<OnboardingInviteRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof sendOnboardingInvites>>,
   TError,
-  { data: BodyType<SendOnboardingInvitesBody> },
+  { data: BodyType<OnboardingInviteRequest> },
   TContext
 > => {
   const mutationKey = ["sendOnboardingInvites"];
@@ -847,7 +853,7 @@ export const getSendOnboardingInvitesMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof sendOnboardingInvites>>,
-    { data: BodyType<SendOnboardingInvitesBody> }
+    { data: BodyType<OnboardingInviteRequest> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -861,7 +867,7 @@ export type SendOnboardingInvitesMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendOnboardingInvites>>
 >;
 export type SendOnboardingInvitesMutationBody =
-  BodyType<SendOnboardingInvitesBody>;
+  BodyType<OnboardingInviteRequest>;
 export type SendOnboardingInvitesMutationError = ErrorType<void>;
 
 /**
@@ -874,14 +880,14 @@ export const useSendOnboardingInvites = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendOnboardingInvites>>,
     TError,
-    { data: BodyType<SendOnboardingInvitesBody> },
+    { data: BodyType<OnboardingInviteRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof sendOnboardingInvites>>,
   TError,
-  { data: BodyType<SendOnboardingInvitesBody> },
+  { data: BodyType<OnboardingInviteRequest> },
   TContext
 > => {
   return useMutation(getSendOnboardingInvitesMutationOptions(options));
@@ -895,14 +901,14 @@ export const getSendFeeRemindersUrl = () => {
 };
 
 export const sendFeeReminders = async (
-  sendFeeRemindersBody?: SendFeeRemindersBody,
+  feeReminderRequest?: FeeReminderRequest,
   options?: RequestInit,
 ): Promise<FeeReminderResult> => {
   return customFetch<FeeReminderResult>(getSendFeeRemindersUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(sendFeeRemindersBody),
+    body: JSON.stringify(feeReminderRequest),
   });
 };
 
@@ -913,14 +919,14 @@ export const getSendFeeRemindersMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendFeeReminders>>,
     TError,
-    { data: BodyType<SendFeeRemindersBody> },
+    { data: BodyType<FeeReminderRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof sendFeeReminders>>,
   TError,
-  { data: BodyType<SendFeeRemindersBody> },
+  { data: BodyType<FeeReminderRequest> },
   TContext
 > => {
   const mutationKey = ["sendFeeReminders"];
@@ -934,7 +940,7 @@ export const getSendFeeRemindersMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof sendFeeReminders>>,
-    { data: BodyType<SendFeeRemindersBody> }
+    { data: BodyType<FeeReminderRequest> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -947,7 +953,7 @@ export const getSendFeeRemindersMutationOptions = <
 export type SendFeeRemindersMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendFeeReminders>>
 >;
-export type SendFeeRemindersMutationBody = BodyType<SendFeeRemindersBody>;
+export type SendFeeRemindersMutationBody = BodyType<FeeReminderRequest>;
 export type SendFeeRemindersMutationError = ErrorType<void>;
 
 /**
@@ -960,14 +966,14 @@ export const useSendFeeReminders = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendFeeReminders>>,
     TError,
-    { data: BodyType<SendFeeRemindersBody> },
+    { data: BodyType<FeeReminderRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof sendFeeReminders>>,
   TError,
-  { data: BodyType<SendFeeRemindersBody> },
+  { data: BodyType<FeeReminderRequest> },
   TContext
 > => {
   return useMutation(getSendFeeRemindersMutationOptions(options));
@@ -981,14 +987,14 @@ export const getSendInsuranceRemindersUrl = () => {
 };
 
 export const sendInsuranceReminders = async (
-  sendInsuranceRemindersBody?: SendInsuranceRemindersBody,
+  insuranceReminderRequest?: InsuranceReminderRequest,
   options?: RequestInit,
 ): Promise<FeeReminderResult> => {
   return customFetch<FeeReminderResult>(getSendInsuranceRemindersUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(sendInsuranceRemindersBody),
+    body: JSON.stringify(insuranceReminderRequest),
   });
 };
 
@@ -999,14 +1005,14 @@ export const getSendInsuranceRemindersMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendInsuranceReminders>>,
     TError,
-    { data: BodyType<SendInsuranceRemindersBody> },
+    { data: BodyType<InsuranceReminderRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof sendInsuranceReminders>>,
   TError,
-  { data: BodyType<SendInsuranceRemindersBody> },
+  { data: BodyType<InsuranceReminderRequest> },
   TContext
 > => {
   const mutationKey = ["sendInsuranceReminders"];
@@ -1020,7 +1026,7 @@ export const getSendInsuranceRemindersMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof sendInsuranceReminders>>,
-    { data: BodyType<SendInsuranceRemindersBody> }
+    { data: BodyType<InsuranceReminderRequest> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -1034,7 +1040,7 @@ export type SendInsuranceRemindersMutationResult = NonNullable<
   Awaited<ReturnType<typeof sendInsuranceReminders>>
 >;
 export type SendInsuranceRemindersMutationBody =
-  BodyType<SendInsuranceRemindersBody>;
+  BodyType<InsuranceReminderRequest>;
 export type SendInsuranceRemindersMutationError = ErrorType<void>;
 
 /**
@@ -1047,17 +1053,369 @@ export const useSendInsuranceReminders = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof sendInsuranceReminders>>,
     TError,
-    { data: BodyType<SendInsuranceRemindersBody> },
+    { data: BodyType<InsuranceReminderRequest> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof sendInsuranceReminders>>,
   TError,
-  { data: BodyType<SendInsuranceRemindersBody> },
+  { data: BodyType<InsuranceReminderRequest> },
   TContext
 > => {
   return useMutation(getSendInsuranceRemindersMutationOptions(options));
+};
+
+/**
+ * @summary Create standard seasons and backfill existing member participation records
+ */
+export const getInitializeMembershipsUrl = () => {
+  return `/api/players/membership/initialize`;
+};
+
+export const initializeMemberships = async (
+  options?: RequestInit,
+): Promise<MembershipInitializationResult> => {
+  return customFetch<MembershipInitializationResult>(
+    getInitializeMembershipsUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getInitializeMembershipsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initializeMemberships>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof initializeMemberships>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["initializeMemberships"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof initializeMemberships>>,
+    void
+  > = () => {
+    return initializeMemberships(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InitializeMembershipsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof initializeMemberships>>
+>;
+
+export type InitializeMembershipsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create standard seasons and backfill existing member participation records
+ */
+export const useInitializeMemberships = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof initializeMemberships>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof initializeMemberships>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getInitializeMembershipsMutationOptions(options));
+};
+
+/**
+ * @summary List membership interest submissions
+ */
+export const getListMembershipInterestSubmissionsUrl = () => {
+  return `/api/players/membership/interest-submissions`;
+};
+
+export const listMembershipInterestSubmissions = async (
+  options?: RequestInit,
+): Promise<MembershipInterestSubmission[]> => {
+  return customFetch<MembershipInterestSubmission[]>(
+    getListMembershipInterestSubmissionsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListMembershipInterestSubmissionsQueryKey = () => {
+  return [`/api/players/membership/interest-submissions`] as const;
+};
+
+export const getListMembershipInterestSubmissionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMembershipInterestSubmissions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipInterestSubmissions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMembershipInterestSubmissionsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMembershipInterestSubmissions>>
+  > = ({ signal }) =>
+    listMembershipInterestSubmissions({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipInterestSubmissions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMembershipInterestSubmissionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMembershipInterestSubmissions>>
+>;
+export type ListMembershipInterestSubmissionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List membership interest submissions
+ */
+
+export function useListMembershipInterestSubmissions<
+  TData = Awaited<ReturnType<typeof listMembershipInterestSubmissions>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipInterestSubmissions>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions =
+    getListMembershipInterestSubmissionsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Import and match membership interest submissions
+ */
+export const getImportMembershipInterestSubmissionsUrl = () => {
+  return `/api/players/membership/interest-submissions`;
+};
+
+export const importMembershipInterestSubmissions = async (
+  membershipInterestImport: MembershipInterestImport,
+  options?: RequestInit,
+): Promise<MembershipInterestImportResult> => {
+  return customFetch<MembershipInterestImportResult>(
+    getImportMembershipInterestSubmissionsUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(membershipInterestImport),
+    },
+  );
+};
+
+export const getImportMembershipInterestSubmissionsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importMembershipInterestSubmissions>>,
+    TError,
+    { data: BodyType<MembershipInterestImport> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importMembershipInterestSubmissions>>,
+  TError,
+  { data: BodyType<MembershipInterestImport> },
+  TContext
+> => {
+  const mutationKey = ["importMembershipInterestSubmissions"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importMembershipInterestSubmissions>>,
+    { data: BodyType<MembershipInterestImport> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importMembershipInterestSubmissions(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportMembershipInterestSubmissionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importMembershipInterestSubmissions>>
+>;
+export type ImportMembershipInterestSubmissionsMutationBody =
+  BodyType<MembershipInterestImport>;
+export type ImportMembershipInterestSubmissionsMutationError =
+  ErrorType<unknown>;
+
+/**
+ * @summary Import and match membership interest submissions
+ */
+export const useImportMembershipInterestSubmissions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importMembershipInterestSubmissions>>,
+    TError,
+    { data: BodyType<MembershipInterestImport> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importMembershipInterestSubmissions>>,
+  TError,
+  { data: BodyType<MembershipInterestImport> },
+  TContext
+> => {
+  return useMutation(
+    getImportMembershipInterestSubmissionsMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Resolve an interest submission
+ */
+export const getResolveMembershipInterestSubmissionUrl = (id: number) => {
+  return `/api/players/membership/interest-submissions/${id}`;
+};
+
+export const resolveMembershipInterestSubmission = async (
+  id: number,
+  membershipInterestResolution: MembershipInterestResolution,
+  options?: RequestInit,
+): Promise<MembershipInterestSubmission> => {
+  return customFetch<MembershipInterestSubmission>(
+    getResolveMembershipInterestSubmissionUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(membershipInterestResolution),
+    },
+  );
+};
+
+export const getResolveMembershipInterestSubmissionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveMembershipInterestSubmission>>,
+    TError,
+    { id: number; data: BodyType<MembershipInterestResolution> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resolveMembershipInterestSubmission>>,
+  TError,
+  { id: number; data: BodyType<MembershipInterestResolution> },
+  TContext
+> => {
+  const mutationKey = ["resolveMembershipInterestSubmission"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resolveMembershipInterestSubmission>>,
+    { id: number; data: BodyType<MembershipInterestResolution> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return resolveMembershipInterestSubmission(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResolveMembershipInterestSubmissionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resolveMembershipInterestSubmission>>
+>;
+export type ResolveMembershipInterestSubmissionMutationBody =
+  BodyType<MembershipInterestResolution>;
+export type ResolveMembershipInterestSubmissionMutationError =
+  ErrorType<unknown>;
+
+/**
+ * @summary Resolve an interest submission
+ */
+export const useResolveMembershipInterestSubmission = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resolveMembershipInterestSubmission>>,
+    TError,
+    { id: number; data: BodyType<MembershipInterestResolution> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resolveMembershipInterestSubmission>>,
+  TError,
+  { id: number; data: BodyType<MembershipInterestResolution> },
+  TContext
+> => {
+  return useMutation(
+    getResolveMembershipInterestSubmissionMutationOptions(options),
+  );
 };
 
 /**
@@ -1409,6 +1767,98 @@ export const useCreatePlayerPayment = <
 };
 
 /**
+ * @summary List current and archived participation records for a member
+ */
+export const getListPlayerParticipationsUrl = (id: number) => {
+  return `/api/players/${id}/participations`;
+};
+
+export const listPlayerParticipations = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PlayerParticipation[]> => {
+  return customFetch<PlayerParticipation[]>(
+    getListPlayerParticipationsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPlayerParticipationsQueryKey = (id: number) => {
+  return [`/api/players/${id}/participations`] as const;
+};
+
+export const getListPlayerParticipationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPlayerParticipations>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPlayerParticipations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPlayerParticipationsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPlayerParticipations>>
+  > = ({ signal }) =>
+    listPlayerParticipations(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPlayerParticipations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPlayerParticipationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPlayerParticipations>>
+>;
+export type ListPlayerParticipationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List current and archived participation records for a member
+ */
+
+export function useListPlayerParticipations<
+  TData = Awaited<ReturnType<typeof listPlayerParticipations>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPlayerParticipations>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPlayerParticipationsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Delete a recorded payment for a player
  */
 export const getDeletePlayerPaymentUrl = (
@@ -1672,7 +2122,7 @@ export const useUpdatePlayer = <
 };
 
 /**
- * @summary Delete a player
+ * @summary Archive a member without deleting their permanent identity or linked history
  */
 export const getDeletePlayerUrl = (id: number) => {
   return `/api/players/${id}`;
@@ -1733,7 +2183,7 @@ export type DeletePlayerMutationResult = NonNullable<
 export type DeletePlayerMutationError = ErrorType<unknown>;
 
 /**
- * @summary Delete a player
+ * @summary Archive a member without deleting their permanent identity or linked history
  */
 export const useDeletePlayer = <
   TError = ErrorType<unknown>,

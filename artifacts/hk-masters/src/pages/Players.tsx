@@ -12,12 +12,13 @@ import { Plus, Search, X, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Sh
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import type { Player, FundraisingEntry } from "@workspace/api-client-react"
+import type { Player, FundraisingEntry, PlayerParticipation } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getInitials, formatCurrency } from "@/lib/utils"
 import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 import { passportStatus, PASSPORT_STATUS_LABEL } from "@/lib/reports"
 import { format, parseISO } from "date-fns"
+import { MembershipInterestPanel } from "@/components/MembershipInterestPanel"
 
 function cloudinaryViewUrl(url: string): string {
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
@@ -42,6 +43,17 @@ declare global {
 }
 
 const SESSION_KEY = "hkm_admin_session"
+const MEMBERSHIP_TIER_LABELS: Record<string, string> = {
+  awaiting_selection: "Awaiting selection",
+  masters_registration: "Masters Registration",
+  active_player: "Active Player",
+  division_one_squad: "Division 1 Squad",
+}
+const MEMBER_STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  inactive: "Inactive",
+  archived: "Archived",
+}
 function getStoredSession(): string | null {
   try { return localStorage.getItem(SESSION_KEY) } catch { return null }
 }
@@ -164,6 +176,8 @@ const playerSchema = z.object({
   notes: z.string().optional(),
   instagramHandle: z.string().optional(),
   facebookHandle: z.string().optional(),
+  memberStatus: z.enum(["active", "inactive", "archived"]).default("active"),
+  currentMembershipTier: z.enum(["awaiting_selection", "masters_registration", "active_player", "division_one_squad"]).default("awaiting_selection"),
 })
 
 type PlayerFormValues = z.infer<typeof playerSchema>
@@ -190,6 +204,8 @@ export default function Players() {
   const { toast } = useToast()
 
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
+  const [memberStatusFilter, setMemberStatusFilter] = useState<string>("all")
+  const [membershipTierFilter, setMembershipTierFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
   const [insuranceFilter, setInsuranceFilter] = useState<"all" | "missing" | "expired" | "issues">(() => {
@@ -205,6 +221,8 @@ export default function Players() {
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
   const [insuranceReminderModalOpen, setInsuranceReminderModalOpen] = useState(false)
   const [insuranceReminderSending, setInsuranceReminderSending] = useState(false)
+  const [participations, setParticipations] = useState<PlayerParticipation[]>([])
+  const [participationsLoading, setParticipationsLoading] = useState(false)
 
   const acknowledgePassport = (playerId: number) => {
     setPassportAck(playerId)
@@ -294,6 +312,8 @@ export default function Players() {
       if (insuranceFilter === "issues") return status === "missing" || status === "expired"
       return true
     })
+    .filter(p => memberStatusFilter === "all" || p.memberStatus === memberStatusFilter)
+    .filter(p => membershipTierFilter === "all" || p.currentMembershipTier === membershipTierFilter)
     .sort((a, b) => sortOrder === "asc"
       ? a.name.localeCompare(b.name)
       : b.name.localeCompare(a.name)
@@ -347,6 +367,7 @@ export default function Players() {
     paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
     instagramHandle: "", facebookHandle: "",
+    memberStatus: "active", currentMembershipTier: "awaiting_selection",
   })
 
   const openAddModal = () => {
@@ -357,6 +378,15 @@ export default function Players() {
 
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
+    setParticipations([])
+    setParticipationsLoading(true)
+    fetch(`/api/players/${player.id}/participations`, {
+      headers: sessionToken ? { "x-session-token": sessionToken } : {},
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject(new Error("Failed to load participation history")))
+      .then((rows: PlayerParticipation[]) => setParticipations(rows))
+      .catch(() => setParticipations([]))
+      .finally(() => setParticipationsLoading(false))
     if (player.passportCopyUploadedAt) acknowledgePassport(player.id)
     if (player.hkidCopyUploadedAt) acknowledgeHkid(player.id)
     reset({
@@ -409,6 +439,8 @@ export default function Players() {
       notes: player.notes || "",
       instagramHandle: player.instagramHandle || "",
       facebookHandle: player.facebookHandle || "",
+      memberStatus: player.memberStatus,
+      currentMembershipTier: player.currentMembershipTier,
     })
     setIsModalOpen(true)
   }
@@ -693,13 +725,13 @@ export default function Players() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this player?")) return
+    if (!confirm("Archive this member? Their profile, Rotterdam history, payments, sessions and portal identity will be preserved.")) return
     try {
       await deleteMutation.mutateAsync({ id })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      toast({ title: "Player deleted" })
+      toast({ title: "Member archived" })
     } catch {
-      toast({ title: "Failed to delete player", variant: "destructive" })
+      toast({ title: "Failed to archive member", variant: "destructive" })
     }
   }
 
@@ -764,8 +796,8 @@ export default function Players() {
 
   return (
     <PageLayout
-      title="Roster"
-      description="Manage player profiles, travel details, sizes, and payments."
+      title="Members"
+      description="Manage long-term member profiles, membership tiers, season participation, and legacy Rotterdam details."
       action={
         <div className="flex gap-2">
           <Button
@@ -778,11 +810,12 @@ export default function Players() {
             {isFetching ? "Refreshing…" : "Refresh"}
           </Button>
           <Button onClick={openAddModal} disabled={teams.length === 0}>
-            <Plus className="w-5 h-5 mr-2" /> Add Player
+             <Plus className="w-5 h-5 mr-2" /> Add Member
           </Button>
         </div>
       }
     >
+      <MembershipInterestPanel players={players} sessionToken={sessionToken} onMembersUpdated={() => void refetch()} />
       <div className="bg-white rounded-2xl shadow-sm border border-border flex flex-col min-h-[500px] overflow-hidden">
 
         {/* Filters */}
@@ -812,6 +845,26 @@ export default function Players() {
           >
             <option value="all">All Teams</option>
             {teams.map(t => <option key={t.id} value={t.id.toString()}>{t.name}</option>)}
+          </Select>
+          <Select
+            className="sm:w-44 bg-white"
+            value={memberStatusFilter}
+            onChange={(e) => setMemberStatusFilter(e.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="archived">Archived</option>
+          </Select>
+          <Select
+            className="sm:w-52 bg-white"
+            value={membershipTierFilter}
+            onChange={(e) => setMembershipTierFilter(e.target.value)}
+          >
+            <option value="all">All membership tiers</option>
+            {Object.entries(MEMBERSHIP_TIER_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </Select>
           <Select
             className="sm:w-52 bg-white"
@@ -845,11 +898,12 @@ export default function Players() {
                     onClick={() => setSortOrder(o => o === "asc" ? "desc" : "asc")}
                     className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                   >
-                    Player
+                     Member
                     <span className="text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
                   </button>
                 </th>
                 <th className="px-4 py-4 font-semibold hidden sm:table-cell">Team</th>
+                <th className="px-4 py-4 font-semibold">Membership</th>
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
                 <th className="px-4 py-4 font-semibold hidden lg:table-cell">Nationality</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
@@ -916,6 +970,16 @@ export default function Players() {
                       {/* Team */}
                       <td className="px-4 py-4 hidden sm:table-cell">
                         <Badge variant="outline">{player.teamName ?? '—'}</Badge>
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge variant={player.memberStatus === "active" ? "default" : "outline"}>
+                            {MEMBER_STATUS_LABELS[player.memberStatus]}
+                          </Badge>
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                            {MEMBERSHIP_TIER_LABELS[player.currentMembershipTier]}
+                          </span>
+                        </div>
                       </td>
                       {/* Position */}
                       <td className="px-4 py-4 hidden md:table-cell text-foreground">
@@ -1113,7 +1177,7 @@ export default function Players() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingPlayer ? "Edit Player" : "Add Player"}
+        title={editingPlayer ? "Edit Member" : "Add Member"}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-1">
 
@@ -1159,6 +1223,22 @@ export default function Players() {
 
           <SectionHeading>Basic Info</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Member status</label>
+              <Select {...register("memberStatus")}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="archived">Archived</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">2026/27 membership tier</label>
+              <Select {...register("currentMembershipTier")}>
+                {Object.entries(MEMBERSHIP_TIER_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </Select>
+            </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-semibold">Team *</label>
               <Select {...register("teamId")}>
@@ -1201,6 +1281,31 @@ export default function Players() {
               <Input {...register("hkidNumber")} placeholder="X123456(7)" />
             </div>
           </div>
+
+          {editingPlayer && (
+            <>
+              <SectionHeading>Season participation</SectionHeading>
+              <div className="space-y-2">
+                {participationsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading participation history…</p>
+                ) : participations.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No participation records found.</p>
+                ) : participations.map((participation) => (
+                  <div key={participation.id} className="rounded-lg border bg-muted/20 px-3 py-2.5 flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">{participation.seasonName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {participation.teamName || MEMBERSHIP_TIER_LABELS[participation.membershipTier || ""] || "Member participation"}
+                      </p>
+                    </div>
+                    <Badge variant={participation.seasonStatus === "current" ? "default" : "outline"}>
+                      {participation.seasonStatus === "current" ? "Current" : "Archived"}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           <SectionHeading>Passport</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1480,7 +1585,7 @@ export default function Players() {
             </div>
           </div>
 
-          <SectionHeading>Payment</SectionHeading>
+          <SectionHeading>Rotterdam 2026 Payment Archive</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Amount Due (HKD)</label>

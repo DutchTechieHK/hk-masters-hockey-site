@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateWhatsappTemplateBody {
-  name: string;
-  title: string;
-  body: string;
-}
+export type PlayerParticipationLegacySnapshot = {
+  [key: string]: unknown;
+} | null;

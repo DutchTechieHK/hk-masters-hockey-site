@@ -2,7 +2,17 @@ import { Router } from "express";
 import multer from "multer";
 import crypto from "crypto";
 import { db } from "@workspace/db";
-import { playersTable, teamsTable, playerPaymentsTable, emailBlastsTable, emailBlastRecipientsTable, playerSessionsTable } from "@workspace/db/schema";
+import {
+  playersTable,
+  teamsTable,
+  playerPaymentsTable,
+  emailBlastsTable,
+  emailBlastRecipientsTable,
+  playerSessionsTable,
+  seasonsTable,
+  playerParticipationsTable,
+  membershipInterestSubmissionsTable,
+} from "@workspace/db/schema";
 import { eq, isNull, isNotNull, or, and, inArray, desc, sql } from "drizzle-orm";
 import {
   CreatePlayerBody,
@@ -20,12 +30,27 @@ import {
   ListPlayerPaymentsParams,
   DeletePlayerPaymentParams,
   SendBulkEmailBody,
+  ImportMembershipInterestSubmissionsBody,
+  ResolveMembershipInterestSubmissionBody,
+  ResolveMembershipInterestSubmissionParams,
+  ListPlayerParticipationsParams,
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
 const router = Router();
+
+const CURRENT_SEASON_SLUG = "membership-2026-27";
+const ROTTERDAM_SEASON_SLUG = "rotterdam-2026";
+const ROTTERDAM_MIGRATION_CUTOFF = new Date("2026-09-09T00:00:00.000Z");
+
+const MEMBERSHIP_TIERS = new Set([
+  "awaiting_selection",
+  "masters_registration",
+  "active_player",
+  "division_one_squad",
+]);
 
 const emailUpload = multer({
   storage: multer.memoryStorage(),
@@ -95,6 +120,9 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     notes: player.notes,
     instagramHandle: player.instagramHandle,
     facebookHandle: player.facebookHandle,
+    memberStatus: player.memberStatus,
+    currentMembershipTier: player.currentMembershipTier,
+    membershipTierUpdatedAt: player.membershipTierUpdatedAt?.toISOString() ?? null,
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
     feeReminderSentAt: player.feeReminderSentAt?.toISOString() ?? null,
     insuranceReminderSentAt: player.insuranceReminderSentAt?.toISOString() ?? null,
@@ -103,6 +131,300 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     createdAt: player.createdAt?.toISOString(),
   };
 }
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+function legacyRotterdamSnapshot(player: typeof playersTable.$inferSelect) {
+  return {
+    teamId: player.teamId,
+    shirtNumber: player.shirtNumber,
+    position: player.position,
+    flightArrivalDateTime: player.flightArrivalDateTime,
+    flightDepartureDateTime: player.flightDepartureDateTime,
+    arrivalCity: player.arrivalCity,
+    outboundFlightNumber: player.outboundFlightNumber,
+    outboundDepartureDateTime: player.outboundDepartureDateTime,
+    returnFlightNumber: player.returnFlightNumber,
+    returnArrivalDateTime: player.returnArrivalDateTime,
+    roomSharingPreference: player.roomSharingPreference,
+    roomSharingWith: player.roomSharingWith,
+    accommodationName: player.accommodationName,
+    accommodationAddress: player.accommodationAddress,
+    accommodationPhone: player.accommodationPhone,
+    accommodationEmail: player.accommodationEmail,
+    insuranceProvider: player.insuranceProvider,
+    insurancePolicyNumber: player.insurancePolicyNumber,
+    insuranceEmergencyPhone: player.insuranceEmergencyPhone,
+    insurancePolicyHolder: player.insurancePolicyHolder,
+    insuranceExpiry: player.insuranceExpiry,
+    insuranceEmail: player.insuranceEmail,
+    shirtSize: player.shirtSize,
+    shortsSize: player.shortsSize,
+    jacketSize: player.jacketSize,
+    poloSize: player.poloSize,
+    trackTopSize: player.trackTopSize,
+    goalieSmockSize: player.goalieSmockSize,
+    travelDates: player.travelDates,
+    feePaid: player.feePaid,
+    paymentAmountDue: player.paymentAmountDue,
+    paymentAmountPaid: player.paymentAmountPaid,
+    paymentDate: player.paymentDate,
+    dietaryRequirements: player.dietaryRequirements,
+    medicalNotes: player.medicalNotes,
+    notes: player.notes,
+  };
+}
+
+export async function ensureMembershipFoundation() {
+  const [rotterdam] = await db.insert(seasonsTable).values({
+    slug: ROTTERDAM_SEASON_SLUG,
+    name: "Rotterdam Masters World Cup 2026",
+    kind: "event",
+    status: "archived",
+    isCurrent: false,
+    startsOn: "2026-08-01",
+    endsOn: "2026-08-31",
+  }).onConflictDoUpdate({
+    target: seasonsTable.slug,
+    set: { name: "Rotterdam Masters World Cup 2026", status: "archived", isCurrent: false, updatedAt: new Date() },
+  }).returning();
+
+  const [current] = await db.insert(seasonsTable).values({
+    slug: CURRENT_SEASON_SLUG,
+    name: "2026/27 Membership",
+    kind: "membership",
+    status: "current",
+    isCurrent: true,
+    startsOn: "2026-09-01",
+    endsOn: "2027-08-31",
+  }).onConflictDoUpdate({
+    target: seasonsTable.slug,
+    set: { name: "2026/27 Membership", status: "current", isCurrent: true, updatedAt: new Date() },
+  }).returning();
+
+  const players = await db.select().from(playersTable).orderBy(playersTable.id);
+  await db.update(playerPaymentsTable)
+    .set({ seasonId: rotterdam.id })
+    .where(isNull(playerPaymentsTable.seasonId));
+  for (const player of players) {
+    if (player.createdAt < ROTTERDAM_MIGRATION_CUTOFF) {
+      await db.insert(playerParticipationsTable).values({
+        playerId: player.id,
+        seasonId: rotterdam.id,
+        teamId: player.teamId,
+        participationStatus: "archived",
+        membershipTier: null,
+        source: "rotterdam_backfill",
+        legacySnapshot: legacyRotterdamSnapshot(player),
+      }).onConflictDoNothing();
+    }
+    await db.insert(playerParticipationsTable).values({
+      playerId: player.id,
+      seasonId: current.id,
+      teamId: null,
+      participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
+      membershipTier: player.currentMembershipTier,
+      source: "membership_backfill",
+    }).onConflictDoNothing();
+  }
+
+  const participations = await db.select({
+    seasonId: playerParticipationsTable.seasonId,
+  }).from(playerParticipationsTable);
+  const emailCounts = new Map<string, number>();
+  for (const player of players) {
+    const email = normalizeEmail(player.email);
+    if (email) emailCounts.set(email, (emailCounts.get(email) ?? 0) + 1);
+  }
+  return {
+    players: players.length,
+    rotterdamParticipations: participations.filter((p) => p.seasonId === rotterdam.id).length,
+    currentParticipations: participations.filter((p) => p.seasonId === current.id).length,
+    duplicateEmails: [...emailCounts.entries()].filter(([, count]) => count > 1).map(([email]) => email),
+    currentSeasonId: current.id,
+    rotterdamSeasonId: rotterdam.id,
+  };
+}
+
+async function syncCurrentParticipation(playerId: number) {
+  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+  if (!player) return;
+  const foundation = await ensureMembershipFoundation();
+  await db.update(playerParticipationsTable).set({
+    membershipTier: player.currentMembershipTier,
+    participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(playerParticipationsTable.playerId, playerId),
+    eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+  ));
+}
+
+function mapInterestSubmission(row: {
+  submission: typeof membershipInterestSubmissionsTable.$inferSelect;
+  matchedPlayerName: string | null;
+}) {
+  return {
+    id: row.submission.id,
+    submittedName: row.submission.submittedName,
+    submittedEmail: row.submission.submittedEmail,
+    submittedPhone: row.submission.submittedPhone,
+    membershipTier: row.submission.membershipTier,
+    matchedPlayerId: row.submission.matchedPlayerId,
+    matchedPlayerName: row.matchedPlayerName,
+    matchStatus: row.submission.matchStatus,
+    submittedAt: row.submission.submittedAt.toISOString(),
+    reviewedAt: row.submission.reviewedAt?.toISOString() ?? null,
+  };
+}
+
+router.post("/membership/initialize", requireAdminAccess, async (_req, res) => {
+  const result = await ensureMembershipFoundation();
+  res.json({
+    players: result.players,
+    rotterdamParticipations: result.rotterdamParticipations,
+    currentParticipations: result.currentParticipations,
+    duplicateEmails: result.duplicateEmails,
+  });
+});
+
+router.get("/membership/interest-submissions", requireAdminAccess, async (_req, res) => {
+  const rows = await db.select({
+    submission: membershipInterestSubmissionsTable,
+    matchedPlayerName: playersTable.name,
+  }).from(membershipInterestSubmissionsTable)
+    .leftJoin(playersTable, eq(membershipInterestSubmissionsTable.matchedPlayerId, playersTable.id))
+    .orderBy(desc(membershipInterestSubmissionsTable.submittedAt));
+  res.json(rows.map(mapInterestSubmission));
+});
+
+router.post("/membership/interest-submissions", requireAdminAccess, async (req, res) => {
+  const { submissions } = ImportMembershipInterestSubmissionsBody.parse(req.body);
+  const foundation = await ensureMembershipFoundation();
+  let matched = 0;
+  let needsReview = 0;
+
+  for (const input of submissions) {
+    const normalizedEmail = normalizeEmail(input.email);
+    const candidates = await db.select().from(playersTable)
+      .where(sql`lower(trim(${playersTable.email})) = ${normalizedEmail}`);
+    let matchedPlayerId: number | null = null;
+    let matchStatus = "unmatched";
+
+    if (candidates.length > 1) {
+      matchStatus = "ambiguous";
+    } else if (candidates.length === 1) {
+      const candidate = candidates[0];
+      if (
+        candidate.currentMembershipTier !== "awaiting_selection" &&
+        candidate.currentMembershipTier !== input.membershipTier
+      ) {
+        matchedPlayerId = candidate.id;
+        matchStatus = "conflict";
+      } else {
+        matchedPlayerId = candidate.id;
+        matchStatus = "matched";
+        await db.update(playersTable).set({
+          currentMembershipTier: input.membershipTier,
+          membershipTierUpdatedAt: new Date(),
+        }).where(eq(playersTable.id, candidate.id));
+        await db.update(playerParticipationsTable).set({
+          membershipTier: input.membershipTier,
+          updatedAt: new Date(),
+        }).where(and(
+          eq(playerParticipationsTable.playerId, candidate.id),
+          eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+        ));
+      }
+    }
+
+    await db.insert(membershipInterestSubmissionsTable).values({
+      seasonId: foundation.currentSeasonId,
+      submittedName: input.name.trim(),
+      submittedEmail: normalizedEmail,
+      submittedPhone: input.phone?.trim() || null,
+      membershipTier: input.membershipTier,
+      matchedPlayerId,
+      matchStatus,
+      rawData: input.rawData ?? input,
+      reviewedAt: matchStatus === "matched" ? new Date() : null,
+    });
+    if (matchStatus === "matched") matched++;
+    else needsReview++;
+  }
+
+  res.json({ imported: submissions.length, matched, needsReview });
+});
+
+router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (req, res) => {
+  const { id } = ResolveMembershipInterestSubmissionParams.parse(req.params);
+  const body = ResolveMembershipInterestSubmissionBody.parse(req.body);
+  const [existing] = await db.select().from(membershipInterestSubmissionsTable)
+    .where(eq(membershipInterestSubmissionsTable.id, id));
+  if (!existing) {
+    res.status(404).json({ error: "Interest submission not found" });
+    return;
+  }
+
+  let matchStatus = "dismissed";
+  let matchedPlayerId: number | null = null;
+  if (!body.dismiss && body.playerId) {
+    const [player] = await db.select().from(playersTable).where(eq(playersTable.id, body.playerId));
+    if (!player) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+    matchedPlayerId = player.id;
+    matchStatus = "matched";
+    await db.update(playersTable).set({
+      currentMembershipTier: body.membershipTier,
+      membershipTierUpdatedAt: new Date(),
+    }).where(eq(playersTable.id, player.id));
+    await syncCurrentParticipation(player.id);
+  }
+  const [updated] = await db.update(membershipInterestSubmissionsTable).set({
+    matchedPlayerId,
+    membershipTier: body.membershipTier,
+    matchStatus,
+    reviewedAt: new Date(),
+  }).where(eq(membershipInterestSubmissionsTable.id, id)).returning();
+  const matchedPlayer = matchedPlayerId
+    ? (await db.select({ name: playersTable.name }).from(playersTable).where(eq(playersTable.id, matchedPlayerId)))[0]
+    : null;
+  res.json(mapInterestSubmission({ submission: updated, matchedPlayerName: matchedPlayer?.name ?? null }));
+});
+
+router.get("/:id/participations", requireAdminAccess, async (req, res) => {
+  const { id } = ListPlayerParticipationsParams.parse(req.params);
+  await ensureMembershipFoundation();
+  const rows = await db.select({
+    participation: playerParticipationsTable,
+    season: seasonsTable,
+    teamName: teamsTable.name,
+  }).from(playerParticipationsTable)
+    .innerJoin(seasonsTable, eq(playerParticipationsTable.seasonId, seasonsTable.id))
+    .leftJoin(teamsTable, eq(playerParticipationsTable.teamId, teamsTable.id))
+    .where(eq(playerParticipationsTable.playerId, id))
+    .orderBy(desc(seasonsTable.startsOn));
+  res.json(rows.map(({ participation, season, teamName }) => ({
+    id: participation.id,
+    playerId: participation.playerId,
+    seasonId: participation.seasonId,
+    seasonSlug: season.slug,
+    seasonName: season.name,
+    seasonKind: season.kind,
+    seasonStatus: season.status,
+    teamId: participation.teamId,
+    teamName,
+    participationStatus: participation.participationStatus,
+    membershipTier: participation.membershipTier,
+    source: participation.source,
+    legacySnapshot: participation.legacySnapshot,
+    createdAt: participation.createdAt.toISOString(),
+  })));
+});
 
 router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListPlayersQueryParams.parse(req.query);
@@ -142,6 +464,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     .insert(playersTable)
     .values({ ...(body as any), accessToken: crypto.randomUUID() })
     .returning();
+  const membershipFoundation = await ensureMembershipFoundation();
   // If an initial paid amount was supplied via the legacy fields,
   // mirror it into the ledger so the new payments table remains the
   // source of truth and the next recompute cannot lose the value.
@@ -149,6 +472,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
   if (typeof initialPaid === "number" && Number.isFinite(initialPaid) && initialPaid > 0) {
     await db.insert(playerPaymentsTable).values({
       playerId: player.id,
+      seasonId: membershipFoundation.rotterdamSeasonId,
       amount: initialPaid.toFixed(2),
       paymentDate: body.paymentDate ?? "",
       method: "",
@@ -157,6 +481,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     await recomputePlayerAggregates(player.id);
   }
   const [refreshed] = await db.select().from(playersTable).where(eq(playersTable.id, player.id));
+  await syncCurrentParticipation(refreshed.id);
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, refreshed.teamId));
   res.status(201).json(mapPlayer(refreshed, team?.name));
 });
@@ -254,6 +579,8 @@ function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: stri
     medicalNotes: player.medicalNotes ?? undefined,
     instagramHandle: player.instagramHandle ?? undefined,
     facebookHandle: player.facebookHandle ?? undefined,
+    memberStatus: player.memberStatus,
+    currentMembershipTier: player.currentMembershipTier,
     feePaid: player.feePaid,
     paymentAmountDue: amountDue,
     paymentAmountPaid: amountPaid,
@@ -277,6 +604,10 @@ router.get("/self/:token", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  if (row.player.memberStatus !== "active") {
+    res.status(403).json({ error: "Membership is not active" });
+    return;
+  }
   // Record when the player last accessed the portal via their invite link
   await db
     .update(playersTable)
@@ -294,6 +625,10 @@ router.patch("/self/:token", async (req, res) => {
   const [existing] = await db.select().from(playersTable).where(eq(playersTable.accessToken, token));
   if (!existing) {
     res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (existing.memberStatus !== "active") {
+    res.status(403).json({ error: "Membership is not active" });
     return;
   }
   const parseResult = UpdateSelfPlayerBody.safeParse(req.body ?? {});
@@ -409,12 +744,16 @@ function mapPayment(p: typeof playerPaymentsTable.$inferSelect) {
 }
 
 async function recomputePlayerAggregates(playerId: number, opts: { feePaidOverride?: boolean } = {}) {
+  const foundation = await ensureMembershipFoundation();
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
   if (!player) return;
   const payments = await db
     .select()
     .from(playerPaymentsTable)
-    .where(eq(playerPaymentsTable.playerId, playerId))
+    .where(and(
+      eq(playerPaymentsTable.playerId, playerId),
+      eq(playerPaymentsTable.seasonId, foundation.rotterdamSeasonId),
+    ))
     .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
   const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   const latestDate = payments.length > 0 ? payments[0].paymentDate : null;
@@ -459,10 +798,12 @@ router.post("/:id/payments", requireAdminAccess, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  const foundation = await ensureMembershipFoundation();
   const [created] = await db
     .insert(playerPaymentsTable)
     .values({
       playerId: id,
+      seasonId: foundation.rotterdamSeasonId,
       amount: body.amount.toFixed(2),
       paymentDate: body.paymentDate,
       method: body.method ?? "",
@@ -488,7 +829,7 @@ router.delete("/:playerId/payments/:paymentId", requireAdminAccess, async (req, 
 });
 
 router.get("/:id/access-token", requireAdminAccess, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (!Number.isFinite(id)) {
     res.status(400).json({ error: "Invalid id" });
     return;
@@ -507,9 +848,12 @@ router.get("/:id/access-token", requireAdminAccess, async (req, res) => {
 router.post("/send-travel-reminders", requireSession, async (req, res) => {
   const { playerIds } = SendTravelRemindersBody.parse(req.body ?? {});
 
-  const missingCondition = or(
-    isNull(playersTable.flightArrivalDateTime),
-    eq(playersTable.flightArrivalDateTime, "")
+  const missingCondition = and(
+    eq(playersTable.memberStatus, "active"),
+    or(
+      isNull(playersTable.flightArrivalDateTime),
+      eq(playersTable.flightArrivalDateTime, ""),
+    )!,
   )!;
 
   const whereClause = playerIds && playerIds.length > 0
@@ -546,8 +890,8 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
   const { playerIds } = SendOnboardingInvitesBody.parse(req.body ?? {});
 
   const whereClause = playerIds && playerIds.length > 0
-    ? inArray(playersTable.id, playerIds)
-    : isNull(playersTable.onboardingInviteSentAt);
+    ? and(inArray(playersTable.id, playerIds), eq(playersTable.memberStatus, "active"))
+    : and(isNull(playersTable.onboardingInviteSentAt), eq(playersTable.memberStatus, "active"));
 
   const players = await db
     .select({ player: playersTable, teamName: teamsTable.name })
@@ -606,7 +950,10 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
 router.post("/send-fee-reminders", requireSession, async (req, res) => {
   const { playerIds } = SendFeeRemindersBody.parse(req.body ?? {});
 
-  const unpaidCondition = eq(playersTable.feePaid, false);
+  const unpaidCondition = and(
+    eq(playersTable.feePaid, false),
+    eq(playersTable.memberStatus, "active"),
+  )!;
 
   const whereClause = playerIds && playerIds.length > 0
     ? and(inArray(playersTable.id, playerIds), unpaidCondition)
@@ -643,9 +990,12 @@ router.post("/send-fee-reminders", requireSession, async (req, res) => {
 router.post("/send-insurance-reminders", requireSession, async (req, res) => {
   const { playerIds } = SendInsuranceRemindersBody.parse(req.body ?? {});
 
-  const missingCondition = or(
-    isNull(playersTable.insuranceProvider),
-    eq(playersTable.insuranceProvider, "")
+  const missingCondition = and(
+    eq(playersTable.memberStatus, "active"),
+    or(
+      isNull(playersTable.insuranceProvider),
+      eq(playersTable.insuranceProvider, ""),
+    )!,
   )!;
 
   const whereClause = playerIds && playerIds.length > 0
@@ -719,6 +1069,17 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     feePaid: requestedFeePaid,
     ...directUpdate
   } = body;
+  if (
+    "currentMembershipTier" in directUpdate &&
+    directUpdate.currentMembershipTier &&
+    !MEMBERSHIP_TIERS.has(directUpdate.currentMembershipTier)
+  ) {
+    res.status(400).json({ error: "Invalid membership tier" });
+    return;
+  }
+  if ("currentMembershipTier" in directUpdate) {
+    (directUpdate as Record<string, unknown>).membershipTierUpdatedAt = new Date();
+  }
   // Admin-initiated passport upload: stamp passportCopyUploadedAt + isUpdate
   // so the file shows up correctly in passport timestamps. Unlike the player
   // self PATCH route we do NOT reset passportCopyReviewed (admin uploaded it
@@ -742,18 +1103,23 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     }
   }
   if (Object.keys(directUpdate).length > 0) {
-    await db.update(playersTable).set(directUpdate).where(eq(playersTable.id, id));
+    await db.update(playersTable).set(directUpdate as typeof playersTable.$inferInsert).where(eq(playersTable.id, id));
   }
   if (typeof requestedPaid === "number" && Number.isFinite(requestedPaid)) {
+    const foundation = await ensureMembershipFoundation();
     const existing = await db
       .select()
       .from(playerPaymentsTable)
-      .where(eq(playerPaymentsTable.playerId, id));
+      .where(and(
+        eq(playerPaymentsTable.playerId, id),
+        eq(playerPaymentsTable.seasonId, foundation.rotterdamSeasonId),
+      ));
     const currentSum = existing.reduce((s, p) => s + parseFloat(p.amount), 0);
     const delta = requestedPaid - currentSum;
     if (Math.abs(delta) > 1e-6) {
       await db.insert(playerPaymentsTable).values({
         playerId: id,
+        seasonId: foundation.rotterdamSeasonId,
         amount: delta.toFixed(2),
         paymentDate: requestedDate || new Date().toISOString().slice(0, 10),
         method: "",
@@ -762,6 +1128,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     }
   }
   await recomputePlayerAggregates(id, { feePaidOverride: requestedFeePaid });
+  await syncCurrentParticipation(id);
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   res.json(mapPlayer(player, team?.name));
@@ -769,7 +1136,14 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeletePlayerParams.parse(req.params);
-  await db.delete(playersTable).where(eq(playersTable.id, id));
+  const [player] = await db.update(playersTable).set({
+    memberStatus: "archived",
+  }).where(eq(playersTable.id, id)).returning({ id: playersTable.id });
+  if (!player) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  await syncCurrentParticipation(id);
   res.status(204).send();
 });
 
@@ -795,7 +1169,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
   let players: Array<typeof playersTable.$inferSelect>;
 
   if (audienceType === "all") {
-    players = await db.select().from(playersTable);
+    players = await db.select().from(playersTable).where(eq(playersTable.memberStatus, "active"));
   } else if (audienceType === "teams" && teamIds && teamIds.length > 0) {
     players = await db.select().from(playersTable).where(inArray(playersTable.teamId, teamIds));
   } else if (audienceType === "individuals" && playerIds && playerIds.length > 0) {
@@ -861,7 +1235,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
 });
 
 router.get("/email-blasts/:id/recipients", requireAdminAccess, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const rows = await db
     .select()

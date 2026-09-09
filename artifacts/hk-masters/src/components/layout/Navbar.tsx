@@ -25,7 +25,7 @@ const FUNDRAISING_PATHS = new Set(FUNDRAISING_CHILDREN.map((c) => c.href))
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: Trophy },
   { href: "/teams", label: "Teams", icon: Users },
-  { href: "/players", label: "Players", icon: UserRound },
+  { href: "/players", label: "Members", icon: UserRound },
   { href: "/kits", label: "Kits", icon: Shirt },
   // Fundraising group is rendered separately
   { href: "/fees", label: "Fees", icon: Wallet },

@@ -6,8 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpdateEmailTemplateBody {
-  name: string;
-  subject: string;
-  body: string;
+export interface MembershipInterestImportResult {
+  imported: number;
+  matched: number;
+  needsReview: number;
 }

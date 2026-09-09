@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SendOnboardingInvitesBody {
-  /** Specific player IDs to email. If omitted, emails all players who have not yet been sent an onboarding invite. */
+export interface TravelReminderRequest {
+  /** Specific player IDs to email. If omitted, emails all players missing flight info. */
   playerIds?: number[];
 }

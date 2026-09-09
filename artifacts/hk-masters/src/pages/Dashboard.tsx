@@ -77,12 +77,12 @@ export default function Dashboard() {
   return (
     <PageLayout 
       title="Dashboard overview" 
-      description="Overview of your teams, financials, and upcoming logistics for Rotterdam 2026."
+      description="Overview of members, teams, financials, and upcoming activity."
     >
       {/* Top Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
         <StatCard 
-          title="Total Players" 
+          title="Total Members"
           value={stats.totalPlayers.toString()} 
           icon={<Users className="w-6 h-6 text-blue-500" />}
           trend={`${stats.teamStats.length} teams registered`}
@@ -121,7 +121,7 @@ export default function Dashboard() {
           title="Fees Outstanding" 
           value={hkdPrecise.format(stats.feesAmountOutstanding)} 
           icon={<DollarSign className="w-6 h-6 text-rose-500" />}
-          trend={`${stats.playersPaidCount} of ${stats.totalPlayers} players paid`}
+          trend={`${stats.playersPaidCount} of ${stats.totalPlayers} members paid`}
           onClick={() => navigate("/fees")}
           clickable
           clickableLabel="View Fees"

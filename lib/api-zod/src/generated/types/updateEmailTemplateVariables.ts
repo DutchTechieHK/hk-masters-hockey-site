@@ -5,9 +5,9 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
-import type { UpdateEmailTemplateBody } from "./updateEmailTemplateBody";
+import type { EmailTemplateUpdateInput } from "./emailTemplateUpdateInput";
 
 export interface UpdateEmailTemplateVariables {
   id: number;
-  body: UpdateEmailTemplateBody;
+  body: EmailTemplateUpdateInput;
 }

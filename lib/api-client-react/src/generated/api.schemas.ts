@@ -9,7 +9,7 @@ export interface HealthStatus {
   status: string;
 }
 
-export interface SendTravelRemindersBody {
+export interface TravelReminderRequest {
   /** Specific player IDs to email. If omitted, emails all players missing flight info. */
   playerIds?: number[];
 }
@@ -20,7 +20,7 @@ export interface TravelReminderResult {
   total: number;
 }
 
-export interface SendOnboardingInvitesBody {
+export interface OnboardingInviteRequest {
   /** Specific player IDs to email. If omitted, emails all players who have not yet been sent an onboarding invite. */
   playerIds?: number[];
 }
@@ -32,12 +32,12 @@ export interface OnboardingInviteResult {
   total: number;
 }
 
-export interface SendFeeRemindersBody {
+export interface FeeReminderRequest {
   /** Specific player IDs to email. If omitted, emails all players whose fee is unpaid. */
   playerIds?: number[];
 }
 
-export interface SendInsuranceRemindersBody {
+export interface InsuranceReminderRequest {
   /** Specific player IDs to email. If omitted, emails all players missing insurance info. */
   playerIds?: number[];
 }
@@ -133,6 +133,25 @@ export interface CreateTeam {
   description?: string;
 }
 
+export type PlayerMemberStatus =
+  (typeof PlayerMemberStatus)[keyof typeof PlayerMemberStatus];
+
+export const PlayerMemberStatus = {
+  active: "active",
+  inactive: "inactive",
+  archived: "archived",
+} as const;
+
+export type PlayerCurrentMembershipTier =
+  (typeof PlayerCurrentMembershipTier)[keyof typeof PlayerCurrentMembershipTier];
+
+export const PlayerCurrentMembershipTier = {
+  awaiting_selection: "awaiting_selection",
+  masters_registration: "masters_registration",
+  active_player: "active_player",
+  division_one_squad: "division_one_squad",
+} as const;
+
 export interface Player {
   id: number;
   teamId: number;
@@ -192,6 +211,9 @@ export interface Player {
   notes?: string;
   instagramHandle?: string;
   facebookHandle?: string;
+  memberStatus: PlayerMemberStatus;
+  currentMembershipTier: PlayerCurrentMembershipTier;
+  membershipTierUpdatedAt?: string | null;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
   insuranceReminderSentAt?: string | null;
@@ -199,6 +221,25 @@ export interface Player {
   lastLoginAt?: string | null;
   createdAt?: string;
 }
+
+export type CreatePlayerMemberStatus =
+  (typeof CreatePlayerMemberStatus)[keyof typeof CreatePlayerMemberStatus];
+
+export const CreatePlayerMemberStatus = {
+  active: "active",
+  inactive: "inactive",
+  archived: "archived",
+} as const;
+
+export type CreatePlayerCurrentMembershipTier =
+  (typeof CreatePlayerCurrentMembershipTier)[keyof typeof CreatePlayerCurrentMembershipTier];
+
+export const CreatePlayerCurrentMembershipTier = {
+  awaiting_selection: "awaiting_selection",
+  masters_registration: "masters_registration",
+  active_player: "active_player",
+  division_one_squad: "division_one_squad",
+} as const;
 
 export interface CreatePlayer {
   teamId: number;
@@ -257,7 +298,136 @@ export interface CreatePlayer {
   notes?: string;
   instagramHandle?: string;
   facebookHandle?: string;
+  memberStatus?: CreatePlayerMemberStatus;
+  currentMembershipTier?: CreatePlayerCurrentMembershipTier;
 }
+
+export interface MembershipInitializationResult {
+  players: number;
+  rotterdamParticipations: number;
+  currentParticipations: number;
+  duplicateEmails: string[];
+}
+
+export type PlayerParticipationLegacySnapshot = {
+  [key: string]: unknown;
+} | null;
+
+export interface PlayerParticipation {
+  id: number;
+  playerId: number;
+  seasonId: number;
+  seasonSlug: string;
+  seasonName: string;
+  seasonKind: string;
+  seasonStatus: string;
+  teamId?: number | null;
+  teamName?: string | null;
+  participationStatus: string;
+  membershipTier?: string | null;
+  source: string;
+  legacySnapshot?: PlayerParticipationLegacySnapshot;
+  createdAt: string;
+}
+
+export type MembershipInterestSubmissionMembershipTier =
+  (typeof MembershipInterestSubmissionMembershipTier)[keyof typeof MembershipInterestSubmissionMembershipTier];
+
+export const MembershipInterestSubmissionMembershipTier = {
+  masters_registration: "masters_registration",
+  active_player: "active_player",
+  division_one_squad: "division_one_squad",
+} as const;
+
+export type MembershipInterestSubmissionMatchStatus =
+  (typeof MembershipInterestSubmissionMatchStatus)[keyof typeof MembershipInterestSubmissionMatchStatus];
+
+export const MembershipInterestSubmissionMatchStatus = {
+  matched: "matched",
+  unmatched: "unmatched",
+  ambiguous: "ambiguous",
+  conflict: "conflict",
+  dismissed: "dismissed",
+} as const;
+
+export interface MembershipInterestSubmission {
+  id: number;
+  submittedName: string;
+  submittedEmail: string;
+  submittedPhone?: string | null;
+  membershipTier: MembershipInterestSubmissionMembershipTier;
+  matchedPlayerId?: number | null;
+  matchedPlayerName?: string | null;
+  matchStatus: MembershipInterestSubmissionMatchStatus;
+  submittedAt: string;
+  reviewedAt?: string | null;
+}
+
+export type MembershipInterestInputMembershipTier =
+  (typeof MembershipInterestInputMembershipTier)[keyof typeof MembershipInterestInputMembershipTier];
+
+export const MembershipInterestInputMembershipTier = {
+  masters_registration: "masters_registration",
+  active_player: "active_player",
+  division_one_squad: "division_one_squad",
+} as const;
+
+export type MembershipInterestInputRawData = { [key: string]: unknown };
+
+export interface MembershipInterestInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 3 */
+  email: string;
+  phone?: string;
+  membershipTier: MembershipInterestInputMembershipTier;
+  rawData?: MembershipInterestInputRawData;
+}
+
+export interface MembershipInterestImport {
+  /** @minItems 1 */
+  submissions: MembershipInterestInput[];
+}
+
+export interface MembershipInterestImportResult {
+  imported: number;
+  matched: number;
+  needsReview: number;
+}
+
+export type MembershipInterestResolutionMembershipTier =
+  (typeof MembershipInterestResolutionMembershipTier)[keyof typeof MembershipInterestResolutionMembershipTier];
+
+export const MembershipInterestResolutionMembershipTier = {
+  masters_registration: "masters_registration",
+  active_player: "active_player",
+  division_one_squad: "division_one_squad",
+} as const;
+
+export interface MembershipInterestResolution {
+  playerId?: number | null;
+  membershipTier: MembershipInterestResolutionMembershipTier;
+  dismiss?: boolean;
+}
+
+export type SelfPlayerMemberStatus =
+  (typeof SelfPlayerMemberStatus)[keyof typeof SelfPlayerMemberStatus];
+
+export const SelfPlayerMemberStatus = {
+  active: "active",
+  inactive: "inactive",
+  archived: "archived",
+} as const;
+
+export type SelfPlayerCurrentMembershipTier =
+  (typeof SelfPlayerCurrentMembershipTier)[keyof typeof SelfPlayerCurrentMembershipTier];
+
+export const SelfPlayerCurrentMembershipTier = {
+  awaiting_selection: "awaiting_selection",
+  masters_registration: "masters_registration",
+  active_player: "active_player",
+  division_one_squad: "division_one_squad",
+} as const;
 
 export interface SelfPlayer {
   id: number;
@@ -295,6 +465,8 @@ export interface SelfPlayer {
   instagramHandle?: string;
   facebookHandle?: string;
   feePaid: boolean;
+  memberStatus: SelfPlayerMemberStatus;
+  currentMembershipTier: SelfPlayerCurrentMembershipTier;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;
   /** Outstanding balance (amount due minus amount paid). Null when amount due is not set. */
@@ -347,6 +519,7 @@ export interface UpdateSelfPlayer {
 export interface PlayerPayment {
   id: number;
   playerId: number;
+  seasonId?: number | null;
   amount: number;
   paymentDate: string;
   method?: string | null;
@@ -664,7 +837,7 @@ export interface CreateMatch {
   notes?: string;
 }
 
-export interface EmailBlastItem {
+export interface EmailBlastRecord {
   id: number;
   subject: string;
   body: string;
@@ -687,13 +860,13 @@ export interface EmailTemplate {
   updatedAt: string;
 }
 
-export interface CreateEmailTemplateBody {
+export interface EmailTemplateCreateInput {
   name: string;
   subject: string;
   body: string;
 }
 
-export interface UpdateEmailTemplateBody {
+export interface EmailTemplateUpdateInput {
   name: string;
   subject: string;
   body: string;
@@ -701,7 +874,7 @@ export interface UpdateEmailTemplateBody {
 
 export interface UpdateEmailTemplateVariables {
   id: number;
-  body: UpdateEmailTemplateBody;
+  body: EmailTemplateUpdateInput;
 }
 
 export interface WhatsappTemplate {
@@ -713,13 +886,13 @@ export interface WhatsappTemplate {
   updatedAt: string;
 }
 
-export interface CreateWhatsappTemplateBody {
+export interface WhatsappTemplateCreateInput {
   name: string;
   title: string;
   body: string;
 }
 
-export interface UpdateWhatsappTemplateBody {
+export interface WhatsappTemplateUpdateInput {
   name: string;
   title: string;
   body: string;
@@ -727,7 +900,7 @@ export interface UpdateWhatsappTemplateBody {
 
 export interface UpdateWhatsappTemplateVariables {
   id: number;
-  body: UpdateWhatsappTemplateBody;
+  body: WhatsappTemplateUpdateInput;
 }
 
 export type ListPlayersParams = {

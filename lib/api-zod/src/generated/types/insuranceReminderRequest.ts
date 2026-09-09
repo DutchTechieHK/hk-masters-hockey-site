@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SendTravelRemindersBody {
-  /** Specific player IDs to email. If omitted, emails all players missing flight info. */
+export interface InsuranceReminderRequest {
+  /** Specific player IDs to email. If omitted, emails all players missing insurance info. */
   playerIds?: number[];
 }

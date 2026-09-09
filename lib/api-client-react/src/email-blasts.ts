@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult, QueryKey } from "@tanstack/react-query";
 import { customFetch } from "./custom-fetch";
 import type { ErrorType } from "./custom-fetch";
-import type { EmailBlastItem } from "./generated/api.schemas";
+import type { EmailBlastRecord as EmailBlastItem } from "./generated/api.schemas";
+export type { EmailBlastRecord as EmailBlastItem } from "./generated/api.schemas";
 
 export const getListEmailBlastsQueryKey = () => ["/api/players/email-blasts"] as const;
 

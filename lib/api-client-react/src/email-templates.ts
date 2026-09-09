@@ -2,7 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult, QueryKey, UseMutationOptions, UseMutationResult } from "@tanstack/react-query";
 import { customFetch } from "./custom-fetch";
 import type { ErrorType } from "./custom-fetch";
-import type { EmailTemplate, CreateEmailTemplateBody, UpdateEmailTemplateBody, UpdateEmailTemplateVariables } from "./generated/api.schemas";
+import type {
+  EmailTemplate,
+  EmailTemplateCreateInput as CreateEmailTemplateBody,
+  EmailTemplateUpdateInput as UpdateEmailTemplateBody,
+  UpdateEmailTemplateVariables,
+} from "./generated/api.schemas";
 
 export const getListEmailTemplatesQueryKey = () => ["/api/email-templates"] as const;
 

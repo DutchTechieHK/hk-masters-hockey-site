@@ -6,7 +6,7 @@ import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, pollsTabl
 import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
-import { mapPlayer } from "./players";
+import { ensureMembershipFoundation, mapPlayer } from "./players";
 import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
 
 const router: IRouter = Router();
@@ -75,11 +75,14 @@ router.post("/request-code", requestCodeLimiter, async (req, res) => {
   await db.execute(sql`DELETE FROM player_login_codes WHERE expires_at < NOW() OR consumed_at IS NOT NULL`);
 
   // Look up the player but always respond OK (don't leak which emails exist).
-  const [player] = await db
+  const players = await db
     .select()
     .from(playersTable)
-    .where(sql`lower(${playersTable.email}) = ${email}`)
-    .limit(1);
+    .where(and(
+      sql`lower(trim(${playersTable.email})) = ${email}`,
+      eq(playersTable.memberStatus, "active"),
+    ));
+  const player = players.length === 1 ? players[0] : null;
 
   if (player) {
     // Invalidate any still-valid codes from earlier requests so only the
@@ -97,11 +100,14 @@ router.post("/request-code", requestCodeLimiter, async (req, res) => {
       code,
       expiresInMinutes: CODE_TTL_MINUTES,
     });
+  } else if (players.length > 1) {
+    console.warn(`[player-auth] request-code blocked for ambiguous member email ${email}`);
   } else {
     console.log(`[player-auth] request-code for unknown email ${email} — silently ignored`);
   }
 
   res.json({ ok: true, expiresInMinutes: CODE_TTL_MINUTES });
+  return;
 });
 
 router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
@@ -132,18 +138,22 @@ router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
     return res.status(401).json({ error: "Code is invalid or has expired" });
   }
 
-  const [player] = await db
+  const players = await db
     .select()
     .from(playersTable)
-    .where(sql`lower(${playersTable.email}) = ${email}`)
-    .limit(1);
+    .where(and(
+      sql`lower(trim(${playersTable.email})) = ${email}`,
+      eq(playersTable.memberStatus, "active"),
+    ));
+  const player = players.length === 1 ? players[0] : null;
 
   if (!player) {
-    return res.status(401).json({ error: "No player found for this email" });
+    return res.status(401).json({ error: "This email cannot be matched to one active member. Please contact the team administrator." });
   }
 
   const sessionToken = await createPlayerSession(player.id);
   res.json({ sessionToken, player: { ...mapPlayer(player, null), accessToken: player.accessToken } });
+  return;
 });
 
 router.get("/me", requirePlayerSession, async (req, res) => {
@@ -160,10 +170,14 @@ router.patch("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
 
 router.get("/my-fees", requirePlayerSession, async (req, res) => {
   const player = req.player!;
+  const foundation = await ensureMembershipFoundation();
   const payments = await db
     .select()
     .from(playerPaymentsTable)
-    .where(eq(playerPaymentsTable.playerId, player.id))
+    .where(and(
+      eq(playerPaymentsTable.playerId, player.id),
+      eq(playerPaymentsTable.seasonId, foundation.rotterdamSeasonId),
+    ))
     .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
   const totalPaid = payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
   const amountDue = player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null;
@@ -340,6 +354,7 @@ router.patch("/my-travel-note", requirePlayerSession, async (req, res) => {
   const travelNote = raw === null || raw === undefined ? null : String(raw).trim().slice(0, 120) || null;
   await db.update(playersTable).set({ travelNote }).where(eq(playersTable.id, player.id));
   res.json({ ok: true, travelNote });
+  return;
 });
 
 router.patch("/my-departure-note", requirePlayerSession, async (req, res) => {
@@ -351,6 +366,7 @@ router.patch("/my-departure-note", requirePlayerSession, async (req, res) => {
   const departureNote = raw === null || raw === undefined ? null : String(raw).trim().slice(0, 120) || null;
   await db.update(playersTable).set({ departureNote }).where(eq(playersTable.id, player.id));
   res.json({ ok: true, departureNote });
+  return;
 });
 
 router.get("/polls", requirePlayerSession, async (req, res) => {
@@ -407,6 +423,7 @@ router.get("/polls", requirePlayerSession, async (req, res) => {
       hasVoted: votedPollIds.has(p.id),
     })),
   });
+  return;
 });
 
 router.post("/logout", requirePlayerSession, async (req, res) => {

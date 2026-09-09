@@ -5,6 +5,8 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { PlayerCurrentMembershipTier } from "./playerCurrentMembershipTier";
+import type { PlayerMemberStatus } from "./playerMemberStatus";
 
 export interface Player {
   id: number;
@@ -65,6 +67,9 @@ export interface Player {
   notes?: string;
   instagramHandle?: string;
   facebookHandle?: string;
+  memberStatus: PlayerMemberStatus;
+  currentMembershipTier: PlayerCurrentMembershipTier;
+  membershipTierUpdatedAt?: string | null;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
   insuranceReminderSentAt?: string | null;

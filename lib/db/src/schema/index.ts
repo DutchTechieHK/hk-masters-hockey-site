@@ -1,5 +1,6 @@
 export * from "./teams";
 export * from "./players";
+export * from "./memberships";
 export * from "./player-payments";
 export * from "./kits";
 

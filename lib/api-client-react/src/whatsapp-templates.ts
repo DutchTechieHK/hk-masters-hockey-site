@@ -2,7 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryOptions, UseQueryResult, QueryKey, UseMutationOptions, UseMutationResult } from "@tanstack/react-query";
 import { customFetch } from "./custom-fetch";
 import type { ErrorType } from "./custom-fetch";
-import type { WhatsappTemplate, CreateWhatsappTemplateBody, UpdateWhatsappTemplateBody, UpdateWhatsappTemplateVariables } from "./generated/api.schemas";
+import type {
+  WhatsappTemplate,
+  WhatsappTemplateCreateInput as CreateWhatsappTemplateBody,
+  WhatsappTemplateUpdateInput as UpdateWhatsappTemplateBody,
+  UpdateWhatsappTemplateVariables,
+} from "./generated/api.schemas";
 
 export const getListWhatsappTemplatesQueryKey = () => ["/api/whatsapp-templates"] as const;
 

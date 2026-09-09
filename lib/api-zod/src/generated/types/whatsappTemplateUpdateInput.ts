@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpdateWhatsappTemplateBody {
+export interface WhatsappTemplateUpdateInput {
   name: string;
   title: string;
   body: string;

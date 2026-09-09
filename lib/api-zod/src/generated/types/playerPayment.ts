@@ -9,6 +9,7 @@
 export interface PlayerPayment {
   id: number;
   playerId: number;
+  seasonId?: number | null;
   amount: number;
   paymentDate: string;
   method?: string | null;

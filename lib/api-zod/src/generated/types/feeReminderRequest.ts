@@ -6,7 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SendInsuranceRemindersBody {
-  /** Specific player IDs to email. If omitted, emails all players missing insurance info. */
+export interface FeeReminderRequest {
+  /** Specific player IDs to email. If omitted, emails all players whose fee is unpaid. */
   playerIds?: number[];
 }

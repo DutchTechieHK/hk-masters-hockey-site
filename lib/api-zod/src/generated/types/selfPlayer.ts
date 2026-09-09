@@ -5,6 +5,8 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { SelfPlayerCurrentMembershipTier } from "./selfPlayerCurrentMembershipTier";
+import type { SelfPlayerMemberStatus } from "./selfPlayerMemberStatus";
 
 export interface SelfPlayer {
   id: number;
@@ -42,6 +44,8 @@ export interface SelfPlayer {
   instagramHandle?: string;
   facebookHandle?: string;
   feePaid: boolean;
+  memberStatus: SelfPlayerMemberStatus;
+  currentMembershipTier: SelfPlayerCurrentMembershipTier;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;
   /** Outstanding balance (amount due minus amount paid). Null when amount due is not set. */

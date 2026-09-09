@@ -171,7 +171,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendTravelRemindersBody"
+              $ref: "#/components/schemas/TravelReminderRequest"
       responses:
         "200":
           description: Result of sending reminders
@@ -192,7 +192,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendOnboardingInvitesBody"
+              $ref: "#/components/schemas/OnboardingInviteRequest"
       responses:
         "200":
           description: Result of sending invites
@@ -213,7 +213,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendFeeRemindersBody"
+              $ref: "#/components/schemas/FeeReminderRequest"
       responses:
         "200":
           description: Result of sending reminders
@@ -234,7 +234,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendInsuranceRemindersBody"
+              $ref: "#/components/schemas/InsuranceReminderRequest"
       responses:
         "200":
           description: Result of sending reminders
@@ -244,6 +244,76 @@ paths:
                 $ref: "#/components/schemas/FeeReminderResult"
         "401":
           description: Not authenticated
+
+  /players/membership/initialize:
+    post:
+      operationId: initializeMemberships
+      tags: [players]
+      summary: Create standard seasons and backfill existing member participation records
+      responses:
+        "200":
+          description: Membership foundation is ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipInitializationResult"
+
+  /players/membership/interest-submissions:
+    get:
+      operationId: listMembershipInterestSubmissions
+      tags: [players]
+      summary: List membership interest submissions
+      responses:
+        "200":
+          description: Interest submissions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MembershipInterestSubmission"
+    post:
+      operationId: importMembershipInterestSubmissions
+      tags: [players]
+      summary: Import and match membership interest submissions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembershipInterestImport"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipInterestImportResult"
+
+  /players/membership/interest-submissions/{id}:
+    patch:
+      operationId: resolveMembershipInterestSubmission
+      tags: [players]
+      summary: Resolve an interest submission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MembershipInterestResolution"
+      responses:
+        "200":
+          description: Resolved submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MembershipInterestSubmission"
 
   /players/self/{token}:
     get:
@@ -339,6 +409,27 @@ paths:
         "404":
           description: Player not found
 
+  /players/{id}/participations:
+    get:
+      operationId: listPlayerParticipations
+      tags: [players]
+      summary: List current and archived participation records for a member
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Participation history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlayerParticipation"
+
   /players/{playerId}/payments/{paymentId}:
     delete:
       operationId: deletePlayerPayment
@@ -416,7 +507,7 @@ paths:
     delete:
       operationId: deletePlayer
       tags: [players]
-      summary: Delete a player
+      summary: Archive a member without deleting their permanent identity or linked history
       parameters:
         - name: id
           in: path
@@ -868,7 +959,7 @@ components:
       required:
         - status
 
-    SendTravelRemindersBody:
+    TravelReminderRequest:
       type: object
       properties:
         playerIds:
@@ -891,7 +982,7 @@ components:
         - failed
         - total
 
-    SendOnboardingInvitesBody:
+    OnboardingInviteRequest:
       type: object
       properties:
         playerIds:
@@ -916,7 +1007,7 @@ components:
         - failed
         - total
 
-    SendFeeRemindersBody:
+    FeeReminderRequest:
       type: object
       properties:
         playerIds:
@@ -925,7 +1016,7 @@ components:
             type: integer
           description: Specific player IDs to email. If omitted, emails all players whose fee is unpaid.
 
-    SendInsuranceRemindersBody:
+    InsuranceReminderRequest:
       type: object
       properties:
         playerIds:
@@ -1274,6 +1365,15 @@ components:
           type: string
         facebookHandle:
           type: string
+        memberStatus:
+          type: string
+          enum: [active, inactive, archived]
+        currentMembershipTier:
+          type: string
+          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
+        membershipTierUpdatedAt:
+          type: string
+          nullable: true
         travelReminderSentAt:
           type: string
           nullable: true
@@ -1297,6 +1397,8 @@ components:
         - name
         - email
         - feePaid
+        - memberStatus
+        - currentMembershipTier
 
     CreatePlayer:
       type: object
@@ -1419,11 +1521,154 @@ components:
           type: string
         facebookHandle:
           type: string
+        memberStatus:
+          type: string
+          enum: [active, inactive, archived]
+        currentMembershipTier:
+          type: string
+          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
       required:
         - teamId
         - name
         - email
         - feePaid
+
+    MembershipInitializationResult:
+      type: object
+      properties:
+        players:
+          type: integer
+        rotterdamParticipations:
+          type: integer
+        currentParticipations:
+          type: integer
+        duplicateEmails:
+          type: array
+          items:
+            type: string
+      required: [players, rotterdamParticipations, currentParticipations, duplicateEmails]
+
+    PlayerParticipation:
+      type: object
+      properties:
+        id:
+          type: integer
+        playerId:
+          type: integer
+        seasonId:
+          type: integer
+        seasonSlug:
+          type: string
+        seasonName:
+          type: string
+        seasonKind:
+          type: string
+        seasonStatus:
+          type: string
+        teamId:
+          type: integer
+          nullable: true
+        teamName:
+          type: string
+          nullable: true
+        participationStatus:
+          type: string
+        membershipTier:
+          type: string
+          nullable: true
+        source:
+          type: string
+        legacySnapshot:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          type: string
+      required: [id, playerId, seasonId, seasonSlug, seasonName, seasonKind, seasonStatus, participationStatus, source, createdAt]
+
+    MembershipInterestSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+        submittedName:
+          type: string
+        submittedEmail:
+          type: string
+        submittedPhone:
+          type: string
+          nullable: true
+        membershipTier:
+          type: string
+          enum: [masters_registration, active_player, division_one_squad]
+        matchedPlayerId:
+          type: integer
+          nullable: true
+        matchedPlayerName:
+          type: string
+          nullable: true
+        matchStatus:
+          type: string
+          enum: [matched, unmatched, ambiguous, conflict, dismissed]
+        submittedAt:
+          type: string
+        reviewedAt:
+          type: string
+          nullable: true
+      required: [id, submittedName, submittedEmail, membershipTier, matchStatus, submittedAt]
+
+    MembershipInterestInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          minLength: 3
+        phone:
+          type: string
+        membershipTier:
+          type: string
+          enum: [masters_registration, active_player, division_one_squad]
+        rawData:
+          type: object
+          additionalProperties: true
+      required: [name, email, membershipTier]
+
+    MembershipInterestImport:
+      type: object
+      properties:
+        submissions:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/MembershipInterestInput"
+      required: [submissions]
+
+    MembershipInterestImportResult:
+      type: object
+      properties:
+        imported:
+          type: integer
+        matched:
+          type: integer
+        needsReview:
+          type: integer
+      required: [imported, matched, needsReview]
+
+    MembershipInterestResolution:
+      type: object
+      properties:
+        playerId:
+          type: integer
+          nullable: true
+        membershipTier:
+          type: string
+          enum: [masters_registration, active_player, division_one_squad]
+        dismiss:
+          type: boolean
+      required: [membershipTier]
 
     SelfPlayer:
       type: object
@@ -1500,6 +1745,12 @@ components:
           type: string
         feePaid:
           type: boolean
+        memberStatus:
+          type: string
+          enum: [active, inactive, archived]
+        currentMembershipTier:
+          type: string
+          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
         paymentAmountDue:
           type: number
           nullable: true
@@ -1518,6 +1769,8 @@ components:
         - teamId
         - name
         - feePaid
+        - memberStatus
+        - currentMembershipTier
 
     UpdateSelfPlayer:
       type: object
@@ -1610,6 +1863,9 @@ components:
           type: integer
         playerId:
           type: integer
+        seasonId:
+          type: integer
+          nullable: true
         amount:
           type: number
         paymentDate:
@@ -2016,7 +2272,7 @@ components:
         - kickoffAt
         - status
 
-    EmailBlastItem:
+    EmailBlastRecord:
       type: object
       properties:
         id:
@@ -2077,7 +2333,7 @@ components:
         - createdAt
         - updatedAt
 
-    CreateEmailTemplateBody:
+    EmailTemplateCreateInput:
       type: object
       properties:
         name:
@@ -2091,7 +2347,7 @@ components:
         - subject
         - body
 
-    UpdateEmailTemplateBody:
+    EmailTemplateUpdateInput:
       type: object
       properties:
         name:
@@ -2111,7 +2367,7 @@ components:
         id:
           type: integer
         body:
-          $ref: "#/components/schemas/UpdateEmailTemplateBody"
+          $ref: "#/components/schemas/EmailTemplateUpdateInput"
       required:
         - id
         - body
@@ -2139,7 +2395,7 @@ components:
         - createdAt
         - updatedAt
 
-    CreateWhatsappTemplateBody:
+    WhatsappTemplateCreateInput:
       type: object
       properties:
         name:
@@ -2153,7 +2409,7 @@ components:
         - title
         - body
 
-    UpdateWhatsappTemplateBody:
+    WhatsappTemplateUpdateInput:
       type: object
       properties:
         name:
@@ -2173,7 +2429,7 @@ components:
         id:
           type: integer
         body:
-          $ref: "#/components/schemas/UpdateWhatsappTemplateBody"
+          $ref: "#/components/schemas/WhatsappTemplateUpdateInput"
       required:
         - id
         - body

@@ -35,16 +35,23 @@ declare global {
   }
 }
 
-export async function requirePlayerSession(req: Request, res: Response, next: NextFunction) {
+export async function requirePlayerSession(req: Request, res: Response, next: NextFunction): Promise<void> {
   const token =
     (req.headers["x-player-session"] as string | undefined) ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
   if (!token) {
-    return res.status(401).json({ error: "Not signed in" });
+    res.status(401).json({ error: "Not signed in" });
+    return;
   }
   const player = await lookupSessionPlayer(token);
   if (!player) {
-    return res.status(401).json({ error: "Session expired" });
+    res.status(401).json({ error: "Session expired" });
+    return;
+  }
+  if (player.memberStatus !== "active") {
+    await destroyPlayerSession(token);
+    res.status(403).json({ error: "Membership is not active" });
+    return;
   }
   req.player = player;
   next();

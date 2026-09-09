@@ -5,9 +5,9 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
-import type { UpdateWhatsappTemplateBody } from "./updateWhatsappTemplateBody";
+import type { WhatsappTemplateUpdateInput } from "./whatsappTemplateUpdateInput";
 
 export interface UpdateWhatsappTemplateVariables {
   id: number;
-  body: UpdateWhatsappTemplateBody;
+  body: WhatsappTemplateUpdateInput;
 }

@@ -5,6 +5,12 @@ import { API_BASE } from "../utils/api";
 import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
+const MEMBERSHIP_TIER_LABELS = {
+  awaiting_selection: "Awaiting selection",
+  masters_registration: "Masters Registration",
+  active_player: "Active Player",
+  division_one_squad: "Division 1 Squad",
+};
 
 function formatMatchDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -321,6 +327,20 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold text-gray-900">{player?.name}</h1>
             {player?.teamName && (
               <p className="mt-1 text-sm text-gray-600">{player.teamName}</p>
+            )}
+            {player?.currentMembershipTier && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                  player.memberStatus === "active"
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-gray-200 text-gray-700"
+                }`}>
+                  {player.memberStatus === "active" ? "Active member" : `${player.memberStatus || "inactive"} member`}
+                </span>
+                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                  2026/27 · {MEMBERSHIP_TIER_LABELS[player.currentMembershipTier] || player.currentMembershipTier}
+                </span>
+              </div>
             )}
           </div>
           <button

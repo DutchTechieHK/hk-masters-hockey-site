@@ -5,6 +5,8 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreatePlayerCurrentMembershipTier } from "./createPlayerCurrentMembershipTier";
+import type { CreatePlayerMemberStatus } from "./createPlayerMemberStatus";
 
 export interface CreatePlayer {
   teamId: number;
@@ -63,4 +65,6 @@ export interface CreatePlayer {
   notes?: string;
   instagramHandle?: string;
   facebookHandle?: string;
+  memberStatus?: CreatePlayerMemberStatus;
+  currentMembershipTier?: CreatePlayerCurrentMembershipTier;
 }
