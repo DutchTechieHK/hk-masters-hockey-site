@@ -20,6 +20,16 @@ const TIER_LABELS: Record<string, string> = {
   division_one_squad: "Division 1 Squad",
 }
 
+const CONFLICT_FIELD_LABELS: Record<string, string> = {
+  email: "Email address",
+  dateOfBirth: "Date of birth",
+  position: "Position",
+}
+
+function displayConflictValue(value: string | null) {
+  return value || "Not provided"
+}
+
 type NotionSyncStatus = {
   configured: boolean
   latest: null | {
@@ -210,6 +220,12 @@ export function MembershipInterestPanel({
       if (!response.ok) throw new Error("Could not resolve submission")
       await loadSubmissions()
       onMembersUpdated()
+      toast({
+        title: dismiss ? "Submission dismissed" : "Conflict resolved",
+        description: dismiss
+          ? "This submission will stay dismissed unless the Notion entry changes."
+          : "The selected member and their existing profile values were kept.",
+      })
     } catch (error) {
       toast({ title: (error as Error).message, variant: "destructive" })
     } finally {
@@ -291,14 +307,52 @@ export function MembershipInterestPanel({
       ) : (
         <div className="mt-4 space-y-3">
           {pending.map((submission) => (
-            <div key={submission.id} className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+            <div
+              key={submission.id}
+              className={`rounded-xl border p-3 ${
+                submission.conflictDetails?.some((detail) => detail.kind === "identity")
+                  ? "border-red-200 bg-red-50/60"
+                  : "border-amber-200 bg-amber-50/60"
+              }`}
+            >
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">{submission.submittedName}</p>
                   <p className="text-xs text-muted-foreground">{submission.submittedEmail} · {TIER_LABELS[submission.membershipTier]}</p>
                 </div>
-                <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold capitalize text-amber-800">{submission.matchStatus}</span>
+                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                  submission.conflictDetails?.some((detail) => detail.kind === "identity")
+                    ? "bg-red-100 text-red-800"
+                    : "bg-amber-100 text-amber-800"
+                }`}>
+                  {submission.conflictDetails?.some((detail) => detail.kind === "identity")
+                    ? "Identity conflict"
+                    : submission.matchStatus === "conflict"
+                      ? "Profile conflict"
+                      : submission.matchStatus}
+                </span>
               </div>
+              {submission.conflictDetails && submission.conflictDetails.length > 0 && (
+                <div className="mb-3 overflow-hidden rounded-lg border bg-white">
+                  <div className="grid grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                    <span>Field</span>
+                    <span>Existing member</span>
+                    <span>Notion submission</span>
+                  </div>
+                  {submission.conflictDetails.map((detail) => (
+                    <div
+                      key={detail.field}
+                      className={`grid grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b px-3 py-2 text-sm last:border-b-0 ${
+                        detail.kind === "identity" ? "bg-red-50/50" : ""
+                      }`}
+                    >
+                      <span className="font-medium">{CONFLICT_FIELD_LABELS[detail.field]}</span>
+                      <span className="break-words">{displayConflictValue(detail.existingValue)}</span>
+                      <span className="break-words">{displayConflictValue(detail.submittedValue)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Select
                   value={selectedMembers[submission.id] || (submission.matchedPlayerId ? String(submission.matchedPlayerId) : "")}
@@ -307,8 +361,10 @@ export function MembershipInterestPanel({
                   <option value="">Select existing member…</option>
                   {players.map((player) => <option key={player.id} value={player.id}>{player.name} — {player.email}</option>)}
                 </Select>
-                <Button type="button" size="sm" disabled={busy} onClick={() => void resolve(submission)}>Match</Button>
-                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Dismiss</Button>
+                <Button type="button" size="sm" disabled={busy} onClick={() => void resolve(submission)}>
+                  {submission.matchStatus === "conflict" ? "Keep existing member values" : "Match selected member"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Dismiss submission</Button>
               </div>
             </div>
           ))}

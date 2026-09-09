@@ -241,6 +241,50 @@ type MemberProfile = {
   position: string | null;
 };
 
+export type NotionMemberConflict = {
+  field: "email" | "dateOfBirth" | "position";
+  kind: "identity" | "profile";
+  existingValue: string | null;
+  submittedValue: string | null;
+};
+
+function normalizedValue(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
+export function getNotionMemberConflicts(
+  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position">,
+  current: MemberProfile & { email: string | null },
+): NotionMemberConflict[] {
+  if (!applicant.consent) return [];
+
+  const conflicts: NotionMemberConflict[] = [];
+  const existingEmail = normalizedValue(current.email)?.toLowerCase() ?? null;
+  const submittedEmail = normalizedValue(applicant.email)?.toLowerCase() ?? null;
+  if (!existingEmail || existingEmail !== submittedEmail) {
+    conflicts.push({
+      field: "email",
+      kind: "identity",
+      existingValue: existingEmail,
+      submittedValue: submittedEmail,
+    });
+  }
+
+  for (const field of ["dateOfBirth", "position"] as const) {
+    const submittedValue = normalizedValue(applicant[field]);
+    const existingValue = normalizedValue(current[field]);
+    if (submittedValue && existingValue && submittedValue !== existingValue) {
+      conflicts.push({
+        field,
+        kind: "profile",
+        existingValue,
+        submittedValue,
+      });
+    }
+  }
+  return conflicts;
+}
+
 export function resolveNotionMemberProfile(
   applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position">,
   current: MemberProfile,
@@ -280,6 +324,18 @@ export function hasNotionIdentityConflict(
   return !linkedEmail || linkedEmail.trim().toLowerCase() !== applicantEmail.trim().toLowerCase();
 }
 
+export function resolveNotionMemberSyncProfile(
+  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position">,
+  current: MemberProfile & { email: string | null },
+  notionCreated: boolean,
+): { updates: Partial<MemberProfile>; conflict: boolean } {
+  const resolution = resolveNotionMemberProfile(applicant, current, notionCreated);
+  return {
+    updates: resolution.updates,
+    conflict: resolution.conflict || hasNotionIdentityConflict(current.email, applicant.email),
+  };
+}
+
 async function syncNotionMemberProfile(
   tx: any,
   applicant: NotionApplicant,
@@ -299,14 +355,18 @@ async function syncNotionMemberProfile(
       eq(playerParticipationsTable.source, SOURCE),
     ))
     .limit(1);
-  const resolution = resolveNotionMemberProfile(applicant, player, Boolean(notionParticipation));
+  const resolution = resolveNotionMemberSyncProfile(
+    applicant,
+    player,
+    Boolean(notionParticipation),
+  );
   const updated = Object.keys(resolution.updates).length > 0;
   if (updated) {
     await tx.update(playersTable).set(resolution.updates).where(eq(playersTable.id, playerId));
   }
   return {
     updated,
-    conflict: resolution.conflict || hasNotionIdentityConflict(player.email, applicant.email),
+    conflict: resolution.conflict,
   };
 }
 
@@ -346,6 +406,13 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           ))
           .limit(1);
         if (isNotionSnapshotCurrent(existingSubmission?.sourceUpdatedAt ?? null, applicant.sourceUpdatedAt)) {
+          if (
+            existingSubmission?.matchStatus === "matched" ||
+            existingSubmission?.matchStatus === "dismissed"
+          ) {
+            counts.skipped++;
+            continue;
+          }
           if (existingSubmission?.matchedPlayerId && isValidNotionApplicant(applicant)) {
             const profile = await syncNotionMemberProfile(
               tx,

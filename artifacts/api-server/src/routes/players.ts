@@ -41,6 +41,7 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
 import {
   getLatestNotionMemberSync,
+  getNotionMemberConflicts,
   isNotionMemberSyncConfigured,
   NotionMemberSyncAlreadyRunningError,
   shouldApplyImportedTier,
@@ -329,8 +330,32 @@ async function syncCurrentParticipation(playerId: number) {
 
 function mapInterestSubmission(row: {
   submission: typeof membershipInterestSubmissionsTable.$inferSelect;
-  matchedPlayerName: string | null;
+  matchedPlayer: Pick<
+    typeof playersTable.$inferSelect,
+    "name" | "email" | "dateOfBirth" | "position"
+  > | null;
 }) {
+  const rawData = row.submission.rawData && typeof row.submission.rawData === "object"
+    ? row.submission.rawData as Record<string, unknown>
+    : {};
+  const hasConsent = row.submission.source === "notion_join" &&
+    rawData.reason !== "consent_not_granted";
+  const notionPosition = Array.isArray(rawData["Position(s)"])
+    ? rawData["Position(s)"].map(String).join(", ")
+    : null;
+  const notionDateOfBirth = typeof rawData["Year of Birth"] === "string"
+    ? rawData["Year of Birth"].slice(0, 10)
+    : null;
+  const conflictDetails = row.submission.matchStatus === "conflict" &&
+    hasConsent &&
+    row.matchedPlayer
+    ? getNotionMemberConflicts({
+        consent: true,
+        email: row.submission.submittedEmail,
+        dateOfBirth: notionDateOfBirth,
+        position: notionPosition,
+      }, row.matchedPlayer)
+    : [];
   return {
     id: row.submission.id,
     submittedName: row.submission.submittedName,
@@ -338,12 +363,13 @@ function mapInterestSubmission(row: {
     submittedPhone: row.submission.submittedPhone,
     membershipTier: row.submission.membershipTier,
     matchedPlayerId: row.submission.matchedPlayerId,
-    matchedPlayerName: row.matchedPlayerName,
+    matchedPlayerName: row.matchedPlayer?.name ?? null,
     matchStatus: row.submission.matchStatus,
     source: row.submission.source,
     externalId: row.submission.externalId,
     submittedAt: row.submission.submittedAt.toISOString(),
     reviewedAt: row.submission.reviewedAt?.toISOString() ?? null,
+    conflictDetails,
   };
 }
 
@@ -396,7 +422,12 @@ router.post("/membership/notion-sync", requireAdminAccess, async (_req, res) => 
 router.get("/membership/interest-submissions", requireAdminAccess, async (_req, res) => {
   const rows = await db.select({
     submission: membershipInterestSubmissionsTable,
-    matchedPlayerName: playersTable.name,
+    matchedPlayer: {
+      name: playersTable.name,
+      email: playersTable.email,
+      dateOfBirth: playersTable.dateOfBirth,
+      position: playersTable.position,
+    },
   }).from(membershipInterestSubmissionsTable)
     .leftJoin(playersTable, eq(membershipInterestSubmissionsTable.matchedPlayerId, playersTable.id))
     .orderBy(desc(membershipInterestSubmissionsTable.submittedAt));
@@ -524,7 +555,7 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
     }).where(eq(membershipInterestSubmissionsTable.id, id)).returning();
     return submission;
   });
-  res.json(mapInterestSubmission({ submission: updated, matchedPlayerName: matchedPlayer?.name ?? null }));
+  res.json(mapInterestSubmission({ submission: updated, matchedPlayer }));
 });
 
 router.get("/:id/participations", requireAdminAccess, async (req, res) => {

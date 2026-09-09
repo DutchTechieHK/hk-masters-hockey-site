@@ -3,9 +3,11 @@ import {
   isValidNotionApplicant,
   isNotionSnapshotCurrent,
   hasNotionIdentityConflict,
+  getNotionMemberConflicts,
   notionApplicantStorageData,
   pageToNotionApplicant,
   resolveNotionMemberProfile,
+  resolveNotionMemberSyncProfile,
   resolveProfileSubmissionStatus,
   shouldApplyImportedTier,
   validateNotionMemberProperties,
@@ -104,6 +106,29 @@ describe("Notion member sync rules", () => {
     });
   });
 
+  it("updates a changed Notion-created profile without sending it to reconciliation", () => {
+    expect(resolveNotionMemberSyncProfile(
+      {
+        consent: true,
+        email: "member@example.com",
+        dateOfBirth: "1984-06-12",
+        position: "Forward, Midfield",
+      },
+      {
+        email: "member@example.com",
+        dateOfBirth: "1985-07-13",
+        position: "Defender",
+      },
+      true,
+    )).toEqual({
+      updates: {
+        dateOfBirth: "1984-06-12",
+        position: "Forward, Midfield",
+      },
+      conflict: false,
+    });
+  });
+
   it("fills blank profile fields without overwriting a pre-existing member conflict", () => {
     expect(resolveNotionMemberProfile(
       { consent: true, dateOfBirth: "1984-06-12", position: "Forward" },
@@ -134,5 +159,47 @@ describe("Notion member sync rules", () => {
     expect(hasNotionIdentityConflict("member@example.com", "changed@example.com")).toBe(true);
     expect(hasNotionIdentityConflict(" MEMBER@EXAMPLE.COM ", "member@example.com")).toBe(false);
     expect(resolveProfileSubmissionStatus("conflict", true)).toBeNull();
+  });
+
+  it("explains identity and profile conflicts with both values", () => {
+    expect(getNotionMemberConflicts(
+      {
+        consent: true,
+        email: "submitted@example.com",
+        dateOfBirth: "1984-06-12",
+        position: "Forward",
+      },
+      {
+        email: "existing@example.com",
+        dateOfBirth: "1985-07-13",
+        position: "Goalkeeper",
+      },
+    )).toEqual([
+      {
+        field: "email",
+        kind: "identity",
+        existingValue: "existing@example.com",
+        submittedValue: "submitted@example.com",
+      },
+      {
+        field: "dateOfBirth",
+        kind: "profile",
+        existingValue: "1985-07-13",
+        submittedValue: "1984-06-12",
+      },
+      {
+        field: "position",
+        kind: "profile",
+        existingValue: "Goalkeeper",
+        submittedValue: "Forward",
+      },
+    ]);
+  });
+
+  it("does not expose conflict values when consent was not granted", () => {
+    expect(getNotionMemberConflicts(
+      { consent: false, email: "private@example.com", dateOfBirth: "1984-06-12", position: "Forward" },
+      { email: "existing@example.com", dateOfBirth: "1985-07-13", position: "Goalkeeper" },
+    )).toEqual([]);
   });
 });

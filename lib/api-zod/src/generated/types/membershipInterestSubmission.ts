@@ -5,6 +5,7 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { MembershipInterestConflictDetail } from "./membershipInterestConflictDetail";
 import type { MembershipInterestSubmissionMatchStatus } from "./membershipInterestSubmissionMatchStatus";
 import type { MembershipInterestSubmissionMembershipTier } from "./membershipInterestSubmissionMembershipTier";
 
@@ -21,4 +22,5 @@ export interface MembershipInterestSubmission {
   externalId?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
+  conflictDetails: MembershipInterestConflictDetail[];
 }

@@ -1735,7 +1735,28 @@ components:
         reviewedAt:
           type: string
           nullable: true
-      required: [id, submittedName, submittedEmail, membershipTier, matchStatus, source, submittedAt]
+        conflictDetails:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipInterestConflictDetail"
+      required: [id, submittedName, submittedEmail, membershipTier, matchStatus, source, submittedAt, conflictDetails]
+
+    MembershipInterestConflictDetail:
+      type: object
+      properties:
+        field:
+          type: string
+          enum: [email, dateOfBirth, position]
+        kind:
+          type: string
+          enum: [identity, profile]
+        existingValue:
+          type: string
+          nullable: true
+        submittedValue:
+          type: string
+          nullable: true
+      required: [field, kind, existingValue, submittedValue]
 
     MembershipInterestInput:
       type: object

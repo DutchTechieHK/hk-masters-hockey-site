@@ -431,6 +431,14 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   externalId: zod.string().nullish(),
   submittedAt: zod.string(),
   reviewedAt: zod.string().nullish(),
+  conflictDetails: zod.array(
+    zod.object({
+      field: zod.enum(["email", "dateOfBirth", "position"]),
+      kind: zod.enum(["identity", "profile"]),
+      existingValue: zod.string().nullable(),
+      submittedValue: zod.string().nullable(),
+    }),
+  ),
 });
 export const ListMembershipInterestSubmissionsResponse = zod.array(
   ListMembershipInterestSubmissionsResponseItem,
@@ -545,6 +553,14 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   externalId: zod.string().nullish(),
   submittedAt: zod.string(),
   reviewedAt: zod.string().nullish(),
+  conflictDetails: zod.array(
+    zod.object({
+      field: zod.enum(["email", "dateOfBirth", "position"]),
+      kind: zod.enum(["identity", "profile"]),
+      existingValue: zod.string().nullable(),
+      submittedValue: zod.string().nullable(),
+    }),
+  ),
 });
 
 /**

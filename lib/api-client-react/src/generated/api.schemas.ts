@@ -358,6 +358,30 @@ export const MembershipInterestSubmissionMatchStatus = {
   dismissed: "dismissed",
 } as const;
 
+export type MembershipInterestConflictDetailField =
+  (typeof MembershipInterestConflictDetailField)[keyof typeof MembershipInterestConflictDetailField];
+
+export const MembershipInterestConflictDetailField = {
+  email: "email",
+  dateOfBirth: "dateOfBirth",
+  position: "position",
+} as const;
+
+export type MembershipInterestConflictDetailKind =
+  (typeof MembershipInterestConflictDetailKind)[keyof typeof MembershipInterestConflictDetailKind];
+
+export const MembershipInterestConflictDetailKind = {
+  identity: "identity",
+  profile: "profile",
+} as const;
+
+export interface MembershipInterestConflictDetail {
+  field: MembershipInterestConflictDetailField;
+  kind: MembershipInterestConflictDetailKind;
+  existingValue: string | null;
+  submittedValue: string | null;
+}
+
 export interface MembershipInterestSubmission {
   id: number;
   submittedName: string;
@@ -371,6 +395,7 @@ export interface MembershipInterestSubmission {
   externalId?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
+  conflictDetails: MembershipInterestConflictDetail[];
 }
 
 export type MembershipInterestInputMembershipTier =
