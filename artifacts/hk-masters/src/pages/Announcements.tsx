@@ -127,6 +127,10 @@ export default function Announcements() {
   const { toast } = useToast()
   const { data: teams = [] } = useListTeams()
   const { data: allPlayers = [] } = useListPlayers()
+  const activePlayers = useMemo(
+    () => allPlayers.filter(player => player.memberStatus === "active"),
+    [allPlayers],
+  )
 
   // Tab state
   const [activeTab, setActiveTab] = useState<"announcements" | "email" | "whatsapp">("announcements")
@@ -396,24 +400,24 @@ export default function Announcements() {
   // --- Email handlers ---
 
   const recipients = useMemo(() => {
-    if (emailForm.audienceType === "all") return allPlayers
+    if (emailForm.audienceType === "all") return activePlayers
     if (emailForm.audienceType === "teams") {
       if (emailForm.teamIds.length === 0) return []
-      return allPlayers.filter((p) => emailForm.teamIds.includes(p.teamId))
+      return activePlayers.filter((p) => emailForm.teamIds.includes(p.teamId))
     }
     if (emailForm.audienceType === "individuals") {
       if (emailForm.playerIds.length === 0) return []
-      return allPlayers.filter((p) => emailForm.playerIds.includes(p.id))
+      return activePlayers.filter((p) => emailForm.playerIds.includes(p.id))
     }
     return []
-  }, [emailForm.audienceType, emailForm.teamIds, emailForm.playerIds, allPlayers])
+  }, [emailForm.audienceType, emailForm.teamIds, emailForm.playerIds, activePlayers])
 
   const filteredPlayers = useMemo(() => {
     const q = playerSearch.toLowerCase()
-    return allPlayers.filter(
+    return activePlayers.filter(
       (p) => p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q) || (p.teamName ?? "").toLowerCase().includes(q)
     )
-  }, [allPlayers, playerSearch])
+  }, [activePlayers, playerSearch])
 
   const toggleTeam = (teamId: number) => {
     setEmailForm((f) => ({

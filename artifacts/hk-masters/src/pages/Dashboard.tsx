@@ -118,7 +118,7 @@ export default function Dashboard() {
           clickableLabel="View Events"
         />
         <StatCard 
-          title="Fees Outstanding" 
+          title="2026/27 Fees Outstanding"
           value={hkdPrecise.format(stats.feesAmountOutstanding)} 
           icon={<DollarSign className="w-6 h-6 text-rose-500" />}
           trend={`${stats.playersPaidCount} of ${stats.totalPlayers} members paid`}

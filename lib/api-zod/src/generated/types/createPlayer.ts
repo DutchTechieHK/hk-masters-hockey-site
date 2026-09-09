@@ -60,6 +60,7 @@ export interface CreatePlayer {
   paymentAmountDue?: number;
   paymentAmountPaid?: number;
   paymentDate?: string;
+  membershipFeeAmountDue?: number | null;
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;

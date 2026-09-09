@@ -3,7 +3,12 @@ import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 
-function formatMoney(n) {
+function formatHkd(n) {
+  if (n == null) return "—";
+  return `HK$${Number(n).toFixed(2)}`;
+}
+
+function formatEur(n) {
   if (n == null) return "—";
   return `€${Number(n).toFixed(2)}`;
 }
@@ -68,7 +73,7 @@ export default function MyFees() {
     );
   }
 
-  const { amountDue, amountPaid, balance, feePaid, payments } = data;
+  const { seasonName, amountDue, amountPaid, balance, feePaid, payments, archive } = data;
   const hasInfo = amountDue != null || amountPaid > 0;
 
   return (
@@ -76,7 +81,7 @@ export default function MyFees() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
           <Link href="/dashboard" className="text-sm text-green-700 hover:underline">← Back to dashboard</Link>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900">My fees</h1>
+           <h1 className="mt-2 text-3xl font-bold text-gray-900">{seasonName} fees</h1>
           {player?.teamName && <p className="mt-1 text-sm text-gray-600">{player.name} · {player.teamName}</p>}
         </div>
 
@@ -84,7 +89,7 @@ export default function MyFees() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
             <p className="text-3xl mb-2">💳</p>
             <p className="text-gray-700 font-medium">Your fee details haven't been set up yet.</p>
-            <p className="mt-2 text-sm text-gray-500">A team admin will add your tournament fee shortly.</p>
+             <p className="mt-2 text-sm text-gray-500">A team admin will add your 2026/27 membership fee shortly.</p>
           </div>
         ) : (
           <div className={`rounded-2xl shadow-sm border p-6 sm:p-8 ${
@@ -102,17 +107,17 @@ export default function MyFees() {
                 <p className={`mt-1 text-4xl font-bold ${
                   feePaid ? "text-emerald-700" : balance && balance > 0 ? "text-amber-800" : "text-gray-900"
                 }`}>
-                  {feePaid ? formatMoney(amountDue ?? amountPaid) : formatMoney(balance ?? amountPaid)}
+                   {feePaid ? formatHkd(amountDue ?? amountPaid) : formatHkd(balance ?? amountPaid)}
                 </p>
                 {feePaid && <p className="mt-2 text-sm text-emerald-700">Thanks — you're all square. ✅</p>}
               </div>
               <div className="text-right text-sm text-gray-700 space-y-1">
                 {amountDue != null && (
-                  <p><span className="text-gray-500">Total due:</span> <span className="font-semibold">{formatMoney(amountDue)}</span></p>
+                   <p><span className="text-gray-500">Total due:</span> <span className="font-semibold">{formatHkd(amountDue)}</span></p>
                 )}
-                <p><span className="text-gray-500">Paid:</span> <span className="font-semibold">{formatMoney(amountPaid)}</span></p>
+                 <p><span className="text-gray-500">Paid:</span> <span className="font-semibold">{formatHkd(amountPaid)}</span></p>
                 {balance != null && (
-                  <p><span className="text-gray-500">Balance:</span> <span className="font-semibold">{formatMoney(balance)}</span></p>
+                   <p><span className="text-gray-500">Balance:</span> <span className="font-semibold">{formatHkd(balance)}</span></p>
                 )}
               </div>
             </div>
@@ -125,7 +130,7 @@ export default function MyFees() {
         )}
 
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Payment history</h2>
+           <h2 className="text-lg font-semibold text-gray-900 mb-3">{seasonName} payment history</h2>
           {payments.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-6 text-sm text-gray-500 text-center">
               No payments recorded yet.
@@ -145,7 +150,7 @@ export default function MyFees() {
                   {payments.map((p) => (
                     <tr key={p.id}>
                       <td className="px-4 py-3 text-gray-700">{formatDate(p.paymentDate)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatMoney(p.amount)}</td>
+                       <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatHkd(p.amount)}</td>
                       <td className="px-4 py-3 text-gray-600">{p.method || "—"}</td>
                       <td className="px-4 py-3 text-gray-600">{p.notes || "—"}</td>
                     </tr>
@@ -154,6 +159,40 @@ export default function MyFees() {
               </table>
             </div>
           )}
+        </div>
+
+        <div className="mt-10 border-t border-gray-200 pt-8">
+          <h2 className="text-lg font-semibold text-gray-900">{archive.seasonName} archive</h2>
+          <p className="mt-1 text-sm text-gray-500">These archived tournament payments do not count toward your 2026/27 membership balance.</p>
+          <div className="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-gray-100 bg-white p-4 text-sm">
+            <div><span className="block text-gray-500">Due</span><strong>{formatEur(archive.amountDue)}</strong></div>
+            <div><span className="block text-gray-500">Paid</span><strong>{formatEur(archive.amountPaid)}</strong></div>
+            <div><span className="block text-gray-500">Balance</span><strong>{formatEur(archive.balance)}</strong></div>
+          </div>
+          <div className="mt-3 bg-white rounded-xl border border-gray-100 overflow-hidden">
+            {archive.payments.length === 0 ? (
+              <p className="p-6 text-sm text-gray-500 text-center">No archived Rotterdam payments recorded.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
+                  <tr>
+                    <th className="text-left px-4 py-2 font-semibold">Date</th>
+                    <th className="text-right px-4 py-2 font-semibold">Amount</th>
+                    <th className="text-left px-4 py-2 font-semibold">Method</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {archive.payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td className="px-4 py-3 text-gray-700">{formatDate(payment.paymentDate)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatEur(payment.amount)}</td>
+                      <td className="px-4 py-3 text-gray-600">{payment.method || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
     </div>

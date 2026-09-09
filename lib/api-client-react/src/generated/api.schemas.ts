@@ -206,6 +206,11 @@ export interface Player {
   paymentAmountDue?: number;
   paymentAmountPaid?: number;
   paymentDate?: string;
+  membershipFeeAmountDue?: number | null;
+  membershipFeeAmountPaid?: number;
+  membershipFeeBalance?: number | null;
+  membershipFeePaid?: boolean;
+  membershipFeePaymentDate?: string | null;
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
@@ -293,6 +298,7 @@ export interface CreatePlayer {
   paymentAmountDue?: number;
   paymentAmountPaid?: number;
   paymentDate?: string;
+  membershipFeeAmountDue?: number | null;
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;
@@ -520,6 +526,8 @@ export interface PlayerPayment {
   id: number;
   playerId: number;
   seasonId?: number | null;
+  seasonSlug: string;
+  seasonName: string;
   amount: number;
   paymentDate: string;
   method?: string | null;

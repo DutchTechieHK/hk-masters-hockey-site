@@ -62,6 +62,11 @@ export interface Player {
   paymentAmountDue?: number;
   paymentAmountPaid?: number;
   paymentDate?: string;
+  membershipFeeAmountDue?: number | null;
+  membershipFeeAmountPaid?: number;
+  membershipFeeBalance?: number | null;
+  membershipFeePaid?: boolean;
+  membershipFeePaymentDate?: string | null;
   dietaryRequirements?: string;
   medicalNotes?: string;
   notes?: string;

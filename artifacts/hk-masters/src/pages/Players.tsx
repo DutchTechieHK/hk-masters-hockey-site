@@ -907,7 +907,7 @@ export default function Players() {
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
                 <th className="px-4 py-4 font-semibold hidden lg:table-cell">Nationality</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
-                <th className="px-4 py-4 font-semibold">Fee</th>
+                <th className="px-4 py-4 font-semibold">2026/27 Fee</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Insurance</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Passport Expiry</th>
                 <th className="px-4 py-4 font-semibold text-right">Actions</th>
@@ -1008,9 +1008,9 @@ export default function Players() {
                           <span className="text-xs text-muted-foreground">—</span>
                         )}
                       </td>
-                      {/* Fee */}
+                      {/* 2026/27 membership fee */}
                       <td className="px-4 py-4">
-                        {player.feePaid ? (
+                        {player.membershipFeePaid ? (
                           <Badge variant="success" className="gap-1 whitespace-nowrap"><CheckCircle className="w-3 h-3" /> Paid</Badge>
                         ) : (
                           <Badge variant="destructive" className="gap-1 whitespace-nowrap bg-rose-100 text-rose-800"><XCircle className="w-3 h-3" /> Unpaid</Badge>

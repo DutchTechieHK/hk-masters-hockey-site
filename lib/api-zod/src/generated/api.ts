@@ -218,6 +218,11 @@ export const ListPlayersResponseItem = zod.object({
   paymentAmountDue: zod.number().optional(),
   paymentAmountPaid: zod.number().optional(),
   paymentDate: zod.string().optional(),
+  membershipFeeAmountDue: zod.number().nullish(),
+  membershipFeeAmountPaid: zod.number().optional(),
+  membershipFeeBalance: zod.number().nullish(),
+  membershipFeePaid: zod.boolean().optional(),
+  membershipFeePaymentDate: zod.string().nullish(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
@@ -295,6 +300,7 @@ export const CreatePlayerBody = zod.object({
   paymentAmountDue: zod.number().optional(),
   paymentAmountPaid: zod.number().optional(),
   paymentDate: zod.string().optional(),
+  membershipFeeAmountDue: zod.number().nullish(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
@@ -670,6 +676,8 @@ export const ListPlayerPaymentsResponseItem = zod.object({
   id: zod.number(),
   playerId: zod.number(),
   seasonId: zod.number().nullish(),
+  seasonSlug: zod.string(),
+  seasonName: zod.string(),
   amount: zod.number(),
   paymentDate: zod.string(),
   method: zod.string().nullish(),
@@ -708,6 +716,56 @@ export const CreatePlayerPaymentBody = zod.object({
 });
 
 /**
+ * @summary List 2026/27 membership payments for a player
+ */
+export const ListMembershipPaymentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListMembershipPaymentsResponseItem = zod.object({
+  id: zod.number(),
+  playerId: zod.number(),
+  seasonId: zod.number().nullish(),
+  seasonSlug: zod.string(),
+  seasonName: zod.string(),
+  amount: zod.number(),
+  paymentDate: zod.string(),
+  method: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  createdAt: zod.string().optional(),
+});
+export const ListMembershipPaymentsResponse = zod.array(
+  ListMembershipPaymentsResponseItem,
+);
+
+/**
+ * @summary Record a 2026/27 membership payment for a player
+ */
+export const CreateMembershipPaymentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const createMembershipPaymentBodyAmountExclusiveMin = 0;
+
+export const createMembershipPaymentBodyPaymentDateRegExp = new RegExp(
+  "^\\d{4}-\\d{2}-\\d{2}$",
+);
+
+export const CreateMembershipPaymentBody = zod.object({
+  amount: zod
+    .number()
+    .gt(createMembershipPaymentBodyAmountExclusiveMin)
+    .describe("Payment amount in HKD; must be greater than 0."),
+  paymentDate: zod
+    .string()
+    .min(1)
+    .regex(createMembershipPaymentBodyPaymentDateRegExp)
+    .describe("Payment date as YYYY-MM-DD."),
+  method: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
  * @summary List current and archived participation records for a member
  */
 export const ListPlayerParticipationsParams = zod.object({
@@ -738,6 +796,14 @@ export const ListPlayerParticipationsResponse = zod.array(
  * @summary Delete a recorded payment for a player
  */
 export const DeletePlayerPaymentParams = zod.object({
+  playerId: zod.coerce.number(),
+  paymentId: zod.coerce.number(),
+});
+
+/**
+ * @summary Delete a recorded 2026/27 membership payment
+ */
+export const DeleteMembershipPaymentParams = zod.object({
   playerId: zod.coerce.number(),
   paymentId: zod.coerce.number(),
 });
@@ -812,6 +878,7 @@ export const UpdatePlayerBody = zod.object({
   paymentAmountDue: zod.number().optional(),
   paymentAmountPaid: zod.number().optional(),
   paymentDate: zod.string().optional(),
+  membershipFeeAmountDue: zod.number().nullish(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),
@@ -882,6 +949,11 @@ export const UpdatePlayerResponse = zod.object({
   paymentAmountDue: zod.number().optional(),
   paymentAmountPaid: zod.number().optional(),
   paymentDate: zod.string().optional(),
+  membershipFeeAmountDue: zod.number().nullish(),
+  membershipFeeAmountPaid: zod.number().optional(),
+  membershipFeeBalance: zod.number().nullish(),
+  membershipFeePaid: zod.boolean().optional(),
+  membershipFeePaymentDate: zod.string().nullish(),
   dietaryRequirements: zod.string().optional(),
   medicalNotes: zod.string().optional(),
   notes: zod.string().optional(),

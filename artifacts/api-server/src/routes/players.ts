@@ -38,6 +38,7 @@ import {
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { buildSeasonFeeAccount } from "../utils/membershipFees";
 
 const router = Router();
 
@@ -57,7 +58,20 @@ const emailUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024, files: 5 },
 });
 
-export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null, lastSessionAt?: string | null) {
+type MembershipFeeAccount = {
+  amountDue: number | null;
+  amountPaid: number;
+  balance: number | null;
+  feePaid: boolean;
+  latestPaymentDate: string | null;
+};
+
+export function mapPlayer(
+  player: typeof playersTable.$inferSelect,
+  teamName?: string | null,
+  lastSessionAt?: string | null,
+  membershipFee?: MembershipFeeAccount,
+) {
   const t1 = player.lastPortalAccessAt?.toISOString() ?? null;
   const t2 = lastSessionAt ?? null;
   const lastLoginAt = t1 && t2 ? (t1 > t2 ? t1 : t2) : (t1 ?? t2);
@@ -115,6 +129,11 @@ export function mapPlayer(player: typeof playersTable.$inferSelect, teamName?: s
     paymentAmountDue: player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : undefined,
     paymentAmountPaid: player.paymentAmountPaid ? parseFloat(player.paymentAmountPaid) : undefined,
     paymentDate: player.paymentDate,
+    membershipFeeAmountDue: membershipFee?.amountDue ?? null,
+    membershipFeeAmountPaid: membershipFee?.amountPaid ?? 0,
+    membershipFeeBalance: membershipFee?.balance ?? null,
+    membershipFeePaid: membershipFee?.feePaid ?? false,
+    membershipFeePaymentDate: membershipFee?.latestPaymentDate ?? null,
     dietaryRequirements: player.dietaryRequirements,
     medicalNotes: player.medicalNotes,
     notes: player.notes,
@@ -246,6 +265,42 @@ export async function ensureMembershipFoundation() {
     currentSeasonId: current.id,
     rotterdamSeasonId: rotterdam.id,
   };
+}
+
+async function getMembershipFeeAccounts(playerIds: number[]): Promise<Map<number, MembershipFeeAccount>> {
+  const accounts = new Map<number, MembershipFeeAccount>();
+  if (playerIds.length === 0) return accounts;
+  const foundation = await ensureMembershipFoundation();
+  const participations = await db.select({
+    playerId: playerParticipationsTable.playerId,
+    amountDue: playerParticipationsTable.amountDue,
+  }).from(playerParticipationsTable).where(and(
+    eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+    inArray(playerParticipationsTable.playerId, playerIds),
+  ));
+  const payments = await db.select().from(playerPaymentsTable).where(and(
+    eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
+    inArray(playerPaymentsTable.playerId, playerIds),
+  )).orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
+  const paymentsByPlayer = new Map<number, typeof payments>();
+  for (const payment of payments) {
+    const rows = paymentsByPlayer.get(payment.playerId) ?? [];
+    rows.push(payment);
+    paymentsByPlayer.set(payment.playerId, rows);
+  }
+  for (const participation of participations) {
+    const rows = paymentsByPlayer.get(participation.playerId) ?? [];
+    const amountDue = participation.amountDue == null ? null : parseFloat(participation.amountDue);
+    const account = buildSeasonFeeAccount(foundation.currentSeasonId, amountDue, rows);
+    accounts.set(participation.playerId, {
+      amountDue,
+      amountPaid: account.amountPaid,
+      balance: account.balance,
+      feePaid: account.feePaid,
+      latestPaymentDate: account.latestPaymentDate,
+    });
+  }
+  return accounts;
 }
 
 async function syncCurrentParticipation(playerId: number) {
@@ -455,7 +510,9 @@ router.get("/", requireAdminAccess, async (req, res) => {
       .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
       .orderBy(playersTable.id);
   }
-  res.json(players.map(({ player, teamName, lastLoginAt }) => mapPlayer(player, teamName, lastLoginAt)));
+  const membershipFees = await getMembershipFeeAccounts(players.map(({ player }) => player.id));
+  res.json(players.map(({ player, teamName, lastLoginAt }) =>
+    mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id))));
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {
@@ -731,10 +788,16 @@ router.patch("/self/:token", async (req, res) => {
   }
 });
 
-function mapPayment(p: typeof playerPaymentsTable.$inferSelect) {
+function mapPayment(
+  p: typeof playerPaymentsTable.$inferSelect,
+  season: typeof seasonsTable.$inferSelect,
+) {
   return {
     id: p.id,
     playerId: p.playerId,
+    seasonId: p.seasonId,
+    seasonSlug: season.slug,
+    seasonName: season.name,
     amount: parseFloat(p.amount),
     paymentDate: p.paymentDate,
     method: p.method,
@@ -782,12 +845,15 @@ router.get("/:id/payments", requireAdminAccess, async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  const foundation = await ensureMembershipFoundation();
+  const seasonId = foundation.rotterdamSeasonId;
   const payments = await db
-    .select()
+    .select({ payment: playerPaymentsTable, season: seasonsTable })
     .from(playerPaymentsTable)
-    .where(eq(playerPaymentsTable.playerId, id))
+    .innerJoin(seasonsTable, eq(playerPaymentsTable.seasonId, seasonsTable.id))
+    .where(and(eq(playerPaymentsTable.playerId, id), eq(playerPaymentsTable.seasonId, seasonId)))
     .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
-  res.json(payments.map(mapPayment));
+  res.json(payments.map(({ payment, season }) => mapPayment(payment, season)));
 });
 
 router.post("/:id/payments", requireAdminAccess, async (req, res) => {
@@ -799,32 +865,96 @@ router.post("/:id/payments", requireAdminAccess, async (req, res) => {
     return;
   }
   const foundation = await ensureMembershipFoundation();
+  const seasonId = foundation.rotterdamSeasonId;
   const [created] = await db
     .insert(playerPaymentsTable)
     .values({
       playerId: id,
-      seasonId: foundation.rotterdamSeasonId,
+      seasonId,
       amount: body.amount.toFixed(2),
       paymentDate: body.paymentDate,
       method: body.method ?? "",
       notes: body.notes ?? "",
     })
     .returning();
-  await recomputePlayerAggregates(id);
-  res.status(201).json(mapPayment(created));
+  if (seasonId === foundation.rotterdamSeasonId) await recomputePlayerAggregates(id);
+  const [season] = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId));
+  res.status(201).json(mapPayment(created, season));
+});
+
+router.get("/:id/membership-payments", requireAdminAccess, async (req, res) => {
+  const { id } = ListPlayerPaymentsParams.parse(req.params);
+  const [player] = await db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.id, id));
+  if (!player) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const foundation = await ensureMembershipFoundation();
+  const payments = await db
+    .select({ payment: playerPaymentsTable, season: seasonsTable })
+    .from(playerPaymentsTable)
+    .innerJoin(seasonsTable, eq(playerPaymentsTable.seasonId, seasonsTable.id))
+    .where(and(
+      eq(playerPaymentsTable.playerId, id),
+      eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
+    ))
+    .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
+  res.json(payments.map(({ payment, season }) => mapPayment(payment, season)));
+});
+
+router.post("/:id/membership-payments", requireAdminAccess, async (req, res) => {
+  const { id } = CreatePlayerPaymentParams.parse(req.params);
+  const body = CreatePlayerPaymentBody.parse(req.body);
+  const [player] = await db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.id, id));
+  if (!player) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const foundation = await ensureMembershipFoundation();
+  const [created] = await db.insert(playerPaymentsTable).values({
+    playerId: id,
+    seasonId: foundation.currentSeasonId,
+    amount: body.amount.toFixed(2),
+    paymentDate: body.paymentDate,
+    method: body.method ?? "",
+    notes: body.notes ?? "",
+  }).returning();
+  const [season] = await db.select().from(seasonsTable)
+    .where(eq(seasonsTable.id, foundation.currentSeasonId));
+  res.status(201).json(mapPayment(created, season));
 });
 
 router.delete("/:playerId/payments/:paymentId", requireAdminAccess, async (req, res) => {
   const { playerId, paymentId } = DeletePlayerPaymentParams.parse(req.params);
+  const foundation = await ensureMembershipFoundation();
   const result = await db
     .delete(playerPaymentsTable)
-    .where(and(eq(playerPaymentsTable.id, paymentId), eq(playerPaymentsTable.playerId, playerId)))
+    .where(and(
+      eq(playerPaymentsTable.id, paymentId),
+      eq(playerPaymentsTable.playerId, playerId),
+      eq(playerPaymentsTable.seasonId, foundation.rotterdamSeasonId),
+    ))
     .returning({ id: playerPaymentsTable.id });
   if (result.length === 0) {
     res.status(404).json({ error: "Not found" });
     return;
   }
   await recomputePlayerAggregates(playerId);
+  res.status(204).send();
+});
+
+router.delete("/:playerId/membership-payments/:paymentId", requireAdminAccess, async (req, res) => {
+  const { playerId, paymentId } = DeletePlayerPaymentParams.parse(req.params);
+  const foundation = await ensureMembershipFoundation();
+  const result = await db.delete(playerPaymentsTable).where(and(
+    eq(playerPaymentsTable.id, paymentId),
+    eq(playerPaymentsTable.playerId, playerId),
+    eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
+  )).returning({ id: playerPaymentsTable.id });
+  if (result.length === 0) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
   res.status(204).send();
 });
 
@@ -949,32 +1079,30 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
 
 router.post("/send-fee-reminders", requireSession, async (req, res) => {
   const { playerIds } = SendFeeRemindersBody.parse(req.body ?? {});
-
-  const unpaidCondition = and(
-    eq(playersTable.feePaid, false),
-    eq(playersTable.memberStatus, "active"),
-  )!;
-
-  const whereClause = playerIds && playerIds.length > 0
-    ? and(inArray(playersTable.id, playerIds), unpaidCondition)
-    : unpaidCondition;
-
-  const players = await db
+  const activePlayers = await db
     .select({ player: playersTable, teamName: teamsTable.name })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
-    .where(whereClause);
+    .where(playerIds && playerIds.length > 0
+      ? and(inArray(playersTable.id, playerIds), eq(playersTable.memberStatus, "active"))
+      : eq(playersTable.memberStatus, "active"));
+  const membershipFees = await getMembershipFeeAccounts(activePlayers.map(({ player }) => player.id));
+  const players = activePlayers.filter(({ player }) => {
+    const fee = membershipFees.get(player.id);
+    return fee?.amountDue != null && !fee.feePaid;
+  });
 
   let sent = 0;
   let failed = 0;
 
   for (const { player, teamName } of players) {
+    const fee = membershipFees.get(player.id)!;
     const success = await sendFeeReminderEmail({
       playerName: player.name,
       playerEmail: player.email,
       teamName: teamName ?? "your team",
-      amountDue: player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null,
-      amountPaid: player.paymentAmountPaid ? parseFloat(player.paymentAmountPaid) : null,
+      amountDue: fee.amountDue,
+      amountPaid: fee.amountPaid,
     });
     if (success) {
       sent++;
@@ -1067,6 +1195,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     paymentAmountPaid: requestedPaid,
     paymentDate: requestedDate,
     feePaid: requestedFeePaid,
+    membershipFeeAmountDue,
     ...directUpdate
   } = body;
   if (
@@ -1105,6 +1234,16 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   if (Object.keys(directUpdate).length > 0) {
     await db.update(playersTable).set(directUpdate as typeof playersTable.$inferInsert).where(eq(playersTable.id, id));
   }
+  if (membershipFeeAmountDue !== undefined) {
+    const foundation = await ensureMembershipFoundation();
+    await db.update(playerParticipationsTable).set({
+      amountDue: membershipFeeAmountDue == null ? null : membershipFeeAmountDue.toFixed(2),
+      updatedAt: new Date(),
+    }).where(and(
+      eq(playerParticipationsTable.playerId, id),
+      eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+    ));
+  }
   if (typeof requestedPaid === "number" && Number.isFinite(requestedPaid)) {
     const foundation = await ensureMembershipFoundation();
     const existing = await db
@@ -1131,7 +1270,8 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   await syncCurrentParticipation(id);
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
-  res.json(mapPlayer(player, team?.name));
+  const membershipFees = await getMembershipFeeAccounts([id]);
+  res.json(mapPlayer(player, team?.name, undefined, membershipFees.get(id)));
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
@@ -1171,9 +1311,15 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
   if (audienceType === "all") {
     players = await db.select().from(playersTable).where(eq(playersTable.memberStatus, "active"));
   } else if (audienceType === "teams" && teamIds && teamIds.length > 0) {
-    players = await db.select().from(playersTable).where(inArray(playersTable.teamId, teamIds));
+    players = await db.select().from(playersTable).where(and(
+      inArray(playersTable.teamId, teamIds),
+      eq(playersTable.memberStatus, "active"),
+    ));
   } else if (audienceType === "individuals" && playerIds && playerIds.length > 0) {
-    players = await db.select().from(playersTable).where(inArray(playersTable.id, playerIds));
+    players = await db.select().from(playersTable).where(and(
+      inArray(playersTable.id, playerIds),
+      eq(playersTable.memberStatus, "active"),
+    ));
   } else {
     res.status(400).json({ error: "No recipients matched the provided audience" });
     return;

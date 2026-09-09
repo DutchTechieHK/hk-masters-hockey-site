@@ -7,9 +7,11 @@ import {
   getListPlayersQueryKey,
   useSendFeeReminders,
   useListPlayerPayments,
-  useCreatePlayerPayment,
-  deletePlayerPayment,
+  useListMembershipPayments,
+  useCreateMembershipPayment,
+  deleteMembershipPayment,
   getListPlayerPaymentsQueryKey,
+  getListMembershipPaymentsQueryKey,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -35,6 +37,13 @@ import { z } from "zod"
 import type { Player } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatCurrency } from "@/lib/utils"
+
+function formatEuro(amount: number) {
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: "EUR",
+  }).format(amount)
+}
 
 const feeSchema = z.object({
   paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
@@ -71,10 +80,10 @@ function todayStr() {
 
 function isMissingFeeDetails(p: Player): boolean {
   // amount due not set OR (marked paid but missing amount paid / payment date)
-  const dueMissing = p.paymentAmountDue == null
+  const dueMissing = p.membershipFeeAmountDue == null
   if (dueMissing) return true
-  if (p.feePaid) {
-    if (p.paymentAmountPaid == null || !p.paymentDate) return true
+  if (p.membershipFeePaid) {
+    if (!p.membershipFeeAmountPaid || !p.membershipFeePaymentDate) return true
   }
   return false
 }
@@ -99,10 +108,10 @@ function exportToCSV(players: Player[], teams: { id: number; name: string; categ
       team ? team.category : "",
       p.name,
       p.email,
-      p.paymentAmountDue ?? "",
-      p.paymentAmountPaid ?? "",
-      p.paymentDate ?? "",
-      p.feePaid ? "Paid" : "Unpaid",
+      p.membershipFeeAmountDue ?? "",
+      p.membershipFeeAmountPaid ?? "",
+      p.membershipFeePaymentDate ?? "",
+      p.membershipFeePaid ? "Paid" : "Unpaid",
       p.feeReminderSentAt ? new Date(p.feeReminderSentAt).toISOString().split("T")[0] : "",
     ]
   })
@@ -115,7 +124,7 @@ function exportToCSV(players: Player[], teams: { id: number; name: string; categ
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = "player-fees.csv"
+    a.download = "membership-fees-2026-27.csv"
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -142,28 +151,36 @@ export default function Fees() {
 
   const { data: teams = [] } = useListTeams()
   const { data: players = [], isLoading } = useListPlayers()
+  const activePlayers = useMemo(
+    () => players.filter(player => player.memberStatus === "active"),
+    [players],
+  )
 
   const updateMutation = useUpdatePlayer()
   const sendRemindersMutation = useSendFeeReminders()
-  const createPaymentMutation = useCreatePlayerPayment()
+  const createPaymentMutation = useCreateMembershipPayment()
 
-  const { data: editingPayments = [], isLoading: isLoadingPayments } = useListPlayerPayments(
+  const { data: editingPayments = [], isLoading: isLoadingPayments } = useListMembershipPayments(
+    editingPlayer?.id ?? 0,
+    { query: { queryKey: getListMembershipPaymentsQueryKey(editingPlayer?.id ?? 0), enabled: !!editingPlayer } }
+  )
+  const { data: archivedPayments = [] } = useListPlayerPayments(
     editingPlayer?.id ?? 0,
     { query: { queryKey: getListPlayerPaymentsQueryKey(editingPlayer?.id ?? 0), enabled: !!editingPlayer } }
   )
 
   const editingPaymentsTotal = editingPayments.reduce((s, p) => s + (p.amount ?? 0), 0)
-  const editingDue = editingPlayer?.paymentAmountDue ?? null
+  const editingDue = editingPlayer?.membershipFeeAmountDue ?? null
   const editingBalance = editingDue == null ? null : Math.max(0, editingDue - editingPaymentsTotal)
 
   const invalidatePlayerData = (playerId: number) => {
     queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-    queryClient.invalidateQueries({ queryKey: getListPlayerPaymentsQueryKey(playerId) })
+    queryClient.invalidateQueries({ queryKey: getListMembershipPaymentsQueryKey(playerId) })
   }
 
   const handleDeletePayment = async (playerId: number, paymentId: number) => {
     try {
-      await deletePlayerPayment(playerId, paymentId)
+      await deleteMembershipPayment(playerId, paymentId)
       invalidatePlayerData(playerId)
       toast({ title: "Payment removed" })
     } catch {
@@ -178,7 +195,7 @@ export default function Fees() {
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
     reset({
-      paymentAmountDue: player.paymentAmountDue ?? "",
+      paymentAmountDue: player.membershipFeeAmountDue ?? "",
       notes: player.notes || "",
     })
     setIsModalOpen(true)
@@ -197,7 +214,7 @@ export default function Fees() {
         name: editingPlayer.name,
         email: editingPlayer.email,
         feePaid: editingPlayer.feePaid,
-        paymentAmountDue: data.paymentAmountDue === "" ? undefined : Number(data.paymentAmountDue),
+        membershipFeeAmountDue: data.paymentAmountDue === "" ? null : Number(data.paymentAmountDue),
         notes: data.notes || editingPlayer.notes || undefined,
       }
       await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload })
@@ -210,8 +227,8 @@ export default function Fees() {
   }
 
   const openMarkAsPaidDialog = (player: Player) => {
-    const due = player.paymentAmountDue ?? 0
-    const alreadyPaid = player.paymentAmountPaid ?? 0
+    const due = player.membershipFeeAmountDue ?? 0
+    const alreadyPaid = player.membershipFeeAmountPaid ?? 0
     const remaining = Math.max(0, due - alreadyPaid)
     setMarkAsPaidDialog({
       isOpen: true,
@@ -257,7 +274,7 @@ export default function Fees() {
   }
 
   const handleSendReminders = async () => {
-    const unpaid = visiblePlayers.filter(p => !p.feePaid)
+    const unpaid = visiblePlayers.filter(p => !p.membershipFeePaid)
     if (unpaid.length === 0) return
     try {
       const result = await sendRemindersMutation.mutateAsync({ data: { playerIds: unpaid.map(p => p.id) } })
@@ -282,16 +299,16 @@ export default function Fees() {
   const visiblePlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     let filtered = categoryFilter === "all"
-      ? players
-      : players.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+      ? activePlayers
+      : activePlayers.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
     if (q) {
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q))
     }
     if (showOnlyUnpaid) {
-      filtered = filtered.filter(p => !p.feePaid)
+      filtered = filtered.filter(p => !p.membershipFeePaid)
     }
     return filtered
-  }, [players, categoryFilter, searchQuery, showOnlyUnpaid, teamCategoryMap])
+  }, [activePlayers, categoryFilter, searchQuery, showOnlyUnpaid, teamCategoryMap])
 
   const teamGroups = useMemo(
     () =>
@@ -309,35 +326,35 @@ export default function Fees() {
   const teamTotals = useMemo(() => {
     const map = new Map<number, { paid: number; total: number; collected: number; due: number }>()
     for (const team of teams) {
-      const teamPlayers = players.filter(p => p.teamId === team.id)
+      const teamPlayers = activePlayers.filter(p => p.teamId === team.id)
       map.set(team.id, {
         total: teamPlayers.length,
-        paid: teamPlayers.filter(p => p.feePaid).length,
-        collected: teamPlayers.reduce((sum, p) => sum + (p.paymentAmountPaid ?? 0), 0),
-        due: teamPlayers.reduce((sum, p) => sum + (p.paymentAmountDue ?? 0), 0),
+        paid: teamPlayers.filter(p => p.membershipFeePaid).length,
+        collected: teamPlayers.reduce((sum, p) => sum + (p.membershipFeeAmountPaid ?? 0), 0),
+        due: teamPlayers.reduce((sum, p) => sum + (p.membershipFeeAmountDue ?? 0), 0),
       })
     }
     return map
-  }, [teams, players])
+  }, [teams, activePlayers])
 
   const overallTotals = useMemo(() => {
     const scoped = categoryFilter === "all"
-      ? players
-      : players.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+      ? activePlayers
+      : activePlayers.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
     return {
       total: scoped.length,
-      paid: scoped.filter(p => p.feePaid).length,
-      collected: scoped.reduce((sum, p) => sum + (p.paymentAmountPaid ?? 0), 0),
-      due: scoped.reduce((sum, p) => sum + (p.paymentAmountDue ?? 0), 0),
+      paid: scoped.filter(p => p.membershipFeePaid).length,
+      collected: scoped.reduce((sum, p) => sum + (p.membershipFeeAmountPaid ?? 0), 0),
+      due: scoped.reduce((sum, p) => sum + (p.membershipFeeAmountDue ?? 0), 0),
     }
-  }, [players, categoryFilter, teamCategoryMap])
+  }, [activePlayers, categoryFilter, teamCategoryMap])
 
-  const unpaidCount = visiblePlayers.filter(p => !p.feePaid).length
+  const unpaidCount = visiblePlayers.filter(p => !p.membershipFeePaid).length
 
   return (
     <PageLayout
-      title="Fees"
-      description="Track tournament fees: who has paid, who still owes, and chase the rest."
+      title="2026/27 Membership Fees"
+      description="Track current membership obligations and payments. Rotterdam 2026 remains available as a read-only archive."
       action={
         <Button
           variant="outline"
@@ -486,7 +503,7 @@ export default function Fees() {
                     <tbody className="divide-y divide-border">
                       {groupPlayers.map(player => {
                         const missing = isMissingFeeDetails(player)
-                        const rowBg = !player.feePaid
+                        const rowBg = !player.membershipFeePaid
                           ? "bg-amber-50/60 hover:bg-amber-50"
                           : "hover:bg-muted/10"
                         return (
@@ -508,31 +525,31 @@ export default function Fees() {
                             </td>
 
                             <td className="px-4 py-3 text-right tabular-nums">
-                              {player.paymentAmountDue != null ? (
-                                <span className="text-foreground font-medium">{formatCurrency(player.paymentAmountDue)}</span>
+                              {player.membershipFeeAmountDue != null ? (
+                                <span className="text-foreground font-medium">{formatCurrency(player.membershipFeeAmountDue)}</span>
                               ) : (
                                 <span className="text-muted-foreground text-xs">Not set</span>
                               )}
                             </td>
 
                             <td className="px-4 py-3 text-right tabular-nums">
-                              {player.paymentAmountPaid != null && player.paymentAmountPaid > 0 ? (
-                                <span className="text-emerald-700 font-bold">{formatCurrency(player.paymentAmountPaid)}</span>
+                              {player.membershipFeeAmountPaid != null && player.membershipFeeAmountPaid > 0 ? (
+                                <span className="text-emerald-700 font-bold">{formatCurrency(player.membershipFeeAmountPaid)}</span>
                               ) : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
 
                             <td className="px-4 py-3 hidden md:table-cell">
-                              {player.paymentDate ? (
-                                <span className="text-foreground tabular-nums">{formatPaymentDate(player.paymentDate)}</span>
+                              {player.membershipFeePaymentDate ? (
+                                <span className="text-foreground tabular-nums">{formatPaymentDate(player.membershipFeePaymentDate)}</span>
                               ) : (
                                 <span className="text-muted-foreground text-xs">—</span>
                               )}
                             </td>
 
                             <td className="px-4 py-3">
-                              {player.feePaid ? (
+                              {player.membershipFeePaid ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 border-0 shadow-none capitalize">Paid</Badge>
                               ) : (
                                 <Badge className="bg-amber-100 text-amber-800 border-0 shadow-none capitalize">Unpaid</Badge>
@@ -552,7 +569,7 @@ export default function Fees() {
 
                             <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
                               <div className="flex justify-end items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                {!player.feePaid && (
+                                {!player.membershipFeePaid && (
                                   <button
                                     onClick={() => openMarkAsPaidDialog(player)}
                                     title="Mark as paid"
@@ -590,12 +607,12 @@ export default function Fees() {
               <p>
                 Recording payment for <strong className="text-foreground">{markAsPaidDialog.player.name}</strong>.
               </p>
-              {markAsPaidDialog.player.paymentAmountDue != null && (
+               {markAsPaidDialog.player.membershipFeeAmountDue != null && (
                 <p className="text-xs">
-                  {formatCurrency(markAsPaidDialog.player.paymentAmountPaid ?? 0)} paid of{" "}
-                  {formatCurrency(markAsPaidDialog.player.paymentAmountDue)} due
-                  {(markAsPaidDialog.player.paymentAmountDue - (markAsPaidDialog.player.paymentAmountPaid ?? 0)) > 0 && (
-                    <> · <strong className="text-amber-700">{formatCurrency(Math.max(0, markAsPaidDialog.player.paymentAmountDue - (markAsPaidDialog.player.paymentAmountPaid ?? 0)))} outstanding</strong></>
+                   {formatCurrency(markAsPaidDialog.player.membershipFeeAmountPaid ?? 0)} paid of{" "}
+                   {formatCurrency(markAsPaidDialog.player.membershipFeeAmountDue)} due
+                   {(markAsPaidDialog.player.membershipFeeAmountDue - (markAsPaidDialog.player.membershipFeeAmountPaid ?? 0)) > 0 && (
+                     <> · <strong className="text-amber-700">{formatCurrency(Math.max(0, markAsPaidDialog.player.membershipFeeAmountDue - (markAsPaidDialog.player.membershipFeeAmountPaid ?? 0)))} outstanding</strong></>
                   )}
                 </p>
               )}
@@ -659,13 +676,44 @@ export default function Fees() {
       <Modal
         isOpen={isModalOpen}
         onClose={closeEditModal}
-        title={editingPlayer ? `Fees: ${editingPlayer.name}` : "Edit Fees"}
+        title={editingPlayer ? `2026/27 Membership Fees: ${editingPlayer.name}` : "Edit 2026/27 Membership Fees"}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Amount Due (HKD)</label>
+             <label className="text-sm font-semibold">2026/27 Membership Amount Due (HKD)</label>
             <Input type="number" min="0" step="0.01" {...register("paymentAmountDue")} placeholder="0.00" />
             {errors.paymentAmountDue && <p className="text-xs text-destructive">{String(errors.paymentAmountDue.message)}</p>}
+          </div>
+
+          <div className="space-y-2 border-t border-border pt-4">
+            <label className="text-sm font-semibold">Rotterdam 2026 payment archive</label>
+            <div className="rounded-lg bg-muted/20 p-3 grid grid-cols-3 gap-3 text-xs">
+              <div>
+                <span className="block text-muted-foreground">Due</span>
+                <strong>{editingPlayer?.paymentAmountDue == null ? "Not set" : formatEuro(editingPlayer.paymentAmountDue)}</strong>
+              </div>
+              <div>
+                <span className="block text-muted-foreground">Paid</span>
+                <strong>{formatEuro(editingPlayer?.paymentAmountPaid ?? 0)}</strong>
+              </div>
+              <div>
+                <span className="block text-muted-foreground">Balance</span>
+                <strong>{editingPlayer?.paymentAmountDue == null ? "—" : formatEuro(Math.max(0, editingPlayer.paymentAmountDue - (editingPlayer.paymentAmountPaid ?? 0)))}</strong>
+              </div>
+            </div>
+            {archivedPayments.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic">No Rotterdam payments recorded.</p>
+            ) : (
+              <div className="rounded-lg border border-border divide-y divide-border max-h-40 overflow-y-auto bg-muted/10">
+                {archivedPayments.map(payment => (
+                  <div key={payment.id} className="px-3 py-2 text-sm flex justify-between gap-3">
+                    <span>{formatPaymentDate(payment.paymentDate)}</span>
+                    <span className="font-semibold tabular-nums">{formatEuro(payment.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Archived payments do not count toward the 2026/27 membership balance.</p>
           </div>
 
           {/* Payment summary */}

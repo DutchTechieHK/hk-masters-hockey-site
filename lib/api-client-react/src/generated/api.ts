@@ -1767,6 +1767,181 @@ export const useCreatePlayerPayment = <
 };
 
 /**
+ * @summary List 2026/27 membership payments for a player
+ */
+export const getListMembershipPaymentsUrl = (id: number) => {
+  return `/api/players/${id}/membership-payments`;
+};
+
+export const listMembershipPayments = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PlayerPayment[]> => {
+  return customFetch<PlayerPayment[]>(getListMembershipPaymentsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMembershipPaymentsQueryKey = (id: number) => {
+  return [`/api/players/${id}/membership-payments`] as const;
+};
+
+export const getListMembershipPaymentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMembershipPayments>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMembershipPayments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMembershipPaymentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMembershipPayments>>
+  > = ({ signal }) => listMembershipPayments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipPayments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMembershipPaymentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMembershipPayments>>
+>;
+export type ListMembershipPaymentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List 2026/27 membership payments for a player
+ */
+
+export function useListMembershipPayments<
+  TData = Awaited<ReturnType<typeof listMembershipPayments>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMembershipPayments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMembershipPaymentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Record a 2026/27 membership payment for a player
+ */
+export const getCreateMembershipPaymentUrl = (id: number) => {
+  return `/api/players/${id}/membership-payments`;
+};
+
+export const createMembershipPayment = async (
+  id: number,
+  createPlayerPayment: CreatePlayerPayment,
+  options?: RequestInit,
+): Promise<PlayerPayment> => {
+  return customFetch<PlayerPayment>(getCreateMembershipPaymentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPlayerPayment),
+  });
+};
+
+export const getCreateMembershipPaymentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMembershipPayment>>,
+    TError,
+    { id: number; data: BodyType<CreatePlayerPayment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMembershipPayment>>,
+  TError,
+  { id: number; data: BodyType<CreatePlayerPayment> },
+  TContext
+> => {
+  const mutationKey = ["createMembershipPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMembershipPayment>>,
+    { id: number; data: BodyType<CreatePlayerPayment> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createMembershipPayment(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMembershipPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMembershipPayment>>
+>;
+export type CreateMembershipPaymentMutationBody = BodyType<CreatePlayerPayment>;
+export type CreateMembershipPaymentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Record a 2026/27 membership payment for a player
+ */
+export const useCreateMembershipPayment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMembershipPayment>>,
+    TError,
+    { id: number; data: BodyType<CreatePlayerPayment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMembershipPayment>>,
+  TError,
+  { id: number; data: BodyType<CreatePlayerPayment> },
+  TContext
+> => {
+  return useMutation(getCreateMembershipPaymentMutationOptions(options));
+};
+
+/**
  * @summary List current and archived participation records for a member
  */
 export const getListPlayerParticipationsUrl = (id: number) => {
@@ -1944,6 +2119,94 @@ export const useDeletePlayerPayment = <
   TContext
 > => {
   return useMutation(getDeletePlayerPaymentMutationOptions(options));
+};
+
+/**
+ * @summary Delete a recorded 2026/27 membership payment
+ */
+export const getDeleteMembershipPaymentUrl = (
+  playerId: number,
+  paymentId: number,
+) => {
+  return `/api/players/${playerId}/membership-payments/${paymentId}`;
+};
+
+export const deleteMembershipPayment = async (
+  playerId: number,
+  paymentId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteMembershipPaymentUrl(playerId, paymentId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMembershipPaymentMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMembershipPayment>>,
+    TError,
+    { playerId: number; paymentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMembershipPayment>>,
+  TError,
+  { playerId: number; paymentId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteMembershipPayment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMembershipPayment>>,
+    { playerId: number; paymentId: number }
+  > = (props) => {
+    const { playerId, paymentId } = props ?? {};
+
+    return deleteMembershipPayment(playerId, paymentId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMembershipPaymentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMembershipPayment>>
+>;
+
+export type DeleteMembershipPaymentMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a recorded 2026/27 membership payment
+ */
+export const useDeleteMembershipPayment = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMembershipPayment>>,
+    TError,
+    { playerId: number; paymentId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMembershipPayment>>,
+  TError,
+  { playerId: number; paymentId: number },
+  TContext
+> => {
+  return useMutation(getDeleteMembershipPaymentMutationOptions(options));
 };
 
 /**

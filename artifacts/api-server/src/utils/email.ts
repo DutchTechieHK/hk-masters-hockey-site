@@ -93,7 +93,12 @@ async function sendEmail(opts: {
 
 const LOGO_URL = "https://www.hkmastershockey.com/logo.png";
 
-function emailShell(headerBg: string, title: string, body: string): string {
+function emailShell(
+  headerBg: string,
+  title: string,
+  body: string,
+  contextLabel = "2026 Masters World Cup",
+): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -108,7 +113,7 @@ function emailShell(headerBg: string, title: string, body: string): string {
           <td style="background-color:${headerBg};padding:24px 32px;text-align:center;">
             <img src="${LOGO_URL}" alt="HK Masters Hockey" width="64" height="64" style="display:block;margin:0 auto 14px auto;border-radius:8px;filter:brightness(0) invert(1);" />
             <p style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:0.02em;">HK Masters Hockey</p>
-            <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75);letter-spacing:0.08em;text-transform:uppercase;">2026 Masters World Cup</p>
+            <p style="margin:6px 0 0 0;font-size:13px;color:rgba(255,255,255,0.75);letter-spacing:0.08em;text-transform:uppercase;">${contextLabel}</p>
           </td>
         </tr>
         <tr><td style="padding:32px;">
@@ -119,7 +124,7 @@ function emailShell(headerBg: string, title: string, body: string): string {
             <table width="100%" cellpadding="0" cellspacing="0"><tr>
               <td>
                 <p style="margin:0;font-size:13px;font-weight:600;color:#1E3A6E;">The HK Masters Hockey Team</p>
-                <p style="margin:4px 0 0 0;font-size:12px;color:#9ca3af;">HK 2026 Masters World Cup</p>
+                <p style="margin:4px 0 0 0;font-size:12px;color:#9ca3af;">${contextLabel}</p>
               </td>
               <td align="right">
                 <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background-color:#1E3A6E;margin-right:2px;"></span>
@@ -736,13 +741,15 @@ The HK Masters Hockey Team`;
   });
 }
 
-export async function sendFeeReminderEmail(opts: {
+export type FeeReminderEmailOptions = {
   playerName: string;
   playerEmail: string;
   teamName: string;
   amountDue?: number | null;
   amountPaid?: number | null;
-}): Promise<boolean> {
+};
+
+export function buildMembershipFeeReminderEmail(opts: FeeReminderEmailOptions) {
   const safeName = escapeHtml(opts.playerName);
   const safeTeam = escapeHtml(opts.teamName);
 
@@ -785,24 +792,25 @@ export async function sendFeeReminderEmail(opts: {
 
   const html = emailShell(
     "#006B3C",
-    "Tournament fee reminder",
+    "2026/27 membership fee reminder",
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      We're writing on behalf of <strong>${safeTeam}</strong> regarding your tournament contribution for the <strong>HK 2026 Masters World Cup</strong>.
+      We're writing on behalf of <strong>${safeTeam}</strong> regarding your <strong>2026/27 HK Masters Hockey membership fee</strong>.
     </p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      Our records show that your tournament fee has <strong>not yet been received</strong>. With the tournament approaching, please arrange your payment as soon as possible so we can finalise team logistics and bookings.
+      Our records show an outstanding balance on your current membership account. Please arrange payment when convenient so we can keep your 2026/27 membership up to date.
     </p>
     ${amountTable}
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      Please contact your team manager for bank transfer details, or reply to this email if you've already paid and we'll update our records.
+       Please contact your team manager for payment details, or reply to this email if you've already paid and we'll update our records.
     </p>
     <p style="margin:0 0 24px 0;text-align:center;">
-      <a href="mailto:${ADMIN_EMAIL}?subject=HK%202026%20Masters%20World%20Cup%20fee%20payment" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Get in touch about my fee</a>
+      <a href="mailto:${ADMIN_EMAIL}?subject=2026%2F27%20membership%20fee%20payment" style="display:inline-block;background-color:#006B3C;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:12px 28px;border-radius:6px;">Get in touch about my membership fee</a>
     </p>
     <p style="margin:0;font-size:14px;color:#6b7280;line-height:1.6;">
-      Thank you for your support — we look forward to seeing you in the Netherlands!
-    </p>`
+      Thank you for being part of HK Masters Hockey.
+    </p>`,
+    "2026/27 Membership",
   );
 
   const amountText: string[] = [];
@@ -812,24 +820,28 @@ export async function sendFeeReminderEmail(opts: {
 
   const text = `Hi ${opts.playerName},
 
-We're writing on behalf of ${opts.teamName} regarding your tournament contribution for the HK 2026 Masters World Cup.
+We're writing on behalf of ${opts.teamName} regarding your 2026/27 HK Masters Hockey membership fee.
 
-Our records show that your tournament fee has not yet been received. With the tournament approaching, please arrange your payment as soon as possible so we can finalise team logistics and bookings.
+Our records show an outstanding balance on your current membership account. Please arrange payment when convenient so we can keep your 2026/27 membership up to date.
 ${amountText.length > 0 ? `\n${amountText.join("\n")}\n` : ""}
-Please contact your team manager for bank transfer details, or reply to this email if you've already paid and we'll update our records.
+Please contact your team manager for payment details, or reply to this email if you've already paid and we'll update our records.
 
 Get in touch: ${ADMIN_EMAIL}
 
-Thank you for your support — we look forward to seeing you in the Netherlands!
+Thank you for being part of HK Masters Hockey.
 
 The HK Masters Hockey Team`;
 
-  return sendEmail({
+  return {
     to: opts.playerEmail,
-    subject: `[Action Required] Tournament fee reminder – HK 2026 Masters World Cup`,
+    subject: `[Action Required] 2026/27 membership fee reminder – HK Masters Hockey`,
     html,
     text,
-  });
+  };
+}
+
+export async function sendFeeReminderEmail(opts: FeeReminderEmailOptions): Promise<boolean> {
+  return sendEmail(buildMembershipFeeReminderEmail(opts));
 }
 
 export async function sendNewPledgeEmail(opts: {

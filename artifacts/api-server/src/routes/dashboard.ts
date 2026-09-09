@@ -1,20 +1,45 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunIncomeTable, playerPayoutsTable } from "@workspace/db/schema";
-import { eq, sql, gte, ne, and, asc } from "drizzle-orm";
+import { teamsTable, playersTable, playerPaymentsTable, playerParticipationsTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunIncomeTable, playerPayoutsTable } from "@workspace/db/schema";
+import { eq, sql, gte, ne, and, asc, inArray } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { ensureMembershipFoundation } from "./players";
 
 const router = Router();
 
 router.get("/", requireAdminAccess, async (_req, res) => {
   const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
 
-  const allPlayers = await db.select().from(playersTable);
+  const allPlayers = await db.select().from(playersTable)
+    .where(eq(playersTable.memberStatus, "active"));
+  const foundation = await ensureMembershipFoundation();
+  const playerIds = allPlayers.map((player) => player.id);
+  const currentParticipations = playerIds.length === 0 ? [] : await db.select({
+    playerId: playerParticipationsTable.playerId,
+    amountDue: playerParticipationsTable.amountDue,
+  }).from(playerParticipationsTable).where(and(
+    eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+    inArray(playerParticipationsTable.playerId, playerIds),
+  ));
+  const currentPayments = playerIds.length === 0 ? [] : await db.select().from(playerPaymentsTable).where(and(
+    eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
+    inArray(playerPaymentsTable.playerId, playerIds),
+  ));
+  const feesByPlayer = new Map(currentParticipations.map((participation) => {
+    const due = participation.amountDue == null ? 0 : parseFloat(participation.amountDue);
+    const paid = currentPayments
+      .filter((payment) => payment.playerId === participation.playerId)
+      .reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
+    return [participation.playerId, { due, paid, isPaid: due > 0 && paid + 1e-6 >= due }] as const;
+  }));
 
   const teamStats = teams.map((team) => {
     const players = allPlayers.filter((p) => p.teamId === team.id);
-    const feesPaid = players.filter((p) => p.feePaid).length;
-    const feesOutstanding = players.filter((p) => !p.feePaid).length;
+    const feesPaid = players.filter((player) => feesByPlayer.get(player.id)?.isPaid).length;
+    const feesOutstanding = players.filter((player) => {
+      const fee = feesByPlayer.get(player.id);
+      return fee != null && fee.due > 0 && !fee.isPaid;
+    }).length;
     return {
       teamId: team.id,
       teamName: team.name,
@@ -26,14 +51,11 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   });
 
   const totalPlayers = teamStats.reduce((sum, t) => sum + t.playerCount, 0);
-  const playersPaidCount = allPlayers.filter((p) => p.feePaid).length;
-  const feesAmountDue = allPlayers.reduce((sum, p) => sum + parseFloat(p.paymentAmountDue ?? "0"), 0);
-  const feesAmountPaid = allPlayers.reduce((sum, p) => sum + parseFloat(p.paymentAmountPaid ?? "0"), 0);
-  const feesAmountOutstanding = allPlayers.reduce((sum, p) => {
-    const due = parseFloat(p.paymentAmountDue ?? "0");
-    const paid = parseFloat(p.paymentAmountPaid ?? "0");
-    return sum + Math.max(0, due - paid);
-  }, 0);
+  const feeAccounts = [...feesByPlayer.values()];
+  const playersPaidCount = feeAccounts.filter((fee) => fee.isPaid).length;
+  const feesAmountDue = feeAccounts.reduce((sum, fee) => sum + fee.due, 0);
+  const feesAmountPaid = feeAccounts.reduce((sum, fee) => sum + fee.paid, 0);
+  const feesAmountOutstanding = feeAccounts.reduce((sum, fee) => sum + Math.max(0, fee.due - fee.paid), 0);
 
   // Online pledges
   const fundraisingRows = await db.select().from(fundraisingTable);
