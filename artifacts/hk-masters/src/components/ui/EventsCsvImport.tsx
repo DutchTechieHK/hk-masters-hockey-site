@@ -26,7 +26,6 @@ type ParsedRow = {
 
 type ImportResult = { rowNum: number; title: string; ok: boolean; error?: string }
 
-const ROTTERDAM_TZ = "Europe/Amsterdam"
 const HK_TZ = "Asia/Hong_Kong"
 const ALLOWED_KINDS = ["training", "meeting", "social", "physio", "team_dinner", "dinner", "free_time", "warmup", "game"]
 
@@ -239,16 +238,11 @@ function normaliseDateTime(raw: string): string {
   return raw.trim().replace(" ", "T").replace(/T(\d{2}:\d{2})$/, "T$1")
 }
 
-function localInputToIso(local: string): string {
-  const normalised = local.trim().replace(" ", "T").replace(/T(\d{2}:\d{2})$/, "T$1")
-  return new Date(normalised).toISOString()
-}
-
 // ---------------------------------------------------------------------------
 // Row validation (same as before)
 // ---------------------------------------------------------------------------
 
-function validateRows(raw: string[][], teams: Team[], forceHkTz = false): ParsedRow[] {
+function validateRows(raw: string[][], teams: Team[], _forceHkTz = false): ParsedRow[] {
   const teamLower = new Map(teams.map(t => [t.name.toLowerCase(), t.id]))
   return raw.map((cols, idx) => {
     const rowNum = idx + 2
@@ -263,12 +257,8 @@ function validateRows(raw: string[][], teams: Team[], forceHkTz = false): Parsed
 
     const isPublic = is_public.trim().toLowerCase() === "true"
 
-    // xlsx training-schedule rows: treat times as HK time regardless of is_public
-    // Standard CSV: public events → Rotterdam (CEST); internal → browser local time
-    const toIso = (raw: string) => {
-      if (forceHkTz) return zoneInputToIso(normaliseDateTime(raw), HK_TZ)
-      return isPublic ? zoneInputToIso(normaliseDateTime(raw), ROTTERDAM_TZ) : localInputToIso(raw)
-    }
+    // All event imports are interpreted as Hong Kong wall-clock time.
+    const toIso = (raw: string) => zoneInputToIso(normaliseDateTime(raw), HK_TZ)
 
     let startsAtIso: string | null = null
     if (!starts_at.trim()) {
@@ -445,7 +435,7 @@ export default function EventsCsvImport({ teams, onClose, onImported }: Props) {
             </p>
             <p className="text-blue-700">
               For CSV: columns <span className="font-mono">kind, title, starts_at</span> required.
-              Times = <strong>Rotterdam time (CEST)</strong>.
+              Times = <strong>Hong Kong time (HKT)</strong>.
             </p>
           </div>
 

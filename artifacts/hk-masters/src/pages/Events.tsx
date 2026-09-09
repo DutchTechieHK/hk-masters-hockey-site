@@ -85,23 +85,14 @@ const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: 
   game:        { label: "Game",        icon: Trophy,    colour: "bg-red-100 text-red-800" },
 }
 
-const HK_TZ        = "Asia/Hong_Kong"
-const ROTTERDAM_TZ = "Europe/Amsterdam"
+const HK_TZ = "Asia/Hong_Kong"
 
-// Midnight HKT on the first Rotterdam match day — same threshold as the public site
-const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime()
-
-// HK training events → HKT.  Rotterdam tournament events → CEST.
-function eventTz(startsAt: string): string {
-  return new Date(startsAt).getTime() >= RTM_START_EPOCH ? ROTTERDAM_TZ : HK_TZ
+function eventTz(_startsAt: string): string {
+  return HK_TZ
 }
 
-// Given a "YYYY-MM-DDTHH:mm" datetime-local value (no zone), guess which IANA
-// zone to use for saving — same threshold as eventTz but operating on the raw
-// local string (treated as UTC for comparison purposes, which is accurate enough
-// since May vs July are far apart).
-function formTz(localDt: string): string {
-  return new Date(`${localDt}:00Z`).getTime() >= RTM_START_EPOCH ? ROTTERDAM_TZ : HK_TZ
+function formTz(_localDt: string): string {
+  return HK_TZ
 }
 
 // Format a UTC instant as a "YYYY-MM-DDTHH:mm" string in a given IANA time zone.
@@ -206,7 +197,6 @@ function EventMonthSection({
                 const meta = KIND_META[ev.kind] ?? KIND_META.meeting
                 const Icon = meta.icon
                 const tz = eventTz(ev.startsAt)
-                const isRtm = tz === ROTTERDAM_TZ
                 return (
                   <tr key={ev.id} className={`hover:bg-muted/10 ${selected.has(ev.id) ? "bg-green-50/50" : ""}`}>
                     <td className="px-4 py-4">
@@ -227,8 +217,8 @@ function EventMonthSection({
                         {ev.endsAt && ` – ${new Date(ev.endsAt).toLocaleTimeString("en-GB", {
                           hour: "2-digit", minute: "2-digit", hour12: false, timeZone: tz,
                         })}`}
-                        <span className={`ml-1 text-[10px] uppercase tracking-wide ${isRtm ? "text-[#006B3C]" : "text-blue-500"}`}>
-                          {isRtm ? "RTM" : "HKT"}
+                        <span className="ml-1 text-[10px] uppercase tracking-wide text-blue-500">
+                          HKT
                         </span>
                       </div>
                     </td>
@@ -448,10 +438,10 @@ export default function Events() {
 
   const openAddModalPrefilled = (prefillDate?: string, prefillTeamId?: number | null) => {
     setEditing(null)
-    // Explicitly pass +02:00 (CEST) so "09:00" is always Rotterdam local,
+    // Explicitly pass +08:00 so "09:00" is always Hong Kong local,
     // regardless of the admin's browser timezone.
     const startsAt = prefillDate
-      ? toZoneInputValue(new Date(`${prefillDate}T09:00:00+02:00`).toISOString(), ROTTERDAM_TZ)
+      ? toZoneInputValue(new Date(`${prefillDate}T09:00:00+08:00`).toISOString(), HK_TZ)
       : ""
     setForm({
       ...EMPTY_FORM,
@@ -807,12 +797,7 @@ export default function Events() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Starts{" "}
-                {form.startsAt
-                  ? formTz(form.startsAt) === ROTTERDAM_TZ
-                    ? "(Rotterdam time, CEST)"
-                    : "(Hong Kong time, HKT)"
-                  : form.isPublic ? "(Rotterdam time, CEST)" : "(Hong Kong time, HKT)"}
+                <Clock className="w-3.5 h-3.5" /> Starts (Hong Kong time, HKT)
               </label>
               <Input type="datetime-local" value={form.startsAt} onChange={(e) => setForm({ ...form, startsAt: e.target.value })} />
             </div>
@@ -825,9 +810,7 @@ export default function Events() {
           </div>
           {form.startsAt && (
             <p className="text-xs text-muted-foreground -mt-2">
-              {formTz(form.startsAt) === ROTTERDAM_TZ
-                ? "Rotterdam tournament event — times interpreted as CEST (Europe/Amsterdam)."
-                : "Hong Kong event — times interpreted as HKT (Asia/Hong_Kong)."}
+              Times are interpreted as HKT (Asia/Hong_Kong).
             </p>
           )}
 
@@ -860,9 +843,7 @@ export default function Events() {
               className="mt-0.5 h-4 w-4 rounded border-border text-[#006B3C] focus:ring-[#006B3C]"
               checked={form.isPublic}
               onChange={(e) => {
-                // Don't touch the typed time values — just change the interpretation.
-                // The label updates to show whether the time is read as browser-local
-                // or Rotterdam-local, so what you see is what gets saved.
+                // Visibility does not change the entered Hong Kong event time.
                 setForm({ ...form, isPublic: e.target.checked })
               }}
             />

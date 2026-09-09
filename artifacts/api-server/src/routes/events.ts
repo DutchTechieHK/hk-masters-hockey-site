@@ -8,6 +8,7 @@ import { sendPushToAll, sendPushToTeam } from "../utils/push";
 import { requirePlayerSession } from "../middleware/playerSession";
 import { ObjectStorageService, ObjectNotFoundError, extractUploadObjectId } from "../lib/objectStorage";
 import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
+import { formatEventDateTime } from "../utils/eventTime";
 
 const router: IRouter = Router();
 
@@ -241,11 +242,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     const scheduleUrl = `${PUBLIC_URL}/schedule`;
 
     const startsAt = new Date(row.startsAt);
-    const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime();
-    const tz = startsAt.getTime() >= RTM_START_EPOCH ? "Europe/Amsterdam" : "Asia/Hong_Kong";
-    const tzLabel = tz === "Europe/Amsterdam" ? " CEST" : " HKT";
-    const eventDate = startsAt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz });
-    const eventTime = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz }) + tzLabel;
+    const { eventDate, eventTime } = formatEventDateTime(startsAt);
 
     const kindLabel =
       row.kind === "training" ? "Training" :
@@ -512,18 +509,12 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   const nonResponders = allNonResponders.filter((p) => !!p.email);
   const skippedNoEmail = allNonResponders.length - nonResponders.length;
 
-  // Format date and time for the email — use Rotterdam timezone for tournament events,
-  // Hong Kong timezone for pre-tournament training (same threshold as the frontend).
+  // Format all event reminders in Hong Kong time.
   const PUBLIC_URL = process.env.PUBLIC_URL || "https://www.hkmastershockey.com";
   const scheduleUrl = `${PUBLIC_URL}/schedule`;
 
   const startsAt = new Date(event.startsAt);
-  const RTM_START_EPOCH = new Date("2026-07-21T00:00:00+08:00").getTime();
-  const tz = startsAt.getTime() >= RTM_START_EPOCH ? "Europe/Amsterdam" : "Asia/Hong_Kong";
-  const tzLabel = tz === "Europe/Amsterdam" ? " CEST" : " HKT";
-
-  const eventDate = startsAt.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: tz });
-  const eventTime = startsAt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tz }) + tzLabel;
+  const { eventDate, eventTime } = formatEventDateTime(startsAt);
 
   let sent = 0;
   for (let i = 0; i < nonResponders.length; i++) {

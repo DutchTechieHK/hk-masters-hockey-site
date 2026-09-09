@@ -2,26 +2,26 @@ import { useState, useEffect } from "react"
 import { Plus, Edit2 } from "lucide-react"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 
-const ROTTERDAM_TZ = "Europe/Amsterdam"
+const HK_TZ = "Asia/Hong_Kong"
 
 const TOURNAMENT_DAYS: string[] = (() => {
   const days: string[] = []
   const d = new Date("2026-07-22T00:00:00Z")
   const end = new Date("2026-08-02T00:00:00Z")
   while (d < end) {
-    days.push(new Date(d).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ }))
+    days.push(new Date(d).toLocaleDateString("en-CA", { timeZone: HK_TZ }))
     d.setUTCDate(d.getUTCDate() + 1)
   }
   return days
 })()
 
-function rtmDateKey(iso: string) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ })
+function hkDateKey(iso: string) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: HK_TZ })
 }
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("en-GB", {
-    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ROTTERDAM_TZ,
+    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: HK_TZ,
   })
 }
 
@@ -102,11 +102,11 @@ export default function ProgrammeDayPlanner({ events, teams, onEdit, onAdd }: Pr
 
   function buildColumnItems(teamId: number | null, teamCategory: string, dateKey: string): ColItem[] {
     const evts = events
-      .filter(ev => rtmDateKey(ev.startsAt) === dateKey && (ev.teamId === teamId || ev.teamId === null))
+      .filter(ev => hkDateKey(ev.startsAt) === dateKey && (ev.teamId === teamId || ev.teamId === null))
       .map(event => ({ type: "event" as const, event, sortKey: event.startsAt }))
 
     const mtchs = matches
-      .filter(m => rtmDateKey(m.kickoffAt) === dateKey &&
+      .filter(m => hkDateKey(m.kickoffAt) === dateKey &&
         (m.teamCategory === teamCategory || (teamId != null && m.teamId === teamId)))
       .map(match => ({ type: "match" as const, match, sortKey: match.kickoffAt }))
 
