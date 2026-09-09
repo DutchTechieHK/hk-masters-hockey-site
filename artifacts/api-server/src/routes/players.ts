@@ -196,8 +196,10 @@ function legacyRotterdamSnapshot(player: typeof playersTable.$inferSelect) {
   };
 }
 
-export async function ensureMembershipFoundation() {
-  const [rotterdam] = await db.insert(seasonsTable).values({
+type MembershipDbExecutor = Pick<typeof db, "insert" | "select" | "update">;
+
+export async function ensureMembershipFoundation(executor: MembershipDbExecutor = db) {
+  const [rotterdam] = await executor.insert(seasonsTable).values({
     slug: ROTTERDAM_SEASON_SLUG,
     name: "Rotterdam Masters World Cup 2026",
     kind: "event",
@@ -210,7 +212,7 @@ export async function ensureMembershipFoundation() {
     set: { name: "Rotterdam Masters World Cup 2026", status: "archived", isCurrent: false, updatedAt: new Date() },
   }).returning();
 
-  const [current] = await db.insert(seasonsTable).values({
+  const [current] = await executor.insert(seasonsTable).values({
     slug: CURRENT_SEASON_SLUG,
     name: "2026/27 Membership",
     kind: "membership",
@@ -223,13 +225,13 @@ export async function ensureMembershipFoundation() {
     set: { name: "2026/27 Membership", status: "current", isCurrent: true, updatedAt: new Date() },
   }).returning();
 
-  const players = await db.select().from(playersTable).orderBy(playersTable.id);
-  await db.update(playerPaymentsTable)
+  const players = await executor.select().from(playersTable).orderBy(playersTable.id);
+  await executor.update(playerPaymentsTable)
     .set({ seasonId: rotterdam.id })
     .where(isNull(playerPaymentsTable.seasonId));
   for (const player of players) {
     if (player.createdAt < ROTTERDAM_MIGRATION_CUTOFF) {
-      await db.insert(playerParticipationsTable).values({
+      await executor.insert(playerParticipationsTable).values({
         playerId: player.id,
         seasonId: rotterdam.id,
         teamId: player.teamId,
@@ -239,7 +241,7 @@ export async function ensureMembershipFoundation() {
         legacySnapshot: legacyRotterdamSnapshot(player),
       }).onConflictDoNothing();
     }
-    await db.insert(playerParticipationsTable).values({
+    await executor.insert(playerParticipationsTable).values({
       playerId: player.id,
       seasonId: current.id,
       teamId: null,
@@ -249,7 +251,7 @@ export async function ensureMembershipFoundation() {
     }).onConflictDoNothing();
   }
 
-  const participations = await db.select({
+  const participations = await executor.select({
     seasonId: playerParticipationsTable.seasonId,
   }).from(playerParticipationsTable);
   const emailCounts = new Map<string, number>();
@@ -357,58 +359,67 @@ router.get("/membership/interest-submissions", requireAdminAccess, async (_req, 
 
 router.post("/membership/interest-submissions", requireAdminAccess, async (req, res) => {
   const { submissions } = ImportMembershipInterestSubmissionsBody.parse(req.body);
-  const foundation = await ensureMembershipFoundation();
-  let matched = 0;
-  let needsReview = 0;
+  const { matched, needsReview } = await db.transaction(async (tx) => {
+    const foundation = await ensureMembershipFoundation(tx);
+    let matched = 0;
+    let needsReview = 0;
 
-  for (const input of submissions) {
-    const normalizedEmail = normalizeEmail(input.email);
-    const candidates = await db.select().from(playersTable)
-      .where(sql`lower(trim(${playersTable.email})) = ${normalizedEmail}`);
-    let matchedPlayerId: number | null = null;
-    let matchStatus = "unmatched";
+    for (const input of submissions) {
+      const normalizedEmail = normalizeEmail(input.email);
+      const candidates = await tx.select().from(playersTable)
+        .where(sql`lower(trim(${playersTable.email})) = ${normalizedEmail}`);
+      let matchedPlayerId: number | null = null;
+      let matchStatus = "unmatched";
+      let matchedCandidate: typeof playersTable.$inferSelect | null = null;
 
-    if (candidates.length > 1) {
-      matchStatus = "ambiguous";
-    } else if (candidates.length === 1) {
-      const candidate = candidates[0];
-      if (
-        candidate.currentMembershipTier !== "awaiting_selection" &&
-        candidate.currentMembershipTier !== input.membershipTier
-      ) {
-        matchedPlayerId = candidate.id;
-        matchStatus = "conflict";
-      } else {
-        matchedPlayerId = candidate.id;
-        matchStatus = "matched";
-        await db.update(playersTable).set({
+      if (candidates.length > 1) {
+        matchStatus = "ambiguous";
+      } else if (candidates.length === 1) {
+        const candidate = candidates[0];
+        if (
+          candidate.currentMembershipTier !== "awaiting_selection" &&
+          candidate.currentMembershipTier !== input.membershipTier
+        ) {
+          matchedPlayerId = candidate.id;
+          matchStatus = "conflict";
+        } else {
+          matchedPlayerId = candidate.id;
+          matchStatus = "matched";
+          matchedCandidate = candidate;
+        }
+      }
+
+      if (matchedCandidate) {
+        const now = new Date();
+        await tx.update(playersTable).set({
           currentMembershipTier: input.membershipTier,
-          membershipTierUpdatedAt: new Date(),
-        }).where(eq(playersTable.id, candidate.id));
-        await db.update(playerParticipationsTable).set({
+          membershipTierUpdatedAt: now,
+        }).where(eq(playersTable.id, matchedCandidate.id));
+        await tx.update(playerParticipationsTable).set({
           membershipTier: input.membershipTier,
-          updatedAt: new Date(),
+          updatedAt: now,
         }).where(and(
-          eq(playerParticipationsTable.playerId, candidate.id),
+          eq(playerParticipationsTable.playerId, matchedCandidate.id),
           eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
         ));
       }
+      await tx.insert(membershipInterestSubmissionsTable).values({
+        seasonId: foundation.currentSeasonId,
+        submittedName: input.name.trim(),
+        submittedEmail: normalizedEmail,
+        submittedPhone: input.phone?.trim() || null,
+        membershipTier: input.membershipTier,
+        matchedPlayerId,
+        matchStatus,
+        rawData: input.rawData ?? input,
+        reviewedAt: matchStatus === "matched" ? new Date() : null,
+      });
+      if (matchStatus === "matched") matched++;
+      else needsReview++;
     }
 
-    await db.insert(membershipInterestSubmissionsTable).values({
-      seasonId: foundation.currentSeasonId,
-      submittedName: input.name.trim(),
-      submittedEmail: normalizedEmail,
-      submittedPhone: input.phone?.trim() || null,
-      membershipTier: input.membershipTier,
-      matchedPlayerId,
-      matchStatus,
-      rawData: input.rawData ?? input,
-      reviewedAt: matchStatus === "matched" ? new Date() : null,
-    });
-    if (matchStatus === "matched") matched++;
-    else needsReview++;
-  }
+    return { matched, needsReview };
+  });
 
   res.json({ imported: submissions.length, matched, needsReview });
 });
@@ -425,6 +436,7 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
 
   let matchStatus = "dismissed";
   let matchedPlayerId: number | null = null;
+  let matchedPlayer: typeof playersTable.$inferSelect | null = null;
   if (!body.dismiss && body.playerId) {
     const [player] = await db.select().from(playersTable).where(eq(playersTable.id, body.playerId));
     if (!player) {
@@ -433,21 +445,33 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
     }
     matchedPlayerId = player.id;
     matchStatus = "matched";
-    await db.update(playersTable).set({
-      currentMembershipTier: body.membershipTier,
-      membershipTierUpdatedAt: new Date(),
-    }).where(eq(playersTable.id, player.id));
-    await syncCurrentParticipation(player.id);
+    matchedPlayer = player;
   }
-  const [updated] = await db.update(membershipInterestSubmissionsTable).set({
-    matchedPlayerId,
-    membershipTier: body.membershipTier,
-    matchStatus,
-    reviewedAt: new Date(),
-  }).where(eq(membershipInterestSubmissionsTable.id, id)).returning();
-  const matchedPlayer = matchedPlayerId
-    ? (await db.select({ name: playersTable.name }).from(playersTable).where(eq(playersTable.id, matchedPlayerId)))[0]
-    : null;
+  const updated = await db.transaction(async (tx) => {
+    const now = new Date();
+    if (matchedPlayer) {
+      const foundation = await ensureMembershipFoundation(tx);
+      await tx.update(playersTable).set({
+        currentMembershipTier: body.membershipTier,
+        membershipTierUpdatedAt: now,
+      }).where(eq(playersTable.id, matchedPlayer.id));
+      await tx.update(playerParticipationsTable).set({
+        membershipTier: body.membershipTier,
+        participationStatus: matchedPlayer.memberStatus === "active" ? "active" : matchedPlayer.memberStatus,
+        updatedAt: now,
+      }).where(and(
+        eq(playerParticipationsTable.playerId, matchedPlayer.id),
+        eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+      ));
+    }
+    const [submission] = await tx.update(membershipInterestSubmissionsTable).set({
+      matchedPlayerId,
+      membershipTier: body.membershipTier,
+      matchStatus,
+      reviewedAt: now,
+    }).where(eq(membershipInterestSubmissionsTable.id, id)).returning();
+    return submission;
+  });
   res.json(mapInterestSubmission({ submission: updated, matchedPlayerName: matchedPlayer?.name ?? null }));
 });
 
