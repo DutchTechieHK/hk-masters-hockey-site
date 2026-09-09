@@ -19,17 +19,21 @@ const REQUIRED_PROPERTIES: Record<string, string> = {
   "Last Name": "rich_text",
   Email: "email",
   "WhatsApp / Phone": "phone_number",
+  "Year of Birth": "date",
+  "Position(s)": "multi_select",
   Submitted: "created_time",
   "Consent to Be Contacted": "checkbox",
 };
 
-type NotionApplicant = {
+export type NotionApplicant = {
   externalId: string;
   sourceUpdatedAt: Date;
   submittedAt: Date;
   name: string;
   email: string;
   phone: string | null;
+  dateOfBirth: string | null;
+  position: string | null;
   consent: boolean;
   rawData: Record<string, unknown>;
 };
@@ -109,6 +113,16 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
   const name = `${firstName} ${lastName}`.trim();
   const email = String(properties["Email"]?.email ?? "").trim().toLowerCase();
   const phone = String(properties["WhatsApp / Phone"]?.phone_number ?? "").trim() || null;
+  const rawDateOfBirth = properties["Year of Birth"]?.type === "date"
+    ? String(properties["Year of Birth"].date?.start ?? "")
+    : "";
+  const dateOfBirth = /^\d{4}-\d{2}-\d{2}/.test(rawDateOfBirth)
+    ? rawDateOfBirth.slice(0, 10)
+    : null;
+  const positionValues = multiSelectValue(properties["Position(s)"])
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const position = positionValues.length > 0 ? positionValues.join(", ") : null;
   const consent = properties["Consent to Be Contacted"]?.type === "checkbox"
     ? Boolean(properties["Consent to Be Contacted"].checkbox)
     : false;
@@ -123,6 +137,8 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
     name,
     email,
     phone,
+    dateOfBirth,
+    position,
     consent,
     rawData,
   };
@@ -220,6 +236,80 @@ export function isNotionSnapshotCurrent(stored: Date | null, incoming: Date): bo
   return Boolean(stored && stored.getTime() >= incoming.getTime());
 }
 
+type MemberProfile = {
+  dateOfBirth: string | null;
+  position: string | null;
+};
+
+export function resolveNotionMemberProfile(
+  applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position">,
+  current: MemberProfile,
+  notionCreated: boolean,
+): { updates: Partial<MemberProfile>; conflict: boolean } {
+  if (!applicant.consent) return { updates: {}, conflict: false };
+
+  const updates: Partial<MemberProfile> = {};
+  let conflict = false;
+  for (const field of ["dateOfBirth", "position"] as const) {
+    const incoming = applicant[field];
+    const existing = current[field]?.trim() || null;
+    if (notionCreated) {
+      if (incoming !== existing) updates[field] = incoming;
+    } else if (incoming && !existing) {
+      updates[field] = incoming;
+    } else if (incoming && existing !== incoming) {
+      conflict = true;
+    }
+  }
+  return { updates, conflict };
+}
+
+export function resolveProfileSubmissionStatus(
+  currentStatus: string,
+  profileConflict: boolean,
+): "conflict" | "matched" | null {
+  if (profileConflict && currentStatus !== "conflict") return "conflict";
+  if (!profileConflict && currentStatus === "conflict") return "matched";
+  return null;
+}
+
+export function hasNotionIdentityConflict(
+  linkedEmail: string | null | undefined,
+  applicantEmail: string,
+): boolean {
+  return !linkedEmail || linkedEmail.trim().toLowerCase() !== applicantEmail.trim().toLowerCase();
+}
+
+async function syncNotionMemberProfile(
+  tx: any,
+  applicant: NotionApplicant,
+  playerId: number,
+): Promise<{ updated: boolean; conflict: boolean }> {
+  const [player] = await tx.select({
+    email: playersTable.email,
+    dateOfBirth: playersTable.dateOfBirth,
+    position: playersTable.position,
+  }).from(playersTable).where(eq(playersTable.id, playerId)).limit(1);
+  if (!player) return { updated: false, conflict: true };
+
+  const [notionParticipation] = await tx.select({ id: playerParticipationsTable.id })
+    .from(playerParticipationsTable)
+    .where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.source, SOURCE),
+    ))
+    .limit(1);
+  const resolution = resolveNotionMemberProfile(applicant, player, Boolean(notionParticipation));
+  const updated = Object.keys(resolution.updates).length > 0;
+  if (updated) {
+    await tx.update(playersTable).set(resolution.updates).where(eq(playersTable.id, playerId));
+  }
+  return {
+    updated,
+    conflict: resolution.conflict || hasNotionIdentityConflict(player.email, applicant.email),
+  };
+}
+
 async function performSync(currentSeasonId: number): Promise<NotionMemberSyncResult> {
   const lockClient = await pool.connect();
   let lockHeld = false;
@@ -256,6 +346,31 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           ))
           .limit(1);
         if (isNotionSnapshotCurrent(existingSubmission?.sourceUpdatedAt ?? null, applicant.sourceUpdatedAt)) {
+          if (existingSubmission?.matchedPlayerId && isValidNotionApplicant(applicant)) {
+            const profile = await syncNotionMemberProfile(
+              tx,
+              applicant,
+              existingSubmission.matchedPlayerId,
+            );
+            const nextStatus = resolveProfileSubmissionStatus(
+              existingSubmission.matchStatus,
+              profile.conflict,
+            );
+            if (nextStatus) {
+              await tx.update(membershipInterestSubmissionsTable).set({
+                matchStatus: nextStatus,
+                reviewedAt: nextStatus === "matched" ? new Date() : null,
+              }).where(eq(membershipInterestSubmissionsTable.id, existingSubmission.id));
+              if (nextStatus === "conflict") counts.needsReview++;
+              else counts.matched++;
+              counts.imported++;
+              continue;
+            }
+            if (profile.updated) {
+              counts.imported++;
+              continue;
+            }
+          }
           counts.skipped++;
           continue;
         }
@@ -309,6 +424,8 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               name: applicant.name,
               email: applicant.email,
               phone: applicant.phone,
+              dateOfBirth: applicant.dateOfBirth,
+              position: applicant.position,
               memberStatus: "active",
               currentMembershipTier: "awaiting_selection",
               membershipTierUpdatedAt: new Date(),
@@ -328,6 +445,14 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           }
         } else {
           counts.needsReview++;
+        }
+
+        if (valid && matchedPlayerId && matchStatus === "matched") {
+          const profile = await syncNotionMemberProfile(tx, applicant, matchedPlayerId);
+          if (profile.conflict) {
+            matchStatus = "conflict";
+            counts.needsReview++;
+          }
         }
 
         const storedApplicant = notionApplicantStorageData(applicant);

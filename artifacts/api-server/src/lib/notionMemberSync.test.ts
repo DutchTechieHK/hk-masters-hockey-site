@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   isValidNotionApplicant,
   isNotionSnapshotCurrent,
+  hasNotionIdentityConflict,
   notionApplicantStorageData,
   pageToNotionApplicant,
+  resolveNotionMemberProfile,
+  resolveProfileSubmissionStatus,
   shouldApplyImportedTier,
   validateNotionMemberProperties,
 } from "./notionMemberSync";
@@ -24,6 +27,12 @@ function pageFixture(overrides: Record<string, unknown> = {}) {
       "Last Name": { id: "last", type: "rich_text", rich_text: [{ plain_text: "Lee" }] },
       Email: { id: "email", type: "email", email: " ALEX@EXAMPLE.COM " },
       "WhatsApp / Phone": { id: "phone", type: "phone_number", phone_number: "1234" },
+      "Year of Birth": { id: "birth", type: "date", date: { start: "1984-06-12", end: null } },
+      "Position(s)": {
+        id: "position",
+        type: "multi_select",
+        multi_select: [{ id: "forward", name: "Forward" }, { id: "midfield", name: "Midfield" }],
+      },
       Submitted: { id: "submitted", type: "created_time", created_time: "2026-09-01T10:00:00.000Z" },
       "Consent to Be Contacted": { id: "consent", type: "checkbox", checkbox: true },
     },
@@ -39,6 +48,8 @@ describe("Notion member sync rules", () => {
       name: "Alex Lee",
       email: "alex@example.com",
       phone: "1234",
+      dateOfBirth: "1984-06-12",
+      position: "Forward, Midfield",
       consent: true,
     });
     expect(applicant && isValidNotionApplicant(applicant)).toBe(true);
@@ -80,5 +91,48 @@ describe("Notion member sync rules", () => {
     expect(() => validateNotionMemberProperties(properties)).not.toThrow();
     expect(() => validateNotionMemberProperties({ ...properties, Email: undefined }))
       .toThrow(/Email \(email\)/);
+  });
+
+  it("keeps Notion-created member profile fields synchronized", () => {
+    expect(resolveNotionMemberProfile(
+      { consent: true, dateOfBirth: "1984-06-12", position: "Forward, Midfield" },
+      { dateOfBirth: null, position: "Defender" },
+      true,
+    )).toEqual({
+      updates: { dateOfBirth: "1984-06-12", position: "Forward, Midfield" },
+      conflict: false,
+    });
+  });
+
+  it("fills blank profile fields without overwriting a pre-existing member conflict", () => {
+    expect(resolveNotionMemberProfile(
+      { consent: true, dateOfBirth: "1984-06-12", position: "Forward" },
+      { dateOfBirth: null, position: "Goalkeeper" },
+      false,
+    )).toEqual({
+      updates: { dateOfBirth: "1984-06-12" },
+      conflict: true,
+    });
+  });
+
+  it("does not copy profile fields without consent", () => {
+    expect(resolveNotionMemberProfile(
+      { consent: false, dateOfBirth: "1984-06-12", position: "Forward" },
+      { dateOfBirth: null, position: null },
+      true,
+    )).toEqual({ updates: {}, conflict: false });
+  });
+
+  it("clears a stale reconciliation conflict after the member is corrected locally", () => {
+    expect(resolveProfileSubmissionStatus("conflict", false)).toBe("matched");
+    expect(resolveProfileSubmissionStatus("matched", true)).toBe("conflict");
+    expect(resolveProfileSubmissionStatus("matched", false)).toBeNull();
+    expect(resolveProfileSubmissionStatus("conflict", true)).toBeNull();
+  });
+
+  it("does not clear a reconciliation conflict while the linked email still differs", () => {
+    expect(hasNotionIdentityConflict("member@example.com", "changed@example.com")).toBe(true);
+    expect(hasNotionIdentityConflict(" MEMBER@EXAMPLE.COM ", "member@example.com")).toBe(false);
+    expect(resolveProfileSubmissionStatus("conflict", true)).toBeNull();
   });
 });

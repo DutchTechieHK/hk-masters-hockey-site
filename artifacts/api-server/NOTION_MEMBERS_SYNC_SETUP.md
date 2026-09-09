@@ -18,6 +18,8 @@ The current importer expects these Notion properties:
 - `Last Name` (rich text)
 - `Email` (email)
 - `WhatsApp / Phone` (phone)
+- `Year of Birth` (date)
+- `Position(s)` (multi-select)
 - `Submitted` (created time)
 - `Consent to Be Contacted` (checkbox)
 
