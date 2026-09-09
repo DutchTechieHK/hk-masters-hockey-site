@@ -14,6 +14,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 const SOURCE = "notion_join";
 const HOLDING_TEAM_NAME = "Awaiting Selection";
 const NOTION_API_VERSION = "2025-09-03";
+const PROFILE_CONFLICT_RESOLVED_FOR_KEY = "_profileConflictResolvedForSourceUpdatedAt";
 const REQUIRED_PROPERTIES: Record<string, string> = {
   "First Name": "title",
   "Last Name": "rich_text",
@@ -228,6 +229,29 @@ export function notionApplicantStorageData(applicant: NotionApplicant) {
   };
 }
 
+export function markNotionProfileConflictResolved(
+  rawData: unknown,
+  sourceUpdatedAt: Date | null,
+): unknown {
+  if (!sourceUpdatedAt) return rawData;
+  const stored = rawData && typeof rawData === "object" && !Array.isArray(rawData)
+    ? rawData as Record<string, unknown>
+    : {};
+  return {
+    ...stored,
+    [PROFILE_CONFLICT_RESOLVED_FOR_KEY]: sourceUpdatedAt.toISOString(),
+  };
+}
+
+export function isNotionProfileConflictResolved(
+  rawData: unknown,
+  sourceUpdatedAt: Date,
+): boolean {
+  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) return false;
+  return (rawData as Record<string, unknown>)[PROFILE_CONFLICT_RESOLVED_FOR_KEY] ===
+    sourceUpdatedAt.toISOString();
+}
+
 export function shouldApplyImportedTier(source: string, currentTier: string): boolean {
   return source !== SOURCE || currentTier === "awaiting_selection";
 }
@@ -423,7 +447,10 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
             );
             const nextStatus = resolveProfileSubmissionStatus(
               existingSubmission.matchStatus,
-              profile.conflict,
+              profile.conflict && !isNotionProfileConflictResolved(
+                existingSubmission.rawData,
+                applicant.sourceUpdatedAt,
+              ),
             );
             if (nextStatus) {
               await tx.update(membershipInterestSubmissionsTable).set({

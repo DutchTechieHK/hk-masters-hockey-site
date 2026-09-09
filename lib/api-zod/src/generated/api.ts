@@ -521,6 +521,7 @@ export const ResolveMembershipInterestSubmissionParams = zod.object({
 export const ResolveMembershipInterestSubmissionBody = zod.object({
   playerId: zod.number().nullish(),
   membershipTier: zod.enum([
+    "awaiting_selection",
     "masters_registration",
     "active_player",
     "division_one_squad",

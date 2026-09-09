@@ -1850,7 +1850,7 @@ components:
           nullable: true
         membershipTier:
           type: string
-          enum: [masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
         dismiss:
           type: boolean
       required: [membershipTier]

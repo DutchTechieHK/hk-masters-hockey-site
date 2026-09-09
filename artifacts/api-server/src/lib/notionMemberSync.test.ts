@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   isValidNotionApplicant,
   isNotionSnapshotCurrent,
+  isNotionProfileConflictResolved,
   hasNotionIdentityConflict,
   getNotionMemberConflicts,
   notionApplicantStorageData,
+  markNotionProfileConflictResolved,
   pageToNotionApplicant,
   resolveNotionMemberProfile,
   resolveNotionMemberSyncProfile,
@@ -168,6 +170,20 @@ describe("Notion member sync rules", () => {
     expect(shouldSyncUnchangedNotionProfile(
       { matchStatus: "dismissed", matchedPlayerId: 42 },
       true,
+    )).toBe(false);
+  });
+
+  it("keeps an accepted conflict resolved until the Notion page changes", () => {
+    const sourceUpdatedAt = new Date("2026-09-02T10:00:00.000Z");
+    const marked = markNotionProfileConflictResolved(
+      { "Position(s)": ["Forward"] },
+      sourceUpdatedAt,
+    );
+
+    expect(isNotionProfileConflictResolved(marked, sourceUpdatedAt)).toBe(true);
+    expect(isNotionProfileConflictResolved(
+      marked,
+      new Date("2026-09-03T10:00:00.000Z"),
     )).toBe(false);
   });
 

@@ -27,10 +27,12 @@ const runId = `${process.pid}-${Date.now()}`;
 const firstEmail = `membership-import-first-${runId}@example.com`;
 const failingEmail = `membership-import-fail-${runId}@example.com`;
 const manualEmail = `membership-import-manual-${runId}@example.com`;
+const notionConflictEmail = `membership-import-conflict-${runId}@example.com`;
 const triggerName = `fail_membership_import_${process.pid}_${Date.now()}`.replaceAll("-", "_");
 const functionName = `${triggerName}_fn`;
 let playerIds: number[] = [];
 let manualSubmissionId: number;
+let notionConflictSubmissionId: number;
 
 beforeAll(async () => {
   const [team] = await db.select({ id: teamsTable.id }).from(teamsTable).limit(1);
@@ -55,6 +57,12 @@ beforeAll(async () => {
       email: manualEmail,
       currentMembershipTier: "awaiting_selection",
     },
+    {
+      teamId: team.id,
+      name: "Membership Import Conflict",
+      email: notionConflictEmail,
+      currentMembershipTier: "awaiting_selection",
+    },
   ]).returning({ id: playersTable.id });
   playerIds = inserted.map(({ id }) => id);
 
@@ -70,6 +78,18 @@ beforeAll(async () => {
     matchStatus: "unmatched",
   }).returning({ id: membershipInterestSubmissionsTable.id });
   manualSubmissionId = manualSubmission.id;
+  const [notionConflictSubmission] = await db.insert(membershipInterestSubmissionsTable).values({
+    seasonId: season.id,
+    submittedName: "Notion Conflict",
+    submittedEmail: notionConflictEmail,
+    membershipTier: "awaiting_selection",
+    matchedPlayerId: playerIds[3],
+    matchStatus: "conflict",
+    source: "notion_join",
+    sourceUpdatedAt: new Date("2026-09-02T10:00:00.000Z"),
+    rawData: { "Position(s)": ["Forward"] },
+  }).returning({ id: membershipInterestSubmissionsTable.id });
+  notionConflictSubmissionId = notionConflictSubmission.id;
 
   await pool.query(`
     CREATE FUNCTION ${functionName}() RETURNS trigger AS $$
@@ -115,7 +135,7 @@ describe("membership interest import transaction", () => {
       email: playersTable.email,
       membershipTier: playersTable.currentMembershipTier,
     }).from(playersTable).where(inArray(playersTable.id, playerIds));
-    expect(players).toHaveLength(3);
+    expect(players).toHaveLength(4);
     expect(players.every(({ membershipTier }) => membershipTier === "awaiting_selection")).toBe(true);
 
     const firstAudits = await db.select({ id: membershipInterestSubmissionsTable.id })
@@ -153,5 +173,27 @@ describe("membership interest import transaction", () => {
       .from(playerParticipationsTable)
       .where(eq(playerParticipationsTable.playerId, manualPlayerId));
     expect(participations).toHaveLength(0);
+  });
+
+  it("accepts Awaiting Selection when keeping existing Notion member values", async () => {
+    const notionPlayerId = playerIds[3];
+    const response = await request(app)
+      .patch(`/api/players/membership/interest-submissions/${notionConflictSubmissionId}`)
+      .send({
+        playerId: notionPlayerId,
+        membershipTier: "awaiting_selection",
+      });
+
+    expect(response.status).toBe(200);
+
+    const [submission] = await db.select().from(membershipInterestSubmissionsTable)
+      .where(eq(membershipInterestSubmissionsTable.id, notionConflictSubmissionId));
+    expect(submission).toMatchObject({
+      matchedPlayerId: notionPlayerId,
+      matchStatus: "matched",
+    });
+    expect(submission.rawData).toMatchObject({
+      _profileConflictResolvedForSourceUpdatedAt: "2026-09-02T10:00:00.000Z",
+    });
   });
 });

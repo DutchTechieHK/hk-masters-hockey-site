@@ -43,6 +43,7 @@ import {
   getLatestNotionMemberSync,
   getNotionMemberConflicts,
   isNotionMemberSyncConfigured,
+  markNotionProfileConflictResolved,
   NotionMemberSyncAlreadyRunningError,
   shouldApplyImportedTier,
   syncNotionMembers,
@@ -526,6 +527,11 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
   }
   const updated = await db.transaction(async (tx) => {
     const now = new Date();
+    const rawData = !body.dismiss &&
+      existing.source === "notion_join" &&
+      existing.matchStatus === "conflict"
+      ? markNotionProfileConflictResolved(existing.rawData, existing.sourceUpdatedAt)
+      : existing.rawData;
     if (matchedPlayer) {
       const foundation = await ensureMembershipFoundation(tx);
       const shouldApplyTier = shouldApplyImportedTier(
@@ -551,6 +557,7 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
       matchedPlayerId,
       membershipTier: body.membershipTier,
       matchStatus,
+      rawData,
       reviewedAt: now,
     }).where(eq(membershipInterestSubmissionsTable.id, id)).returning();
     return submission;

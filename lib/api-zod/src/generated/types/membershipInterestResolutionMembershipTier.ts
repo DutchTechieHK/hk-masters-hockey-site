@@ -10,6 +10,7 @@ export type MembershipInterestResolutionMembershipTier =
   (typeof MembershipInterestResolutionMembershipTier)[keyof typeof MembershipInterestResolutionMembershipTier];
 
 export const MembershipInterestResolutionMembershipTier = {
+  awaiting_selection: "awaiting_selection",
   masters_registration: "masters_registration",
   active_player: "active_player",
   division_one_squad: "division_one_squad",
