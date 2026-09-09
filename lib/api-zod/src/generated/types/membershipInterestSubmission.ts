@@ -17,6 +17,8 @@ export interface MembershipInterestSubmission {
   matchedPlayerId?: number | null;
   matchedPlayerName?: string | null;
   matchStatus: MembershipInterestSubmissionMatchStatus;
+  source: string;
+  externalId?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
 }

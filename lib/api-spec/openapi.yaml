@@ -290,6 +290,34 @@ paths:
               schema:
                 $ref: "#/components/schemas/MembershipInterestImportResult"
 
+  /players/membership/notion-sync:
+    get:
+      operationId: getNotionMembershipSyncStatus
+      tags: [players]
+      summary: Get the latest Notion membership sync status
+      responses:
+        "200":
+          description: Notion membership sync status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotionMembershipSyncStatus"
+    post:
+      operationId: syncNotionMemberships
+      tags: [players]
+      summary: Run the Notion membership sync now
+      responses:
+        "200":
+          description: Notion membership sync result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotionMembershipSyncResult"
+        "409":
+          description: A Notion membership sync is already running
+        "503":
+          description: Notion membership sync is not configured
+
   /players/membership/interest-submissions/{id}:
     patch:
       operationId: resolveMembershipInterestSubmission
@@ -1681,7 +1709,7 @@ components:
           nullable: true
         membershipTier:
           type: string
-          enum: [masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
         matchedPlayerId:
           type: integer
           nullable: true
@@ -1690,13 +1718,18 @@ components:
           nullable: true
         matchStatus:
           type: string
-          enum: [matched, unmatched, ambiguous, conflict, dismissed]
+          enum: [matched, unmatched, ambiguous, conflict, invalid, dismissed]
+        source:
+          type: string
+        externalId:
+          type: string
+          nullable: true
         submittedAt:
           type: string
         reviewedAt:
           type: string
           nullable: true
-      required: [id, submittedName, submittedEmail, membershipTier, matchStatus, submittedAt]
+      required: [id, submittedName, submittedEmail, membershipTier, matchStatus, source, submittedAt]
 
     MembershipInterestInput:
       type: object
@@ -1737,6 +1770,50 @@ components:
         needsReview:
           type: integer
       required: [imported, matched, needsReview]
+
+    NotionMembershipSyncResult:
+      type: object
+      properties:
+        imported:
+          type: integer
+        created:
+          type: integer
+        matched:
+          type: integer
+        needsReview:
+          type: integer
+        skipped:
+          type: integer
+      required: [imported, created, matched, needsReview, skipped]
+
+    NotionMembershipSyncRun:
+      allOf:
+        - $ref: "#/components/schemas/NotionMembershipSyncResult"
+        - type: object
+          properties:
+            status:
+              type: string
+              enum: [running, succeeded, failed, skipped]
+            error:
+              type: string
+              nullable: true
+            startedAt:
+              type: string
+            completedAt:
+              type: string
+              nullable: true
+          required: [status, startedAt]
+
+    NotionMembershipSyncStatus:
+      type: object
+      properties:
+        configured:
+          type: boolean
+        latest:
+          allOf:
+            - $ref: "#/components/schemas/NotionMembershipSyncRun"
+          nullable: true
+      required: [configured]
 
     MembershipInterestResolution:
       type: object

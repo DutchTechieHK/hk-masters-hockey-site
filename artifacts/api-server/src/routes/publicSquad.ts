@@ -18,6 +18,7 @@ router.get("/squad", async (_req, res) => {
     })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(eq(teamsTable.isInternal, false))
     .orderBy(playersTable.id);
 
   res.set("Cache-Control", "public, max-age=60");
@@ -35,7 +36,9 @@ router.get("/squad", async (_req, res) => {
 });
 
 router.get("/teams", async (_req, res) => {
-  const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
+  const teams = await db.select().from(teamsTable)
+    .where(eq(teamsTable.isInternal, false))
+    .orderBy(teamsTable.id);
   res.set("Cache-Control", "public, max-age=60");
   res.json(
     teams.map((t) => ({

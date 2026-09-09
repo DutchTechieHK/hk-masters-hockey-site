@@ -39,6 +39,13 @@ import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEma
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
+import {
+  getLatestNotionMemberSync,
+  isNotionMemberSyncConfigured,
+  NotionMemberSyncAlreadyRunningError,
+  shouldApplyImportedTier,
+  syncNotionMembers,
+} from "../lib/notionMemberSync";
 
 const router = Router();
 
@@ -310,6 +317,7 @@ async function syncCurrentParticipation(playerId: number) {
   if (!player) return;
   const foundation = await ensureMembershipFoundation();
   await db.update(playerParticipationsTable).set({
+    teamId: player.teamId,
     membershipTier: player.currentMembershipTier,
     participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
     updatedAt: new Date(),
@@ -332,6 +340,8 @@ function mapInterestSubmission(row: {
     matchedPlayerId: row.submission.matchedPlayerId,
     matchedPlayerName: row.matchedPlayerName,
     matchStatus: row.submission.matchStatus,
+    source: row.submission.source,
+    externalId: row.submission.externalId,
     submittedAt: row.submission.submittedAt.toISOString(),
     reviewedAt: row.submission.reviewedAt?.toISOString() ?? null,
   };
@@ -345,6 +355,42 @@ router.post("/membership/initialize", requireAdminAccess, async (_req, res) => {
     currentParticipations: result.currentParticipations,
     duplicateEmails: result.duplicateEmails,
   });
+});
+
+router.get("/membership/notion-sync", requireAdminAccess, async (_req, res) => {
+  const latest = await getLatestNotionMemberSync();
+  res.json({
+    configured: isNotionMemberSyncConfigured(),
+    latest: latest ? {
+      status: latest.status,
+      imported: latest.importedCount,
+      created: latest.createdCount,
+      matched: latest.matchedCount,
+      needsReview: latest.reviewCount,
+      skipped: latest.skippedCount,
+      error: latest.errorMessage,
+      startedAt: latest.startedAt.toISOString(),
+      completedAt: latest.completedAt?.toISOString() ?? null,
+    } : null,
+  });
+});
+
+router.post("/membership/notion-sync", requireAdminAccess, async (_req, res) => {
+  if (!isNotionMemberSyncConfigured()) {
+    res.status(503).json({ error: "Notion member sync is not configured." });
+    return;
+  }
+  try {
+    const foundation = await ensureMembershipFoundation();
+    const result = await syncNotionMembers(foundation.currentSeasonId);
+    res.json(result);
+  } catch (error) {
+    if (error instanceof NotionMemberSyncAlreadyRunningError) {
+      res.status(409).json({ error: error.message });
+      return;
+    }
+    throw error;
+  }
 });
 
 router.get("/membership/interest-submissions", requireAdminAccess, async (_req, res) => {
@@ -451,18 +497,24 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
     const now = new Date();
     if (matchedPlayer) {
       const foundation = await ensureMembershipFoundation(tx);
-      await tx.update(playersTable).set({
-        currentMembershipTier: body.membershipTier,
-        membershipTierUpdatedAt: now,
-      }).where(eq(playersTable.id, matchedPlayer.id));
-      await tx.update(playerParticipationsTable).set({
-        membershipTier: body.membershipTier,
-        participationStatus: matchedPlayer.memberStatus === "active" ? "active" : matchedPlayer.memberStatus,
-        updatedAt: now,
-      }).where(and(
-        eq(playerParticipationsTable.playerId, matchedPlayer.id),
-        eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
-      ));
+      const shouldApplyTier = shouldApplyImportedTier(
+        existing.source,
+        matchedPlayer.currentMembershipTier,
+      );
+      if (shouldApplyTier) {
+        await tx.update(playersTable).set({
+          currentMembershipTier: body.membershipTier,
+          membershipTierUpdatedAt: now,
+        }).where(eq(playersTable.id, matchedPlayer.id));
+        await tx.update(playerParticipationsTable).set({
+          membershipTier: body.membershipTier,
+          participationStatus: matchedPlayer.memberStatus === "active" ? "active" : matchedPlayer.memberStatus,
+          updatedAt: now,
+        }).where(and(
+          eq(playerParticipationsTable.playerId, matchedPlayer.id),
+          eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+        ));
+      }
     }
     const [submission] = await tx.update(membershipInterestSubmissionsTable).set({
       matchedPlayerId,

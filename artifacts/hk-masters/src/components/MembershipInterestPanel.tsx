@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import type { MembershipInterestSubmission, Player } from "@workspace/api-client-react"
-import { AlertTriangle, CheckCircle, Upload } from "lucide-react"
+import { AlertTriangle, CheckCircle, RefreshCw, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
@@ -14,9 +14,25 @@ type ImportRow = {
 }
 
 const TIER_LABELS: Record<string, string> = {
+  awaiting_selection: "Awaiting selection",
   masters_registration: "Masters Registration",
   active_player: "Active Player",
   division_one_squad: "Division 1 Squad",
+}
+
+type NotionSyncStatus = {
+  configured: boolean
+  latest: null | {
+    status: "running" | "succeeded" | "failed" | "skipped"
+    imported: number
+    created: number
+    matched: number
+    needsReview: number
+    skipped: number
+    error: string | null
+    startedAt: string
+    completedAt: string | null
+  }
 }
 
 function parseCsvLine(line: string) {
@@ -94,6 +110,7 @@ export function MembershipInterestPanel({
   const [selectedMembers, setSelectedMembers] = useState<Record<number, string>>({})
   const [busy, setBusy] = useState(false)
   const [duplicateEmails, setDuplicateEmails] = useState<string[]>([])
+  const [notionSync, setNotionSync] = useState<NotionSyncStatus | null>(null)
 
   const headers = useMemo<Record<string, string>>(
     () => {
@@ -109,6 +126,11 @@ export function MembershipInterestPanel({
     if (response.ok) setSubmissions(await response.json())
   }
 
+  const loadNotionSync = async () => {
+    const response = await fetch("/api/players/membership/notion-sync", { headers })
+    if (response.ok) setNotionSync(await response.json())
+  }
+
   useEffect(() => {
     if (!sessionToken) return
     let cancelled = false
@@ -116,7 +138,7 @@ export function MembershipInterestPanel({
       .then((response) => response.ok ? response.json() : Promise.reject(new Error("Membership setup failed")))
       .then((result: { duplicateEmails: string[] }) => {
         if (!cancelled) setDuplicateEmails(result.duplicateEmails)
-        return loadSubmissions()
+        return Promise.all([loadSubmissions(), loadNotionSync()])
       })
       .then(() => { if (!cancelled) onMembersUpdated() })
       .catch(() => { /* The existing roster remains usable if initialization is unavailable. */ })
@@ -143,6 +165,26 @@ export function MembershipInterestPanel({
       onMembersUpdated()
     } catch (error) {
       toast({ title: (error as Error).message, variant: "destructive" })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const syncNotion = async () => {
+    setBusy(true)
+    try {
+      const response = await fetch("/api/players/membership/notion-sync", { method: "POST", headers })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Notion sync failed")
+      toast({
+        title: "Notion signups synced",
+        description: `${result.created} new members; ${result.matched} existing matches; ${result.needsReview} need review.`,
+      })
+      await Promise.all([loadSubmissions(), loadNotionSync()])
+      onMembersUpdated()
+    } catch (error) {
+      toast({ title: (error as Error).message, variant: "destructive" })
+      await loadNotionSync()
     } finally {
       setBusy(false)
     }
@@ -186,7 +228,17 @@ export function MembershipInterestPanel({
             Import CSV or JSON submissions. Unique email matches are applied automatically; uncertain matches stay here for review.
           </p>
         </div>
-        <label className="shrink-0">
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || notionSync?.configured === false}
+            onClick={() => void syncNotion()}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${busy ? "animate-spin" : ""}`} />
+            Sync Notion now
+          </Button>
+          <label>
           <input
             className="hidden"
             type="file"
@@ -201,8 +253,29 @@ export function MembershipInterestPanel({
           <span className="inline-flex h-9 cursor-pointer items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
             <Upload className="mr-2 h-4 w-4" /> {busy ? "Working…" : "Import submissions"}
           </span>
-        </label>
+          </label>
+        </div>
       </div>
+
+      {notionSync?.latest && (
+        <div className={`mt-3 rounded-lg border p-3 text-sm ${
+          notionSync.latest.status === "failed"
+            ? "border-red-200 bg-red-50 text-red-800"
+            : "border-slate-200 bg-slate-50 text-slate-700"
+        }`}>
+          <span className="font-semibold">
+            Last Notion sync: {notionSync.latest.status}
+          </span>
+          {" · "}
+          {new Date(notionSync.latest.completedAt || notionSync.latest.startedAt).toLocaleString()}
+          {notionSync.latest.status === "succeeded" && (
+            <span>
+              {" · "}{notionSync.latest.created} created, {notionSync.latest.matched} matched, {notionSync.latest.needsReview} review, {notionSync.latest.skipped} unchanged
+            </span>
+          )}
+          {notionSync.latest.error && <div className="mt-1">{notionSync.latest.error}</div>}
+        </div>
+      )}
 
       {duplicateEmails.length > 0 && (
         <div className="mt-3 flex gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">

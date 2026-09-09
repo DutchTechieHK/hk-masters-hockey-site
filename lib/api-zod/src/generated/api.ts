@@ -409,6 +409,7 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   submittedEmail: zod.string(),
   submittedPhone: zod.string().nullish(),
   membershipTier: zod.enum([
+    "awaiting_selection",
     "masters_registration",
     "active_player",
     "division_one_squad",
@@ -420,8 +421,11 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
     "unmatched",
     "ambiguous",
     "conflict",
+    "invalid",
     "dismissed",
   ]),
+  source: zod.string(),
+  externalId: zod.string().nullish(),
   submittedAt: zod.string(),
   reviewedAt: zod.string().nullish(),
 });
@@ -462,6 +466,41 @@ export const ImportMembershipInterestSubmissionsResponse = zod.object({
 });
 
 /**
+ * @summary Get the latest Notion membership sync status
+ */
+export const GetNotionMembershipSyncStatusResponse = zod.object({
+  configured: zod.boolean(),
+  latest: zod
+    .object({
+      imported: zod.number(),
+      created: zod.number(),
+      matched: zod.number(),
+      needsReview: zod.number(),
+      skipped: zod.number(),
+    })
+    .and(
+      zod.object({
+        status: zod.enum(["running", "succeeded", "failed", "skipped"]),
+        error: zod.string().nullish(),
+        startedAt: zod.string(),
+        completedAt: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+});
+
+/**
+ * @summary Run the Notion membership sync now
+ */
+export const SyncNotionMembershipsResponse = zod.object({
+  imported: zod.number(),
+  created: zod.number(),
+  matched: zod.number(),
+  needsReview: zod.number(),
+  skipped: zod.number(),
+});
+
+/**
  * @summary Resolve an interest submission
  */
 export const ResolveMembershipInterestSubmissionParams = zod.object({
@@ -484,6 +523,7 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   submittedEmail: zod.string(),
   submittedPhone: zod.string().nullish(),
   membershipTier: zod.enum([
+    "awaiting_selection",
     "masters_registration",
     "active_player",
     "division_one_squad",
@@ -495,8 +535,11 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
     "unmatched",
     "ambiguous",
     "conflict",
+    "invalid",
     "dismissed",
   ]),
+  source: zod.string(),
+  externalId: zod.string().nullish(),
   submittedAt: zod.string(),
   reviewedAt: zod.string().nullish(),
 });

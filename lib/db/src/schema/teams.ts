@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -18,6 +18,7 @@ export const teamsTable = pgTable("teams", {
   coachName: text("coach_name"),
   captainName: text("captain_name"),
   description: text("description"),
+  isInternal: boolean("is_internal").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

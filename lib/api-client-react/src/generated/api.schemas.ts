@@ -340,6 +340,7 @@ export type MembershipInterestSubmissionMembershipTier =
   (typeof MembershipInterestSubmissionMembershipTier)[keyof typeof MembershipInterestSubmissionMembershipTier];
 
 export const MembershipInterestSubmissionMembershipTier = {
+  awaiting_selection: "awaiting_selection",
   masters_registration: "masters_registration",
   active_player: "active_player",
   division_one_squad: "division_one_squad",
@@ -353,6 +354,7 @@ export const MembershipInterestSubmissionMatchStatus = {
   unmatched: "unmatched",
   ambiguous: "ambiguous",
   conflict: "conflict",
+  invalid: "invalid",
   dismissed: "dismissed",
 } as const;
 
@@ -365,6 +367,8 @@ export interface MembershipInterestSubmission {
   matchedPlayerId?: number | null;
   matchedPlayerName?: string | null;
   matchStatus: MembershipInterestSubmissionMatchStatus;
+  source: string;
+  externalId?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
 }
@@ -399,6 +403,36 @@ export interface MembershipInterestImportResult {
   imported: number;
   matched: number;
   needsReview: number;
+}
+
+export interface NotionMembershipSyncResult {
+  imported: number;
+  created: number;
+  matched: number;
+  needsReview: number;
+  skipped: number;
+}
+
+export type NotionMembershipSyncRunStatus =
+  (typeof NotionMembershipSyncRunStatus)[keyof typeof NotionMembershipSyncRunStatus];
+
+export const NotionMembershipSyncRunStatus = {
+  running: "running",
+  succeeded: "succeeded",
+  failed: "failed",
+  skipped: "skipped",
+} as const;
+
+export type NotionMembershipSyncRun = NotionMembershipSyncResult & {
+  status: NotionMembershipSyncRunStatus;
+  error?: string | null;
+  startedAt: string;
+  completedAt?: string | null;
+};
+
+export interface NotionMembershipSyncStatus {
+  configured: boolean;
+  latest?: NotionMembershipSyncRun | null;
 }
 
 export type MembershipInterestResolutionMembershipTier =

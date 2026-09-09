@@ -47,11 +47,14 @@ function mapTeamPublic(t: typeof teamsTable.$inferSelect, playerCount: number) {
 }
 
 router.get("/", async (req, res) => {
-  const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
   const isAdmin = await hasAdminAccess(req);
   if (isAdmin) {
+    const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
     return res.json(teams.map(mapTeam));
   }
+  const teams = await db.select().from(teamsTable)
+    .where(eq(teamsTable.isInternal, false))
+    .orderBy(teamsTable.id);
   // For public: include live player counts
   const counts = await db
     .select({ teamId: playersTable.teamId, count: sql<number>`count(*)::int` })

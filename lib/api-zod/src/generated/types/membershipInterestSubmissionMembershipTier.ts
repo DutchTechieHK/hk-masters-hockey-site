@@ -10,6 +10,7 @@ export type MembershipInterestSubmissionMembershipTier =
   (typeof MembershipInterestSubmissionMembershipTier)[keyof typeof MembershipInterestSubmissionMembershipTier];
 
 export const MembershipInterestSubmissionMembershipTier = {
+  awaiting_selection: "awaiting_selection",
   masters_registration: "masters_registration",
   active_player: "active_player",
   division_one_squad: "division_one_squad",

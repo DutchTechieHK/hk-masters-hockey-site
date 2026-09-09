@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { playersTable } from "@workspace/db/schema";
 import { isNull, isNotNull, sql } from "drizzle-orm";
 import { scheduleDailyPledgeDigest } from "./jobs/dailyPledgeDigest";
+import { scheduleNotionMemberSync } from "./jobs/notionMemberSync";
 
 const rawPort = process.env["PORT"];
 
@@ -36,5 +37,6 @@ backfillPortalAccess().then(() => {
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
     scheduleDailyPledgeDigest();
+    scheduleNotionMemberSync();
   });
 });

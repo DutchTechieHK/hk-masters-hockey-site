@@ -14,5 +14,6 @@ export const MembershipInterestSubmissionMatchStatus = {
   unmatched: "unmatched",
   ambiguous: "ambiguous",
   conflict: "conflict",
+  invalid: "invalid",
   dismissed: "dismissed",
 } as const;

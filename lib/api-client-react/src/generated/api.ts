@@ -45,6 +45,8 @@ import type {
   MembershipInterestImportResult,
   MembershipInterestResolution,
   MembershipInterestSubmission,
+  NotionMembershipSyncResult,
+  NotionMembershipSyncStatus,
   OnboardingInviteRequest,
   OnboardingInviteResult,
   Player,
@@ -1322,6 +1324,170 @@ export const useImportMembershipInterestSubmissions = <
   return useMutation(
     getImportMembershipInterestSubmissionsMutationOptions(options),
   );
+};
+
+/**
+ * @summary Get the latest Notion membership sync status
+ */
+export const getGetNotionMembershipSyncStatusUrl = () => {
+  return `/api/players/membership/notion-sync`;
+};
+
+export const getNotionMembershipSyncStatus = async (
+  options?: RequestInit,
+): Promise<NotionMembershipSyncStatus> => {
+  return customFetch<NotionMembershipSyncStatus>(
+    getGetNotionMembershipSyncStatusUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetNotionMembershipSyncStatusQueryKey = () => {
+  return [`/api/players/membership/notion-sync`] as const;
+};
+
+export const getGetNotionMembershipSyncStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetNotionMembershipSyncStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>
+  > = ({ signal }) =>
+    getNotionMembershipSyncStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetNotionMembershipSyncStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>
+>;
+export type GetNotionMembershipSyncStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the latest Notion membership sync status
+ */
+
+export function useGetNotionMembershipSyncStatus<
+  TData = Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getNotionMembershipSyncStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetNotionMembershipSyncStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Run the Notion membership sync now
+ */
+export const getSyncNotionMembershipsUrl = () => {
+  return `/api/players/membership/notion-sync`;
+};
+
+export const syncNotionMemberships = async (
+  options?: RequestInit,
+): Promise<NotionMembershipSyncResult> => {
+  return customFetch<NotionMembershipSyncResult>(
+    getSyncNotionMembershipsUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getSyncNotionMembershipsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncNotionMemberships>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncNotionMemberships>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["syncNotionMemberships"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncNotionMemberships>>,
+    void
+  > = () => {
+    return syncNotionMemberships(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncNotionMembershipsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof syncNotionMemberships>>
+>;
+
+export type SyncNotionMembershipsMutationError = ErrorType<void>;
+
+/**
+ * @summary Run the Notion membership sync now
+ */
+export const useSyncNotionMemberships = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncNotionMemberships>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncNotionMemberships>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getSyncNotionMembershipsMutationOptions(options));
 };
 
 /**
