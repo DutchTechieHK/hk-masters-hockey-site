@@ -47,6 +47,7 @@ export * from "./listKitsParams";
 export * from "./listLogisticsParams";
 export * from "./listMatchesParams";
 export * from "./listPlayersParams";
+export * from "./listPlayersPosition";
 export * from "./logisticsTask";
 export * from "./logisticsTaskCategory";
 export * from "./logisticsTaskStatus";

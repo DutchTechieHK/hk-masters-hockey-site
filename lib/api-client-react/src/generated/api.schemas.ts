@@ -947,7 +947,18 @@ export interface UpdateWhatsappTemplateVariables {
 
 export type ListPlayersParams = {
   teamId?: number;
+  position?: ListPlayersPosition;
 };
+
+export type ListPlayersPosition =
+  (typeof ListPlayersPosition)[keyof typeof ListPlayersPosition];
+
+export const ListPlayersPosition = {
+  Goalkeeper: "Goalkeeper",
+  Defender: "Defender",
+  Midfield: "Midfield",
+  Forward: "Forward",
+} as const;
 
 export type GetPlayerAccessToken200 = {
   accessToken: string | null;

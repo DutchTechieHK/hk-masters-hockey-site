@@ -204,6 +204,7 @@ export default function Players() {
   const { toast } = useToast()
 
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
+  const [positionFilter, setPositionFilter] = useState<string>("all")
   const [memberStatusFilter, setMemberStatusFilter] = useState<string>("all")
   const [membershipTierFilter, setMembershipTierFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -259,9 +260,14 @@ export default function Players() {
   const { data: fundraisingEntries = [] } = useListFundraising({
     query: { queryKey: getListFundraisingQueryKey(), enabled: !!sessionToken, retry: false }
   })
+  const playerQueryParams = {
+    ...(selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : {}),
+    ...(positionFilter !== "all" ? { position: positionFilter as "Goalkeeper" | "Defender" | "Midfield" | "Forward" } : {}),
+  }
+  const hasPlayerQueryParams = Object.keys(playerQueryParams).length > 0
   const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
-    selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined,
-    { query: { queryKey: getListPlayersQueryKey(selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined), refetchInterval: 30_000 } }
+    hasPlayerQueryParams ? playerQueryParams : undefined,
+    { query: { queryKey: getListPlayersQueryKey(hasPlayerQueryParams ? playerQueryParams : undefined), refetchInterval: 30_000 } }
   )
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -845,6 +851,17 @@ export default function Players() {
           >
             <option value="all">All Teams</option>
             {teams.map(t => <option key={t.id} value={t.id.toString()}>{t.name}</option>)}
+          </Select>
+          <Select
+            className="sm:w-48 bg-white"
+            value={positionFilter}
+            onChange={(e) => setPositionFilter(e.target.value)}
+          >
+            <option value="all">All positions</option>
+            <option value="Goalkeeper">Goalkeeper</option>
+            <option value="Defender">Defender</option>
+            <option value="Midfield">Midfielder</option>
+            <option value="Forward">Forward</option>
           </Select>
           <Select
             className="sm:w-44 bg-white"

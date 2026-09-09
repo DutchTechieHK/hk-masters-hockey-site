@@ -559,6 +559,16 @@ router.get("/:id/participations", requireAdminAccess, async (req, res) => {
 
 router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListPlayersQueryParams.parse(req.query);
+  const filters = [
+    query.teamId ? eq(playersTable.teamId, query.teamId) : undefined,
+    query.position
+      ? sql`EXISTS (
+          SELECT 1
+          FROM unnest(string_to_array(${playersTable.position}, ',')) AS player_position
+          WHERE lower(trim(player_position)) = lower(${query.position})
+        )`
+      : undefined,
+  ].filter((filter): filter is NonNullable<typeof filter> => filter !== undefined);
 
   const lastLoginSq = db
     .select({
@@ -569,23 +579,14 @@ router.get("/", requireAdminAccess, async (req, res) => {
     .groupBy(playerSessionsTable.playerId)
     .as("last_logins");
 
-  let players;
-  if (query.teamId) {
-    players = await db
-      .select({ player: playersTable, teamName: teamsTable.name, lastLoginAt: lastLoginSq.lastLoginAt })
-      .from(playersTable)
-      .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
-      .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
-      .where(eq(playersTable.teamId, query.teamId))
-      .orderBy(playersTable.id);
-  } else {
-    players = await db
-      .select({ player: playersTable, teamName: teamsTable.name, lastLoginAt: lastLoginSq.lastLoginAt })
-      .from(playersTable)
-      .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
-      .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId))
-      .orderBy(playersTable.id);
-  }
+  const baseQuery = db
+    .select({ player: playersTable, teamName: teamsTable.name, lastLoginAt: lastLoginSq.lastLoginAt })
+    .from(playersTable)
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .leftJoin(lastLoginSq, eq(playersTable.id, lastLoginSq.playerId));
+  const players = filters.length > 0
+    ? await baseQuery.where(and(...filters)).orderBy(playersTable.id)
+    : await baseQuery.orderBy(playersTable.id);
   const membershipFees = await getMembershipFeeAccounts(players.map(({ player }) => player.id));
   res.json(players.map(({ player, teamName, lastLoginAt }) =>
     mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id))));

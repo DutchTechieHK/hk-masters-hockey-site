@@ -162,6 +162,9 @@ export const DeleteTeamParams = zod.object({
  */
 export const ListPlayersQueryParams = zod.object({
   teamId: zod.coerce.number().optional(),
+  position: zod
+    .enum(["Goalkeeper", "Defender", "Midfield", "Forward"])
+    .optional(),
 });
 
 export const ListPlayersResponseItem = zod.object({
