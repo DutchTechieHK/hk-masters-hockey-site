@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "wouter";
 import { API_BASE } from "../utils/api";
-import { TRAVEL_DATE_BOUNDS } from "../lib/travelDateBounds.js";
 
 const CLOUDINARY_CLOUD_NAME = "djyvdrhal";
 const CLOUDINARY_UPLOAD_PRESET = "hk_masters_unsigned";
@@ -32,32 +31,6 @@ const SECTIONS = [
     fields: [
       { key: "emergencyContactName", label: "Emergency contact name", type: "text", placeholder: "Full name" },
       { key: "emergencyContactPhone", label: "Emergency contact phone", type: "tel", placeholder: "+852 XXXX XXXX" },
-    ],
-  },
-  {
-    title: "Travel",
-    fields: [
-      { key: "outboundFlightNumber", label: "Outbound flight number", type: "text", placeholder: "e.g. KL888" },
-      { key: "outboundDepartureDateTime", label: "Departs (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.outboundDepartureDateTime },
-      { key: "flightArrivalDateTime", label: "Arrives (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightArrivalDateTime },
-      { key: "arrivalCity", label: "Arrival city / airport", type: "text", placeholder: "e.g. Amsterdam Schiphol (AMS)" },
-      { key: "returnFlightNumber", label: "Return flight number", type: "text", placeholder: "e.g. KL887" },
-      { key: "flightDepartureDateTime", label: "Departs (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.flightDepartureDateTime },
-      { key: "returnArrivalDateTime", label: "Arrives (local time)", type: "datetime-local", placeholder: "", ...TRAVEL_DATE_BOUNDS.returnArrivalDateTime },
-    ],
-  },
-  {
-    title: "Accommodation",
-    fields: [
-      { key: "accommodationName", label: "Hotel / accommodation name", type: "text", placeholder: "e.g. Marriott Rotterdam" },
-      { key: "accommodationAddress", label: "Address", type: "text", placeholder: "e.g. Weena 686, 3012 CN Rotterdam" },
-      { key: "accommodationPhone", label: "Phone number", type: "tel", placeholder: "+31 10 430 4300" },
-      { key: "accommodationEmail", label: "Email address", type: "email", placeholder: "hotel@example.com" },
-      { key: "roomSharingPreference", label: "Room sharing preference", type: "select", options: [
-        { value: "shared", label: "Shared room" },
-        { value: "single", label: "Single room" },
-      ] },
-      { key: "roomSharingWith", label: "Room sharing with", type: "text", placeholder: "Preferred roommate" },
     ],
   },
   {
@@ -146,9 +119,9 @@ function FeesPanel({ player }) {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
       <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Tournament fees</h2>
+          <h2 className="text-lg font-bold text-gray-900">Membership fees</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            What you owe and what you've paid towards Rotterdam 2026.
+            Your current membership balance and payment progress.
           </p>
         </div>
         {statusBadge}
@@ -694,13 +667,13 @@ export default function MyDetails() {
         {/* Header */}
         <div className="mb-8">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-3 uppercase tracking-wide">
-            Rotterdam 2026 — {player.teamName}
+            {player.teamName || "HK Masters Hockey"}
           </span>
           <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 mb-2">
             Hi {player.name.split(" ")[0]}, please review your details
           </h1>
           <p className="text-gray-600">
-            Update your travel, passport, emergency contact and kit sizes. Your team, shirt number and email are
+            Update your passport, emergency contact, kit sizes, and personal details. Your team, shirt number and email are
             managed by the admin — contact them if anything's wrong there.
           </p>
         </div>
@@ -724,7 +697,7 @@ export default function MyDetails() {
           </dl>
         </div>
 
-        {/* Tournament fees */}
+        {/* Current membership fees */}
         <FeesPanel player={player} />
 
         {/* Passport copy upload */}

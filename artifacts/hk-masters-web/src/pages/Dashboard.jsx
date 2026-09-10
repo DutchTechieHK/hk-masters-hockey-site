@@ -4,25 +4,26 @@ import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 import { API_BASE } from "../utils/api";
 import { themeFor } from "../utils/teamTheme";
 
-const ROTTERDAM_TZ = "Europe/Amsterdam";
+const HONG_KONG_TZ = "Asia/Hong_Kong";
 const MEMBERSHIP_TIER_LABELS = {
   awaiting_selection: "Awaiting Selection",
   community_member: "Community Member",
   social_player: "Social Player",
   masters_division_one: "Masters Div. 1",
+  trials: "Trials",
 };
 
 function formatMatchDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
-    timeZone: ROTTERDAM_TZ,
+    timeZone: HONG_KONG_TZ,
   });
 }
 
 function formatMatchTime(iso) {
   return new Date(iso).toLocaleTimeString("en-GB", {
     hour: "2-digit", minute: "2-digit", hour12: false,
-    timeZone: ROTTERDAM_TZ,
+    timeZone: HONG_KONG_TZ,
   });
 }
 
@@ -41,11 +42,9 @@ function getMatchCountdown(iso) {
 const CARDS = [
   { key: "profile", title: "My profile", desc: "Passport, HKID card, insurance, kit sizes, dietary needs, emergency contact.", emoji: "👤", to: "profile" },
   { key: "schedule", title: "My schedule", desc: "Training, meetings and team events with calendar download.", emoji: "📅", to: "schedule" },
-  { key: "announcements", title: "Announcements", desc: "Latest news from the team and tournament.", emoji: "📣", to: "announcements" },
-  { key: "supporters", title: "My supporters", desc: "Everyone who has pledged to support your Rotterdam 2026 campaign.", emoji: "🤝", to: "supporters" },
-  { key: "travel", title: "My travel", desc: "Flights, arrival, hotel and transfers.", emoji: "✈️", to: "travel" },
-  { key: "documents", title: "Documents", desc: "Mandatory forms, regulations, and tournament information PDFs.", emoji: "📁", to: "documents" },
-  { key: "fees", title: "My fees", desc: "Your tournament fee balance and payment history.", emoji: "💳", to: "fees" },
+  { key: "announcements", title: "Announcements", desc: "Latest news and updates from HK Masters Hockey.", emoji: "📣", to: "announcements" },
+  { key: "documents", title: "Documents", desc: "Forms, regulations, and useful team information.", emoji: "📁", to: "documents" },
+  { key: "fees", title: "My fees", desc: "Your current membership balance and payment history.", emoji: "💳", to: "fees" },
 ];
 
 const KIND_EMOJI = { training: "🏑", meeting: "💬", social: "🍻" };
@@ -107,10 +106,6 @@ export default function Dashboard() {
   const [maybeNoteText, setMaybeNoteText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState(null);
-  const [departureBuddies, setDepartureBuddies] = useState(null);
-  const [depNudgeDismissed, setDepNudgeDismissed] = useState(
-    () => localStorage.getItem("depNudgeDismissed") === "1"
-  );
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -208,35 +203,6 @@ export default function Dashboard() {
       clearInterval(interval);
     };
   }, [player]);
-
-  useEffect(() => {
-    const token = getPlayerToken();
-    if (!token) return;
-    let cancelled = false;
-    fetch(`${API_BASE}/api/player-auth/my-travel`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => {
-        if (cancelled || !data) return;
-        const { allDepartures, flightDepartureDateTime } = data;
-        if (!flightDepartureDateTime || !Array.isArray(allDepartures)) return;
-        const ISO_RE = /^\d{4}-\d{2}-\d{2}/;
-        if (!ISO_RE.test(flightDepartureDateTime)) return;
-        const selfDep = new Date(flightDepartureDateTime).getTime();
-        if (isNaN(selfDep)) return;
-        const TWO_HOURS = 2 * 60 * 60 * 1000;
-        const buddies = allDepartures.filter((d) => {
-          if (d.isSelf) return false;
-          if (!d.departure || !ISO_RE.test(d.departure)) return false;
-          const t = new Date(d.departure).getTime();
-          return !isNaN(t) && Math.abs(t - selfDep) <= TWO_HOURS;
-        });
-        setDepartureBuddies(buddies.length > 0 ? { buddies, count: buddies.length, date: flightDepartureDateTime } : null);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -493,7 +459,7 @@ export default function Dashboard() {
                         </span>
                       )}
                       <span className="ml-auto text-xs text-gray-500 tabular-nums">
-                        {formatMatchDate(match.kickoffAt)} · {formatMatchTime(match.kickoffAt)} <span className="text-[10px] text-gray-400">CEST</span>
+                        {formatMatchDate(match.kickoffAt)} · {formatMatchTime(match.kickoffAt)} <span className="text-[10px] text-gray-400">HKT</span>
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
@@ -535,50 +501,6 @@ export default function Dashboard() {
         ) : upcomingMatches.length === 0 && null)}
 
 
-        {/* Departure buddies nudge */}
-        {departureBuddies && !depNudgeDismissed && (() => {
-          const depDate = new Date(departureBuddies.date).toLocaleDateString("en-GB", {
-            weekday: "long", day: "numeric", month: "long",
-          });
-          const { buddies, count } = departureBuddies;
-          const shown = buddies.slice(0, 3);
-          const overflow = count - shown.length;
-          const nameList = shown.map((b) => b.departureCity ? `${b.name} — ${b.departureCity}` : b.name);
-          if (overflow > 0) nameList.push(`and ${overflow} more`);
-          return (
-            <div className="relative mb-4 flex items-start gap-3 bg-sky-50 border border-sky-200 rounded-2xl px-5 py-4">
-              <span className="text-xl mt-0.5 shrink-0">✈️</span>
-              <button
-                onClick={() => setLocation("/travel")}
-                className="flex-1 min-w-0 text-left"
-              >
-                <p className="font-semibold text-sky-900">
-                  {count === 1
-                    ? "1 squadmate departs within 2 hours of you"
-                    : `${count} squadmates depart within 2 hours of you`}
-                </p>
-                <ul className="mt-1 space-y-0.5">
-                  {nameList.map((label, i) => (
-                    <li key={i} className="text-sm text-sky-800 leading-snug">{label}</li>
-                  ))}
-                </ul>
-                <p className="text-sm text-sky-600 mt-1.5">Departing on {depDate} — great chance to coordinate!</p>
-                <span className="text-xs font-medium text-sky-600 mt-1 inline-block">View travel details →</span>
-              </button>
-              <button
-                onClick={() => {
-                  localStorage.setItem("depNudgeDismissed", "1");
-                  setDepNudgeDismissed(true);
-                }}
-                aria-label="Dismiss"
-                className="shrink-0 text-sky-400 hover:text-sky-700 transition text-lg leading-none mt-0.5"
-              >
-                ×
-              </button>
-            </div>
-          );
-        })()}
-
         {/* Mandatory forms alert */}
         {mandatoryCount > 0 && (
           <button
@@ -593,7 +515,7 @@ export default function Dashboard() {
                   : `${mandatoryCount} mandatory forms require your attention`}
               </p>
               <p className="text-sm text-red-700 mt-0.5">
-                Please download and complete {mandatoryCount === 1 ? "this form" : "these forms"} before the tournament.
+                Please download and complete {mandatoryCount === 1 ? "this form" : "these forms"} as soon as possible.
               </p>
             </div>
             <span className="text-red-400 group-hover:text-red-600 text-sm font-medium self-center shrink-0">View →</span>

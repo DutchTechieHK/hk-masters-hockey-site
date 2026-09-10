@@ -3,13 +3,13 @@ import { API_BASE } from "../utils/api";
 import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 
-const ROTTERDAM_TZ = "Europe/Amsterdam";
+const HONG_KONG_TZ = "Asia/Hong_Kong";
 
 function formatDateHeading(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleDateString("en-GB", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
-    timeZone: ROTTERDAM_TZ,
+    timeZone: HONG_KONG_TZ,
   });
 }
 
@@ -17,12 +17,12 @@ function formatTime(iso) {
   const d = new Date(iso);
   return d.toLocaleTimeString("en-GB", {
     hour: "2-digit", minute: "2-digit", hour12: false,
-    timeZone: ROTTERDAM_TZ,
+    timeZone: HONG_KONG_TZ,
   });
 }
 
-function rotterdamDateKey(iso) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
+function hongKongDateKey(iso) {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: HONG_KONG_TZ });
 }
 
 function getCountdown(iso) {
@@ -214,7 +214,7 @@ export default function Schedule() {
   function groupByDateAndTeam(list) {
     const groups = new Map();
     for (const m of list) {
-      const dateKey = rotterdamDateKey(m.kickoffAt);
+      const dateKey = hongKongDateKey(m.kickoffAt);
       if (!groups.has(dateKey)) groups.set(dateKey, { date: m.kickoffAt, teams: new Map() });
       const dateGroup = groups.get(dateKey);
       const teamKey = m.teamCategory || m.teamName || "HK Masters";
@@ -236,11 +236,11 @@ export default function Schedule() {
       <div className="bg-[#1E3A6E] text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <span className="inline-block bg-[#DE2910] text-white text-xs font-bold px-3 py-1 rounded-full mb-4 uppercase tracking-wide">
-            Rotterdam 2026
+            2026/27 Season
           </span>
-          <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Match Schedule</h1>
+          <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Fixtures &amp; Results</h1>
           <p className="text-[#BFD9F5] text-lg max-w-2xl">
-            Fixtures and results for Hong Kong Masters MO40 and MO50 at the World Masters Hockey Cup.
+            Current Hong Kong Masters league fixtures and results. Times are shown in Hong Kong time.
           </p>
         </div>
       </div>
@@ -258,7 +258,7 @@ export default function Schedule() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <p className="text-gray-500 font-medium">Match fixtures coming soon</p>
-            <p className="text-sm text-gray-400 mt-1">Individual match fixtures will be published once Rotterdam releases the tournament draw.</p>
+            <p className="text-sm text-gray-400 mt-1">New fixtures will appear here when they are published.</p>
           </div>
         ) : (
           <>

@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Home, Info, Users, Calendar, Trophy, ClipboardList,
+  Home, Info, Users, Calendar, ClipboardList,
   BookOpen, Camera, Building2, Heart, Smartphone, Mail,
-  User, ChevronRight, Gavel,
+  User, ChevronRight,
 } from "lucide-react";
 import contactContent from "../content/contact.json";
 import { getPlayerToken } from "../lib/playerAuth";
 import { useReveal } from "../hooks/useReveal";
-import { API_BASE } from "../utils/api";
 import InstallBanner, { OfflineBanner } from "./InstallBanner";
 import NotificationPrompt from "./NotificationPrompt";
 import GetTheAppStrip from "./GetTheAppStrip";
@@ -19,14 +18,12 @@ const BASE_NAV_LINKS = [
   { href: "/about",          label: "About" },
   { href: "/teams",          label: "Teams" },
   { href: "/events",         label: "Events" },
-  { href: "/rotterdam-2026", label: "Rotterdam 2026" },
   { href: "/fixtures",       label: "Fixtures" },
   { href: "/news",           label: "News" },
   { href: "/journal",        label: "Journal" },
   { href: "/media",          label: "Media" },
   { href: "/sponsors",       label: "Sponsors" },
   { href: "/support",        label: "Support", cta: true },
-  { href: "/auction",        label: "Auction", auctionGated: true },
   { href: "/contact",        label: "Contact" },
 ];
 
@@ -39,12 +36,10 @@ const MOBILE_SECTIONS = [
     ],
   },
   {
-    section: "ROTTERDAM 2026",
+    section: "EVENTS",
     links: [
       { href: "/events",         label: "Events",         Icon: Calendar },
-      { href: "/rotterdam-2026", label: "Rotterdam 2026", Icon: Trophy },
       { href: "/fixtures",       label: "Fixtures",       Icon: ClipboardList },
-      { href: "/auction",        label: "Auction",        Icon: Gavel, auctionGated: true },
     ],
   },
   {
@@ -156,7 +151,6 @@ function MobileNavLink({ href, label, Icon, cta, portal, onClose }) {
 export default function Layout({ children }) {
   const [menuOpen, setMenuOpen]         = useState(false);
   const [isPlayerLoggedIn, setIsPlayer] = useState(false);
-  const [auctionLive, setAuctionLive]   = useState(false);
   const [location]                      = useLocation();
   const progressRef                     = useRef(null);
 
@@ -165,14 +159,6 @@ export default function Layout({ children }) {
     setMenuOpen(false);
     setIsPlayer(!!getPlayerToken());
   }, [location]);
-
-  /* Check auction live status once on mount */
-  useEffect(() => {
-    fetch(`${API_BASE}/api/public/auction`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setAuctionLive(!!d.isLive); })
-      .catch(() => {});
-  }, []);
 
   /* Scroll progress bar */
   useEffect(() => {
@@ -198,7 +184,7 @@ export default function Layout({ children }) {
   /* Scroll-reveal — re-observes on every route change so SPA navigation works */
   useReveal([location]);
 
-  const PORTAL_PREFIXES = ["/dashboard", "/schedule", "/fees", "/travel", "/announcements", "/documents", "/my-details", "/my-submission", "/login"];
+  const PORTAL_PREFIXES = ["/dashboard", "/schedule", "/fees", "/announcements", "/documents", "/my-details", "/my-submission", "/login"];
   const isPortalPage = PORTAL_PREFIXES.some((prefix) => location === prefix || location.startsWith(prefix + "/"));
   const showGetTheAppStrip = !isPortalPage && location !== "/" && location !== "/get-the-app";
 
@@ -257,7 +243,7 @@ export default function Layout({ children }) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-11">
               <div className="flex items-center gap-6">
-                {BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive).map((link) => (
+                {BASE_NAV_LINKS.map((link) => (
                   <NavLink key={link.href} href={link.href} label={link.label} cta={link.cta} />
                 ))}
               </div>
@@ -280,7 +266,7 @@ export default function Layout({ children }) {
             <nav className="max-w-7xl mx-auto pb-3">
 
               {MOBILE_SECTIONS.map(({ section, links }, si) => {
-                const visibleLinks = links.filter(l => !l.auctionGated || auctionLive);
+                const visibleLinks = links;
                 if (!visibleLinks.length) return null;
                 return (
                   <div key={si} className={si > 0 ? "mt-1" : ""}>
@@ -351,7 +337,7 @@ export default function Layout({ children }) {
             <div>
               <h3 className="font-semibold text-white mb-3">Quick Links</h3>
               <div className="grid grid-cols-2 gap-x-4">
-                {(() => { const links = BASE_NAV_LINKS.filter(l => !l.auctionGated || auctionLive); const mid = Math.ceil(links.length / 2); return [links.slice(0, mid), links.slice(mid)]; })().map((col, ci) => (
+                {(() => { const links = BASE_NAV_LINKS; const mid = Math.ceil(links.length / 2); return [links.slice(0, mid), links.slice(mid)]; })().map((col, ci) => (
                   <ul key={ci} className="space-y-1">
                     {col.map((link) => (
                       <li key={link.href}>

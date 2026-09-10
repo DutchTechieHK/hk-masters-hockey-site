@@ -5,8 +5,6 @@ import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 
-const TOURNAMENT_START_ISO = "2026-07-22T07:00:00Z"; // 09:00 Rotterdam / 15:00 HKT
-
 const KIND_META = {
   training:    { label: "Training",    emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
   meeting:     { label: "Meeting",     emoji: "💬", chip: "bg-blue-100 text-blue-800" },
@@ -17,66 +15,33 @@ const KIND_META = {
   free_time:   { label: "Free Time",   emoji: "☀️", chip: "bg-yellow-100 text-yellow-800" },
 };
 
-const ROTTERDAM_TZ = "Europe/Amsterdam";
-
-// Rotterdam tournament window — 21 Jul to 1 Aug 2026 inclusive
-const RTM_START = "2026-07-21";
-const RTM_END   = "2026-08-01";
-
-function rtmDateKey(iso) {
-  return new Date(iso).toLocaleDateString("en-CA", { timeZone: ROTTERDAM_TZ });
-}
-
-function isRotterdamEvent(ev) {
-  const key = rtmDateKey(ev.startsAt);
-  return key >= RTM_START && key <= RTM_END;
-}
+const HONG_KONG_TZ = "Asia/Hong_Kong";
 
 function pad(n) { return String(n).padStart(2, "0"); }
 
 function formatDateTime(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short", day: "numeric", month: "short",
+    timeZone: HONG_KONG_TZ,
   });
 }
 
 function formatTimeRange(startsAt, endsAt) {
-  const s = new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const s = new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: HONG_KONG_TZ });
   if (!endsAt) return s;
-  const e = new Date(endsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  const e = new Date(endsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: HONG_KONG_TZ });
   return `${s} – ${e}`;
 }
 
-function formatDateTimeRtm(iso) {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "short", day: "numeric", month: "short",
-    timeZone: ROTTERDAM_TZ,
-  });
-}
-
-function formatTimeRangeRtm(startsAt, endsAt) {
-  const s = new Date(startsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ROTTERDAM_TZ });
-  if (!endsAt) return s;
-  const e = new Date(endsAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: ROTTERDAM_TZ });
-  return `${s} – ${e}`;
-}
-
-function formatTimeRtm(iso) {
+function formatTimeHkt(iso) {
   return new Date(iso).toLocaleTimeString("en-GB", {
     hour: "2-digit", minute: "2-digit", hour12: false,
-    timeZone: ROTTERDAM_TZ,
+    timeZone: HONG_KONG_TZ,
   });
 }
 
 function monthKey(iso) {
-  return new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-}
-
-function dayHeadingRtm(iso) {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long",
-    timeZone: ROTTERDAM_TZ,
-  });
+  return new Date(iso).toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: HONG_KONG_TZ });
 }
 
 function getMatchCountdown(iso) {
@@ -89,21 +54,6 @@ function getMatchCountdown(iso) {
   if (hours >= 1) return `In ${hours}h`;
   const mins = Math.floor((diff % 3_600_000) / 60_000);
   return mins > 0 ? `In ${mins}m` : "Starting soon";
-}
-
-function useCountdown(targetIso) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 60_000);
-    return () => clearInterval(t);
-  }, []);
-  const target = new Date(targetIso).getTime();
-  const diff = target - now;
-  if (diff <= 0) return { past: true };
-  const days = Math.floor(diff / 86_400_000);
-  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
-  const minutes = Math.floor((diff % 3_600_000) / 60_000);
-  return { past: false, days, hours, minutes };
 }
 
 // ICS generation -------------------------------------------------------------
@@ -217,7 +167,7 @@ function MatchFixtureCard({ match }) {
             )}
           </div>
           <span className="text-[11px] font-bold text-white/90 tabular-nums whitespace-nowrap">
-            {formatTimeRtm(match.kickoffAt)} <span className="text-white/60">CEST</span>
+            {formatTimeHkt(match.kickoffAt)} <span className="text-white/60">HKT</span>
           </span>
         </div>
 
@@ -289,12 +239,10 @@ function MatchFixtureCard({ match }) {
 }
 
 // Shared event card ----------------------------------------------------------
-function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
+function EventCard({ ev, rsvpSaving, submitRsvp }) {
   const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
-  const dateStr = isRtm ? formatDateTimeRtm(ev.startsAt) : formatDateTime(ev.startsAt);
-  const timeRange = isRtm
-    ? ` · ${formatTimeRangeRtm(ev.startsAt, ev.endsAt)}`
-    : ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
+  const dateStr = formatDateTime(ev.startsAt);
+  const timeRange = ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
 
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [noteText, setNoteText] = useState(ev.myNote ?? "");
@@ -330,9 +278,6 @@ function EventCard({ ev, isRtm, rsvpSaving, submitRsvp }) {
             </span>
             {!ev.teamId && (
               <span className="text-xs text-gray-500 px-2 py-0.5 rounded-full bg-gray-100">All squads</span>
-            )}
-            {isRtm && (
-              <span className="text-[10px] font-bold uppercase tracking-wide text-[#006B3C] px-1.5 py-0.5 rounded bg-green-50">CEST</span>
             )}
           </div>
           <h3 className="text-lg font-semibold text-gray-900">{ev.title}</h3>
@@ -434,8 +379,6 @@ export default function MySchedule() {
   const [rsvpSaving, setRsvpSaving] = useState({});
   const [rsvpError, setRsvpError] = useState("");
 
-  const countdown = useCountdown(TOURNAMENT_START_ISO);
-
   const submitRsvp = async (eventId, status, note = null) => {
     const token = getPlayerToken();
     if (!token) { setLocation("/login"); return; }
@@ -524,12 +467,6 @@ export default function MySchedule() {
     return { upcoming: u, past: p };
   }, [events]);
 
-  // Split upcoming into HK club events and Rotterdam tournament programme
-  const { hkEvents, rtmEvents } = useMemo(() => ({
-    hkEvents:  upcoming.filter((ev) => !isRotterdamEvent(ev)),
-    rtmEvents: upcoming.filter((ev) =>  isRotterdamEvent(ev)),
-  }), [upcoming]);
-
   // Split matches into upcoming and past
   const { upcomingMatches, pastMatches } = useMemo(() => {
     const now = Date.now() - 3 * 60 * 60 * 1000; // 3h grace
@@ -538,38 +475,15 @@ export default function MySchedule() {
     return { upcomingMatches: u, pastMatches: p };
   }, [matches]);
 
-  // HK events grouped by month
-  const groupedHk = useMemo(() => {
+  // Current events grouped by month
+  const groupedEvents = useMemo(() => {
     const groups = {};
-    for (const ev of hkEvents) {
+    for (const ev of upcoming) {
       const k = monthKey(ev.startsAt);
       (groups[k] ||= []).push(ev);
     }
     return groups;
-  }, [hkEvents]);
-
-  // Build merged Rotterdam day groups: union of match days and event days
-  const groupedRtm = useMemo(() => {
-    const days = new Map(); // dateKey → { date, matches, events }
-
-    for (const m of upcomingMatches) {
-      const key = rtmDateKey(m.kickoffAt);
-      if (!days.has(key)) days.set(key, { date: m.kickoffAt, matches: [], events: [] });
-      days.get(key).matches.push(m);
-    }
-    for (const ev of rtmEvents) {
-      const key = rtmDateKey(ev.startsAt);
-      if (!days.has(key)) days.set(key, { date: ev.startsAt, matches: [], events: [] });
-      days.get(key).events.push(ev);
-    }
-
-    return Array.from(days.entries())
-      .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([, g]) => g);
-  }, [upcomingMatches, rtmEvents]);
-
-  const showRotterdamSection = groupedRtm.length > 0 || matches.length > 0;
-  const totalRtmCount = rtmEvents.length + upcomingMatches.length;
+  }, [upcoming]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><p className="text-gray-500">Loading your schedule…</p></div>;
@@ -603,27 +517,9 @@ export default function MySchedule() {
           )}
         </div>
 
-        {/* Countdown */}
-        <div className="bg-gradient-to-r from-green-700 to-green-600 text-white rounded-2xl p-6 mb-8 shadow">
-          <p className="text-xs uppercase tracking-wider text-green-100">Rotterdam 2026 World Masters Cup</p>
-          {countdown.past ? (
-            <p className="mt-2 text-2xl font-bold">The tournament has begun. Good luck! 🏑</p>
-          ) : (
-            <div className="mt-2 flex items-baseline gap-3 flex-wrap">
-              <span className="text-4xl sm:text-5xl font-bold">{countdown.days}</span>
-              <span className="text-lg">days</span>
-              <span className="text-3xl sm:text-4xl font-bold ml-2">{countdown.hours}</span>
-              <span className="text-lg">hours</span>
-              <span className="text-3xl sm:text-4xl font-bold ml-2">{countdown.minutes}</span>
-              <span className="text-lg">min</span>
-              <span className="text-sm text-green-100 ml-1">until kick-off</span>
-            </div>
-          )}
-        </div>
-
         <h1 className="text-2xl font-bold text-gray-900 mb-1">My schedule</h1>
         <p className="text-sm text-gray-600 mb-6">
-          {player?.teamName ? `Events for ${player.teamName} and the whole squad.` : "Events for the whole squad."}
+          {player?.teamName ? `Current events and matches for ${player.teamName}. Times are shown in Hong Kong time.` : "Current HK Masters events and matches. Times are shown in Hong Kong time."}
         </p>
 
         {rsvpError && (
@@ -639,102 +535,34 @@ export default function MySchedule() {
           </div>
         )}
 
-        {/* Hong Kong Events */}
-        {hkEvents.length > 0 && (
+        {/* Current events */}
+        {upcoming.length > 0 && (
           <div className="space-y-2 mb-10">
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Hong Kong Events</h2>
-              <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded-full">{hkEvents.length}</span>
+              <h2 className="text-lg font-bold text-gray-900">Upcoming events</h2>
+              <span className="bg-[#DE2910] text-white text-xs font-bold px-2 py-0.5 rounded-full">{upcoming.length}</span>
             </div>
-            {Object.entries(groupedHk).map(([month, items]) => (
+            {Object.entries(groupedEvents).map(([month, items]) => (
               <section key={month}>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#DE2910] mb-3">{month}</h3>
                 <ul className="space-y-3">
-                  {items.map((ev) => <EventCard key={ev.id} ev={ev} isRtm={false} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
+                  {items.map((ev) => <EventCard key={ev.id} ev={ev} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
                 </ul>
               </section>
             ))}
           </div>
         )}
 
-        {/* Rotterdam 2026 Section */}
-        {showRotterdamSection && (
-          <div>
-            {/* Banner */}
-            <div className="rounded-2xl bg-[#006B3C] text-white px-5 py-4 mb-6 flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-green-300 mb-0.5">22 Jul – 1 Aug 2026 · Times in Rotterdam (CEST)</p>
-                <p className="text-lg font-extrabold leading-tight">Rotterdam 2026 Programme</p>
-                <p className="text-green-200 text-xs mt-0.5">
-                  {(player?.teamCategory === "MO40" || player?.teamName?.includes("40"))
-                    ? "HC Schiedam · Rotterdam, Netherlands"
-                    : (player?.teamCategory === "MO50" || player?.teamName?.includes("50"))
-                    ? "HC Rotterdam · Netherlands"
-                    : "Rotterdam, Netherlands"}
-                </p>
-              </div>
-              {totalRtmCount > 0 && (
-                <span className="shrink-0 bg-white/15 text-white text-sm font-bold px-3 py-1.5 rounded-lg">
-                  {totalRtmCount} item{totalRtmCount !== 1 ? "s" : ""}
-                </span>
-              )}
+        {/* Current fixtures */}
+        {upcomingMatches.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Upcoming matches</h2>
+              <span className="bg-[#1E3A6E] text-white text-xs font-bold px-2 py-0.5 rounded-full">{upcomingMatches.length}</span>
             </div>
-
-            {/* No fixtures yet notice */}
-            {matches.length === 0 && (
-              <div className="mb-6 rounded-xl bg-[#EEF4FB] border border-[#C2D8F0] px-4 py-3 flex items-center gap-3">
-                <svg className="w-4 h-4 text-[#1E3A6E] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <p className="text-sm text-[#1E3A6E]">
-                  Match fixtures will appear here once the tournament draw is published.
-                </p>
-              </div>
-            )}
-
-            {groupedRtm.length > 0 && (
-              <div className="space-y-8">
-                {groupedRtm.map((g) => (
-                  <section key={rtmDateKey(g.date)}>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#006B3C] mb-3">
-                      {dayHeadingRtm(g.date)}
-                    </h3>
-
-                    {/* Fixtures for this day */}
-                    {g.matches.length > 0 && (
-                      <div className="mb-3">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#1E3A6E] mb-2 flex items-center gap-1.5">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                          </svg>
-                          Match{g.matches.length !== 1 ? "es" : ""}
-                        </p>
-                        <div className="space-y-3">
-                          {g.matches.map((m) => <MatchFixtureCard key={m.id} match={m} />)}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Programme events for this day */}
-                    {g.events.length > 0 && (
-                      <div>
-                        {g.matches.length > 0 && (
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-[#006B3C] mb-2 flex items-center gap-1.5 mt-4">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            Programme
-                          </p>
-                        )}
-                        <ul className="space-y-3">
-                          {g.events.map((ev) => <EventCard key={ev.id} ev={ev} isRtm={true} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
-                        </ul>
-                      </div>
-                    )}
-                  </section>
-                ))}
-              </div>
-            )}
+            <div className="space-y-3">
+              {upcomingMatches.map((match) => <MatchFixtureCard key={match.id} match={match} />)}
+            </div>
           </div>
         )}
 
@@ -752,7 +580,7 @@ export default function MySchedule() {
                 {pastMatches.map((m) => (
                   <li key={`match-${m.id}`} className="bg-white/60 rounded-xl border border-gray-100 px-4 py-3 text-sm text-gray-600">
                     <span className="font-medium text-gray-700">🏒 vs {m.opponent}</span>
-                    <span className="text-gray-500"> · {formatDateTimeRtm(m.kickoffAt)} {formatTimeRtm(m.kickoffAt)} CEST</span>
+                    <span className="text-gray-500"> · {formatDateTime(m.kickoffAt)} {formatTimeHkt(m.kickoffAt)} HKT</span>
                     {m.ourScore !== null && m.theirScore !== null && (
                       <span className="ml-2 font-bold text-gray-700">{m.ourScore}–{m.theirScore}</span>
                     )}

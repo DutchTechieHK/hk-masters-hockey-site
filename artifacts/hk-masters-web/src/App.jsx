@@ -22,10 +22,8 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import MySchedule from "./pages/MySchedule";
 import MyFees from "./pages/MyFees";
-import MyTravel from "./pages/MyTravel";
 import Announcements from "./pages/Announcements";
 import MyDocuments from "./pages/MyDocuments";
-import MySupporters from "./pages/MySupporters";
 import Auction from "./pages/Auction";
 import GetTheApp from "./pages/GetTheApp";
 import Poll from "./pages/Poll";
@@ -81,10 +79,10 @@ function Router() {
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/schedule" component={MySchedule} />
         <Route path="/fees" component={MyFees} />
-        <Route path="/travel" component={MyTravel} />
         <Route path="/announcements" component={Announcements} />
         <Route path="/documents" component={MyDocuments} />
-        <Route path="/supporters" component={MySupporters} />
+        <Route path="/travel">{() => { window.location.replace(import.meta.env.BASE_URL + "dashboard"); return null; }}</Route>
+        <Route path="/supporters">{() => { window.location.replace(import.meta.env.BASE_URL + "dashboard"); return null; }}</Route>
         <Route path="/auction" component={Auction} />
         <Route path="/get-the-app" component={GetTheApp} />
         <Route path="/polls/:pollId" component={Poll} />

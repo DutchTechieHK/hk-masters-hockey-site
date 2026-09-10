@@ -95,7 +95,7 @@ export default function MyDocuments() {
               <p className="font-semibold text-red-800">Action required — mandatory forms</p>
             </div>
             <p className="text-sm text-red-700">
-              Please download and complete all {mandatoryGroup.items.length === 1 ? "form" : `${mandatoryGroup.items.length} forms`} below before the tournament. Return them to your team manager.
+              Please download and complete all {mandatoryGroup.items.length === 1 ? "form" : `${mandatoryGroup.items.length} forms`} below as soon as possible. Return them to your team manager.
             </p>
           </div>
         )}
@@ -104,7 +104,7 @@ export default function MyDocuments() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
             <p className="text-3xl mb-2">📁</p>
             <p className="text-gray-700 font-medium">No documents available yet.</p>
-            <p className="mt-2 text-sm text-gray-500">Check back soon — documents will be posted here before the tournament.</p>
+            <p className="mt-2 text-sm text-gray-500">Check back soon — new documents will be posted here when available.</p>
           </div>
         ) : (
           <div className="space-y-8">

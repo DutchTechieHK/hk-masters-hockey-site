@@ -26,6 +26,7 @@ export default function MyFees() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -162,18 +163,27 @@ export default function MyFees() {
         </div>
 
         <div className="mt-10 border-t border-gray-200 pt-8">
-          <h2 className="text-lg font-semibold text-gray-900">{archive.seasonName} archive</h2>
-          <p className="mt-1 text-sm text-gray-500">These archived tournament payments do not count toward your 2026/27 membership balance.</p>
-          <div className="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-gray-100 bg-white p-4 text-sm">
-            <div><span className="block text-gray-500">Due</span><strong>{formatEur(archive.amountDue)}</strong></div>
-            <div><span className="block text-gray-500">Paid</span><strong>{formatEur(archive.amountPaid)}</strong></div>
-            <div><span className="block text-gray-500">Balance</span><strong>{formatEur(archive.balance)}</strong></div>
-          </div>
-          <div className="mt-3 bg-white rounded-xl border border-gray-100 overflow-hidden">
-            {archive.payments.length === 0 ? (
-              <p className="p-6 text-sm text-gray-500 text-center">No archived Rotterdam payments recorded.</p>
-            ) : (
-              <table className="w-full text-sm">
+          <button
+            type="button"
+            onClick={() => setShowArchive((visible) => !visible)}
+            className="text-sm font-semibold text-gray-600 hover:text-gray-900 underline"
+          >
+            {showArchive ? "Hide" : "View"} World Cup payment archive
+          </button>
+          {showArchive && (
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-gray-100/70 p-5">
+              <h2 className="text-lg font-semibold text-gray-900">{archive.seasonName} — historical payments</h2>
+              <p className="mt-1 text-sm text-gray-600">For reference only. These archived tournament payments do not count toward your current membership balance.</p>
+              <div className="mt-3 grid grid-cols-3 gap-3 rounded-xl border border-gray-200 bg-white p-4 text-sm">
+                <div><span className="block text-gray-500">Due</span><strong>{formatEur(archive.amountDue)}</strong></div>
+                <div><span className="block text-gray-500">Paid</span><strong>{formatEur(archive.amountPaid)}</strong></div>
+                <div><span className="block text-gray-500">Balance</span><strong>{formatEur(archive.balance)}</strong></div>
+              </div>
+              <div className="mt-3 bg-white rounded-xl border border-gray-200 overflow-hidden">
+                {archive.payments.length === 0 ? (
+                  <p className="p-6 text-sm text-gray-500 text-center">No historical tournament payments recorded.</p>
+                ) : (
+                  <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-600 uppercase text-xs">
                   <tr>
                     <th className="text-left px-4 py-2 font-semibold">Date</th>
@@ -190,9 +200,11 @@ export default function MyFees() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
-            )}
-          </div>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

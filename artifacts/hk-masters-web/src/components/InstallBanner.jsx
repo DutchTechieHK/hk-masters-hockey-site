@@ -212,7 +212,7 @@ export default function InstallBanner() {
 
           {mode === "android-prompt" && (
             <p className="text-xs text-white/80 mt-0.5 leading-snug">
-              Install for quick access during the tournament
+              Install for quick access to your schedule and team updates
               {" · "}
               <a href="/get-the-app" className="underline text-white font-medium hover:text-blue-100 transition-colors">
                 Watch how
