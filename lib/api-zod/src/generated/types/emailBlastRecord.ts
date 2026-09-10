@@ -5,12 +5,13 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { EmailBlastRecordAudienceType } from "./emailBlastRecordAudienceType";
 
 export interface EmailBlastRecord {
   id: number;
   subject: string;
   body: string;
-  audienceType: string;
+  audienceType: EmailBlastRecordAudienceType;
   teamIds?: string | null;
   playerIds?: string | null;
   recipientCount: number;

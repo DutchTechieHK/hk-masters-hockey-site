@@ -31,6 +31,7 @@ export * from "./dashboardStatsFundraisingBreakdown";
 export * from "./dashboardStatsTeamStatsItem";
 export * from "./dashboardStatsUpcomingDeadlinesItem";
 export * from "./emailBlastRecord";
+export * from "./emailBlastRecordAudienceType";
 export * from "./emailTemplate";
 export * from "./emailTemplateCreateInput";
 export * from "./emailTemplateUpdateInput";

@@ -54,7 +54,7 @@ type BlastRecipient = {
   errorMessage: string | null
 }
 
-type AudienceType = "all" | "teams" | "individuals"
+type AudienceType = "all" | "men" | "women" | "teams" | "individuals"
 
 type EmailFormState = {
   audienceType: AudienceType
@@ -93,9 +93,11 @@ function authHeaders(): Record<string, string> {
   return token ? { "x-session-token": token, "Content-Type": "application/json" } : { "Content-Type": "application/json" }
 }
 
-function audienceLabel(a: EmailBlast) {
-  if (a.audienceType === "all") return "All players"
-  if (a.audienceType === "teams") return "By squad"
+function audienceLabel(audienceType: string) {
+  if (audienceType === "all") return "All players"
+  if (audienceType === "men") return "Men members"
+  if (audienceType === "women") return "Women members"
+  if (audienceType === "teams") return "By squad"
   return "Selected players"
 }
 
@@ -401,6 +403,9 @@ export default function Announcements() {
 
   const recipients = useMemo(() => {
     if (emailForm.audienceType === "all") return activePlayers
+    if (emailForm.audienceType === "men" || emailForm.audienceType === "women") {
+      return activePlayers.filter((p) => p.currentMembershipSection === emailForm.audienceType)
+    }
     if (emailForm.audienceType === "teams") {
       if (emailForm.teamIds.length === 0) return []
       return activePlayers.filter((p) => emailForm.teamIds.includes(p.teamId))
@@ -639,7 +644,7 @@ export default function Announcements() {
             <div className="space-y-3">
               <label className="text-sm font-semibold">Audience</label>
               <div className="flex gap-2 flex-wrap">
-                {(["all", "teams", "individuals"] as AudienceType[]).map((t) => (
+                {(["all", "men", "women", "teams", "individuals"] as AudienceType[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => setEmailForm((f) => ({ ...f, audienceType: t, teamIds: [], playerIds: [] }))}
@@ -649,7 +654,15 @@ export default function Announcements() {
                         : "bg-white text-foreground border-border hover:border-primary/50"
                     }`}
                   >
-                    {t === "all" ? "All players" : t === "teams" ? "By squad" : "Individuals"}
+                    {t === "all"
+                      ? "All players"
+                      : t === "men"
+                        ? "Men members"
+                        : t === "women"
+                          ? "Women members"
+                          : t === "teams"
+                            ? "By squad"
+                            : "Individuals"}
                   </button>
                 ))}
               </div>
@@ -805,7 +818,7 @@ export default function Announcements() {
             {recipients.length > 0 && (
               <div className="rounded-xl border border-border bg-muted/20 p-4">
                 <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}
+                  <Users className="w-3.5 h-3.5" /> {audienceLabel(emailForm.audienceType)} · {recipients.length} recipient{recipients.length !== 1 ? "s" : ""}
                 </p>
                 <div className="max-h-32 overflow-y-auto space-y-1">
                   {recipients.map((p) => (
@@ -863,7 +876,7 @@ export default function Announcements() {
                             {format(new Date(b.sentAt), "d MMM yyyy HH:mm")}
                           </div>
                           <div className="font-medium truncate">{b.subject}</div>
-                          <div className="text-muted-foreground text-xs whitespace-nowrap">{audienceLabel(b)}</div>
+                          <div className="text-muted-foreground text-xs whitespace-nowrap">{audienceLabel(b.audienceType)}</div>
                           <div className="text-right whitespace-nowrap">
                             <span className={b.failedCount > 0 ? "text-amber-700" : "text-green-700"}>
                               {b.sentCount}

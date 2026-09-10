@@ -2606,6 +2606,7 @@ components:
           type: string
         audienceType:
           type: string
+          enum: [all, men, women, teams, individuals]
         teamIds:
           type: string
           nullable: true

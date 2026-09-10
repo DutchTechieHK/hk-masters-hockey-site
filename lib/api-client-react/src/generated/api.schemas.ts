@@ -1021,11 +1021,22 @@ export interface CreateMatch {
   notes?: string;
 }
 
+export type EmailBlastRecordAudienceType =
+  (typeof EmailBlastRecordAudienceType)[keyof typeof EmailBlastRecordAudienceType];
+
+export const EmailBlastRecordAudienceType = {
+  all: "all",
+  men: "men",
+  women: "women",
+  teams: "teams",
+  individuals: "individuals",
+} as const;
+
 export interface EmailBlastRecord {
   id: number;
   subject: string;
   body: string;
-  audienceType: string;
+  audienceType: EmailBlastRecordAudienceType;
   teamIds?: string | null;
   playerIds?: string | null;
   recipientCount: number;
