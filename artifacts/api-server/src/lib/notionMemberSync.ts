@@ -99,8 +99,21 @@ function plainPropertyValue(property: any): unknown {
 function membershipSectionValue(property: any): "men" | "women" | null {
   if (property?.type !== "select") return null;
   const normalized = String(property.select?.name ?? "").trim().toLowerCase();
-  if (normalized === "men" || normalized === "men's" || normalized === "mens") return "men";
-  if (normalized === "women" || normalized === "women's" || normalized === "womens") return "women";
+  if (
+    normalized === "men" ||
+    normalized === "men's" ||
+    normalized === "mens" ||
+    normalized === "men's masters" ||
+    normalized === "mens masters"
+  ) return "men";
+  if (
+    normalized === "women" ||
+    normalized === "women's" ||
+    normalized === "womens" ||
+    normalized === "women's masters" ||
+    normalized === "womens masters" ||
+    normalized === "ladies masters"
+  ) return "women";
   return null;
 }
 
@@ -136,7 +149,9 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
   const consent = properties["Consent to Be Contacted"]?.type === "checkbox"
     ? Boolean(properties["Consent to Be Contacted"].checkbox)
     : false;
-  const membershipSection = membershipSectionValue(properties["Membership Section"]);
+  const membershipSection =
+    membershipSectionValue(properties["Membership Section"]) ??
+    membershipSectionValue(properties.Category);
   const submitted = properties["Submitted"]?.created_time ?? page.created_time;
   const rawData = Object.fromEntries(
     Object.entries(properties).map(([key, value]) => [key, plainPropertyValue(value)]),

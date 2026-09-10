@@ -112,6 +112,29 @@ describe("Notion member sync rules", () => {
     expect(withoutSection?.membershipSection).toBeNull();
   });
 
+  it("maps the live Notion Category values to membership sections", () => {
+    const baseProperties = pageFixture().properties;
+    const withoutDedicatedSection = {
+      ...baseProperties,
+      "Membership Section": undefined,
+    };
+    const men = pageToNotionApplicant(pageFixture({
+      properties: {
+        ...withoutDedicatedSection,
+        Category: { id: "category", type: "select", select: { id: "mens", name: "Mens Masters" } },
+      },
+    }));
+    const women = pageToNotionApplicant(pageFixture({
+      properties: {
+        ...withoutDedicatedSection,
+        Category: { id: "category", type: "select", select: { id: "ladies", name: "Ladies Masters" } },
+      },
+    }));
+
+    expect(men?.membershipSection).toBe("men");
+    expect(women?.membershipSection).toBe("women");
+  });
+
   it("keeps a newer stored snapshot authoritative over an older retry", () => {
     const newer = new Date("2026-09-03T10:00:00.000Z");
     const older = new Date("2026-09-02T10:00:00.000Z");
