@@ -47,6 +47,7 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
+const ROTTERDAM_ARCHIVE_CATEGORIES = new Set(["MO40", "MO50"])
 
 function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; onEdit: (team: Team) => void }) {
   const queryClient = useQueryClient()
@@ -232,6 +233,7 @@ export default function Teams() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { data: teams = [], isLoading } = useListTeams()
+  const currentTeams = teams.filter((team) => !ROTTERDAM_ARCHIVE_CATEGORIES.has(team.category))
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
@@ -312,7 +314,7 @@ export default function Teams() {
   return (
     <PageLayout
       title="Teams"
-      description="Manage the 2 Hong Kong field hockey teams travelling to Rotterdam."
+      description="Manage current Hong Kong Masters hockey teams and league squads."
       action={
         !selectedTeam ? (
           <Button onClick={openAddModal}>
@@ -336,7 +338,7 @@ export default function Teams() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teams.map(team => (
+              {currentTeams.map(team => (
                 <div
                   key={team.id}
                   className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col group hover:border-primary/30"
@@ -387,7 +389,7 @@ export default function Teams() {
                   </div>
                 </div>
               ))}
-              {teams.length === 0 && (
+              {currentTeams.length === 0 && (
                 <div className="col-span-full py-16 text-center bg-white rounded-2xl border border-dashed border-border">
                   <Users className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
                   <h3 className="text-lg font-bold text-foreground">No teams yet</h3>
