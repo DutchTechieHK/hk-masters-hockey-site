@@ -38,7 +38,7 @@ import {
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
-import { buildSeasonFeeAccount } from "../utils/membershipFees";
+import { buildSeasonFeeAccount, membershipCategoryAmountDue, MEMBERSHIP_CATEGORIES } from "../utils/membershipFees";
 import {
   getLatestNotionMemberSync,
   getNotionMemberConflicts,
@@ -55,12 +55,8 @@ const CURRENT_SEASON_SLUG = "membership-2026-27";
 const ROTTERDAM_SEASON_SLUG = "rotterdam-2026";
 const ROTTERDAM_MIGRATION_CUTOFF = new Date("2026-09-09T00:00:00.000Z");
 
-const MEMBERSHIP_TIERS = new Set([
-  "awaiting_selection",
-  "masters_registration",
-  "active_player",
-  "division_one_squad",
-]);
+const MEMBERSHIP_TIERS = new Set<string>(MEMBERSHIP_CATEGORIES);
+const LEGACY_MEMBERSHIP_TIERS = ["masters_registration", "active_player", "division_one_squad"] as const;
 
 const emailUpload = multer({
   storage: multer.memoryStorage(),
@@ -205,9 +201,35 @@ function legacyRotterdamSnapshot(player: typeof playersTable.$inferSelect) {
   };
 }
 
-type MembershipDbExecutor = Pick<typeof db, "insert" | "select" | "update">;
+type MembershipDbExecutor = Pick<typeof db, "execute" | "insert" | "select" | "update">;
 
-export async function ensureMembershipFoundation(executor: MembershipDbExecutor = db) {
+async function ensureCanonicalTeam(
+  executor: MembershipDbExecutor,
+  values: typeof teamsTable.$inferInsert,
+) {
+  const [existing] = await executor.select({ id: teamsTable.id })
+    .from(teamsTable)
+    .where(eq(teamsTable.name, values.name))
+    .limit(1);
+  if (existing) {
+    await executor.update(teamsTable)
+      .set({ isInternal: values.isInternal ?? false })
+      .where(eq(teamsTable.id, existing.id));
+    return existing.id;
+  }
+  const [created] = await executor.insert(teamsTable).values(values)
+    .onConflictDoNothing()
+    .returning({ id: teamsTable.id });
+  if (created) return created.id;
+  const [concurrent] = await executor.select({ id: teamsTable.id })
+    .from(teamsTable)
+    .where(eq(teamsTable.name, values.name))
+    .limit(1);
+  if (!concurrent) throw new Error(`Failed to provision canonical team "${values.name}"`);
+  return concurrent.id;
+}
+
+async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExecutor) {
   const [rotterdam] = await executor.insert(seasonsTable).values({
     slug: ROTTERDAM_SEASON_SLUG,
     name: "Rotterdam Masters World Cup 2026",
@@ -234,6 +256,25 @@ export async function ensureMembershipFoundation(executor: MembershipDbExecutor 
     set: { name: "2026/27 Membership", status: "current", isCurrent: true, updatedAt: new Date() },
   }).returning();
 
+  await ensureCanonicalTeam(executor, {
+    name: "Awaiting Selection",
+    category: "Awaiting Selection",
+    managerName: "",
+    managerEmail: "",
+    managerPhone: "",
+    description: "Internal holding team for members awaiting current category or squad selection.",
+    isInternal: true,
+  });
+  await ensureCanonicalTeam(executor, {
+    name: "Masters Div. 1",
+    category: "Men's Squad",
+    managerName: "",
+    managerEmail: "",
+    managerPhone: "",
+    description: "Active Hong Kong Hockey League squad. Player selection is managed separately from membership category.",
+    isInternal: false,
+  });
+
   const players = await executor.select().from(playersTable).orderBy(playersTable.id);
   await executor.update(playerPaymentsTable)
     .set({ seasonId: rotterdam.id })
@@ -256,8 +297,56 @@ export async function ensureMembershipFoundation(executor: MembershipDbExecutor 
       teamId: null,
       participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
       membershipTier: player.currentMembershipTier,
+      amountDue: membershipCategoryAmountDue(player.currentMembershipTier)?.toFixed(2) ?? null,
       source: "membership_backfill",
     }).onConflictDoNothing();
+  }
+
+  // Idempotent cleanup of pre-category values, scoped to the current season.
+  await executor.update(playersTable).set({
+    currentMembershipTier: "awaiting_selection",
+    membershipTierUpdatedAt: new Date(),
+  }).where(and(
+    inArray(playersTable.currentMembershipTier, [...LEGACY_MEMBERSHIP_TIERS]),
+    sql`EXISTS (
+      SELECT 1 FROM ${playerParticipationsTable} current_participation
+      WHERE current_participation.player_id = ${playersTable.id}
+        AND current_participation.season_id = ${current.id}
+    )`,
+  ));
+  await executor.update(playerParticipationsTable).set({
+    teamId: null,
+    membershipTier: "awaiting_selection",
+    amountDue: null,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(playerParticipationsTable.seasonId, current.id),
+    inArray(playerParticipationsTable.membershipTier, [...LEGACY_MEMBERSHIP_TIERS]),
+  ));
+  // Older current-season rows copied the legacy player.teamId. Remove only
+  // those copied links; independently selected league squads remain intact.
+  await executor.update(playerParticipationsTable).set({
+    teamId: null,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(playerParticipationsTable.seasonId, current.id),
+    sql`${playerParticipationsTable.teamId} IS NOT NULL`,
+    sql`EXISTS (
+      SELECT 1 FROM ${playersTable} legacy_player
+      WHERE legacy_player.id = ${playerParticipationsTable.playerId}
+        AND legacy_player.team_id = ${playerParticipationsTable.teamId}
+    )`,
+  ));
+  for (const category of MEMBERSHIP_CATEGORIES) {
+    const expectedAmountDue = membershipCategoryAmountDue(category)?.toFixed(2) ?? null;
+    await executor.update(playerParticipationsTable).set({
+      amountDue: expectedAmountDue,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(playerParticipationsTable.seasonId, current.id),
+      eq(playerParticipationsTable.membershipTier, category),
+      sql`${playerParticipationsTable.amountDue} IS DISTINCT FROM ${expectedAmountDue}`,
+    ));
   }
 
   const participations = await executor.select({
@@ -276,6 +365,17 @@ export async function ensureMembershipFoundation(executor: MembershipDbExecutor 
     currentSeasonId: current.id,
     rotterdamSeasonId: rotterdam.id,
   };
+}
+
+export async function ensureMembershipFoundation(executor?: MembershipDbExecutor) {
+  if (executor && executor !== db) {
+    await executor.execute(sql`SELECT pg_advisory_xact_lock(hashtext('hk-masters-membership-foundation'))`);
+    return ensureMembershipFoundationWithExecutor(executor);
+  }
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('hk-masters-membership-foundation'))`);
+    return ensureMembershipFoundationWithExecutor(tx);
+  });
 }
 
 async function getMembershipFeeAccounts(playerIds: number[]): Promise<Map<number, MembershipFeeAccount>> {
@@ -314,13 +414,48 @@ async function getMembershipFeeAccounts(playerIds: number[]): Promise<Map<number
   return accounts;
 }
 
+async function getSelfMembershipFeeAccount(
+  player: typeof playersTable.$inferSelect,
+): Promise<MembershipFeeAccount> {
+  const [currentSeason] = await db.select({ id: seasonsTable.id })
+    .from(seasonsTable)
+    .where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG))
+    .limit(1);
+  const effectiveCategory = MEMBERSHIP_TIERS.has(player.currentMembershipTier)
+    ? player.currentMembershipTier
+    : "awaiting_selection";
+  const categoryAmountDue = membershipCategoryAmountDue(effectiveCategory);
+  if (!currentSeason) {
+    return {
+      amountDue: categoryAmountDue,
+      amountPaid: 0,
+      balance: categoryAmountDue,
+      feePaid: false,
+      latestPaymentDate: null,
+    };
+  }
+  const payments = await db.select().from(playerPaymentsTable).where(and(
+    eq(playerPaymentsTable.playerId, player.id),
+    eq(playerPaymentsTable.seasonId, currentSeason.id),
+  )).orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
+  const amountDue = categoryAmountDue;
+  const account = buildSeasonFeeAccount(currentSeason.id, amountDue, payments);
+  return {
+    amountDue,
+    amountPaid: account.amountPaid,
+    balance: account.balance,
+    feePaid: account.feePaid,
+    latestPaymentDate: account.latestPaymentDate,
+  };
+}
+
 async function syncCurrentParticipation(playerId: number) {
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
   if (!player) return;
   const foundation = await ensureMembershipFoundation();
   await db.update(playerParticipationsTable).set({
-    teamId: player.teamId,
     membershipTier: player.currentMembershipTier,
+    amountDue: membershipCategoryAmountDue(player.currentMembershipTier)?.toFixed(2) ?? null,
     participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
     updatedAt: new Date(),
   }).where(and(
@@ -475,6 +610,7 @@ router.post("/membership/interest-submissions", requireAdminAccess, async (req, 
         }).where(eq(playersTable.id, matchedCandidate.id));
         await tx.update(playerParticipationsTable).set({
           membershipTier: input.membershipTier,
+          amountDue: membershipCategoryAmountDue(input.membershipTier)?.toFixed(2) ?? null,
           updatedAt: now,
         }).where(and(
           eq(playerParticipationsTable.playerId, matchedCandidate.id),
@@ -545,6 +681,7 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
         }).where(eq(playersTable.id, matchedPlayer.id));
         await tx.update(playerParticipationsTable).set({
           membershipTier: body.membershipTier,
+          amountDue: membershipCategoryAmountDue(body.membershipTier)?.toFixed(2) ?? null,
           participationStatus: matchedPlayer.memberStatus === "active" ? "active" : matchedPlayer.memberStatus,
           updatedAt: now,
         }).where(and(
@@ -701,10 +838,14 @@ const SELF_EDITABLE_FIELDS = [
   "facebookHandle",
 ] as const;
 
-function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: string | null) {
-  const amountDue = player.paymentAmountDue ? parseFloat(player.paymentAmountDue) : null;
-  const amountPaid = player.paymentAmountPaid ? parseFloat(player.paymentAmountPaid) : null;
-  const balance = amountDue == null ? null : Math.max(0, amountDue - (amountPaid ?? 0));
+function mapSelfPlayer(
+  player: typeof playersTable.$inferSelect,
+  teamName?: string | null,
+  membershipFee?: MembershipFeeAccount,
+) {
+  const effectiveMembershipTier = MEMBERSHIP_TIERS.has(player.currentMembershipTier)
+    ? player.currentMembershipTier
+    : "awaiting_selection";
   return {
     id: player.id,
     teamId: player.teamId,
@@ -752,12 +893,12 @@ function mapSelfPlayer(player: typeof playersTable.$inferSelect, teamName?: stri
     instagramHandle: player.instagramHandle ?? undefined,
     facebookHandle: player.facebookHandle ?? undefined,
     memberStatus: player.memberStatus,
-    currentMembershipTier: player.currentMembershipTier,
-    feePaid: player.feePaid,
-    paymentAmountDue: amountDue,
-    paymentAmountPaid: amountPaid,
-    paymentBalance: balance,
-    paymentDate: player.paymentDate ?? null,
+    currentMembershipTier: effectiveMembershipTier,
+    feePaid: membershipFee?.feePaid ?? false,
+    paymentAmountDue: membershipFee?.amountDue ?? null,
+    paymentAmountPaid: membershipFee?.amountPaid ?? 0,
+    paymentBalance: membershipFee?.balance ?? null,
+    paymentDate: membershipFee?.latestPaymentDate ?? null,
   };
 }
 
@@ -785,7 +926,8 @@ router.get("/self/:token", async (req, res) => {
     .update(playersTable)
     .set({ lastPortalAccessAt: new Date() })
     .where(eq(playersTable.id, row.player.id));
-  res.json(mapSelfPlayer(row.player, row.teamName));
+  const membershipFee = await getSelfMembershipFeeAccount(row.player);
+  res.json(mapSelfPlayer(row.player, row.teamName, membershipFee));
 });
 
 router.patch("/self/:token", async (req, res) => {
@@ -850,7 +992,8 @@ router.patch("/self/:token", async (req, res) => {
   const allUpdates = { ...updates, lastPortalAccessAt: new Date() };
   const [updated] = await db.update(playersTable).set(allUpdates).where(eq(playersTable.id, existing.id)).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
-  res.json(mapSelfPlayer(updated, team?.name));
+  const membershipFee = await getSelfMembershipFeeAccount(updated);
+  res.json(mapSelfPlayer(updated, team?.name, membershipFee));
 
   const updatedFields = Object.keys(updates);
 

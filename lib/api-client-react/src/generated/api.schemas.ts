@@ -147,9 +147,9 @@ export type PlayerCurrentMembershipTier =
 
 export const PlayerCurrentMembershipTier = {
   awaiting_selection: "awaiting_selection",
-  masters_registration: "masters_registration",
-  active_player: "active_player",
-  division_one_squad: "division_one_squad",
+  community_member: "community_member",
+  social_player: "social_player",
+  masters_division_one: "masters_division_one",
 } as const;
 
 export interface Player {
@@ -241,9 +241,9 @@ export type CreatePlayerCurrentMembershipTier =
 
 export const CreatePlayerCurrentMembershipTier = {
   awaiting_selection: "awaiting_selection",
-  masters_registration: "masters_registration",
-  active_player: "active_player",
-  division_one_squad: "division_one_squad",
+  community_member: "community_member",
+  social_player: "social_player",
+  masters_division_one: "masters_division_one",
 } as const;
 
 export interface CreatePlayer {
@@ -341,9 +341,9 @@ export type MembershipInterestSubmissionMembershipTier =
 
 export const MembershipInterestSubmissionMembershipTier = {
   awaiting_selection: "awaiting_selection",
-  masters_registration: "masters_registration",
-  active_player: "active_player",
-  division_one_squad: "division_one_squad",
+  community_member: "community_member",
+  social_player: "social_player",
+  masters_division_one: "masters_division_one",
 } as const;
 
 export type MembershipInterestSubmissionMatchStatus =
@@ -402,9 +402,9 @@ export type MembershipInterestInputMembershipTier =
   (typeof MembershipInterestInputMembershipTier)[keyof typeof MembershipInterestInputMembershipTier];
 
 export const MembershipInterestInputMembershipTier = {
-  masters_registration: "masters_registration",
-  active_player: "active_player",
-  division_one_squad: "division_one_squad",
+  community_member: "community_member",
+  social_player: "social_player",
+  masters_division_one: "masters_division_one",
 } as const;
 
 export type MembershipInterestInputRawData = { [key: string]: unknown };
@@ -465,9 +465,9 @@ export type MembershipInterestResolutionMembershipTier =
 
 export const MembershipInterestResolutionMembershipTier = {
   awaiting_selection: "awaiting_selection",
-  masters_registration: "masters_registration",
-  active_player: "active_player",
-  division_one_squad: "division_one_squad",
+  community_member: "community_member",
+  social_player: "social_player",
+  masters_division_one: "masters_division_one",
 } as const;
 
 export interface MembershipInterestResolution {
@@ -490,9 +490,9 @@ export type SelfPlayerCurrentMembershipTier =
 
 export const SelfPlayerCurrentMembershipTier = {
   awaiting_selection: "awaiting_selection",
-  masters_registration: "masters_registration",
-  active_player: "active_player",
-  division_one_squad: "division_one_squad",
+  community_member: "community_member",
+  social_player: "social_player",
+  masters_division_one: "masters_division_one",
 } as const;
 
 export interface SelfPlayer {

@@ -19,17 +19,6 @@ export const GRID_CRITERIA: GridCriterion[] = [
     pass: (p) => p.feePaid === true,
   },
   {
-    key: "passport-valid",
-    label: "Passport not expired",
-    short: "Expiry",
-    severity: "red",
-    pass: (p) => {
-      if (!p.passportExpiry) return false
-      const d = new Date(p.passportExpiry)
-      return !isNaN(d.getTime()) && d > TOURNAMENT_END
-    },
-  },
-  {
     key: "passport-copy",
     label: "Passport copy uploaded",
     short: "Copy",
@@ -77,13 +66,6 @@ export const GRID_CRITERIA: GridCriterion[] = [
     short: "Kit",
     severity: "amber",
     pass: (p) => !!p.shirtSize && !!p.shortsSize && !!p.jacketSize && !!p.poloSize && !!p.trackTopSize,
-  },
-  {
-    key: "insurance",
-    label: "Insurance coverage",
-    short: "Insurance",
-    severity: "amber",
-    pass: (p) => !!p.insuranceProvider && !!p.insurancePolicyNumber,
   },
 ]
 

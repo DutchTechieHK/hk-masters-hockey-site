@@ -6,6 +6,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   playerLoginCodesTable,
+  playerParticipationsTable,
   playerSessionsTable,
   playersTable,
   teamsTable,
@@ -43,6 +44,7 @@ const testEmails = [
 ];
 
 let activePlayerId: number;
+let activeAccessToken: string;
 let duplicatePlayerIds: number[];
 let inactivePlayerId: number;
 let archivedPlayerId: number;
@@ -66,13 +68,15 @@ beforeAll(async () => {
 
   inactiveAccessToken = crypto.randomUUID();
   archivedAccessToken = crypto.randomUUID();
+  activeAccessToken = crypto.randomUUID();
   const inserted = await db.insert(playersTable).values([
     {
       teamId: team.id,
       name: "Identity Active",
       email: `  ${activeEmail}  `,
       memberStatus: "active",
-      accessToken: crypto.randomUUID(),
+      currentMembershipTier: "social_player",
+      accessToken: activeAccessToken,
     },
     {
       teamId: team.id,
@@ -116,11 +120,24 @@ afterAll(async () => {
   await db.delete(playerLoginCodesTable).where(inArray(playerLoginCodesTable.email, testEmails));
   if (playerIds.length) {
     await db.delete(playerSessionsTable).where(inArray(playerSessionsTable.playerId, playerIds));
+    await db.delete(playerParticipationsTable).where(inArray(playerParticipationsTable.playerId, playerIds));
     await db.delete(playersTable).where(inArray(playersTable.id, playerIds));
   }
 });
 
 describe("player login identity safety", () => {
+  it("returns the current category fee in the member portal response", async () => {
+    const response = await request(app).get(`/api/players/self/${activeAccessToken}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      currentMembershipTier: "social_player",
+      paymentAmountDue: 300,
+      paymentAmountPaid: 0,
+      paymentBalance: 300,
+      feePaid: false,
+    });
+  });
+
   it("does not issue or email a code when a normalized email matches multiple active members", async () => {
     emailLoginCode.mockClear();
 

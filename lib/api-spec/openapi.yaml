@@ -1482,7 +1482,7 @@ components:
           enum: [active, inactive, archived]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, community_member, social_player, masters_division_one]
         membershipTierUpdatedAt:
           type: string
           nullable: true
@@ -1641,7 +1641,7 @@ components:
           enum: [active, inactive, archived]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, community_member, social_player, masters_division_one]
       required:
         - teamId
         - name
@@ -1715,7 +1715,7 @@ components:
           nullable: true
         membershipTier:
           type: string
-          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, community_member, social_player, masters_division_one]
         matchedPlayerId:
           type: integer
           nullable: true
@@ -1771,7 +1771,7 @@ components:
           type: string
         membershipTier:
           type: string
-          enum: [masters_registration, active_player, division_one_squad]
+          enum: [community_member, social_player, masters_division_one]
         rawData:
           type: object
           additionalProperties: true
@@ -1850,7 +1850,7 @@ components:
           nullable: true
         membershipTier:
           type: string
-          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, community_member, social_player, masters_division_one]
         dismiss:
           type: boolean
       required: [membershipTier]
@@ -1935,7 +1935,7 @@ components:
           enum: [active, inactive, archived]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, masters_registration, active_player, division_one_squad]
+          enum: [awaiting_selection, community_member, social_player, masters_division_one]
         paymentAmountDue:
           type: number
           nullable: true

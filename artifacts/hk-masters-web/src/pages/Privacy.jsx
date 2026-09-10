@@ -30,10 +30,15 @@ export default function Privacy() {
         </p>
         <ul>
           <li>
-            <strong>Player tour data:</strong> name, contact details, date of birth,
-            nationality, passport number and expiry, emergency contact, flight and room
-            sharing details, kit sizes, dietary requirements, medical notes, fee
-            payment status.
+            <strong>Current member data:</strong> name, contact details, date of birth,
+            emergency contact, flight and room sharing details, kit sizes, dietary
+            requirements, medical notes, fee payment status.
+          </li>
+          <li>
+            <strong>Archived Rotterdam 2026 data:</strong> nationality, passport details
+            and travel insurance information supplied for the tournament remain retained
+            with the member's historical participation record and are not requested in
+            the current membership profile.
           </li>
           <li>
             <strong>Supporter data:</strong> name, email and pledge amount when you
@@ -78,11 +83,9 @@ export default function Privacy() {
 
         <h2>How long we keep it</h2>
         <p>
-          Player tour data is retained for the duration of the tournament and for up to
-          90 days after the closing ceremony for reconciliation, then deleted or
-          anonymised. Aggregated, non-identifying records (e.g. final fundraising
-          totals, match results, journal articles) may be retained indefinitely as part
-          of the team's history.
+          Current member data is retained while membership is active and as needed for
+          administration. Rotterdam 2026 data is retained as an archived participation
+          record so the organisation can preserve tournament history and linked records.
         </p>
         <p>
           Supporter and contributor records are retained while the team remains active.

@@ -21,3 +21,4 @@
 - [Site-content conflict guard](site-content-conflict-guard.md) — stale-save checks must be atomic CAS in the UPDATE WHERE (IS NOT DISTINCT FROM), per-section timestamps; add an IF NOT EXISTS migrations/*.sql alongside schema push to satisfy review.
 - [GitHub push authentication](github-push-auth.md) — connected GitHub OAuth does not authenticate git CLI; use repository Sync/manual push, not Git Data API commit emulation.
 - [Season-owned member payments](season-owned-member-payments.md) — payment rows belong to a season; Rotterdam balances never imply current membership payment.
+- [Read-path repair concurrency](read-path-repair-concurrency.md) — any repair reachable from reads must serialize first-run provisioning and skip writes for already-correct rows.

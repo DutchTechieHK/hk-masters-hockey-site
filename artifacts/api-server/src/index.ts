@@ -4,6 +4,7 @@ import { playersTable } from "@workspace/db/schema";
 import { isNull, isNotNull, sql } from "drizzle-orm";
 import { scheduleDailyPledgeDigest } from "./jobs/dailyPledgeDigest";
 import { scheduleNotionMemberSync } from "./jobs/notionMemberSync";
+import { ensureMembershipFoundation } from "./routes/players";
 
 const rawPort = process.env["PORT"];
 
@@ -33,10 +34,17 @@ async function backfillPortalAccess() {
   }
 }
 
-backfillPortalAccess().then(() => {
+async function start() {
+  await backfillPortalAccess();
+  await ensureMembershipFoundation();
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);
     scheduleDailyPledgeDigest();
     scheduleNotionMemberSync();
   });
+}
+
+start().catch((error) => {
+  console.error("[startup] Failed to initialize membership foundation:", error);
+  process.exit(1);
 });

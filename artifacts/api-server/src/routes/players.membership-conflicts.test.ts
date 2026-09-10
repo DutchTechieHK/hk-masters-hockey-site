@@ -48,7 +48,7 @@ beforeAll(async () => {
     seasonId: season.id,
     submittedName: "Submitted Member",
     submittedEmail: `submitted-${runId}@example.com`,
-    membershipTier: "active_player",
+    membershipTier: "social_player",
     matchedPlayerId: playerId,
   };
   await db.insert(membershipInterestSubmissionsTable).values([

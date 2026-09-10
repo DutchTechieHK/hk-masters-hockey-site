@@ -23,8 +23,6 @@ const SECTIONS = [
       { key: "name", label: "Full name", type: "text", placeholder: "Your full name" },
       { key: "hkidNumber", label: "HK ID Card number", type: "text", placeholder: "X123456(7)" },
       { key: "passportNumber", label: "Passport number", type: "text", placeholder: "A1234567" },
-      { key: "passportExpiry", label: "Passport expiry", type: "date", placeholder: "" },
-      { key: "nationality", label: "Nationality", type: "text", placeholder: "e.g. Hong Kong" },
       { key: "dateOfBirth", label: "Date of birth", type: "date", placeholder: "" },
       { key: "phone", label: "Mobile phone", type: "tel", placeholder: "+852 XXXX XXXX" },
     ],
@@ -60,17 +58,6 @@ const SECTIONS = [
         { value: "single", label: "Single room" },
       ] },
       { key: "roomSharingWith", label: "Room sharing with", type: "text", placeholder: "Preferred roommate" },
-    ],
-  },
-  {
-    title: "Travel & medical insurance",
-    fields: [
-      { key: "insuranceProvider", label: "Insurance provider", type: "text", placeholder: "e.g. AXA, Zurich, HSBC Insurance" },
-      { key: "insurancePolicyNumber", label: "Policy number", type: "text", placeholder: "e.g. POL-12345678" },
-      { key: "insuranceEmergencyPhone", label: "24/7 emergency assistance phone", type: "tel", placeholder: "+852 XXXX XXXX" },
-      { key: "insurancePolicyHolder", label: "Policy holder name (if different from you)", type: "text", placeholder: "Full name on policy" },
-      { key: "insuranceExpiry", label: "Policy expiry date", type: "date", placeholder: "" },
-      { key: "insuranceEmail", label: "General contact email", type: "email", placeholder: "claims@insurer.com" },
     ],
   },
   {

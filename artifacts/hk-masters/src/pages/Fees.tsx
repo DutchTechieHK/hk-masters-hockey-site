@@ -3,7 +3,6 @@ import {
   useListPlayers,
   useUpdatePlayer,
   type CreatePlayer,
-  useListTeams,
   getListPlayersQueryKey,
   useSendFeeReminders,
   useListPlayerPayments,
@@ -45,10 +44,7 @@ function formatEuro(amount: number) {
   }).format(amount)
 }
 
-const feeSchema = z.object({
-  paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  notes: z.string().optional(),
-})
+const feeSchema = z.object({ notes: z.string().optional() })
 
 type FeeFormValues = z.infer<typeof feeSchema>
 
@@ -79,19 +75,23 @@ function todayStr() {
 }
 
 function isMissingFeeDetails(p: Player): boolean {
-  // amount due not set OR (marked paid but missing amount paid / payment date)
-  const dueMissing = p.membershipFeeAmountDue == null
-  if (dueMissing) return true
+  if (p.currentMembershipTier === "awaiting_selection") return false
+  if (p.membershipFeeAmountDue == null) return true
   if (p.membershipFeePaid) {
     if (!p.membershipFeeAmountPaid || !p.membershipFeePaymentDate) return true
   }
   return false
 }
 
-function exportToCSV(players: Player[], teams: { id: number; name: string; category: string }[]) {
-  const teamMap = Object.fromEntries(teams.map(t => [t.id, t]))
+const CATEGORY_LABELS: Record<Player["currentMembershipTier"], string> = {
+  awaiting_selection: "Awaiting Selection",
+  community_member: "Community Member",
+  social_player: "Social Player",
+  masters_division_one: "Masters Div. 1",
+}
+
+function exportToCSV(players: Player[]) {
   const headers = [
-    "Team",
     "Category",
     "Name",
     "Email",
@@ -102,10 +102,8 @@ function exportToCSV(players: Player[], teams: { id: number; name: string; categ
     "Reminded On",
   ]
   const rows = players.map(p => {
-    const team = teamMap[p.teamId]
     return [
-      team ? team.name : `Team ${p.teamId}`,
-      team ? team.category : "",
+      CATEGORY_LABELS[p.currentMembershipTier],
       p.name,
       p.email,
       p.membershipFeeAmountDue ?? "",
@@ -149,7 +147,6 @@ export default function Fees() {
     notes: string
   }>({ isOpen: false, player: null, paymentDate: "", amount: "", method: "", notes: "" })
 
-  const { data: teams = [] } = useListTeams()
   const { data: players = [], isLoading } = useListPlayers()
   const activePlayers = useMemo(
     () => players.filter(player => player.memberStatus === "active"),
@@ -195,7 +192,6 @@ export default function Fees() {
   const openEditModal = (player: Player) => {
     setEditingPlayer(player)
     reset({
-      paymentAmountDue: player.membershipFeeAmountDue ?? "",
       notes: player.notes || "",
     })
     setIsModalOpen(true)
@@ -214,7 +210,6 @@ export default function Fees() {
         name: editingPlayer.name,
         email: editingPlayer.email,
         feePaid: editingPlayer.feePaid,
-        membershipFeeAmountDue: data.paymentAmountDue === "" ? null : Number(data.paymentAmountDue),
         notes: data.notes || editingPlayer.notes || undefined,
       }
       await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload })
@@ -274,7 +269,7 @@ export default function Fees() {
   }
 
   const handleSendReminders = async () => {
-    const unpaid = visiblePlayers.filter(p => !p.membershipFeePaid)
+    const unpaid = visiblePlayers.filter(p => p.membershipFeeAmountDue != null && !p.membershipFeePaid)
     if (unpaid.length === 0) return
     try {
       const result = await sendRemindersMutation.mutateAsync({ data: { playerIds: unpaid.map(p => p.id) } })
@@ -293,63 +288,62 @@ export default function Fees() {
     }
   }
 
-  const uniqueCategories = Array.from(new Set(teams.map(t => t.category)))
-  const teamCategoryMap = Object.fromEntries(teams.map(t => [t.id, t.category]))
+  const categories = Object.entries(CATEGORY_LABELS) as Array<[Player["currentMembershipTier"], string]>
 
   const visiblePlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
     let filtered = categoryFilter === "all"
       ? activePlayers
-      : activePlayers.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+      : activePlayers.filter(p => p.currentMembershipTier === categoryFilter)
     if (q) {
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q))
     }
     if (showOnlyUnpaid) {
-      filtered = filtered.filter(p => !p.membershipFeePaid)
+      filtered = filtered.filter(p => p.membershipFeeAmountDue != null && !p.membershipFeePaid)
     }
     return filtered
-  }, [activePlayers, categoryFilter, searchQuery, showOnlyUnpaid, teamCategoryMap])
+  }, [activePlayers, categoryFilter, searchQuery, showOnlyUnpaid])
 
-  const teamGroups = useMemo(
+  const categoryGroups = useMemo(
     () =>
-      teams
-        .filter(t => categoryFilter === "all" || t.category === categoryFilter)
-        .map(team => ({
-          team,
-          players: visiblePlayers.filter(p => p.teamId === team.id),
+      categories
+        .filter(([value]) => categoryFilter === "all" || value === categoryFilter)
+        .map(([value, label]) => ({
+          value,
+          label,
+          players: visiblePlayers.filter(p => p.currentMembershipTier === value),
         }))
         .filter(g => g.players.length > 0),
-    [teams, categoryFilter, visiblePlayers]
+    [categories, categoryFilter, visiblePlayers]
   )
 
-  // Per-team totals computed from the FULL player list (not search-filtered) so summary stays stable
-  const teamTotals = useMemo(() => {
-    const map = new Map<number, { paid: number; total: number; collected: number; due: number }>()
-    for (const team of teams) {
-      const teamPlayers = activePlayers.filter(p => p.teamId === team.id)
-      map.set(team.id, {
-        total: teamPlayers.length,
-        paid: teamPlayers.filter(p => p.membershipFeePaid).length,
-        collected: teamPlayers.reduce((sum, p) => sum + (p.membershipFeeAmountPaid ?? 0), 0),
-        due: teamPlayers.reduce((sum, p) => sum + (p.membershipFeeAmountDue ?? 0), 0),
+  const categoryTotals = useMemo(() => {
+    const map = new Map<Player["currentMembershipTier"], { paid: number; total: number; collected: number; due: number }>()
+    for (const [value] of categories) {
+      const categoryPlayers = activePlayers.filter(p => p.currentMembershipTier === value)
+      map.set(value, {
+        total: categoryPlayers.length,
+        paid: categoryPlayers.filter(p => p.membershipFeePaid).length,
+        collected: categoryPlayers.reduce((sum, p) => sum + (p.membershipFeeAmountPaid ?? 0), 0),
+        due: categoryPlayers.reduce((sum, p) => sum + (p.membershipFeeAmountDue ?? 0), 0),
       })
     }
     return map
-  }, [teams, activePlayers])
+  }, [activePlayers, categories])
 
   const overallTotals = useMemo(() => {
     const scoped = categoryFilter === "all"
       ? activePlayers
-      : activePlayers.filter(p => teamCategoryMap[p.teamId] === categoryFilter)
+      : activePlayers.filter(p => p.currentMembershipTier === categoryFilter)
     return {
       total: scoped.length,
       paid: scoped.filter(p => p.membershipFeePaid).length,
       collected: scoped.reduce((sum, p) => sum + (p.membershipFeeAmountPaid ?? 0), 0),
       due: scoped.reduce((sum, p) => sum + (p.membershipFeeAmountDue ?? 0), 0),
     }
-  }, [activePlayers, categoryFilter, teamCategoryMap])
+  }, [activePlayers, categoryFilter])
 
-  const unpaidCount = visiblePlayers.filter(p => !p.membershipFeePaid).length
+  const unpaidCount = visiblePlayers.filter(p => p.membershipFeeAmountDue != null && !p.membershipFeePaid).length
 
   return (
     <PageLayout
@@ -358,7 +352,7 @@ export default function Fees() {
       action={
         <Button
           variant="outline"
-          onClick={() => exportToCSV(visiblePlayers, teams)}
+          onClick={() => exportToCSV(visiblePlayers)}
           disabled={visiblePlayers.length === 0}
         >
           <Download className="w-4 h-4 mr-2" /> Export CSV
@@ -385,7 +379,7 @@ export default function Fees() {
         </div>
         <div className="bg-white rounded-2xl p-7 border border-border shadow-sm flex flex-col justify-center">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center text-muted-foreground"><Wallet className="w-5 h-5 mr-2"/> Players Paid</div>
+            <div className="flex items-center text-muted-foreground"><Wallet className="w-5 h-5 mr-2"/> Members Paid</div>
           </div>
           <p className="text-3xl font-display font-bold text-foreground">
             {overallTotals.paid} <span className="text-muted-foreground text-xl font-medium">of {overallTotals.total}</span>
@@ -409,9 +403,9 @@ export default function Fees() {
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
         >
-          <option value="all">All Teams</option>
-          {uniqueCategories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
+          <option value="all">All Categories</option>
+          {categories.map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
           ))}
         </Select>
 
@@ -463,14 +457,13 @@ export default function Fees() {
         </div>
       ) : (
         <div className="space-y-6">
-          {teamGroups.map(({ team, players: groupPlayers }) => {
-            const totals = teamTotals.get(team.id) ?? { paid: 0, total: 0, collected: 0, due: 0 }
+          {categoryGroups.map(({ value, label, players: groupPlayers }) => {
+            const totals = categoryTotals.get(value) ?? { paid: 0, total: 0, collected: 0, due: 0 }
             return (
-              <div key={team.id} className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
-                {/* Team heading + per-team summary */}
+              <div key={value} className="bg-white rounded-2xl shadow-sm border border-border overflow-hidden">
                 <div className="px-5 py-4 border-b border-border bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <h3 className="font-bold text-foreground text-base">{team.name}</h3>
+                    <h3 className="font-bold text-foreground text-base">{label}</h3>
                     <div className="text-sm text-muted-foreground mt-0.5">
                       <span className="font-medium text-foreground">{totals.paid}</span> of{" "}
                       <span className="font-medium text-foreground">{totals.total}</span> paid
@@ -480,7 +473,7 @@ export default function Fees() {
                     </div>
                   </div>
                   <Badge variant="outline" className="text-xs self-start sm:self-auto">
-                    {team.category}
+                    Category
                   </Badge>
                 </div>
 
@@ -503,7 +496,7 @@ export default function Fees() {
                     <tbody className="divide-y divide-border">
                       {groupPlayers.map(player => {
                         const missing = isMissingFeeDetails(player)
-                        const rowBg = !player.membershipFeePaid
+                        const rowBg = player.membershipFeeAmountDue != null && !player.membershipFeePaid
                           ? "bg-amber-50/60 hover:bg-amber-50"
                           : "hover:bg-muted/10"
                         return (
@@ -549,7 +542,9 @@ export default function Fees() {
                             </td>
 
                             <td className="px-4 py-3">
-                              {player.membershipFeePaid ? (
+                              {player.membershipFeeAmountDue == null ? (
+                                <Badge variant="outline">No fee yet</Badge>
+                              ) : player.membershipFeePaid ? (
                                 <Badge className="bg-emerald-100 text-emerald-800 border-0 shadow-none capitalize">Paid</Badge>
                               ) : (
                                 <Badge className="bg-amber-100 text-amber-800 border-0 shadow-none capitalize">Unpaid</Badge>
@@ -680,9 +675,12 @@ export default function Fees() {
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-2">
-             <label className="text-sm font-semibold">2026/27 Membership Amount Due (HKD)</label>
-            <Input type="number" min="0" step="0.01" {...register("paymentAmountDue")} placeholder="0.00" />
-            {errors.paymentAmountDue && <p className="text-xs text-destructive">{String(errors.paymentAmountDue.message)}</p>}
+            <label className="text-sm font-semibold">2026/27 Membership Amount Due</label>
+            <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+              {editingPlayer?.membershipFeeAmountDue == null
+                ? "No fee until a category is assigned"
+                : `${formatCurrency(editingPlayer.membershipFeeAmountDue)} — set by ${CATEGORY_LABELS[editingPlayer.currentMembershipTier]}`}
+            </div>
           </div>
 
           <div className="space-y-2 border-t border-border pt-4">

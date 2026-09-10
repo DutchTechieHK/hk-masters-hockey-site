@@ -234,9 +234,9 @@ export const ListPlayersResponseItem = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
@@ -313,9 +313,9 @@ export const CreatePlayerBody = zod.object({
   currentMembershipTier: zod
     .enum([
       "awaiting_selection",
-      "masters_registration",
-      "active_player",
-      "division_one_squad",
+      "community_member",
+      "social_player",
+      "masters_division_one",
     ])
     .optional(),
 });
@@ -413,9 +413,9 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   submittedPhone: zod.string().nullish(),
   membershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   matchedPlayerId: zod.number().nullish(),
   matchedPlayerName: zod.string().nullish(),
@@ -460,9 +460,9 @@ export const ImportMembershipInterestSubmissionsBody = zod.object({
           .min(importMembershipInterestSubmissionsBodySubmissionsItemEmailMin),
         phone: zod.string().optional(),
         membershipTier: zod.enum([
-          "masters_registration",
-          "active_player",
-          "division_one_squad",
+          "community_member",
+          "social_player",
+          "masters_division_one",
         ]),
         rawData: zod.record(zod.string(), zod.unknown()).optional(),
       }),
@@ -522,9 +522,9 @@ export const ResolveMembershipInterestSubmissionBody = zod.object({
   playerId: zod.number().nullish(),
   membershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   dismiss: zod.boolean().optional(),
 });
@@ -536,9 +536,9 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   submittedPhone: zod.string().nullish(),
   membershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   matchedPlayerId: zod.number().nullish(),
   matchedPlayerName: zod.string().nullish(),
@@ -610,9 +610,9 @@ export const GetSelfPlayerResponse = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
@@ -713,9 +713,9 @@ export const UpdateSelfPlayerResponse = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
@@ -951,9 +951,9 @@ export const UpdatePlayerBody = zod.object({
   currentMembershipTier: zod
     .enum([
       "awaiting_selection",
-      "masters_registration",
-      "active_player",
-      "division_one_squad",
+      "community_member",
+      "social_player",
+      "masters_division_one",
     ])
     .optional(),
 });
@@ -1025,9 +1025,9 @@ export const UpdatePlayerResponse = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
-    "masters_registration",
-    "active_player",
-    "division_one_squad",
+    "community_member",
+    "social_player",
+    "masters_division_one",
   ]),
   membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),

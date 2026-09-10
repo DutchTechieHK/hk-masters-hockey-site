@@ -6,10 +6,10 @@ import { themeFor } from "../utils/teamTheme";
 
 const ROTTERDAM_TZ = "Europe/Amsterdam";
 const MEMBERSHIP_TIER_LABELS = {
-  awaiting_selection: "Awaiting selection",
-  masters_registration: "Masters Registration",
-  active_player: "Active Player",
-  division_one_squad: "Division 1 Squad",
+  awaiting_selection: "Awaiting Selection",
+  community_member: "Community Member",
+  social_player: "Social Player",
+  masters_division_one: "Masters Div. 1",
 };
 
 function formatMatchDate(iso) {

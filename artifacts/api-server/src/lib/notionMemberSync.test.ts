@@ -77,10 +77,10 @@ describe("Notion member sync rules", () => {
   });
 
   it("never downgrades a selected member from a Notion review row", () => {
-    expect(shouldApplyImportedTier("notion_join", "active_player")).toBe(false);
-    expect(shouldApplyImportedTier("notion_join", "division_one_squad")).toBe(false);
+    expect(shouldApplyImportedTier("notion_join", "social_player")).toBe(false);
+    expect(shouldApplyImportedTier("notion_join", "masters_division_one")).toBe(false);
     expect(shouldApplyImportedTier("notion_join", "awaiting_selection")).toBe(true);
-    expect(shouldApplyImportedTier("manual_import", "active_player")).toBe(true);
+    expect(shouldApplyImportedTier("manual_import", "social_player")).toBe(true);
   });
 
   it("keeps a newer stored snapshot authoritative over an older retry", () => {

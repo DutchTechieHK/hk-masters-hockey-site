@@ -44,10 +44,10 @@ declare global {
 
 const SESSION_KEY = "hkm_admin_session"
 const MEMBERSHIP_TIER_LABELS: Record<string, string> = {
-  awaiting_selection: "Awaiting selection",
-  masters_registration: "Masters Registration",
-  active_player: "Active Player",
-  division_one_squad: "Division 1 Squad",
+  awaiting_selection: "Awaiting Selection",
+  community_member: "Community Member",
+  social_player: "Social Player",
+  masters_division_one: "Masters Div. 1",
 }
 const MEMBER_STATUS_LABELS: Record<string, string> = {
   active: "Active",
@@ -177,19 +177,10 @@ const playerSchema = z.object({
   instagramHandle: z.string().optional(),
   facebookHandle: z.string().optional(),
   memberStatus: z.enum(["active", "inactive", "archived"]).default("active"),
-  currentMembershipTier: z.enum(["awaiting_selection", "masters_registration", "active_player", "division_one_squad"]).default("awaiting_selection"),
+  currentMembershipTier: z.enum(["awaiting_selection", "community_member", "social_player", "masters_division_one"]).default("awaiting_selection"),
 })
 
 type PlayerFormValues = z.infer<typeof playerSchema>
-
-function insuranceStatus(player: Player): "ok" | "missing" | "expired" {
-  if (!player.insuranceProvider) return "missing"
-  if (player.insuranceExpiry) {
-    const d = new Date(player.insuranceExpiry)
-    if (!isNaN(d.getTime()) && d < new Date()) return "expired"
-  }
-  return "ok"
-}
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -203,25 +194,14 @@ export default function Players() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
   const [positionFilter, setPositionFilter] = useState<string>("all")
   const [memberStatusFilter, setMemberStatusFilter] = useState<string>("all")
   const [membershipTierFilter, setMembershipTierFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
-  const [insuranceFilter, setInsuranceFilter] = useState<"all" | "missing" | "expired" | "issues">(() => {
-    try {
-      const params = new URLSearchParams(window.location.search)
-      const v = params.get("insurance")
-      if (v === "missing" || v === "expired" || v === "issues") return v
-    } catch { /* noop */ }
-    return "all"
-  })
   const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
   const [hkidAck, setHkidAckState] = useState<Record<number, number>>(() => getHkidAck())
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
-  const [insuranceReminderModalOpen, setInsuranceReminderModalOpen] = useState(false)
-  const [insuranceReminderSending, setInsuranceReminderSending] = useState(false)
   const [participations, setParticipations] = useState<PlayerParticipation[]>([])
   const [participationsLoading, setParticipationsLoading] = useState(false)
 
@@ -261,7 +241,6 @@ export default function Players() {
     query: { queryKey: getListFundraisingQueryKey(), enabled: !!sessionToken, retry: false }
   })
   const playerQueryParams = {
-    ...(selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : {}),
     ...(positionFilter !== "all" ? { position: positionFilter as "Goalkeeper" | "Defender" | "Midfield" | "Forward" } : {}),
   }
   const hasPlayerQueryParams = Object.keys(playerQueryParams).length > 0
@@ -307,17 +286,8 @@ export default function Players() {
   const filteredPlayers = players
     .filter(p =>
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.nationality || "").toLowerCase().includes(searchQuery.toLowerCase())
+      p.email.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    .filter(p => {
-      if (insuranceFilter === "all") return true
-      const status = insuranceStatus(p)
-      if (insuranceFilter === "missing") return status === "missing"
-      if (insuranceFilter === "expired") return status === "expired"
-      if (insuranceFilter === "issues") return status === "missing" || status === "expired"
-      return true
-    })
     .filter(p => memberStatusFilter === "all" || p.memberStatus === memberStatusFilter)
     .filter(p => membershipTierFilter === "all" || p.currentMembershipTier === membershipTierFilter)
     .sort((a, b) => sortOrder === "asc"
@@ -325,39 +295,9 @@ export default function Players() {
       : b.name.localeCompare(a.name)
     )
 
-  const playersWithoutInsurance = players.filter(p => !p.insuranceProvider)
-
-  const handleSendInsuranceReminders = async () => {
-    if (playersWithoutInsurance.length === 0) return
-    setInsuranceReminderSending(true)
-    try {
-      const token = sessionToken
-      const res = await fetch("/api/players/send-insurance-reminders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { "x-session-token": token } : {}),
-        },
-        body: JSON.stringify({ playerIds: playersWithoutInsurance.map(p => p.id) }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error((data as { error?: string }).error || "Failed to send reminders")
-      const { sent, failed } = data as { sent: number; failed: number }
-      if (failed > 0) {
-        toast({ title: `Sent to ${sent} player${sent !== 1 ? "s" : ""} — ${failed} failed`, variant: "destructive" })
-      } else {
-        toast({ title: `Insurance reminder sent to ${sent} player${sent !== 1 ? "s" : ""}` })
-      }
-      setInsuranceReminderModalOpen(false)
-    } catch (err) {
-      toast({ title: (err as Error).message || "Failed to send reminders", variant: "destructive" })
-    } finally {
-      setInsuranceReminderSending(false)
-    }
-  }
 
   const blankForm = (): Partial<PlayerFormValues> => ({
-    teamId: teams.length > 0 ? teams[0].id : 0,
+    teamId: teams.find((team) => team.name === "Awaiting Selection")?.id ?? 0,
     name: "", shirtNumber: "", email: "", phone: "", position: "",
     dateOfBirth: "", nationality: "", hkidNumber: "", passportNumber: "", passportExpiry: "",
     emergencyContactName: "", emergencyContactPhone: "",
@@ -803,7 +743,7 @@ export default function Players() {
   return (
     <PageLayout
       title="Members"
-      description="Manage long-term member profiles, membership tiers, season participation, and legacy Rotterdam details."
+      description="Manage member profiles, current categories, fees, and season participation."
       action={
         <div className="flex gap-2">
           <Button
@@ -815,7 +755,7 @@ export default function Players() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             {isFetching ? "Refreshing…" : "Refresh"}
           </Button>
-          <Button onClick={openAddModal} disabled={teams.length === 0}>
+          <Button onClick={openAddModal} disabled={!teams.some((team) => team.name === "Awaiting Selection")}>
              <Plus className="w-5 h-5 mr-2" /> Add Member
           </Button>
         </div>
@@ -828,8 +768,8 @@ export default function Players() {
         <div className="p-4 border-b border-border flex flex-col sm:flex-row gap-4 bg-muted/20 flex-wrap">
           <div className="relative flex-1 min-w-48">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              placeholder="Search by name, email or nationality..."
+             <Input
+               placeholder="Search by name or email..."
               className="pl-10 pr-8 bg-white"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -844,14 +784,6 @@ export default function Players() {
               </button>
             )}
           </div>
-          <Select
-            className="sm:w-52 bg-white"
-            value={selectedTeamFilter}
-            onChange={(e) => setSelectedTeamFilter(e.target.value)}
-          >
-            <option value="all">All Teams</option>
-            {teams.map(t => <option key={t.id} value={t.id.toString()}>{t.name}</option>)}
-          </Select>
           <Select
             className="sm:w-48 bg-white"
             value={positionFilter}
@@ -878,30 +810,11 @@ export default function Players() {
             value={membershipTierFilter}
             onChange={(e) => setMembershipTierFilter(e.target.value)}
           >
-            <option value="all">All membership tiers</option>
+            <option value="all">All categories</option>
             {Object.entries(MEMBERSHIP_TIER_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </Select>
-          <Select
-            className="sm:w-52 bg-white"
-            value={insuranceFilter}
-            onChange={(e) => setInsuranceFilter(e.target.value as typeof insuranceFilter)}
-          >
-            <option value="all">All Insurance</option>
-            <option value="issues">⚠ Missing or Expired</option>
-            <option value="missing">Missing Insurance</option>
-            <option value="expired">Expired Insurance</option>
-          </Select>
-          {playersWithoutInsurance.length > 0 && (
-            <button
-              onClick={() => setInsuranceReminderModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 h-9 rounded-lg text-sm font-medium border bg-amber-600 text-white border-amber-700 hover:bg-amber-700 transition-all shrink-0"
-            >
-              <Send className="w-3.5 h-3.5" />
-              Remind {playersWithoutInsurance.length} player{playersWithoutInsurance.length !== 1 ? "s" : ""}
-            </button>
-          )}
         </div>
 
         {/* Table */}
@@ -919,31 +832,27 @@ export default function Players() {
                     <span className="text-xs">{sortOrder === "asc" ? "↑" : "↓"}</span>
                   </button>
                 </th>
-                <th className="px-4 py-4 font-semibold hidden sm:table-cell">Team</th>
-                <th className="px-4 py-4 font-semibold">Membership</th>
+                <th className="px-4 py-4 font-semibold">Category</th>
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
-                <th className="px-4 py-4 font-semibold hidden lg:table-cell">Nationality</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
                 <th className="px-4 py-4 font-semibold">2026/27 Fee</th>
-                <th className="px-4 py-4 font-semibold hidden xl:table-cell">Insurance</th>
-                <th className="px-4 py-4 font-semibold hidden xl:table-cell">Passport Expiry</th>
+                <th className="px-4 py-4 font-semibold hidden xl:table-cell">Documents</th>
                 <th className="px-4 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">Loading players...</td>
+                  <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
-                    {players.length === 0 ? "No players yet. Add your first player to get started." : "No players match your search."}
+                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                    {players.length === 0 ? "No members yet. Add your first member to get started." : "No members match your search."}
                   </td>
                 </tr>
               ) : (
                 filteredPlayers.map(player => {
-                  const pStatus = passportStatus(player.passportExpiry)
                   return (
                     <tr key={player.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={() => openEditModal(player)}>
                       {/* Shirt Number */}
@@ -980,31 +889,18 @@ export default function Players() {
                                   : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200 leading-none">HKID New</span>
                               })()}
                             </div>
-                            <div className="text-muted-foreground text-xs sm:hidden">{player.teamName}</div>
                           </div>
                         </div>
                       </td>
-                      {/* Team */}
-                      <td className="px-4 py-4 hidden sm:table-cell">
-                        <Badge variant="outline">{player.teamName ?? '—'}</Badge>
-                      </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-col items-start gap-1">
-                          <Badge variant={player.memberStatus === "active" ? "default" : "outline"}>
-                            {MEMBER_STATUS_LABELS[player.memberStatus]}
-                          </Badge>
-                          <span className="text-[11px] text-muted-foreground whitespace-nowrap">
-                            {MEMBERSHIP_TIER_LABELS[player.currentMembershipTier]}
-                          </span>
+                          <Badge variant="outline">{MEMBERSHIP_TIER_LABELS[player.currentMembershipTier] || "Awaiting Selection"}</Badge>
+                          <span className="text-[11px] text-muted-foreground">{MEMBER_STATUS_LABELS[player.memberStatus]}</span>
                         </div>
                       </td>
                       {/* Position */}
                       <td className="px-4 py-4 hidden md:table-cell text-foreground">
                         {player.position || <span className="text-muted-foreground text-xs">—</span>}
-                      </td>
-                      {/* Nationality */}
-                      <td className="px-4 py-4 hidden lg:table-cell text-foreground">
-                        {player.nationality || <span className="text-muted-foreground text-xs">—</span>}
                       </td>
                       {/* Portal login status */}
                       <td className="px-4 py-4 hidden xl:table-cell">
@@ -1027,64 +923,16 @@ export default function Players() {
                       </td>
                       {/* 2026/27 membership fee */}
                       <td className="px-4 py-4">
-                        {player.membershipFeePaid ? (
+                        {player.membershipFeeAmountDue == null ? (
+                          <Badge variant="outline" className="whitespace-nowrap">No fee yet</Badge>
+                        ) : player.membershipFeePaid ? (
                           <Badge variant="success" className="gap-1 whitespace-nowrap"><CheckCircle className="w-3 h-3" /> Paid</Badge>
                         ) : (
                           <Badge variant="destructive" className="gap-1 whitespace-nowrap bg-rose-100 text-rose-800"><XCircle className="w-3 h-3" /> Unpaid</Badge>
                         )}
                       </td>
-                      {/* Insurance */}
+                      {/* Passport copy remains available */}
                       <td className="px-4 py-4 hidden xl:table-cell">
-                        {(() => {
-                          const status = insuranceStatus(player)
-                          if (status === "ok") return (
-                            <div className="flex items-center gap-1.5 text-emerald-700">
-                              <Shield className="w-4 h-4" />
-                              <span className="text-sm font-medium">{player.insuranceProvider}</span>
-                            </div>
-                          )
-                          if (status === "expired") return (
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-1.5 text-rose-600">
-                                <ShieldAlert className="w-4 h-4" />
-                                <span className="text-sm font-medium">Expired</span>
-                              </div>
-                              <span className="text-[10px] text-rose-500">{player.insuranceExpiry}</span>
-                            </div>
-                          )
-                          return (
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-1.5 text-amber-600">
-                                <ShieldAlert className="w-4 h-4" />
-                                <span className="text-sm font-medium">Missing</span>
-                              </div>
-                              {player.insuranceReminderSentAt && (
-                                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                  <Clock className="w-2.5 h-2.5" />
-                                  {new Date(player.insuranceReminderSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })()}
-                      </td>
-                      {/* Passport Expiry */}
-                      <td className="px-4 py-4 hidden xl:table-cell">
-                        {pStatus === "ok" && (
-                          <div className="flex items-center gap-1.5 text-emerald-700">
-                            <Shield className="w-4 h-4" />
-                            <span className="text-sm font-medium">{player.passportExpiry}</span>
-                          </div>
-                        )}
-                        {pStatus === "expiring" && (
-                          <div className="flex items-center gap-1.5 text-rose-600">
-                            <AlertTriangle className="w-4 h-4" />
-                            <span className="text-sm font-medium">{player.passportExpiry}</span>
-                          </div>
-                        )}
-                        {pStatus === "missing" && (
-                          <span className="text-xs text-muted-foreground">Not set</span>
-                        )}
                         {player.passportCopyUrl && (
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <a
@@ -1249,20 +1097,14 @@ export default function Players() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">2026/27 membership tier</label>
+              <label className="text-sm font-semibold">Category</label>
               <Select {...register("currentMembershipTier")}>
                 {Object.entries(MEMBERSHIP_TIER_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </Select>
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold">Team *</label>
-              <Select {...register("teamId")}>
-                {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </Select>
-              {errors.teamId && <p className="text-xs text-destructive">{errors.teamId.message}</p>}
-            </div>
+            <input type="hidden" {...register("teamId")} />
             <div className="space-y-2">
               <label className="text-sm font-semibold">Full Name *</label>
               <Input {...register("name")} placeholder="Jane Doe" />
@@ -1288,10 +1130,6 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Date of Birth</label>
               <Input type="date" {...register("dateOfBirth")} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Nationality</label>
-              <Input {...register("nationality")} placeholder="e.g. Hong Kong" />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">HK ID Card Number</label>
@@ -1329,10 +1167,6 @@ export default function Players() {
             <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Number</label>
               <MaskedInput {...register("passportNumber")} placeholder="A1234567" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Passport Expiry</label>
-              <Input type="date" {...register("passportExpiry")} />
             </div>
             {editingPlayer && (
               <div className="space-y-2 md:col-span-2">
@@ -1546,34 +1380,6 @@ export default function Players() {
             </div>
           </div>
 
-          <SectionHeading>Insurance</SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold">Insurance Provider</label>
-              <Input {...register("insuranceProvider")} placeholder="e.g. AXA, Zurich, HSBC Insurance" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Policy Number</label>
-              <Input {...register("insurancePolicyNumber")} placeholder="e.g. POL-12345678" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">24/7 Emergency Assistance Phone</label>
-              <Input {...register("insuranceEmergencyPhone")} placeholder="+852 XXXX XXXX" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Policy Holder Name <span className="text-muted-foreground font-normal">(if different from player)</span></label>
-              <Input {...register("insurancePolicyHolder")} placeholder="Full name on policy" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Policy Expiry Date</label>
-              <Input type="date" {...register("insuranceExpiry")} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold">General Contact Email</label>
-              <Input type="email" {...register("insuranceEmail")} placeholder="claims@insurer.com" />
-            </div>
-          </div>
-
           <SectionHeading>Kit Sizes</SectionHeading>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -1604,10 +1410,6 @@ export default function Players() {
 
           <SectionHeading>Rotterdam 2026 Payment Archive</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Amount Due (HKD)</label>
-              <Input type="number" step="0.01" min="0" {...register("paymentAmountDue")} placeholder="0" />
-            </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Amount Paid (HKD)</label>
               <Input type="number" step="0.01" min="0" {...register("paymentAmountPaid")} placeholder="0" />
@@ -1699,48 +1501,6 @@ export default function Players() {
         </form>
       </Modal>
 
-      {/* Insurance reminder modal */}
-      <Modal
-        isOpen={insuranceReminderModalOpen}
-        onClose={() => setInsuranceReminderModalOpen(false)}
-        title="Send insurance reminder"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This will send a reminder email to{" "}
-            <strong className="text-foreground">{playersWithoutInsurance.length} player{playersWithoutInsurance.length !== 1 ? "s" : ""}</strong>{" "}
-            who have no insurance provider on file.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Each email will include a personal link directly to the player's My Details page so they can fill in their insurance information immediately.
-          </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-xs font-semibold text-amber-800 mb-1">Players who will be emailed:</p>
-            <ul className="text-xs text-amber-700 space-y-0.5 max-h-32 overflow-y-auto">
-              {playersWithoutInsurance.map(p => (
-                <li key={p.id}>{p.name}{p.teamName ? ` — ${p.teamName}` : ""}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setInsuranceReminderModalOpen(false)}
-              disabled={insuranceReminderSending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendInsuranceReminders}
-              disabled={insuranceReminderSending}
-              className="bg-amber-600 hover:bg-amber-700 text-white"
-            >
-              {insuranceReminderSending ? "Sending…" : `Send to ${playersWithoutInsurance.length} player${playersWithoutInsurance.length !== 1 ? "s" : ""}`}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </PageLayout>
   )
 }

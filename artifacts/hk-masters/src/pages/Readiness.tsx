@@ -28,7 +28,6 @@ import {
   Send,
 } from "lucide-react"
 
-const PASSPORT_WARN_DATE = new Date("2026-10-31")
 
 // ─── Blocker checks (existing per-category cards) ────────────────────────────
 
@@ -67,30 +66,6 @@ const CHECKS: BlockerCheck[] = [
     tone: "blue",
     href: "/travel",
     detect: (p) => !p.roomSharingPreference || p.roomSharingPreference.trim() === "",
-  },
-  {
-    key: "passport-expiring",
-    label: "Passport expiring soon",
-    description: `Passport expires before ${PASSPORT_WARN_DATE.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}`,
-    icon: BookUser,
-    tone: "red",
-    href: "/players",
-    detect: (p) => {
-      if (!p.passportExpiry) return false
-      const d = new Date(p.passportExpiry)
-      if (isNaN(d.getTime())) return false
-      return d <= PASSPORT_WARN_DATE
-    },
-    detail: (p) => (p.passportExpiry ? `Expires ${p.passportExpiry}` : null),
-  },
-  {
-    key: "passport-missing",
-    label: "Passport details missing",
-    description: "Players with no passport number or expiry on file",
-    icon: BookUser,
-    tone: "amber",
-    href: "/players",
-    detect: (p) => !p.passportNumber || !p.passportExpiry,
   },
   {
     key: "fee-unpaid",
@@ -144,15 +119,6 @@ const CHECKS: BlockerCheck[] = [
     tone: "amber",
     href: "/players",
     detect: (p) => !!p.passportCopyUrl && !p.passportCopyReviewed,
-  },
-  {
-    key: "insurance",
-    label: "Insurance details missing",
-    description: "Players who haven't submitted their insurance provider and policy number",
-    icon: Wallet,
-    tone: "amber",
-    href: "/players",
-    detect: (p) => !p.insuranceProvider || !p.insurancePolicyNumber,
   },
 ]
 
@@ -220,8 +186,6 @@ export default function Readiness() {
   const [chaseSubject, setChaseSubject] = useState(DEFAULT_CHASE_SUBJECT)
   const [chaseBody, setChaseBody] = useState(DEFAULT_CHASE_BODY)
   const [chaseSending, setChaseSending] = useState(false)
-  const [insuranceModalOpen, setInsuranceModalOpen] = useState(false)
-  const [insuranceSending, setInsuranceSending] = useState(false)
 
   const teamMap = useMemo(
     () => Object.fromEntries(teams.map((t) => [t.id, t])),
@@ -260,10 +224,6 @@ export default function Readiness() {
     })
   }, [players])
 
-  const playersWithoutInsurance = useMemo(
-    () => players.filter((p) => !p.insuranceProvider || !p.insurancePolicyNumber),
-    [players],
-  )
 
   const totalBlockers = blockerStats.reduce((s, b) => s + b.players.length, 0)
   const readyPct = players.length > 0 ? Math.round((playersFullyReady / players.length) * 100) : 0
@@ -298,30 +258,6 @@ export default function Readiness() {
     }
   }
 
-  const handleSendInsuranceReminders = async () => {
-    if (playersWithoutInsurance.length === 0) return
-    setInsuranceSending(true)
-    try {
-      const res = await fetch("/api/players/send-insurance-reminders", {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({ playerIds: playersWithoutInsurance.map((p) => p.id) }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data?.error || "Failed to send reminders")
-      const { sent, failed } = data as { sent: number; failed: number }
-      if (failed > 0) {
-        toast({ title: `Sent to ${sent} player${sent !== 1 ? "s" : ""} — ${failed} failed`, variant: "destructive" })
-      } else {
-        toast({ title: `Insurance reminder sent to ${sent} player${sent !== 1 ? "s" : ""}` })
-      }
-      setInsuranceModalOpen(false)
-    } catch (err) {
-      toast({ title: (err as Error).message || "Failed to send reminders", variant: "destructive" })
-    } finally {
-      setInsuranceSending(false)
-    }
-  }
 
   return (
     <PageLayout
@@ -607,21 +543,6 @@ export default function Readiness() {
                     </div>
                   )}
 
-                  {check.key === "insurance" && !isClear && (
-                    <div className="border-t border-border bg-white px-5 py-3 flex items-center justify-between gap-3">
-                      <p className="text-xs text-muted-foreground">
-                        Send each player a personal link to add their insurance details directly.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setInsuranceModalOpen(true)}
-                        className="flex items-center gap-1.5 px-3 h-8 rounded-lg text-sm font-medium border bg-amber-600 text-white border-amber-600 hover:bg-amber-700 transition-all shrink-0"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        Send insurance reminder
-                      </button>
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -639,49 +560,6 @@ export default function Readiness() {
         </>
       )}
 
-      {/* ── Insurance reminder modal ── */}
-      <Modal
-        isOpen={insuranceModalOpen}
-        onClose={() => setInsuranceModalOpen(false)}
-        title="Send insurance reminder"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            This will send a reminder email to{" "}
-            <strong className="text-foreground">{playersWithoutInsurance.length} player{playersWithoutInsurance.length !== 1 ? "s" : ""}</strong>{" "}
-            who have no insurance provider or policy number on file.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Each email will include a personal link directly to the player's My Details page so they can fill in their insurance information immediately.
-          </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-xs font-semibold text-amber-800 mb-1">Players who will be emailed:</p>
-            <ul className="text-xs text-amber-700 space-y-0.5 max-h-32 overflow-y-auto">
-              {playersWithoutInsurance.map((p) => (
-                <li key={p.id}>{p.name}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setInsuranceModalOpen(false)}
-              disabled={insuranceSending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSendInsuranceReminders}
-              disabled={insuranceSending}
-              className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
-            >
-              <Send className="w-4 h-4" />
-              {insuranceSending ? "Sending…" : `Send to ${playersWithoutInsurance.length} player${playersWithoutInsurance.length !== 1 ? "s" : ""}`}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* ── Chase incomplete players modal ── */}
       <Modal

@@ -74,7 +74,7 @@ beforeAll(async () => {
     seasonId: season.id,
     submittedName: "Manual",
     submittedEmail: manualEmail,
-    membershipTier: "active_player",
+    membershipTier: "social_player",
     matchStatus: "unmatched",
   }).returning({ id: membershipInterestSubmissionsTable.id });
   manualSubmissionId = manualSubmission.id;
@@ -124,8 +124,8 @@ describe("membership interest import transaction", () => {
       .post("/api/players/membership/interest-submissions")
       .send({
         submissions: [
-          { name: "First", email: firstEmail, membershipTier: "active_player" },
-          { name: "Failure", email: failingEmail, membershipTier: "active_player" },
+          { name: "First", email: firstEmail, membershipTier: "social_player" },
+          { name: "Failure", email: failingEmail, membershipTier: "social_player" },
         ],
       });
 
@@ -153,7 +153,7 @@ describe("membership interest import transaction", () => {
     const manualPlayerId = playerIds[2];
     const response = await request(app)
       .patch(`/api/players/membership/interest-submissions/${manualSubmissionId}`)
-      .send({ playerId: manualPlayerId, membershipTier: "active_player" });
+      .send({ playerId: manualPlayerId, membershipTier: "social_player" });
 
     expect(response.status).toBe(500);
 

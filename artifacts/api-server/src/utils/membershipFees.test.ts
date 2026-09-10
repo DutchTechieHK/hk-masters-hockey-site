@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { buildSeasonFeeAccount } from "./membershipFees";
+import {
+  buildSeasonFeeAccount,
+  membershipCategoryAmountDue,
+} from "./membershipFees";
+
+describe("membershipCategoryAmountDue", () => {
+  it("maps current categories to their 2026/27 fees", () => {
+    expect(membershipCategoryAmountDue("awaiting_selection")).toBeNull();
+    expect(membershipCategoryAmountDue("community_member")).toBe(100);
+    expect(membershipCategoryAmountDue("social_player")).toBe(300);
+    expect(membershipCategoryAmountDue("masters_division_one")).toBe(500);
+  });
+
+  it("does not assign fees to legacy or unknown values", () => {
+    expect(membershipCategoryAmountDue("active_player")).toBeNull();
+    expect(membershipCategoryAmountDue("unknown")).toBeNull();
+  });
+});
 
 describe("buildSeasonFeeAccount", () => {
   const payments = [

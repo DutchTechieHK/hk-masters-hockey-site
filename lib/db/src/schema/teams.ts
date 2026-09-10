@@ -1,4 +1,5 @@
-import { pgTable, serial, text, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { pgTable, serial, text, integer, timestamp, boolean, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -20,7 +21,14 @@ export const teamsTable = pgTable("teams", {
   description: text("description"),
   isInternal: boolean("is_internal").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  awaitingSelectionNameUnique: uniqueIndex("teams_awaiting_selection_name_unique")
+    .on(t.name)
+    .where(sql`${t.name} = 'Awaiting Selection'`),
+  mastersDivisionOneNameUnique: uniqueIndex("teams_masters_division_one_name_unique")
+    .on(t.name)
+    .where(sql`${t.name} = 'Masters Div. 1'`),
+}));
 
 export const insertTeamSchema = createInsertSchema(teamsTable).omit({ id: true, createdAt: true });
 export type InsertTeam = z.infer<typeof insertTeamSchema>;

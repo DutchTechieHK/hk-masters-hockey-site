@@ -9,15 +9,15 @@ type ImportRow = {
   name: string
   email: string
   phone?: string
-  membershipTier: "masters_registration" | "active_player" | "division_one_squad"
+  membershipTier: "community_member" | "social_player" | "masters_division_one"
   rawData?: Record<string, unknown>
 }
 
 const TIER_LABELS: Record<string, string> = {
-  awaiting_selection: "Awaiting selection",
-  masters_registration: "Masters Registration",
-  active_player: "Active Player",
-  division_one_squad: "Division 1 Squad",
+  awaiting_selection: "Awaiting Selection",
+  community_member: "Community Member",
+  social_player: "Social Player",
+  masters_division_one: "Masters Div. 1",
 }
 
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
@@ -69,8 +69,8 @@ function parseCsvLine(line: string) {
 
 function normalizeTier(value: string): ImportRow["membershipTier"] | null {
   const tier = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
-  if (tier === "masters_registration" || tier === "active_player" || tier === "division_1_squad" || tier === "division_one_squad") {
-    return tier === "division_1_squad" ? "division_one_squad" : tier
+  if (tier === "community_member" || tier === "social_player" || tier === "masters_division_one") {
+    return tier
   }
   return null
 }

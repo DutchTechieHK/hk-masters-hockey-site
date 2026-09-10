@@ -4,6 +4,28 @@ export type SeasonPayment = {
   paymentDate: string;
 };
 
+export const MEMBERSHIP_CATEGORIES = [
+  "awaiting_selection",
+  "community_member",
+  "social_player",
+  "masters_division_one",
+] as const;
+
+export type MembershipCategory = (typeof MEMBERSHIP_CATEGORIES)[number];
+
+export const MEMBERSHIP_CATEGORY_FEES: Record<MembershipCategory, number | null> = {
+  awaiting_selection: null,
+  community_member: 100,
+  social_player: 300,
+  masters_division_one: 500,
+};
+
+export function membershipCategoryAmountDue(category: string | null | undefined): number | null {
+  return category != null && Object.prototype.hasOwnProperty.call(MEMBERSHIP_CATEGORY_FEES, category)
+    ? MEMBERSHIP_CATEGORY_FEES[category as MembershipCategory]
+    : null;
+}
+
 export function buildSeasonFeeAccount<T extends SeasonPayment>(
   seasonId: number,
   amountDue: number | null,

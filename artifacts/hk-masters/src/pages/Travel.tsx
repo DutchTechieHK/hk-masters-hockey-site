@@ -30,9 +30,7 @@ const playerSchema = z.object({
   phone: z.string().optional(),
   position: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  nationality: z.string().optional(),
   passportNumber: z.string().optional(),
-  passportExpiry: z.string().optional(),
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
   flightArrivalDateTime: z.string().optional(),
@@ -69,14 +67,11 @@ function toCreatePlayer(data: PlayerFormValues): CreatePlayer {
     email: data.email,
     feePaid: data.feePaid,
     shirtNumber: data.shirtNumber === "" ? undefined : data.shirtNumber,
-    paymentAmountDue: data.paymentAmountDue === "" ? undefined : data.paymentAmountDue,
     paymentAmountPaid: data.paymentAmountPaid === "" ? undefined : data.paymentAmountPaid,
     phone: data.phone || undefined,
     position: data.position || undefined,
     dateOfBirth: data.dateOfBirth || undefined,
-    nationality: data.nationality || undefined,
     passportNumber: data.passportNumber || undefined,
-    passportExpiry: data.passportExpiry || undefined,
     emergencyContactName: data.emergencyContactName || undefined,
     emergencyContactPhone: data.emergencyContactPhone || undefined,
     flightArrivalDateTime: data.flightArrivalDateTime || undefined,
@@ -217,9 +212,7 @@ export default function Travel() {
       phone: player.phone || "",
       position: player.position || "",
       dateOfBirth: player.dateOfBirth || "",
-      nationality: player.nationality || "",
       passportNumber: player.passportNumber || "",
-      passportExpiry: player.passportExpiry || "",
       emergencyContactName: player.emergencyContactName || "",
       emergencyContactPhone: player.emergencyContactPhone || "",
       flightArrivalDateTime: player.flightArrivalDateTime || "",
@@ -680,16 +673,8 @@ export default function Travel() {
               <Input {...register("position")} placeholder="Forward, Midfield, Defender, GK..." />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Nationality</label>
-              <Input {...register("nationality")} placeholder="e.g. Hong Kong" />
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-semibold">Passport Number</label>
               <MaskedInput {...register("passportNumber")} placeholder="A1234567" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Passport Expiry</label>
-              <Input type="date" {...register("passportExpiry")} />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Emergency Contact Name</label>

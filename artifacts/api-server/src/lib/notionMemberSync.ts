@@ -188,6 +188,7 @@ async function fetchApplicants(): Promise<NotionApplicant[]> {
 }
 
 async function ensureHoldingTeam(tx: any): Promise<number> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('hk-masters-membership-foundation'))`);
   const [existing] = await tx.select({ id: teamsTable.id }).from(teamsTable)
     .where(eq(teamsTable.name, HOLDING_TEAM_NAME)).limit(1);
   if (existing) {
@@ -202,8 +203,12 @@ async function ensureHoldingTeam(tx: any): Promise<number> {
     managerPhone: "",
     description: "Holding team for new membership applicants awaiting selection.",
     isInternal: true,
-  }).returning({ id: teamsTable.id });
-  return created.id;
+  }).onConflictDoNothing().returning({ id: teamsTable.id });
+  if (created) return created.id;
+  const [concurrent] = await tx.select({ id: teamsTable.id }).from(teamsTable)
+    .where(eq(teamsTable.name, HOLDING_TEAM_NAME)).limit(1);
+  if (!concurrent) throw new Error("Failed to provision Awaiting Selection team");
+  return concurrent.id;
 }
 
 export function isValidNotionApplicant(applicant: NotionApplicant): boolean {
