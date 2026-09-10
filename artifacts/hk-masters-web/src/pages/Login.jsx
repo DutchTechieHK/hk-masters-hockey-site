@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { requestLoginCode, verifyLoginCode, getPlayerToken } from "../lib/playerAuth";
+import { parseLoginParameters } from "../lib/loginRedirect";
 
 export default function Login() {
   const [, setLocation] = useLocation();
+  const [{ email: initialEmail, destination }] = useState(() => parseLoginParameters(window.location.search));
   const [step, setStep] = useState("email");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(initialEmail);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
 
   useEffect(() => {
-    if (getPlayerToken()) setLocation("/dashboard");
-  }, [setLocation]);
+    if (getPlayerToken()) setLocation(destination);
+  }, [destination, setLocation]);
 
   const handleSendCode = async (e) => {
     e.preventDefault();
@@ -34,7 +36,7 @@ export default function Login() {
     setError(""); setBusy(true);
     try {
       await verifyLoginCode(email.trim(), code.trim());
-      setLocation("/dashboard");
+      setLocation(destination);
     } catch (err) {
       setError(err.message || "Code didn't work. Please try again.");
     } finally {
@@ -48,7 +50,7 @@ export default function Login() {
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Sign in</h1>
           <p className="mt-2 text-sm text-gray-600">
-            For HK Masters Hockey players, coaches and staff travelling to Rotterdam 2026.
+            For HK Masters Hockey members and trial participants.
           </p>
         </div>
 
@@ -118,6 +120,11 @@ export default function Login() {
 
         {info && <p className="mt-4 text-sm text-green-700 text-center">{info}</p>}
         {error && <p className="mt-4 text-sm text-red-600 text-center">{error}</p>}
+        {destination === "/schedule" && (
+          <p className="mt-5 text-xs text-center text-gray-500">
+            After signing in, you will go directly to Events to mark your trial attendance.
+          </p>
+        )}
       </div>
     </div>
   );

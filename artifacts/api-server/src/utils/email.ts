@@ -1669,6 +1669,54 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendTrialsAppInviteEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+}): Promise<boolean> {
+  const safeName = escapeHtml(opts.playerName);
+  const loginUrl = `${PUBLIC_URL}/login?email=${encodeURIComponent(opts.playerEmail)}&next=${encodeURIComponent("/schedule")}`;
+  const safeLoginUrl = escapeHtml(loginUrl);
+  const subject = "Respond to your HK Masters trial invitation";
+
+  const html = emailShell(
+    "#1E3A6E",
+    "Your Masters trial invitation",
+    `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
+    <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
+      You are invited to the upcoming <strong>HK Masters Hockey trials</strong>. Please use the app to tell us whether you can attend each trial.
+    </p>
+    <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.7;">
+      Sign in using this same email address. We will send you a secure six-digit code, then take you directly to the Events schedule where you can choose <strong>Going</strong>, <strong>Maybe</strong>, or <strong>Not going</strong>.
+    </p>
+    <p style="margin:0 0 24px 0;text-align:center;">
+      <a href="${safeLoginUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:6px;">Open the app and respond</a>
+    </p>
+    <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
+      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+    </p>`,
+    "2026/27 Masters League",
+  );
+
+  const text = `Hi ${opts.playerName},
+
+You are invited to the upcoming HK Masters Hockey trials. Please use the app to tell us whether you can attend each trial.
+
+Open the app and sign in using this same email address. We will send you a secure six-digit code, then take you directly to the Events schedule where you can choose Going, Maybe, or Not going.
+
+${loginUrl}
+
+Questions? Email us at ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+
+  return sendEmail({
+    to: opts.playerEmail,
+    subject,
+    html,
+    text,
+  });
+}
+
 export async function sendLegoJarGuessAdminNotificationEmail(opts: {
   guesserName: string;
   guesserEmail?: string | null;

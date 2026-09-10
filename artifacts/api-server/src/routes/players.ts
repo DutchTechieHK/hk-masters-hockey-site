@@ -39,7 +39,7 @@ import {
   BulkAssignMembershipSectionBody,
   BulkAssignMembershipSectionResponse,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail, sendTrialsAppInviteEmail } from "../utils/email";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
@@ -1730,6 +1730,109 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   }
   await syncCurrentParticipation(id);
   res.status(204).send();
+});
+
+const TRIALS_INVITE_SUBJECT = "Respond to your HK Masters trial invitation";
+const EMAIL_ADDRESS_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+async function getTrialsInviteRecipients() {
+  const activePlayers = await db.select().from(playersTable).where(eq(playersTable.memberStatus, "active"));
+  const activeEmailCounts = new Map<string, number>();
+  for (const player of activePlayers) {
+    const normalizedEmail = player.email.trim().toLowerCase();
+    activeEmailCounts.set(normalizedEmail, (activeEmailCounts.get(normalizedEmail) ?? 0) + 1);
+  }
+  const trials = activePlayers.filter((player) => player.currentMembershipTier === "trials");
+  return {
+    eligible: trials
+      .filter((player) => {
+        const normalizedEmail = player.email.trim().toLowerCase();
+        return EMAIL_ADDRESS_RE.test(normalizedEmail) && activeEmailCounts.get(normalizedEmail) === 1;
+      })
+      .map((player) => ({ ...player, email: player.email.trim().toLowerCase() })),
+    skipped: trials.filter((player) => {
+      const normalizedEmail = player.email.trim().toLowerCase();
+      return !EMAIL_ADDRESS_RE.test(normalizedEmail) || activeEmailCounts.get(normalizedEmail) !== 1;
+    }),
+  };
+}
+
+router.get("/membership/trials-invites", requireAdminAccess, async (_req, res) => {
+  const { eligible, skipped } = await getTrialsInviteRecipients();
+  res.json({ eligible: eligible.length, skipped: skipped.length, total: eligible.length + skipped.length });
+});
+
+router.post("/membership/trials-invites", requireAdminAccess, async (_req, res) => {
+  const { eligible, skipped: invalid } = await getTrialsInviteRecipients();
+  let sent = 0;
+  let failed = 0;
+  const recipientResults: Array<{
+    playerId: number;
+    playerName: string;
+    playerEmail: string;
+    sent: boolean;
+    errorMessage: string | null;
+  }> = [];
+
+  for (let index = 0; index < eligible.length; index++) {
+    const player = eligible[index];
+    let delivered = false;
+    let errorMessage: string | null = null;
+    try {
+      delivered = await sendTrialsAppInviteEmail({
+        playerName: player.name,
+        playerEmail: player.email,
+      });
+      if (!delivered) errorMessage = "delivery_failed";
+    } catch (error) {
+      errorMessage = error instanceof Error ? error.message : "delivery_failed";
+      console.error(`[trials-invites] Failed to invite player ${player.id}:`, error);
+    }
+    if (delivered) sent++;
+    else failed++;
+    recipientResults.push({
+      playerId: player.id,
+      playerName: player.name,
+      playerEmail: player.email,
+      sent: delivered,
+      errorMessage,
+    });
+    if (index < eligible.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+  }
+
+  const [blast] = await db.insert(emailBlastsTable).values({
+    subject: TRIALS_INVITE_SUBJECT,
+    body: "App invitation to respond to Masters trial attendance.",
+    audienceType: "trials_invite",
+    teamIds: null,
+    playerIds: null,
+    recipientCount: eligible.length,
+    sentCount: sent,
+    failedCount: failed,
+    sentByEmail: null,
+    operationalScope: "local_2026_27",
+  }).returning();
+
+  if (recipientResults.length > 0) {
+    await db.insert(emailBlastRecipientsTable).values(recipientResults.map((recipient) => ({
+      blastId: blast.id,
+      playerId: recipient.playerId,
+      playerName: recipient.playerName,
+      playerEmail: recipient.playerEmail,
+      sent: recipient.sent,
+      errorMessage: recipient.errorMessage,
+    })));
+  }
+
+  res.json({
+    sent,
+    failed,
+    skipped: invalid.length,
+    total: eligible.length + invalid.length,
+    blastId: blast.id,
+  });
 });
 
 router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachments", 5), async (req, res) => {

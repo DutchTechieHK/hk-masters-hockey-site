@@ -100,6 +100,7 @@ function audienceLabel(audienceType: string) {
   if (audienceType === "men") return "Men members"
   if (audienceType === "women") return "Women members"
   if (audienceType === "trials") return "Trials"
+  if (audienceType === "trials_invite") return "Trials app invitation"
   if (audienceType === "teams") return "By squad"
   return "Selected players"
 }
@@ -182,6 +183,9 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
   const [expandedBlastId, setExpandedBlastId] = useState<number | null>(null)
   const [blastRecipients, setBlastRecipients] = useState<Record<number, BlastRecipient[]>>({})
   const [blastRecipientsLoading, setBlastRecipientsLoading] = useState<number | null>(null)
+  const [trialsInvitePreview, setTrialsInvitePreview] = useState<{ eligible: number, skipped: number, total: number } | null>(null)
+  const [trialsInviteLoading, setTrialsInviteLoading] = useState(false)
+  const [showTrialsInviteConfirm, setShowTrialsInviteConfirm] = useState(false)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -235,6 +239,19 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
   useEffect(() => {
     if (activeTab === "email") refreshBlasts()
   }, [activeTab, refreshBlasts])
+  useEffect(() => {
+    if (activeTab !== "email") return
+    fetch("/api/players/membership/trials-invites", { headers: authHeaders() })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(data?.error || "Could not count Trials invitees")
+        setTrialsInvitePreview(data)
+      })
+      .catch((error) => {
+        setTrialsInvitePreview(null)
+        console.error(error)
+      })
+  }, [activeTab])
 
   useEffect(() => {
     if (!isModalOpen) return
@@ -569,6 +586,30 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
     }
   }
 
+  const sendTrialsInvites = async () => {
+    setTrialsInviteLoading(true)
+    try {
+      const response = await fetch("/api/players/membership/trials-invites", {
+        method: "POST",
+        headers: authHeaders(),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(result?.error || "Could not send Trials invitations")
+      toast({
+        title: `Trials invitations sent to ${result.sent} player${result.sent !== 1 ? "s" : ""}`,
+        description: `${result.failed} failed and ${result.skipped} skipped without a valid email.`,
+        variant: result.failed > 0 ? "destructive" : "default",
+      })
+      setShowTrialsInviteConfirm(false)
+      setTrialsInvitePreview({ eligible: result.sent + result.failed, skipped: result.skipped, total: result.total })
+      refreshBlasts()
+    } catch (error) {
+      toast({ title: (error as Error).message, variant: "destructive" })
+    } finally {
+      setTrialsInviteLoading(false)
+    }
+  }
+
   const canSend = emailForm.subject.trim().length > 0 &&
     emailForm.body.length > 0 &&
     recipients.length > 0 &&
@@ -705,6 +746,28 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       {/* Email Players Tab */}
       {activeTab === "email" && (
         <div className="space-y-6">
+          <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-blue-950">Invite Trials members to the app</h2>
+              <p className="text-sm text-blue-800 mt-1">
+                Sends a secure sign-in link that takes each player directly to Events to mark trial attendance.
+              </p>
+              <p className="text-xs text-blue-700 mt-2">
+                {trialsInvitePreview
+                  ? `${trialsInvitePreview.eligible} eligible recipient${trialsInvitePreview.eligible !== 1 ? "s" : ""}${trialsInvitePreview.skipped ? ` · ${trialsInvitePreview.skipped} without a valid email` : ""}`
+                  : "Loading recipient count…"}
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowTrialsInviteConfirm(true)}
+              disabled={!trialsInvitePreview?.eligible || trialsInviteLoading}
+              className="gap-2 shrink-0"
+            >
+              <Mail className="w-4 h-4" />
+              Send app invitations
+            </Button>
+          </div>
+
           {/* Composer */}
           <div className="bg-white rounded-2xl border border-border p-6 space-y-5">
             <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
@@ -1230,6 +1293,33 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
             <Button onClick={handleSendEmail} disabled={sending} className="gap-2">
               <Send className="w-4 h-4" />
               {sending ? `Sending (${recipients.length} emails)…` : "Send emails"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showTrialsInviteConfirm}
+        onClose={() => setShowTrialsInviteConfirm(false)}
+        title="Invite Trials members"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-foreground">
+            Send an app invitation to <strong>{trialsInvitePreview?.eligible ?? 0} active Trials member{trialsInvitePreview?.eligible === 1 ? "" : "s"}</strong>?
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Each email will use the member's registered address and link directly to sign-in. After entering their six-digit code, they will arrive on Events to answer Going, Maybe, or Not going.
+          </p>
+          {(trialsInvitePreview?.skipped ?? 0) > 0 && (
+            <p className="text-xs text-amber-700">
+              {trialsInvitePreview?.skipped} Trials member{trialsInvitePreview?.skipped === 1 ? "" : "s"} will be skipped because no valid email is available.
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowTrialsInviteConfirm(false)} disabled={trialsInviteLoading}>Cancel</Button>
+            <Button onClick={sendTrialsInvites} disabled={trialsInviteLoading || !trialsInvitePreview?.eligible} className="gap-2">
+              <Send className="w-4 h-4" />
+              {trialsInviteLoading ? "Sending invitations…" : "Send invitations"}
             </Button>
           </div>
         </div>
