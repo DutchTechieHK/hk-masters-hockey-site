@@ -1,11 +1,36 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { playersTable, teamsTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { playersTable, teamsTable, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
+import { and, eq } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/squad", async (_req, res) => {
+router.get("/squad", async (req, res) => {
+  if (req.query.scope === "world_cup_2026") {
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, "rotterdam-2026"));
+    if (!season) return res.json([]);
+    const rows = await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
+      .from(playerParticipationsTable)
+      .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
+      .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active")))
+      .orderBy(playerParticipationsTable.playerId);
+    const mapped = rows.map(({ participation, playerSnapshot, teamSnapshot }) => {
+      const player = playerSnapshot as Record<string, unknown>;
+      const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
+      return {
+        id: participation.playerId,
+        name: String(player.name ?? ""),
+        shirtNumber: (player.shirt_number as number | null) ?? null,
+        position: (player.position as string | null) ?? null,
+        teamId: participation.teamId,
+        teamName: participation.teamId == null ? null : (team.name as string | null) ?? null,
+        teamCategory: participation.teamId == null ? null : (team.category as string | null) ?? null,
+      };
+    });
+    res.set("Cache-Control", "public, max-age=60");
+    return res.json(mapped);
+  }
   const rows = await db
     .select({
       id: playersTable.id,
@@ -33,6 +58,7 @@ router.get("/squad", async (_req, res) => {
       teamCategory: r.teamCategory ?? null,
     })),
   );
+  return;
 });
 
 router.get("/teams", async (_req, res) => {

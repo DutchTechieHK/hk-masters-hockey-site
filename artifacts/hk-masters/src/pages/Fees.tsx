@@ -35,6 +35,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { Player } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
+import { sanitizePlayerPayload } from "@/lib/player-payload"
 import { formatCurrency } from "@/lib/utils"
 
 function formatEuro(amount: number) {
@@ -127,7 +128,7 @@ function exportToCSV(players: Player[]) {
   URL.revokeObjectURL(url)
 }
 
-export default function Fees() {
+export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -147,7 +148,7 @@ export default function Fees() {
     notes: string
   }>({ isOpen: false, player: null, paymentDate: "", amount: "", method: "", notes: "" })
 
-  const { data: players = [], isLoading } = useListPlayers()
+  const { data: players = [], isLoading } = useListPlayers(scope ? { scope } as any : undefined)
   const activePlayers = useMemo(
     () => players.filter(player => player.memberStatus === "active"),
     [players],
@@ -212,7 +213,7 @@ export default function Fees() {
         feePaid: editingPlayer.feePaid,
         notes: data.notes || editingPlayer.notes || undefined,
       }
-      await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload })
+      await updateMutation.mutateAsync({ id: editingPlayer.id, data: sanitizePlayerPayload(payload) as any })
       toast({ title: "Fee details updated" })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
       closeEditModal()
@@ -429,7 +430,7 @@ export default function Fees() {
           Only show unpaid
         </label>
 
-        {!isLoading && unpaidCount > 0 && (
+        {!isLoading && unpaidCount > 0 && !readOnly && (
           <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{unpaidCount} player{unpaidCount !== 1 ? "s" : ""} still to pay</span>
@@ -562,26 +563,28 @@ export default function Fees() {
                               )}
                             </td>
 
-                            <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                              <div className="flex justify-end items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                {!player.membershipFeePaid && (
+                            {!readOnly && (
+                              <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-end items-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                  {!player.membershipFeePaid && (
+                                    <button
+                                      onClick={() => openMarkAsPaidDialog(player)}
+                                      title="Mark as paid"
+                                      className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
+                                    >
+                                      <CheckCircle2 className="w-4 h-4" />
+                                    </button>
+                                  )}
                                   <button
-                                    onClick={() => openMarkAsPaidDialog(player)}
-                                    title="Mark as paid"
-                                    className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
+                                    onClick={() => openEditModal(player)}
+                                    title="Edit fee details"
+                                    className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all"
                                   >
-                                    <CheckCircle2 className="w-4 h-4" />
+                                    <Edit2 className="w-4 h-4" />
                                   </button>
-                                )}
-                                <button
-                                  onClick={() => openEditModal(player)}
-                                  title="Edit fee details"
-                                  className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         )
                       })}

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable, teamsTable, funRunIncomeTable } from "@workspace/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { playerPayoutsTable, playersTable, fundraisingTable, legoJarGuessesTable, teamsTable, funRunIncomeTable, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
+import { and, eq, sql, desc } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 
 const VALID_METHODS = ["fps", "payme", "bank_transfer", "cash", "cheque", "other"] as const;
@@ -46,8 +46,28 @@ function validatePayoutBody(body: Record<string, unknown>): {
 const router = Router();
 router.use(requireAdminAccess);
 
+async function worldCupIdentity() {
+  const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, "rotterdam-2026"));
+  if (!season) return new Map<number, { name: string; teamId: number | null; teamName: string | null }>();
+  const rows = await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
+    .from(playerParticipationsTable)
+    .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
+    .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
+    .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active")));
+  return new Map(rows.map(({ participation, playerSnapshot, teamSnapshot }) => {
+    const player = playerSnapshot as Record<string, unknown>;
+    const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
+    return [participation.playerId, {
+      name: String(player.name ?? ""),
+      teamId: participation.teamId,
+      teamName: participation.teamId == null ? null : (team.name as string | null) ?? null,
+    }];
+  }));
+}
+
 // GET /api/payouts — list all payouts newest first
 router.get("/", async (_req, res) => {
+  const identities = await worldCupIdentity();
   const rows = await db
     .select({
       id: playerPayoutsTable.id,
@@ -61,18 +81,16 @@ router.get("/", async (_req, res) => {
       reference: playerPayoutsTable.reference,
       notes: playerPayoutsTable.notes,
       createdAt: playerPayoutsTable.createdAt,
-      playerName: playersTable.name,
-      teamId: teamsTable.id,
-      teamName: teamsTable.name,
     })
     .from(playerPayoutsTable)
-    .leftJoin(playersTable, eq(playerPayoutsTable.playerId, playersTable.id))
-    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
     .orderBy(desc(playerPayoutsTable.createdAt));
 
   res.json(
     rows.map((r) => ({
-      ...r,
+       ...r,
+       playerName: r.playerId == null ? null : identities.get(r.playerId)?.name ?? null,
+       teamId: r.playerId == null ? null : identities.get(r.playerId)?.teamId ?? null,
+       teamName: r.playerId == null ? null : identities.get(r.playerId)?.teamName ?? null,
       amount: parseFloat(r.amount),
     }))
   );
@@ -80,11 +98,9 @@ router.get("/", async (_req, res) => {
 
 // GET /api/payouts/reconciliation
 router.get("/reconciliation", async (_req, res) => {
-  // All players
-  const players = await db
-    .select({ id: playersTable.id, name: playersTable.name })
-    .from(playersTable)
-    .orderBy(playersTable.name);
+  const identities = await worldCupIdentity();
+  const players = [...identities.entries()].map(([id, identity]) => ({ id, name: identity.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Fundraising received per beneficiary name (case-insensitive)
   const fundRows = await db

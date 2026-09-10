@@ -1,5 +1,5 @@
-import { Link, useRoute, useLocation } from "wouter"
-import { Trophy, Users, UserRound, Shirt, DollarSign, Plane, BookOpen, Menu, X, Luggage, Star, CalendarDays, Wallet, LogOut, CalendarClock, Megaphone, History, FolderOpen, Gavel, Package, HandCoins, Footprints, ChevronRight, BarChart2, PlayCircle, FileText, ArrowDownToLine, Search, Newspaper, Globe } from "lucide-react"
+import { Link, useRoute } from "wouter"
+import { Trophy, Users, UserRound, DollarSign, CalendarDays, CalendarClock, Megaphone, History, Globe, PlayCircle, LogOut, Menu, X, BarChart2, Newspaper, Archive } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -10,38 +10,18 @@ import {
   notifySessionExpired,
 } from "@/lib/admin-auth"
 
-const FUNDRAISING_CHILDREN = [
-  { href: "/fundraising", label: "Pledges", icon: HandCoins },
-  { href: "/fun-run", label: "Fun Run", icon: Footprints },
-  { href: "/lego-jar", label: "LEGO Jar", icon: Package },
-  { href: "/auction", label: "Auction", icon: Gavel },
-  { href: "/sponsors", label: "Sponsors", icon: Star },
-  { href: "/payouts", label: "Payouts", icon: ArrowDownToLine },
-  { href: "/fundraising/search", label: "Search", icon: Search },
-]
-
-const FUNDRAISING_PATHS = new Set(FUNDRAISING_CHILDREN.map((c) => c.href))
-
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: Trophy },
   { href: "/teams", label: "Teams", icon: Users },
   { href: "/players", label: "Members", icon: UserRound },
-  { href: "/kits", label: "Kits", icon: Shirt },
-  // Fundraising group is rendered separately
-  { href: "/fees", label: "Fees", icon: Wallet },
+  { href: "/fees", label: "Fees", icon: DollarSign },
   { href: "/matches", label: "Matches", icon: CalendarDays },
   { href: "/events", label: "Events", icon: CalendarClock },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/news", label: "News", icon: Newspaper },
   { href: "/polls", label: "Polls", icon: BarChart2 },
   { href: "/email-history", label: "Email History", icon: History },
-  { href: "/logistics", label: "Logistics", icon: Plane },
-  { href: "/travel", label: "Travel", icon: Luggage },
-  { href: "/arrivals", label: "Transfers", icon: Plane },
-  { href: "/journal", label: "Journal", icon: BookOpen },
-  { href: "/documents", label: "Documents", icon: FolderOpen },
   { href: "/website", label: "Website", icon: Globe },
-  { href: "/reports", label: "Reports", icon: FileText },
   { href: "/tutorials", label: "Tutorials", icon: PlayCircle },
 ]
 
@@ -57,87 +37,33 @@ function SidebarNavItem({
   label,
   icon: Icon,
   onClick,
-  sub = false,
+  isArchive = false,
 }: {
   href: string
   label: string
   icon: typeof Trophy
   onClick?: () => void
-  sub?: boolean
+  isArchive?: boolean
 }) {
-  const [isActive] = useRoute(href)
+  const [isActive] = useRoute(href.endsWith("/*") ? href : `${href}/*`)
+  const active = isActive || window.location.pathname === href || window.location.pathname.startsWith(href + "/")
+
   return (
     <Link
       href={href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150",
-        sub ? "px-3 py-2 pl-8" : "px-3 py-2.5",
-        isActive
+        "flex items-center gap-3 rounded-lg text-sm font-medium transition-all duration-150 px-3 py-2.5",
+        active
           ? "bg-white/20 text-white shadow-inner"
-          : "text-primary-foreground/70 hover:bg-white/10 hover:text-white"
+          : isArchive
+            ? "text-amber-200/80 hover:bg-white/10 hover:text-amber-200"
+            : "text-primary-foreground/70 hover:bg-white/10 hover:text-white"
       )}
     >
-      <Icon className={cn("flex-shrink-0", sub ? "w-4 h-4" : "w-[18px] h-[18px]")} />
+      <Icon className={cn("flex-shrink-0 w-[18px] h-[18px]", isArchive && "text-amber-200/80")} />
       <span>{label}</span>
     </Link>
-  )
-}
-
-function FundraisingGroup({ onChildClick }: { onChildClick?: () => void }) {
-  const [location] = useLocation()
-  const isChildActive = FUNDRAISING_PATHS.has(location)
-  const [open, setOpen] = useState(isChildActive)
-
-  return (
-    <div>
-      {/* Parent toggle button */}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className={cn(
-          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150",
-          isChildActive
-            ? "text-white"
-            : "text-primary-foreground/70 hover:bg-white/10 hover:text-white"
-        )}
-      >
-        <DollarSign className="w-[18px] h-[18px] flex-shrink-0" />
-        <span className="flex-1 text-left">Fundraising</span>
-        <motion.div
-          animate={{ rotate: open ? 90 : 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <ChevronRight className="w-4 h-4 opacity-60" />
-        </motion.div>
-      </button>
-
-      {/* Sub-items */}
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="fundraising-children"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="space-y-0.5 pt-0.5">
-              {FUNDRAISING_CHILDREN.map((item) => (
-                <SidebarNavItem
-                  key={item.href}
-                  href={item.href}
-                  label={item.label}
-                  icon={item.icon}
-                  sub
-                  onClick={onChildClick}
-                />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
   )
 }
 
@@ -148,46 +74,47 @@ const Logo = () => (
     </div>
     <div className="leading-none">
       <p className="font-bold text-base text-white tracking-tight leading-none">HK Masters</p>
-      <p className="text-[9px] text-primary-foreground/60 font-medium uppercase tracking-wider mt-0.5">World Cup 2026</p>
+      <p className="text-[9px] text-primary-foreground/60 font-medium uppercase tracking-wider mt-0.5">League & Socials</p>
     </div>
   </div>
 )
 
-function NavList({ onItemClick }: { onItemClick?: () => void }) {
-  // Insert Fundraising group after Kits (index 3)
-  const beforeFundraising = NAV_ITEMS.slice(0, 4)
-  const afterFundraising = NAV_ITEMS.slice(4)
-  return (
-    <>
-      {beforeFundraising.map((item) => (
-        <SidebarNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} onClick={onItemClick} />
-      ))}
-      <FundraisingGroup onChildClick={onItemClick} />
-      {afterFundraising.map((item) => (
-        <SidebarNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} onClick={onItemClick} />
-      ))}
-    </>
-  )
-}
-
 export function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+
+  const NavList = ({ onItemClick }: { onItemClick?: () => void }) => (
+    <>
+      <div className="space-y-0.5">
+        {NAV_ITEMS.map((item) => (
+          <SidebarNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} onClick={onItemClick} />
+        ))}
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-white/10">
+        <p className="px-3 text-xs font-semibold text-primary-foreground/40 uppercase tracking-wider mb-2">Archives</p>
+        <SidebarNavItem
+          href="/archive/world-cup-2026"
+          label="World Cup 2026"
+          icon={Archive}
+          onClick={onItemClick}
+          isArchive
+        />
+      </div>
+    </>
+  )
 
   return (
     <>
       {/* ── Desktop: fixed left sidebar ── */}
       <aside className="hidden md:flex flex-col fixed inset-y-0 left-0 w-56 z-40 bg-primary text-primary-foreground shadow-xl">
-        {/* Logo */}
         <div className="px-4 py-5 border-b border-white/10">
           <Logo />
         </div>
 
-        {/* Nav items */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
           <NavList />
         </nav>
 
-        {/* Sign out pinned at bottom */}
         <div className="px-3 py-4 border-t border-white/10">
           <button
             onClick={handleSignOut}
@@ -215,7 +142,6 @@ export function Navbar() {
       <AnimatePresence>
         {drawerOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
@@ -226,16 +152,14 @@ export function Navbar() {
               onClick={() => setDrawerOpen(false)}
             />
 
-            {/* Drawer panel */}
             <motion.div
               key="drawer"
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", duration: 0.25 }}
-              className="md:hidden fixed inset-y-0 left-0 z-50 w-full bg-primary text-primary-foreground shadow-2xl flex flex-col"
+              className="md:hidden fixed inset-y-0 left-0 z-50 w-full max-w-[280px] bg-primary text-primary-foreground shadow-2xl flex flex-col"
             >
-              {/* Drawer header */}
               <div className="flex items-center justify-between px-4 py-4 border-b border-white/10">
                 <Logo />
                 <button
@@ -247,12 +171,10 @@ export function Navbar() {
                 </button>
               </div>
 
-              {/* Drawer nav */}
-              <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+              <nav className="flex-1 overflow-y-auto px-3 py-4">
                 <NavList onItemClick={() => setDrawerOpen(false)} />
               </nav>
 
-              {/* Drawer sign out */}
               <div className="px-3 py-4 border-t border-white/10">
                 <button
                   onClick={() => { setDrawerOpen(false); handleSignOut() }}

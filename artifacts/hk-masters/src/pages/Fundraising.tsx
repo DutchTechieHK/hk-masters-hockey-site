@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react"
-import { useListFundraising, useCreateFundraising, useUpdateFundraising, useDeleteFundraising, getListFundraisingQueryKey, useListTeams } from "@workspace/api-client-react"
+import { useCreateFundraising, useUpdateFundraising, useDeleteFundraising, getListFundraisingQueryKey } from "@workspace/api-client-react"
+import { useScopedTeams } from "@/hooks/use-scoped-data"
+import { useScopedFundraising } from "@/hooks/use-scoped-fundraising"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -134,7 +136,7 @@ function buildBreakdown(entries: FundraisingEntry[], playerTeamMap: Map<string, 
   return { teamRows, playerRows, teamEntries, playerEntries }
 }
 
-export default function Fundraising() {
+export default function Fundraising({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [sessionToken, setSessionToken] = useState<string | null>(null)
@@ -172,12 +174,13 @@ export default function Fundraising() {
     }
   }
 
-  const { data: teams = [] } = useListTeams()
-  const { data: entries = [], isLoading } = useListFundraising({ query: { queryKey: getListFundraisingQueryKey(), enabled: !!sessionToken } })
+  const { data: teams = [] } = useScopedTeams(scope)
+  const { data: entries = [], isLoading } = useScopedFundraising(scope, sessionToken || undefined)
 
   const [playerTeamMap, setPlayerTeamMap] = useState<Map<string, string>>(new Map())
   useEffect(() => {
-    fetch("/api/public/squad")
+    const fetchUrl = scope ? `/api/public/squad?scope=${scope}` : "/api/public/squad"
+    fetch(fetchUrl)
       .then((r) => r.json())
       .then((data: Array<{ name: string; teamCategory: string | null }>) => {
         const map = new Map<string, string>()
@@ -205,8 +208,8 @@ export default function Fundraising() {
 
   const openAddModal = () => {
     setEditingEntry(null)
-    reset({ 
-      donorName: "", donorEmail: "", amountPledged: 0, amountReceived: 0, 
+    reset({
+      donorName: "", donorEmail: "", amountPledged: 0, amountReceived: 0,
       date: new Date().toISOString().split('T')[0],
       teamId: null, status: "pending", notes: "", beneficiary: ""
     })
@@ -287,7 +290,7 @@ export default function Fundraising() {
         closeConfirm()
         try {
           await deleteMutation.mutateAsync({ id })
-          queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
+          queryClient.invalidateQueries({ queryKey: scope ? ["fundraising", scope] : getListFundraisingQueryKey() })
           toast({ title: "Record deleted successfully" })
         } catch {
           toast({ title: "Failed to delete record", variant: "destructive" })
@@ -316,7 +319,7 @@ export default function Fundraising() {
           paidAt,
         },
       })
-      queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
+      queryClient.invalidateQueries({ queryKey: scope ? ["fundraising", scope] : getListFundraisingQueryKey() })
       toast({ title: "Marked as paid", description: `Payment recorded for ${entry.donorName}` })
     } catch {
       toast({ title: "Failed to mark as paid", variant: "destructive" })
@@ -342,7 +345,7 @@ export default function Fundraising() {
         donorEmail: data.donorEmail || undefined,
         beneficiary: data.beneficiary?.trim() || undefined,
       }
-      
+
       if (editingEntry) {
         const payload = { ...base, paidAt: data.paidAt ? new Date(data.paidAt).toISOString() : null }
         await updateMutation.mutateAsync({ id: editingEntry.id, data: payload as any })
@@ -352,7 +355,7 @@ export default function Fundraising() {
         await createMutation.mutateAsync({ data: createPayload as any })
         toast({ title: "Record created" })
       }
-      queryClient.invalidateQueries({ queryKey: getListFundraisingQueryKey() })
+      queryClient.invalidateQueries({ queryKey: scope ? ["fundraising", scope] : getListFundraisingQueryKey() })
       setIsModalOpen(false)
     } catch {
       toast({ title: "An error occurred", variant: "destructive" })
@@ -534,9 +537,11 @@ export default function Fundraising() {
           <Button variant="outline" onClick={exportCSV} disabled={entries.length === 0}>
             <Download className="w-4 h-4 mr-2" /> Export CSV
           </Button>
-          <Button onClick={openAddModal}>
-            <Plus className="w-5 h-5 mr-2" /> Record Donation
-          </Button>
+          {!readOnly && (
+            <Button onClick={openAddModal}>
+              <Plus className="w-5 h-5 mr-2" /> Record Donation
+            </Button>
+          )}
         </div>
       }
     >
@@ -648,7 +653,7 @@ export default function Fundraising() {
                       <td className="px-3 py-3 text-right font-medium text-foreground whitespace-nowrap">{formatCurrency(entry.amountPledged)}</td>
                       <td className="px-3 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">{formatCurrency(entry.amountReceived)}</td>
                       <td className="px-3 py-3 whitespace-nowrap">
-                        <Badge className={STATUS_COLORS[entry.status] + " capitalize border-0 shadow-none"}>
+                        <Badge className={(STATUS_COLORS[entry.status as keyof typeof STATUS_COLORS] || "") + " capitalize border-0 shadow-none"}>
                           {entry.status}
                         </Badge>
                       </td>
@@ -659,41 +664,43 @@ export default function Fundraising() {
                         )}
                       </td>
                       <td className="px-2 py-3 text-right sticky right-0 z-10 bg-white border-l border-border">
-                        <div className="flex justify-end items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                          {entry.status === "received" && !entry.donorEmail && (
-                            <span
-                              title="No email on file — receipt cannot be sent. Edit this record to add an email address."
-                              className="p-1 text-amber-500 cursor-help"
-                            >
-                              <AlertTriangle className="w-3.5 h-3.5" />
-                            </span>
-                          )}
-                          {entry.status !== "received" && (
-                            <button
-                              onClick={() => handleMarkAsPaid(entry)}
-                              title="Mark as paid"
-                              className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
+                        {!readOnly && (
+                          <div className="flex justify-end items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            {entry.status === "received" && !entry.donorEmail && (
+                              <span
+                                title="No email on file — receipt cannot be sent. Edit this record to add an email address."
+                                className="p-1 text-amber-500 cursor-help"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                            {entry.status !== "received" && (
+                              <button
+                                onClick={() => handleMarkAsPaid(entry)}
+                                title="Mark as paid"
+                                className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {entry.status === "received" && (
+                              <button
+                                onClick={() => entry.donorEmail ? handleResendReceipt(entry) : undefined}
+                                title={entry.donorEmail ? "Resend receipt email" : "No email on file — cannot resend receipt"}
+                                disabled={resendingId === entry.id || !entry.donorEmail}
+                                className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                <MailCheck className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button onClick={() => openEditModal(entry)} className="p-1.5 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
+                              <Edit2 className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                          {entry.status === "received" && (
-                            <button
-                              onClick={() => entry.donorEmail ? handleResendReceipt(entry) : undefined}
-                              title={entry.donorEmail ? "Resend receipt email" : "No email on file — cannot resend receipt"}
-                              disabled={resendingId === entry.id || !entry.donorEmail}
-                              className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded bg-background shadow-sm border transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                            >
-                              <MailCheck className="w-3.5 h-3.5" />
+                            <button onClick={() => handleDelete(entry.id)} className="p-1.5 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          )}
-                          <button onClick={() => openEditModal(entry)} className="p-1.5 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => handleDelete(entry.id)} className="p-1.5 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -1037,7 +1044,7 @@ export default function Fundraising() {
               </p>
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Amount Pledged (HKD)</label>

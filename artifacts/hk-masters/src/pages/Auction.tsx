@@ -63,7 +63,7 @@ function formatHKD(n: string | number) {
 
 const EMPTY_FORM = { title: "", description: "", imageUrl: "", startingPrice: "0", minIncrement: "100", reservePrice: "", opensAt: "", closesAt: "", isActive: true }
 
-export default function AuctionAdmin() {
+export default function AuctionAdmin({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const [isLive, setIsLive] = useState(false)
   const [liveLoading, setLiveLoading] = useState(false)
@@ -260,9 +260,11 @@ export default function AuctionAdmin() {
       title="Silent Auction"
       description="Manage auction items, bids, and public visibility."
       action={
-        <Button onClick={openAddModal}>
-          <Plus className="w-4 h-4 mr-2" /> Add Item
-        </Button>
+        !readOnly ? (
+          <Button onClick={openAddModal}>
+            <Plus className="w-4 h-4 mr-2" /> Add Item
+          </Button>
+        ) : undefined
       }
     >
       {/* Live toggle */}
@@ -277,16 +279,18 @@ export default function AuctionAdmin() {
               : "The auction is not visible on the public site. Toggle on when ready."}
           </p>
         </div>
-        <button
-          onClick={toggleLive}
-          disabled={liveLoading}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors ${
-            isLive ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-          } disabled:opacity-60`}
-        >
-          {isLive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
-          {isLive ? "Turn Off" : "Go Live"}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={toggleLive}
+            disabled={liveLoading}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+              isLive ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            } disabled:opacity-60`}
+          >
+            {isLive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
+            {isLive ? "Turn Off" : "Go Live"}
+          </button>
+        )}
       </div>
 
       {/* Items list */}
@@ -317,15 +321,19 @@ export default function AuctionAdmin() {
                         <Badge className={item.isActive ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}>
                           {item.isActive ? "Active" : "Draft"}
                         </Badge>
-                        <button onClick={() => openEditModal(item)} title="Edit" className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDuplicate(item)} title="Duplicate" className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
-                          <Copy className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setDeleteConfirm(item.id)} title="Delete" className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!readOnly && (
+                          <>
+                            <button onClick={() => openEditModal(item)} title="Edit" className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDuplicate(item)} title="Duplicate" className="p-1.5 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-blue-50 transition-colors">
+                              <Copy className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setDeleteConfirm(item.id)} title="Delete" className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-4 mt-3 text-sm">

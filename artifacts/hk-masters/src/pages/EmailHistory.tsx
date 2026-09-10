@@ -1,5 +1,7 @@
 import { useState } from "react"
 import { PageLayout } from "@/components/layout/PageLayout"
+import { useQuery } from "@tanstack/react-query"
+import { getStoredAdminToken } from "@/lib/admin-auth"
 import { useListEmailBlasts, useListOnboardingInviteLog } from "@workspace/api-client-react"
 import type { OnboardingInviteLogItem } from "@workspace/api-client-react"
 import { format } from "date-fns"
@@ -149,9 +151,28 @@ function OnboardingLogSection({ items }: { items: OnboardingInviteLogItem[] }) {
   )
 }
 
-export default function EmailHistory() {
-  const { data: blastData = [], isLoading, isError, refetch } = useListEmailBlasts()
-  const { data: inviteLog = [] } = useListOnboardingInviteLog()
+export default function EmailHistory({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
+  const { data: defaultBlasts = [], isLoading: defaultLoading, isError: defaultError, refetch: defaultRefetch } = useListEmailBlasts({ query: { enabled: !scope } } as any)
+  const { data: defaultLog = [] } = useListOnboardingInviteLog({ query: { enabled: !scope } } as any)
+
+  const { data: archiveBlasts = [], isLoading: archiveLoading, isError: archiveError, refetch: archiveRefetch } = useQuery({
+    queryKey: ["email-blasts", scope],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const headers = { "Content-Type": "application/json", ...(token ? { "x-session-token": token } : {}) }
+      const res = await fetch(`/api/players/email-blasts?scope=${scope}`, { headers })
+      if (!res.ok) throw new Error("Failed to load")
+      return res.json() as Promise<EmailBlastHistoryItem[]>
+    },
+    enabled: !!scope
+  })
+
+  const blastData = scope ? archiveBlasts : defaultBlasts
+  // Don't use or request onboarding log if we are in an archive scope
+  const inviteLog = scope ? [] : defaultLog
+  const isLoading = scope ? archiveLoading : defaultLoading
+  const isError = scope ? archiveError : defaultError
+  const refetch = scope ? archiveRefetch : defaultRefetch
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const blasts = blastData as EmailBlastHistoryItem[]
 
@@ -314,7 +335,7 @@ export default function EmailHistory() {
             })}
           </div>
 
-          <OnboardingLogSection items={inviteLog} />
+          {!scope && <OnboardingLogSection items={inviteLog} />}
         </>
       )}
     </PageLayout>

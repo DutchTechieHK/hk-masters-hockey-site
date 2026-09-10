@@ -10,6 +10,7 @@ export const newsPostsTable = pgTable("news_posts", {
   category: text("category"),
   author: text("author"),
   status: text("status").notNull().default("draft"),
+  operationalScope: text("operational_scope").notNull().default("world_cup_2026"),
   publishedAt: timestamp("published_at"),
   reportDate: timestamp("report_date"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

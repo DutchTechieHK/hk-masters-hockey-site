@@ -177,7 +177,6 @@ describe("Masters Div. 1 current squad selection", () => {
       teamId: member.teamId,
       name: member.name,
       email: member.email,
-      feePaid: member.feePaid,
     };
     const moved = await request(app)
       .put(`/api/players/${playerId}`)
@@ -201,7 +200,7 @@ describe("Masters Div. 1 current squad selection", () => {
     const restored = await request(app)
       .put(`/api/players/${playerId}`)
       .send({ ...requiredPlayerFields, currentMembershipSection: "men" });
-    expect(restored.status).toBe(200);
+    expect(restored.status, JSON.stringify(restored.body)).toBe(200);
   });
 
   it("bulk section assignment preserves fees and Rotterdam history while clearing an incompatible squad", async () => {

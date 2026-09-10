@@ -85,7 +85,7 @@ function AudienceBadge({ audience }: { audience: string }) {
   )
 }
 
-export default function Polls() {
+export default function Polls({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const [polls, setPolls] = useState<Poll[]>([])
   const [loading, setLoading] = useState(true)
@@ -110,7 +110,8 @@ export default function Polls() {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/polls", { headers: authHeaders() })
+      const url = scope ? `/api/polls?scope=${scope}` : "/api/polls"
+      const res = await fetch(url, { headers: authHeaders() })
       if (!res.ok) throw new Error("Failed to load polls")
       setPolls(await res.json())
     } catch (err) {
@@ -349,9 +350,11 @@ export default function Polls() {
       title="Polls"
       description="Create scheduling polls and collect responses from players."
       action={
-        <Button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setIsCreateOpen(true) }} className="gap-2">
-          <Plus className="w-4 h-4" /> New poll
-        </Button>
+        !readOnly ? (
+          <Button onClick={() => { setForm(EMPTY_FORM); setFormError(null); setIsCreateOpen(true) }} className="gap-2">
+            <Plus className="w-4 h-4" /> New poll
+          </Button>
+        ) : undefined
       }
     >
       {loading ? (
@@ -399,54 +402,56 @@ export default function Polls() {
                       </div>
                     </div>
                     {/* Actions */}
-                    <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
-                      <button
-                        onClick={() => openEdit(poll)}
-                        title={totalVotes > 0 ? "Edit poll (answer options locked — votes cast)" : "Edit poll"}
-                        className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => copyLink(poll)}
-                        title="Copy poll link"
-                        className="p-1.5 text-muted-foreground hover:text-primary rounded border border-transparent hover:border-border transition-all"
-                      >
-                        <Link2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEmail(poll)}
-                        disabled={emailing === poll.id}
-                        title="Email poll to players"
-                        className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all disabled:opacity-50"
-                      >
-                        {emailing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => handlePush(poll)}
-                        disabled={pushing === poll.id}
-                        title="Push notification to players"
-                        className="p-1.5 text-muted-foreground hover:text-violet-600 rounded border border-transparent hover:border-violet-200 transition-all disabled:opacity-50"
-                      >
-                        {pushing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleClose(poll)}
-                        disabled={closing === poll.id}
-                        title={isClosed ? "Reopen poll" : "Close poll"}
-                        className="p-1.5 text-muted-foreground hover:text-amber-600 rounded border border-transparent hover:border-amber-200 transition-all disabled:opacity-50"
-                      >
-                        {closing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : isClosed ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => handleDelete(poll)}
-                        disabled={deleting === poll.id}
-                        title="Delete poll"
-                        className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all disabled:opacity-50"
-                      >
-                        {deleting === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </button>
-                    </div>
+                    {!readOnly && (
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                        <button
+                          onClick={() => openEdit(poll)}
+                          title={totalVotes > 0 ? "Edit poll (answer options locked — votes cast)" : "Edit poll"}
+                          className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => copyLink(poll)}
+                          title="Copy poll link"
+                          className="p-1.5 text-muted-foreground hover:text-primary rounded border border-transparent hover:border-border transition-all"
+                        >
+                          <Link2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEmail(poll)}
+                          disabled={emailing === poll.id}
+                          title="Email poll to players"
+                          className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all disabled:opacity-50"
+                        >
+                          {emailing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => handlePush(poll)}
+                          disabled={pushing === poll.id}
+                          title="Push notification to players"
+                          className="p-1.5 text-muted-foreground hover:text-violet-600 rounded border border-transparent hover:border-violet-200 transition-all disabled:opacity-50"
+                        >
+                          {pushing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <BellRing className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleClose(poll)}
+                          disabled={closing === poll.id}
+                          title={isClosed ? "Reopen poll" : "Close poll"}
+                          className="p-1.5 text-muted-foreground hover:text-amber-600 rounded border border-transparent hover:border-amber-200 transition-all disabled:opacity-50"
+                        >
+                          {closing === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : isClosed ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(poll)}
+                          disabled={deleting === poll.id}
+                          title="Delete poll"
+                          className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all disabled:opacity-50"
+                        >
+                          {deleting === poll.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Quick results bar */}

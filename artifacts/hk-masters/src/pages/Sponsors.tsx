@@ -62,7 +62,7 @@ const TIER_COLORS: Record<string, string> = {
 
 const TIER_ORDER: Record<string, number> = { Gold: 0, Silver: 1, Bronze: 2 }
 
-export default function Sponsors() {
+export default function Sponsors({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [sessionToken, setSessionToken] = useState<string | null>(null)
@@ -262,9 +262,11 @@ export default function Sponsors() {
       title="Sponsors"
       description="Manage sponsors displayed on the public website."
       action={
-        <Button onClick={openAddModal}>
-          <Plus className="w-5 h-5 mr-2" /> Add Sponsor
-        </Button>
+        !readOnly ? (
+          <Button onClick={openAddModal}>
+            <Plus className="w-5 h-5 mr-2" /> Add Sponsor
+          </Button>
+        ) : undefined
       }
     >
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -371,14 +373,16 @@ export default function Sponsors() {
                       </td>
                     )}
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => openEditModal(sponsor)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(sponsor.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {!readOnly && (
+                        <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => openEditModal(sponsor)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => handleDelete(sponsor.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

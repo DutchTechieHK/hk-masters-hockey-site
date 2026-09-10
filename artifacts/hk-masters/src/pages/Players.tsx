@@ -12,8 +12,11 @@ import { Plus, Search, X, Trash2, Edit2, CheckCircle, XCircle, AlertTriangle, Sh
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import { useQuery } from "@tanstack/react-query"
+import { getStoredAdminToken } from "@/lib/admin-auth"
 import type { Player, FundraisingEntry, PlayerParticipation } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
+import { sanitizePlayerPayload } from "@/lib/player-payload"
 import { getInitials, formatCurrency } from "@/lib/utils"
 import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 import { passportStatus, PASSPORT_STATUS_LABEL } from "@/lib/reports"
@@ -171,11 +174,8 @@ const playerSchema = z.object({
   trackTopSize: z.string().optional(),
   goalieSmockSize: z.string().optional(),
   travelDates: z.string().optional(),
-  feePaid: z.boolean().default(false),
   passportCopyReviewed: z.boolean().default(false),
   paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  paymentAmountPaid: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
-  paymentDate: z.string().optional(),
   dietaryRequirements: z.string().optional(),
   medicalNotes: z.string().optional(),
   notes: z.string().optional(),
@@ -196,7 +196,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   )
 }
 
-export default function Players() {
+export default function Players({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -253,7 +253,8 @@ export default function Players() {
   const playerQueryParams = {
     ...(positionFilter !== "all" ? { position: positionFilter as "Goalkeeper" | "Defender" | "Midfield" | "Forward" } : {}),
     ...(membershipSectionFilter !== "all" ? { membershipSection: membershipSectionFilter as "not_set" | "men" | "women" } : {}),
-  }
+    ...(scope ? { scope } : {}),
+  } as any
   const hasPlayerQueryParams = Object.keys(playerQueryParams).length > 0
   const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
     hasPlayerQueryParams ? playerQueryParams : undefined,
@@ -362,8 +363,8 @@ export default function Players() {
     insuranceProvider: "", insurancePolicyNumber: "", insuranceEmergencyPhone: "",
     insurancePolicyHolder: "", insuranceExpiry: "", insuranceEmail: "",
     shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
-    feePaid: false, passportCopyReviewed: false,
-    paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
+    passportCopyReviewed: false,
+    paymentAmountDue: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
     instagramHandle: "", facebookHandle: "",
     memberStatus: "active", currentMembershipSection: "not_set", currentMembershipTier: "awaiting_selection",
@@ -428,11 +429,8 @@ export default function Players() {
       trackTopSize: player.trackTopSize || "",
       goalieSmockSize: player.goalieSmockSize || "",
       travelDates: player.travelDates || "",
-      feePaid: player.feePaid,
       passportCopyReviewed: player.passportCopyReviewed ?? false,
       paymentAmountDue: player.paymentAmountDue ?? "",
-      paymentAmountPaid: player.paymentAmountPaid ?? "",
-      paymentDate: player.paymentDate || "",
       dietaryRequirements: player.dietaryRequirements || "",
       medicalNotes: player.medicalNotes || "",
       notes: player.notes || "",
@@ -593,14 +591,7 @@ export default function Players() {
         try {
           await updateMutation.mutateAsync({
             id: player.id,
-            data: {
-              name: player.name,
-              teamId: player.teamId,
-              email: player.email,
-              feePaid: player.feePaid,
-              hkidCopyUrl: url,
-              hkidCopyReviewed: true,
-            },
+            data: sanitizePlayerPayload({ name: player.name, teamId: player.teamId, email: player.email, hkidCopyUrl: url, hkidCopyReviewed: true }) as any,
           })
           queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
           acknowledgeHkid(player.id)
@@ -660,14 +651,7 @@ export default function Players() {
         try {
           await updateMutation.mutateAsync({
             id: player.id,
-            data: {
-              name: player.name,
-              teamId: player.teamId,
-              email: player.email,
-              feePaid: player.feePaid,
-              passportCopyUrl: url,
-              passportCopyReviewed: true,
-            },
+            data: sanitizePlayerPayload({ name: player.name, teamId: player.teamId, email: player.email, passportCopyUrl: url, passportCopyReviewed: true }) as any,
           })
           queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
           acknowledgePassport(player.id)
@@ -689,13 +673,7 @@ export default function Players() {
     try {
       await updateMutation.mutateAsync({
         id: player.id,
-        data: {
-          name: player.name,
-          teamId: player.teamId,
-          email: player.email,
-          feePaid: player.feePaid,
-          passportCopyReviewed: !player.passportCopyReviewed,
-        },
+        data: sanitizePlayerPayload({ name: player.name, teamId: player.teamId, email: player.email, passportCopyReviewed: !player.passportCopyReviewed }) as any,
       })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
       toast({ title: player.passportCopyReviewed ? "Marked as not reviewed" : "Marked as reviewed" })
@@ -708,13 +686,7 @@ export default function Players() {
     try {
       await updateMutation.mutateAsync({
         id: player.id,
-        data: {
-          name: player.name,
-          teamId: player.teamId,
-          email: player.email,
-          feePaid: player.feePaid,
-          hkidCopyReviewed: !player.hkidCopyReviewed,
-        },
+        data: sanitizePlayerPayload({ name: player.name, teamId: player.teamId, email: player.email, hkidCopyReviewed: !player.hkidCopyReviewed }) as any,
       })
       if (!player.hkidCopyReviewed) acknowledgeHkid(player.id)
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
@@ -742,13 +714,12 @@ export default function Players() {
         ...data,
         shirtNumber: clean(data.shirtNumber) as number | undefined,
         paymentAmountDue: clean(data.paymentAmountDue) as number | undefined,
-        paymentAmountPaid: clean(data.paymentAmountPaid) as number | undefined,
-      }
+              }
       if (editingPlayer) {
         await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload as any })
         toast({ title: "Player updated" })
       } else {
-        await createMutation.mutateAsync({ data: payload as any })
+        await createMutation.mutateAsync({ data: sanitizePlayerPayload(payload) as any })
         toast({ title: "Player added" })
       }
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
@@ -809,9 +780,11 @@ export default function Players() {
             <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             {isFetching ? "Refreshing…" : "Refresh"}
           </Button>
-          <Button onClick={openAddModal} disabled={!teams.some((team) => team.name === "Awaiting Selection")}>
-             <Plus className="w-5 h-5 mr-2" /> Add Member
-          </Button>
+          {!readOnly && (
+            <Button onClick={openAddModal} disabled={!teams.some((team) => team.name === "Awaiting Selection")}>
+               <Plus className="w-5 h-5 mr-2" /> Add Member
+            </Button>
+          )}
         </div>
       }
     >
@@ -881,7 +854,7 @@ export default function Players() {
           </Select>
         </div>
 
-        {selectedPlayerIds.size > 0 && (
+        {selectedPlayerIds.size > 0 && !readOnly && (
           <div className="px-4 py-3 border-b border-border bg-primary/5 flex flex-col sm:flex-row sm:items-center gap-3">
             <span className="text-sm font-semibold">{selectedPlayerIds.size} selected</span>
             <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
@@ -914,13 +887,15 @@ export default function Players() {
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
               <tr>
                 <th className="px-4 py-4 font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={allFilteredSelected}
-                    onChange={toggleAllFiltered}
-                    aria-label={`Select all ${filteredPlayers.length} filtered members`}
-                    className="w-4 h-4 rounded accent-primary"
-                  />
+                  {!readOnly && (
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected}
+                      onChange={toggleAllFiltered}
+                      aria-label={`Select all ${filteredPlayers.length} filtered members`}
+                      className="w-4 h-4 rounded accent-primary"
+                    />
+                  )}
                 </th>
                 <th className="px-4 py-4 font-semibold">#</th>
                 <th className="px-4 py-4 font-semibold">
@@ -954,15 +929,17 @@ export default function Players() {
               ) : (
                 filteredPlayers.map(player => {
                   return (
-                    <tr key={player.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={() => openEditModal(player)}>
+                    <tr key={player.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={() => !readOnly && openEditModal(player)}>
                       <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedPlayerIds.has(player.id)}
-                          onChange={() => togglePlayerSelection(player.id)}
-                          aria-label={`Select ${player.name}`}
-                          className="w-4 h-4 rounded accent-primary"
-                        />
+                        {!readOnly && (
+                          <input
+                            type="checkbox"
+                            checked={selectedPlayerIds.has(player.id)}
+                            onChange={() => togglePlayerSelection(player.id)}
+                            aria-label={`Select ${player.name}`}
+                            className="w-4 h-4 rounded accent-primary"
+                          />
+                        )}
                       </td>
                       {/* Shirt Number */}
                       <td className="px-4 py-4">
@@ -1047,42 +1024,44 @@ export default function Players() {
                       </td>
                       {/* Actions */}
                       <td className="px-4 py-4 text-right">
-                        <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleSendInvite(player) }}
-                            disabled={sendInvitesMutation.isPending}
-                            title={player.onboardingInviteSentAt
-                              ? `Onboarding invite sent ${new Date(player.onboardingInviteSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} — click to re-send`
-                              : "Email onboarding link to this player"}
-                            className={`p-2 rounded bg-background border shadow-sm transition-all disabled:opacity-50 ${
-                              player.onboardingInviteSentAt
-                                ? "text-emerald-600 hover:bg-emerald-50"
-                                : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                            }`}
-                          >
-                            <Mail className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleCopyLink(player) }}
-                            title="Copy self-service link (admin)"
-                            className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
-                          >
-                            <LinkIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleRotateLink(player) }}
-                            title="Rotate self-service link (revokes old one)"
-                            className="p-2 text-muted-foreground hover:text-amber-600 rounded bg-background hover:bg-amber-50 border shadow-sm transition-all"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); openEditModal(player) }} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id) }} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background hover:bg-rose-50 border shadow-sm transition-all">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {!readOnly && (
+                          <div className="flex justify-end space-x-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleSendInvite(player) }}
+                              disabled={sendInvitesMutation.isPending}
+                              title={player.onboardingInviteSentAt
+                                ? `Onboarding invite sent ${new Date(player.onboardingInviteSentAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })} — click to re-send`
+                                : "Email onboarding link to this player"}
+                              className={`p-2 rounded bg-background border shadow-sm transition-all disabled:opacity-50 ${
+                                player.onboardingInviteSentAt
+                                  ? "text-emerald-600 hover:bg-emerald-50"
+                                  : "text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                              }`}
+                            >
+                              <Mail className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleCopyLink(player) }}
+                              title="Copy self-service link (admin)"
+                              className="p-2 text-muted-foreground hover:text-emerald-600 rounded bg-background hover:bg-emerald-50 border shadow-sm transition-all"
+                            >
+                              <LinkIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRotateLink(player) }}
+                              title="Rotate self-service link (revokes old one)"
+                              className="p-2 text-muted-foreground hover:text-amber-600 rounded bg-background hover:bg-amber-50 border shadow-sm transition-all"
+                            >
+                              <RefreshCw className="w-4 h-4" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); openEditModal(player) }} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDelete(player.id) }} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background hover:bg-rose-50 border shadow-sm transition-all">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -1364,13 +1343,7 @@ export default function Players() {
                         try {
                           await updateMutation.mutateAsync({
                             id: editingPlayer.id,
-                            data: {
-                              name: editingPlayer.name,
-                              teamId: editingPlayer.teamId,
-                              email: editingPlayer.email,
-                              feePaid: editingPlayer.feePaid,
-                              hkidCopyReviewed: checked,
-                            },
+                            data: sanitizePlayerPayload({ name: editingPlayer.name, teamId: editingPlayer.teamId, email: editingPlayer.email, hkidCopyReviewed: checked }) as any,
                           })
                           queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
                           setEditingPlayer({ ...editingPlayer, hkidCopyReviewed: checked })
@@ -1498,26 +1471,8 @@ export default function Players() {
             </div>
           </div>
 
-          <SectionHeading>Rotterdam 2026 Payment Archive</SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Amount Paid (HKD)</label>
-              <Input type="number" step="0.01" min="0" {...register("paymentAmountPaid")} placeholder="0" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Payment Date</label>
-              <Input type="date" {...register("paymentDate")} />
-            </div>
-          </div>
-          <div className="flex items-center space-x-3 p-4 bg-muted/30 rounded-xl border mt-3">
-            <input
-              type="checkbox"
-              id="feePaid"
-              className="w-5 h-5 rounded border-2 text-primary focus:ring-primary accent-primary"
-              {...register("feePaid")}
-            />
-            <label htmlFor="feePaid" className="font-semibold cursor-pointer">Tournament Fee Fully Paid</label>
-          </div>
+
+
 
           <SectionHeading>Health & Notes</SectionHeading>
           <div className="space-y-4">

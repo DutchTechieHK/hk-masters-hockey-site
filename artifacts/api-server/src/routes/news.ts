@@ -38,6 +38,7 @@ function mapPost(row: typeof newsPostsTable.$inferSelect) {
     reportDate: row.reportDate?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    operationalScope: row.operationalScope,
   };
 }
 
@@ -47,7 +48,7 @@ router.get("/", async (_req, res) => {
     const rows = await db
       .select()
       .from(newsPostsTable)
-      .where(eq(newsPostsTable.status, "published"))
+      .where(and(eq(newsPostsTable.status, "published"), eq(newsPostsTable.operationalScope, "local_2026_27")))
       .orderBy(desc(sql`COALESCE(${newsPostsTable.reportDate}, ${newsPostsTable.publishedAt})`));
     res.set("Cache-Control", "public, max-age=30");
     res.json({ configured: true, posts: rows.map(mapPost) });
@@ -58,11 +59,12 @@ router.get("/", async (_req, res) => {
 });
 
 /* ── Admin: list all posts (including drafts) ─────────── */
-router.get("/admin/all", requireSession, requireAdminAccess, async (_req, res) => {
+router.get("/admin/all", requireSession, requireAdminAccess, async (req, res) => {
   try {
     const rows = await db
       .select()
       .from(newsPostsTable)
+      .where(eq(newsPostsTable.operationalScope, req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27"))
       .orderBy(desc(newsPostsTable.updatedAt));
     res.json({ posts: rows.map(mapPost) });
   } catch (err) {
@@ -100,6 +102,7 @@ router.post("/", requireSession, requireAdminAccess, async (req, res) => {
       status: status === "published" ? "published" : "draft",
       publishedAt,
       reportDate: reportDate ? new Date(reportDate) : null,
+      operationalScope: "local_2026_27",
     }).returning();
     res.status(201).json(mapPost(row));
   } catch (err: any) {
@@ -114,7 +117,7 @@ router.post("/", requireSession, requireAdminAccess, async (req, res) => {
 
 /* ── Admin: update post ───────────────────────────────── */
 router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const { title, slug, excerpt, bodyHtml, coverImage, category, author, status, reportDate } = req.body ?? {};
@@ -126,6 +129,7 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
   try {
     const [existing] = await db.select().from(newsPostsTable).where(eq(newsPostsTable.id, id));
     if (!existing) { res.status(404).json({ error: "Not found" }); return; }
+    if (existing.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
 
     // Only an explicit status change touches publishedAt; omitting status keeps it as-is.
     const wasPublished = existing.status === "published";
@@ -171,12 +175,13 @@ router.patch("/:id", requireSession, requireAdminAccess, async (req, res) => {
 
 /* ── Admin: delete post ───────────────────────────────── */
 router.delete("/:id", requireSession, requireAdminAccess, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   try {
     // Read existing cover image before deleting so we can clean up storage.
     const [existing] = await db.select({ coverImage: newsPostsTable.coverImage }).from(newsPostsTable).where(eq(newsPostsTable.id, id)).limit(1);
-    await db.delete(newsPostsTable).where(eq(newsPostsTable.id, id));
+    const deleted = await db.delete(newsPostsTable).where(and(eq(newsPostsTable.id, id), eq(newsPostsTable.operationalScope, "local_2026_27"))).returning({ id: newsPostsTable.id });
+    if (deleted.length === 0) { res.status(409).json({ error: "Archived content is read-only" }); return; }
     res.json({ ok: true });
     // Fire-and-forget: clean up the orphaned cover image (cross-entity ref check inside).
     const oldId = extractUploadObjectId(existing?.coverImage);
@@ -231,7 +236,7 @@ router.get("/:slug", async (req, res) => {
     const [row] = await db
       .select()
       .from(newsPostsTable)
-      .where(and(eq(newsPostsTable.slug, req.params.slug), eq(newsPostsTable.status, "published")));
+      .where(and(eq(newsPostsTable.slug, req.params.slug), eq(newsPostsTable.status, "published"), eq(newsPostsTable.operationalScope, "local_2026_27")));
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
     res.set("Cache-Control", "public, max-age=30");
     res.json(mapPost(row));

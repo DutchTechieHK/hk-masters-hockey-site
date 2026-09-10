@@ -12,6 +12,7 @@ export const matchesTable = pgTable("matches", {
   ourScore: integer("our_score"),
   theirScore: integer("their_score"),
   status: text("status").notNull().default("scheduled"),
+  operationalScope: text("operational_scope"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

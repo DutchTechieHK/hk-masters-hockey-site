@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, playerParticipationsTable, seasonsTable } from "@workspace/db/schema";
-import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { teamsTable, playersTable, playerParticipationsTable, seasonsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
+import { and, eq, isNull, or, sql, inArray, notExists } from "drizzle-orm";
 import {
   CreateTeamBody,
   UpdateTeamBody,
@@ -73,12 +73,43 @@ function mapSquadCandidate(
 
 router.get("/", async (req, res) => {
   const isAdmin = await hasAdminAccess(req);
+  if (req.query.scope === "world_cup_2026") {
+    if (!isAdmin) return res.status(403).json({ error: "Admin access required" });
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, "rotterdam-2026"));
+    if (!season) return res.json([]);
+    const rows = await db.select({ team: teamsTable, snapshot: worldCupTeamSnapshotsTable.snapshot }).from(playerParticipationsTable)
+      .innerJoin(teamsTable, eq(playerParticipationsTable.teamId, teamsTable.id))
+      .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, teamsTable.id))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active")));
+    const unique = [...new Map(rows.map(({ team, snapshot }) => {
+      const source = snapshot && typeof snapshot === "object" ? snapshot as Record<string, unknown> : {};
+      const mapped = Object.fromEntries(Object.keys(team).map((key) => {
+        const dbKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+        return [key, dbKey in source ? source[dbKey] : team[key as keyof typeof team]];
+      })) as typeof team;
+      // Snapshots are populated with to_jsonb, so timestamp fields arrive as
+      // ISO strings rather than Drizzle's Date instances.
+      if (typeof mapped.createdAt === "string") {
+        mapped.createdAt = new Date(mapped.createdAt);
+      }
+      return [team.id, mapped];
+    })).values()];
+    return res.json(unique.map(mapTeam));
+  }
   if (isAdmin) {
-    const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
+    const teams = await db.select().from(teamsTable).where(notExists(
+      db.select({ id: playerParticipationsTable.id }).from(playerParticipationsTable)
+        .innerJoin(seasonsTable, eq(seasonsTable.id, playerParticipationsTable.seasonId))
+        .where(and(eq(playerParticipationsTable.teamId, teamsTable.id), eq(playerParticipationsTable.participationStatus, "active"), eq(seasonsTable.slug, "rotterdam-2026"))),
+    )).orderBy(teamsTable.id);
     return res.json(teams.map(mapTeam));
   }
   const teams = await db.select().from(teamsTable)
-    .where(eq(teamsTable.isInternal, false))
+    .where(and(eq(teamsTable.isInternal, false), notExists(
+      db.select({ id: playerParticipationsTable.id }).from(playerParticipationsTable)
+        .innerJoin(seasonsTable, eq(seasonsTable.id, playerParticipationsTable.seasonId))
+        .where(and(eq(playerParticipationsTable.teamId, teamsTable.id), eq(playerParticipationsTable.participationStatus, "active"), eq(seasonsTable.slug, "rotterdam-2026"))),
+    )))
     .orderBy(teamsTable.id);
   // For public: include live player counts
   const counts = await db
@@ -107,6 +138,14 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     res.status(404).json({ error: "Team not found" });
     return;
   }
+  const [rotterdam] = await db.select({ id: playerParticipationsTable.id }).from(playerParticipationsTable)
+    .innerJoin(seasonsTable, eq(playerParticipationsTable.seasonId, seasonsTable.id))
+    .where(and(eq(playerParticipationsTable.teamId, id), eq(seasonsTable.slug, "rotterdam-2026"), eq(playerParticipationsTable.participationStatus, "active")))
+    .limit(1);
+  if (rotterdam) {
+    res.status(409).json({ error: "Archived content is read-only" });
+    return;
+  }
   if (
     (CANONICAL_TEAM_NAMES.has(existing.name) && body.name !== existing.name) ||
     (!CANONICAL_TEAM_NAMES.has(existing.name) && CANONICAL_TEAM_NAMES.has(body.name))
@@ -123,6 +162,14 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   const [existing] = await db.select().from(teamsTable).where(eq(teamsTable.id, id));
   if (!existing) {
     res.status(404).json({ error: "Team not found" });
+    return;
+  }
+  const [rotterdam] = await db.select({ id: playerParticipationsTable.id }).from(playerParticipationsTable)
+    .innerJoin(seasonsTable, eq(playerParticipationsTable.seasonId, seasonsTable.id))
+    .where(and(eq(playerParticipationsTable.teamId, id), eq(seasonsTable.slug, "rotterdam-2026"), eq(playerParticipationsTable.participationStatus, "active")))
+    .limit(1);
+  if (rotterdam) {
+    res.status(409).json({ error: "Archived content is read-only" });
     return;
   }
   if (CANONICAL_TEAM_NAMES.has(existing.name)) {

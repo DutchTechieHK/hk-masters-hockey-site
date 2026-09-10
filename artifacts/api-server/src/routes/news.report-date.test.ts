@@ -47,6 +47,7 @@ beforeAll(async () => {
         title: `${TAG} X`,
         slug: `${TAG}-x`,
         status: "published",
+        operationalScope: "local_2026_27",
         publishedAt: new Date("2022-05-01T12:00:00Z"),
         reportDate: new Date("2020-01-01T12:00:00Z"),
       },
@@ -54,6 +55,7 @@ beforeAll(async () => {
         title: `${TAG} Y`,
         slug: `${TAG}-y`,
         status: "published",
+        operationalScope: "local_2026_27",
         publishedAt: new Date("2021-08-15T12:00:00Z"),
         reportDate: null,
       },
@@ -61,6 +63,7 @@ beforeAll(async () => {
         title: `${TAG} Z`,
         slug: `${TAG}-z`,
         status: "published",
+        operationalScope: "local_2026_27",
         publishedAt: new Date("2019-03-10T12:00:00Z"),
         reportDate: new Date("2023-11-01T12:00:00Z"),
       },
@@ -127,7 +130,7 @@ describe("PATCH /api/news/:id reportDate", () => {
   beforeAll(async () => {
     const [row] = await db
       .insert(newsPostsTable)
-      .values({ title: `${TAG} patch-target`, slug: `${TAG}-patch`, status: "draft" })
+      .values({ title: `${TAG} patch-target`, slug: `${TAG}-patch`, status: "draft", operationalScope: "local_2026_27" })
       .returning({ id: newsPostsTable.id });
     patchId = row.id;
   });
@@ -213,7 +216,7 @@ describe("news reportDate timezone boundary", () => {
   beforeAll(async () => {
     const [row] = await db
       .insert(newsPostsTable)
-      .values({ title: `${TAG} tz-check`, slug: `${TAG}-tz`, status: "draft" })
+      .values({ title: `${TAG} tz-check`, slug: `${TAG}-tz`, status: "draft", operationalScope: "local_2026_27" })
       .returning({ id: newsPostsTable.id });
     tzId = row.id;
   });

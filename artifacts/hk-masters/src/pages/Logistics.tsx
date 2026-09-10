@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { useListLogistics, useCreateLogisticsTask, useUpdateLogisticsTask, useDeleteLogisticsTask, getListLogisticsQueryKey, useListTeams } from "@workspace/api-client-react"
+import { useListLogistics, useCreateLogisticsTask, useUpdateLogisticsTask, useDeleteLogisticsTask, getListLogisticsQueryKey } from "@workspace/api-client-react"
+import { useScopedTeams } from "@/hooks/use-scoped-data"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -46,11 +47,11 @@ function getCategoryInfo(value: string) {
   return CATEGORIES.find(c => c.value === value) ?? CATEGORIES[CATEGORIES.length - 1]
 }
 
-export default function Logistics() {
+export default function Logistics({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
-  const { data: teams = [] } = useListTeams()
+  const { data: teams = [] } = useScopedTeams(scope)
   const { data: tasks = [], isLoading } = useListLogistics()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -134,9 +135,11 @@ export default function Logistics() {
       title="Logistics & Planning"
       description="Plan and track flights, accommodation, tournament logistics, and finances."
       action={
-        <Button onClick={() => openAddModal()}>
-          <Plus className="w-5 h-5 mr-2" /> Add Task
-        </Button>
+        !readOnly ? (
+          <Button onClick={() => openAddModal()}>
+            <Plus className="w-5 h-5 mr-2" /> Add Task
+          </Button>
+        ) : undefined
       }
     >
       {/* Category filter pills */}
@@ -191,8 +194,8 @@ export default function Logistics() {
                   return (
                     <div
                       key={task.id}
-                      className="bg-white rounded-xl p-4 shadow-sm border border-border hover:border-primary/30 transition-colors group cursor-pointer relative"
-                      onClick={() => openEditModal(task)}
+                      className={`bg-white rounded-xl p-4 shadow-sm border border-border transition-colors group relative ${!readOnly ? "hover:border-primary/30 cursor-pointer" : ""}`}
+                      onClick={() => !readOnly && openEditModal(task)}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold border ${catInfo.color}`}>

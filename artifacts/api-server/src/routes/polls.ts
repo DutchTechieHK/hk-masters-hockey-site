@@ -1,12 +1,26 @@
 import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
-import { pollsTable, pollOptionsTable, pollVotesTable, playersTable, teamsTable, pushSubscriptionsTable } from "@workspace/db/schema";
+import { pollsTable, pollOptionsTable, pollVotesTable, playersTable, teamsTable, pushSubscriptionsTable, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
 import { eq, and, inArray, isNull, sql } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { sendPushToAll } from "../utils/push";
 import type { PushPayload } from "../utils/push";
 
 const router: IRouter = Router();
+
+const rejectArchivedPollMutation = async (req: any, res: any, next: any) => {
+  if (req.method === "GET" || req.method === "HEAD") return next();
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return next();
+  const [poll] = await db.select({ operationalScope: pollsTable.operationalScope })
+    .from(pollsTable).where(eq(pollsTable.id, id));
+  if (poll?.operationalScope === "world_cup_2026") {
+    return res.status(409).json({ error: "Archived content is read-only" });
+  }
+  next();
+};
+router.use("/:id", rejectArchivedPollMutation);
+router.use("/vote/:id", rejectArchivedPollMutation);
 
 const VALID_AUDIENCES = ["all", "MO40", "MO50", "both"] as const;
 type Audience = typeof VALID_AUDIENCES[number];
@@ -96,6 +110,7 @@ function serializePoll(poll: typeof pollsTable.$inferSelect) {
     deadline: poll.deadline?.toISOString() ?? null,
     closedAt: poll.closedAt?.toISOString() ?? null,
     createdAt: poll.createdAt.toISOString(),
+    operationalScope: poll.operationalScope,
   };
 }
 
@@ -106,7 +121,8 @@ function serializeOption(opt: typeof pollOptionsTable.$inferSelect) {
 // ── Admin: list polls ────────────────────────────────────────────────────────
 
 router.get("/", requireAdminAccess, async (req, res) => {
-  const polls = await db.select().from(pollsTable).orderBy(pollsTable.id);
+  const scope = req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
+  const polls = await db.select().from(pollsTable).where(eq(pollsTable.operationalScope, scope)).orderBy(pollsTable.id);
   const options = polls.length > 0
     ? await db.select().from(pollOptionsTable).where(inArray(pollOptionsTable.pollId, polls.map(p => p.id))).orderBy(pollOptionsTable.sortOrder)
     : [];
@@ -150,9 +166,10 @@ router.post("/", requireAdminAccess, async (req, res) => {
   const labels = rawOptions.map((l: unknown) => typeof l === "string" ? l.trim() : "").filter(Boolean);
   if (labels.length < 2) return res.status(400).json({ error: "At least 2 options required" });
   if (labels.length > 5) return res.status(400).json({ error: "Maximum 5 options allowed" });
-  const [poll] = await db.insert(pollsTable).values({ title, description, audience, allowMultiple, deadline }).returning();
+  const [poll] = await db.insert(pollsTable).values({ title, description, audience, allowMultiple, deadline, operationalScope: "local_2026_27" }).returning();
   const opts = await db.insert(pollOptionsTable).values(labels.map((label, i) => ({ pollId: poll.id, label, sortOrder: i }))).returning();
   res.status(201).json({ ...serializePoll(poll), options: opts.map(o => ({ ...serializeOption(o), voteCount: 0 })) });
+  return;
 });
 
 // ── Admin: get poll detail (results + voters + non-responders) ───────────────
@@ -163,6 +180,31 @@ router.get("/:id", requireAdminAccess, async (req, res) => {
   const [poll] = await db.select().from(pollsTable).where(eq(pollsTable.id, id));
   if (!poll) return res.status(404).json({ error: "Not found" });
   const options = await db.select().from(pollOptionsTable).where(eq(pollOptionsTable.pollId, id)).orderBy(pollOptionsTable.sortOrder);
+  if (poll.operationalScope === "world_cup_2026") {
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, "rotterdam-2026"));
+    const archive = season ? await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
+      .from(playerParticipationsTable).innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
+      .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"))) : [];
+    const eligible = archive.filter(({ teamSnapshot }) => {
+      if (poll.audience === "all") return true;
+      const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
+      return poll.audience === "both" ? team.category === "MO40" || team.category === "MO50" : team.category === poll.audience;
+    });
+    const ids = eligible.map(({ participation }) => participation.playerId);
+    const votes = ids.length ? await db.select().from(pollVotesTable).where(and(eq(pollVotesTable.pollId, id), inArray(pollVotesTable.playerId, ids))) : [];
+    const byId = new Map(eligible.map(({ participation, playerSnapshot }) => {
+      const player = playerSnapshot as Record<string, unknown>;
+      return [participation.playerId, { playerName: String(player.name ?? "Unknown"), playerEmail: String(player.email ?? "") }];
+    }));
+    const voterIds = new Set(votes.map((v) => v.playerId));
+    const votesByOption = new Map<number, { playerName: string; playerEmail: string }[]>();
+    for (const vote of votes) {
+      if (!votesByOption.has(vote.optionId)) votesByOption.set(vote.optionId, []);
+      votesByOption.get(vote.optionId)!.push(byId.get(vote.playerId) ?? { playerName: "Unknown", playerEmail: "" });
+    }
+    return res.json({ ...serializePoll(poll), options: options.map((o) => ({ ...serializeOption(o), voteCount: (votesByOption.get(o.id) ?? []).length, voters: votesByOption.get(o.id) ?? [] })), totalEligible: eligible.length, totalVoted: voterIds.size, nonResponders: eligible.filter(({ participation }) => !voterIds.has(participation.playerId)).map(({ participation, playerSnapshot }) => { const p = playerSnapshot as Record<string, unknown>; return { id: participation.playerId, name: String(p.name ?? ""), email: String(p.email ?? ""), accessToken: p.access_token ?? null }; }) });
+  }
   const votes = await db
     .select({ vote: pollVotesTable, playerName: playersTable.name, playerEmail: playersTable.email })
     .from(pollVotesTable)
@@ -187,6 +229,7 @@ router.get("/:id", requireAdminAccess, async (req, res) => {
     totalVoted: voterIds.size,
     nonResponders: nonResponders.map(p => ({ id: p.id, name: p.name, email: p.email, accessToken: p.accessToken })),
   });
+  return;
 });
 
 // ── Admin: edit poll ─────────────────────────────────────────────────────────
@@ -196,6 +239,7 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
   if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   const [poll] = await db.select().from(pollsTable).where(eq(pollsTable.id, id));
   if (!poll) return res.status(404).json({ error: "Not found" });
+  if (poll.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
 
   const b = req.body as Record<string, unknown>;
 
@@ -254,6 +298,7 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
     ...serializePoll(updated),
     options: options.map(o => ({ ...serializeOption(o), voteCount: countMap.get(o.id) ?? 0 })),
   });
+  return;
 });
 
 // ── Admin: close / reopen poll ───────────────────────────────────────────────
@@ -263,9 +308,11 @@ router.patch("/:id/close", requireAdminAccess, async (req, res) => {
   if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   const [poll] = await db.select().from(pollsTable).where(eq(pollsTable.id, id));
   if (!poll) return res.status(404).json({ error: "Not found" });
+  if (poll.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
   const closing = !poll.closedAt;
   const [updated] = await db.update(pollsTable).set({ closedAt: closing ? new Date() : null }).where(eq(pollsTable.id, id)).returning();
   res.json(serializePoll(updated));
+  return;
 });
 
 // ── Admin: delete poll ───────────────────────────────────────────────────────
@@ -273,8 +320,10 @@ router.patch("/:id/close", requireAdminAccess, async (req, res) => {
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
-  await db.delete(pollsTable).where(eq(pollsTable.id, id));
+  const deleted = await db.delete(pollsTable).where(and(eq(pollsTable.id, id), eq(pollsTable.operationalScope, "local_2026_27"))).returning({ id: pollsTable.id });
+  if (deleted.length === 0) return res.status(409).json({ error: "Archived content is read-only" });
   res.status(204).send();
+  return;
 });
 
 // ── Admin: email blast poll to eligible players ──────────────────────────────
@@ -296,6 +345,7 @@ router.post("/:id/email", requireAdminAccess, async (req, res) => {
   }
   console.log(`[polls] Email blast for poll ${id}: sent=${sent} failed=${failed}`);
   res.json({ sent, failed, total: playersWithToken.length });
+  return;
 });
 
 // ── Admin: push notification blast ──────────────────────────────────────────
@@ -363,6 +413,7 @@ router.post("/:id/push", requireAdminAccess, async (req, res) => {
 
   console.log(`[polls] Push blast for poll ${id}: sent=${sent} total=${rows.length}`);
   res.json({ sent, total: rows.length });
+  return;
 });
 
 // ── Admin: remind non-responders ─────────────────────────────────────────────
@@ -386,6 +437,7 @@ router.post("/:id/remind", requireAdminAccess, async (req, res) => {
   }
   console.log(`[polls] Remind non-responders for poll ${id}: sent=${sent} failed=${failed}`);
   res.json({ sent, failed, total: nonResponders.length });
+  return;
 });
 
 // ── Public: get poll for voting ──────────────────────────────────────────────
@@ -424,6 +476,7 @@ router.get("/vote/:id", async (req, res) => {
     hasVoted: myVotedOptionIds.length > 0,
     totalVotes: countMap.size > 0 ? Array.from(countMap.values()).reduce((a, b) => a + b, 0) : 0,
   });
+  return;
 });
 
 // ── Public: submit vote ──────────────────────────────────────────────────────
@@ -478,6 +531,7 @@ router.post("/vote/:id", async (req, res) => {
     hasVoted: true,
     playerName: player.name,
   });
+  return;
 });
 
 export default router;

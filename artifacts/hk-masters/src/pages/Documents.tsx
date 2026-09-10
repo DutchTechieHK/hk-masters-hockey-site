@@ -45,7 +45,7 @@ function formatDate(iso?: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-export default function Documents() {
+export default function Documents({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const { data: documents = [], isLoading } = useListDocuments()
   const createMutation = useCreateDocument()
@@ -169,9 +169,11 @@ export default function Documents() {
       title="Documents"
       description="Repository of forms, regulations, and information PDFs for managers."
       action={
-        <Button onClick={() => { resetForm(); setIsModalOpen(true) }}>
-          <Plus className="w-4 h-4 mr-2" /> Upload Document
-        </Button>
+        !readOnly ? (
+          <Button onClick={() => { resetForm(); setIsModalOpen(true) }}>
+            <Plus className="w-4 h-4 mr-2" /> Upload Document
+          </Button>
+        ) : undefined
       }
     >
       {isLoading ? (
@@ -226,13 +228,15 @@ export default function Documents() {
                           <Download className="w-3.5 h-3.5" />
                           Download
                         </a>
-                        <button
-                          onClick={() => setConfirmDeleteId(doc.id)}
-                          className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete document"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => setConfirmDeleteId(doc.id)}
+                            className="p-1.5 text-muted-foreground hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete document"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}

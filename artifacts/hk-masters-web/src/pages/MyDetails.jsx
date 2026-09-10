@@ -107,10 +107,10 @@ function formatPaymentDate(s) {
 }
 
 function FeesPanel({ player }) {
-  const due = player.paymentAmountDue;
-  const paid = player.paymentAmountPaid;
-  const balance = player.paymentBalance;
-  const isPaid = player.feePaid && (balance == null || balance === 0);
+  const due = player.membershipFeeAmountDue;
+  const paid = player.membershipFeeAmountPaid;
+  const balance = due != null ? due - (paid ?? 0) : null;
+  const isPaid = player.membershipFeePaid && (balance == null || balance === 0);
   const partial = !isPaid && paid != null && paid > 0;
   const notSet = due == null;
 
@@ -168,8 +168,8 @@ function FeesPanel({ player }) {
             <div className="bg-emerald-50 rounded-xl p-4">
               <p className="text-xs uppercase tracking-wide text-emerald-700 font-semibold mb-1">Paid so far</p>
               <p className="text-xl font-bold text-emerald-800 tabular-nums">{formatHKD(paid ?? 0)}</p>
-              {player.paymentDate && (
-                <p className="text-xs text-emerald-700/80 mt-1">on {formatPaymentDate(player.paymentDate)}</p>
+              {player.membershipFeePaymentDate && (
+                <p className="text-xs text-emerald-700/80 mt-1">on {formatPaymentDate(player.membershipFeePaymentDate)}</p>
               )}
             </div>
             <div className={`rounded-xl p-4 ${balance && balance > 0 ? "bg-amber-50" : "bg-gray-50"}`}>

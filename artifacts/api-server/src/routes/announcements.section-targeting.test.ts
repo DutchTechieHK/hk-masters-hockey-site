@@ -26,7 +26,7 @@ vi.mock("../middleware/playerSession", () => ({
       teamId: null,
       memberStatus: "active",
       currentMembershipSection: membershipSection,
-    } as NonNullable<express.Request["player"]>;
+    } as unknown as NonNullable<express.Request["player"]>;
     next();
   },
 }));
@@ -81,9 +81,9 @@ beforeAll(async () => {
   ]).returning({ id: playersTable.id });
   countPlayerIds = countPlayers.map((player) => player.id);
   await db.insert(announcementsTable).values([
-    { title: `${titlePrefix}-all`, body: "All players", membershipSection: null },
-    { title: `${titlePrefix}-men`, body: "Men only", membershipSection: "men" },
-    { title: `${titlePrefix}-women`, body: "Women only", membershipSection: "women" },
+    { title: `${titlePrefix}-all`, body: "All players", membershipSection: null, operationalScope: "local_2026_27" },
+    { title: `${titlePrefix}-men`, body: "Men only", membershipSection: "men", operationalScope: "local_2026_27" },
+    { title: `${titlePrefix}-women`, body: "Women only", membershipSection: "women", operationalScope: "local_2026_27" },
   ]);
 });
 

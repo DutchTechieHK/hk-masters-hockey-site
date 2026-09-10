@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
-import { useListPlayers, useUpdatePlayer, useListTeams, getListPlayersQueryKey, useSendTravelReminders } from "@workspace/api-client-react"
+import { useUpdatePlayer, getListPlayersQueryKey, useSendTravelReminders } from "@workspace/api-client-react"
+import { useScopedPlayers, useScopedTeams } from "@/hooks/use-scoped-data"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { Player, CreatePlayer } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
+import { sanitizePlayerPayload } from "@/lib/player-payload"
 import { MaskedInput } from "@/components/MaskedInput"
 
 function venueForCategory(category: string): string {
@@ -181,7 +183,7 @@ function exportToCSV(players: Player[], teams: { id: number; name: string; categ
   URL.revokeObjectURL(url)
 }
 
-export default function Travel() {
+export default function Travel({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -192,8 +194,8 @@ export default function Travel() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null)
 
-  const { data: teams = [] } = useListTeams()
-  const { data: players = [], isLoading } = useListPlayers()
+  const { data: teams = [] } = useScopedTeams(scope)
+  const { data: players = [], isLoading } = useScopedPlayers(scope)
 
   const updateMutation = useUpdatePlayer()
   const sendRemindersMutation = useSendTravelReminders()
@@ -245,7 +247,7 @@ export default function Travel() {
   const onSubmit = async (data: PlayerFormValues) => {
     if (!editingPlayer) return
     try {
-      await updateMutation.mutateAsync({ id: editingPlayer.id, data: toCreatePlayer(data) })
+      await updateMutation.mutateAsync({ id: editingPlayer.id, data: sanitizePlayerPayload(toCreatePlayer(data)) as any })
       toast({ title: "Player updated" })
       queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
       setIsModalOpen(false)
@@ -364,7 +366,7 @@ export default function Travel() {
           />
         </div>
 
-        {!isLoading && missingCount > 0 && (
+        {!isLoading && !readOnly && missingCount > 0 && (
           <div className="flex items-center gap-3 text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm font-medium">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             <span>{missingCount} player{missingCount !== 1 ? "s" : ""} missing flight info</span>
@@ -555,12 +557,14 @@ export default function Travel() {
 
                             {/* Edit */}
                             <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
-                              <button
-                                onClick={() => openEditModal(player)}
-                                className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
+                              {!readOnly && (
+                                <button
+                                  onClick={() => openEditModal(player)}
+                                  className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background hover:bg-blue-50 border shadow-sm transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </td>
                           </tr>
                         )

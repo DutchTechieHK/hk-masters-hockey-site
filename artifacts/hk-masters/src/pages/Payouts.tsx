@@ -97,7 +97,7 @@ const payoutSchema = z.object({
 
 type PayoutFormValues = z.infer<typeof payoutSchema>
 
-export default function Payouts() {
+export default function Payouts({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const [payouts, setPayouts] = useState<Payout[]>([])
   const [players, setPlayers] = useState<Player[]>([])
@@ -376,9 +376,11 @@ export default function Payouts() {
         <>
           {/* Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <Button onClick={openAddModal} size="sm" className="gap-1.5">
-              <Plus className="w-4 h-4" /> Log Payout
-            </Button>
+            {!readOnly ? (
+              <Button onClick={openAddModal} size="sm" className="gap-1.5">
+                <Plus className="w-4 h-4" /> Log Payout
+              </Button>
+            ) : <div />}
             <Button onClick={exportCSV} variant="outline" size="sm" className="gap-1.5" disabled={payouts.length === 0}>
               <Download className="w-4 h-4" /> Export CSV
             </Button>
@@ -390,9 +392,11 @@ export default function Payouts() {
             <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground gap-2">
               <ArrowDownToLine className="w-10 h-10 opacity-30" />
               <p className="text-sm">No payouts recorded yet.</p>
-              <Button onClick={openAddModal} size="sm" className="mt-2 gap-1.5">
-                <Plus className="w-4 h-4" /> Log First Payout
-              </Button>
+              {!readOnly && (
+                <Button onClick={openAddModal} size="sm" className="mt-2 gap-1.5">
+                  <Plus className="w-4 h-4" /> Log First Payout
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -457,22 +461,24 @@ export default function Payouts() {
                               {p.notes ?? "—"}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => openEditModal(p)}
-                                  className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                                  title="Edit"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(p.id, p.recipientName)}
-                                  className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
+                              {!readOnly && (
+                                <div className="flex items-center justify-end gap-1">
+                                  <button
+                                    onClick={() => openEditModal(p)}
+                                    className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDelete(p.id, p.recipientName)}
+                                    className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}

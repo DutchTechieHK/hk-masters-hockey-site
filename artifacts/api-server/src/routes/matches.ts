@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { matchesTable, teamsTable } from "@workspace/db/schema";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 import {
   CreateMatchBody,
   UpdateMatchBody,
@@ -11,6 +11,8 @@ import {
 } from "@workspace/api-zod";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { buildIcsCalendar, icsFilename } from "../utils/ics";
+import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
+import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 
 const router = Router();
 
@@ -40,33 +42,42 @@ function serialize(
 
 router.get("/", async (req, res) => {
   const query = ListMatchesQueryParams.parse(req.query);
+  const scope = req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const baseQuery = db
     .select({ match: matchesTable, teamName: teamsTable.name, teamCategory: teamsTable.category })
     .from(matchesTable)
     .leftJoin(teamsTable, eq(matchesTable.teamId, teamsTable.id))
     .orderBy(asc(matchesTable.kickoffAt));
-  const rows = query.teamId
-    ? await baseQuery.where(eq(matchesTable.teamId, query.teamId))
-    : await baseQuery;
+  const rows = await baseQuery.where(and(
+    eq(matchesTable.operationalScope, scope),
+    query.teamId ? eq(matchesTable.teamId, query.teamId) : undefined,
+  ));
   const isAdmin = await hasAdminAccess(req);
-  res.json(rows.map(({ match, teamName, teamCategory }) => serialize(match, teamName, teamCategory, isAdmin)));
+  const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map((r) => r.match.teamId).filter((id): id is number => id != null)) : new Map();
+  res.json(rows.map(({ match, teamName, teamCategory }) => {
+    const snapshot = snapshots.get(match.teamId);
+    return serialize(match, snapshot?.name ?? teamName, snapshot?.category ?? teamCategory, isAdmin);
+  }));
 });
 
 router.get("/calendar.ics", async (req, res) => {
   const query = ListMatchesQueryParams.parse(req.query);
+  const scope = req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const baseQuery = db
     .select({ match: matchesTable, teamName: teamsTable.name, teamCategory: teamsTable.category })
     .from(matchesTable)
     .leftJoin(teamsTable, eq(matchesTable.teamId, teamsTable.id))
     .orderBy(asc(matchesTable.kickoffAt));
-  const rows = query.teamId
-    ? await baseQuery.where(eq(matchesTable.teamId, query.teamId))
-    : await baseQuery;
+  const rows = await baseQuery.where(and(
+    eq(matchesTable.operationalScope, scope),
+    query.teamId ? eq(matchesTable.teamId, query.teamId) : undefined,
+  ));
 
+  const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map((r) => r.match.teamId).filter((id): id is number => id != null)) : new Map();
   const matches = rows.map(({ match, teamName, teamCategory }) => ({
     id: match.id,
-    teamName,
-    teamCategory,
+    teamName: snapshots.get(match.teamId)?.name ?? teamName,
+    teamCategory: snapshots.get(match.teamId)?.category ?? teamCategory,
     opponent: match.opponent,
     kickoffAt: match.kickoffAt,
     venue: match.venue,
@@ -80,8 +91,12 @@ router.get("/calendar.ics", async (req, res) => {
 
   const teamLabel = matches[0]?.teamName || matches[0]?.teamCategory;
   const calendarName = query.teamId && teamLabel
-    ? `HK ${teamLabel} – Rotterdam 2026`
-    : "HK Masters Hockey – Rotterdam 2026";
+    ? scope === "world_cup_2026"
+      ? `HK ${teamLabel} – Rotterdam 2026`
+      : `HK ${teamLabel}`
+    : scope === "world_cup_2026"
+      ? "HK Masters Hockey – Rotterdam 2026"
+      : "HK Masters Hockey";
   const ics = buildIcsCalendar(matches, { calendarName });
 
   res.setHeader("Content-Type", "text/calendar; charset=utf-8");
@@ -101,10 +116,13 @@ router.get("/:id/calendar.ics", async (req, res) => {
     res.status(404).json({ error: "Match not found" });
     return;
   }
+  const archiveSnapshot = row.match.operationalScope === "world_cup_2026"
+    ? (await getWorldCupTeamSnapshots(row.match.teamId == null ? [] : [row.match.teamId])).get(row.match.teamId)
+    : undefined;
   const match = {
     id: row.match.id,
-    teamName: row.teamName,
-    teamCategory: row.teamCategory,
+    teamName: archiveSnapshot?.name ?? row.teamName,
+    teamCategory: archiveSnapshot?.category ?? row.teamCategory,
     opponent: row.match.opponent,
     kickoffAt: row.match.kickoffAt,
     venue: row.match.venue,
@@ -126,6 +144,10 @@ router.get("/:id/calendar.ics", async (req, res) => {
 
 router.post("/", requireAdminAccess, async (req, res) => {
   const body = CreateMatchBody.parse(req.body);
+  if (await isArchivedRotterdamTeam(body.teamId)) {
+    res.status(409).json({ error: "Archived content is read-only" });
+    return;
+  }
   const kickoffDate = new Date(body.kickoffAt);
   if (Number.isNaN(kickoffDate.getTime())) {
     res.status(400).json({ error: "Invalid kickoffAt date" });
@@ -139,6 +161,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     ourScore: body.ourScore ?? null,
     theirScore: body.theirScore ?? null,
     status: body.status,
+    operationalScope: "local_2026_27",
     notes: body.notes || null,
   }).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
@@ -147,7 +170,14 @@ router.post("/", requireAdminAccess, async (req, res) => {
 
 async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {
   const { id } = UpdateMatchParams.parse(req.params);
+  const [existing] = await db.select({ operationalScope: matchesTable.operationalScope }).from(matchesTable).where(eq(matchesTable.id, id));
+  if (!existing) return res.status(404).json({ error: "Match not found" });
+  if (existing.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
+  if (existing.operationalScope == null) return res.status(409).json({ error: "Unclassified records must be classified before editing" });
   const body = UpdateMatchBody.parse(req.body);
+  if (await isArchivedRotterdamTeam(body.teamId)) {
+    return res.status(409).json({ error: "Archived content is read-only" });
+  }
   const kickoffDate = new Date(body.kickoffAt);
   if (Number.isNaN(kickoffDate.getTime())) {
     res.status(400).json({ error: "Invalid kickoffAt date" });
@@ -169,6 +199,7 @@ async function handleUpdateMatch(req: import("express").Request, res: import("ex
   }
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
   res.json(serialize(match, team?.name, team?.category, true));
+  return;
 }
 
 router.patch("/:id", requireAdminAccess, handleUpdateMatch);
@@ -176,8 +207,13 @@ router.put("/:id", requireAdminAccess, handleUpdateMatch);
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const { id } = DeleteMatchParams.parse(req.params);
-  await db.delete(matchesTable).where(eq(matchesTable.id, id));
+  const [existing] = await db.select({ operationalScope: matchesTable.operationalScope }).from(matchesTable).where(eq(matchesTable.id, id));
+  if (!existing) return res.status(404).json({ error: "Match not found" });
+  if (existing.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
+  if (existing.operationalScope == null) return res.status(409).json({ error: "Unclassified records must be classified before editing" });
+  await db.delete(matchesTable).where(and(eq(matchesTable.id, id), eq(matchesTable.operationalScope, "local_2026_27")));
   res.status(204).send();
+  return;
 });
 
 export default router;

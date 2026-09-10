@@ -26,6 +26,7 @@ function serialize(row: typeof announcementsTable.$inferSelect, teamName?: strin
     pinned: row.pinned,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    operationalScope: row.operationalScope,
   };
 }
 
@@ -78,6 +79,7 @@ function parseBody(body: unknown): {
 
 router.get("/", requireAdminOrPlayer, async (req, res) => {
   const isAdmin = (req as Request & { isAdmin?: boolean }).isAdmin === true;
+  const scope = req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const baseQuery = db
     .select({ a: announcementsTable, teamName: teamsTable.name })
     .from(announcementsTable)
@@ -85,9 +87,9 @@ router.get("/", requireAdminOrPlayer, async (req, res) => {
     .orderBy(desc(announcementsTable.pinned), desc(announcementsTable.createdAt));
 
   const rows = isAdmin
-    ? await baseQuery
+    ? await baseQuery.where(eq(announcementsTable.operationalScope, scope))
     : await baseQuery.where(
-        or(
+        and(eq(announcementsTable.operationalScope, "local_2026_27"), or(
           and(
             isNull(announcementsTable.teamId),
             isNull(announcementsTable.membershipSection),
@@ -96,7 +98,7 @@ router.get("/", requireAdminOrPlayer, async (req, res) => {
             ? undefined
             : eq(announcementsTable.teamId, req.player!.teamId),
           eq(announcementsTable.membershipSection, req.player!.currentMembershipSection),
-        ),
+        )),
       );
 
   res.json(rows.map(({ a, teamName }) => serialize(a, teamName)));
@@ -176,6 +178,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     teamId: parsed.teamId,
     membershipSection: parsed.membershipSection,
     pinned: parsed.pinned,
+    operationalScope: "local_2026_27",
   }).returning();
 
   if (parsed.sendPush) {
@@ -210,7 +213,7 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
       pinned: parsed.pinned,
       updatedAt: new Date(),
     })
-    .where(eq(announcementsTable.id, id))
+    .where(and(eq(announcementsTable.id, id), eq(announcementsTable.operationalScope, "local_2026_27")))
     .returning();
   if (!row) return res.status(404).json({ error: "Announcement not found" });
   return res.json(serialize(row, teamResult.team?.name));
@@ -219,7 +222,7 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
-  await db.delete(announcementsTable).where(eq(announcementsTable.id, id));
+  await db.delete(announcementsTable).where(and(eq(announcementsTable.id, id), eq(announcementsTable.operationalScope, "local_2026_27")));
   return res.status(204).send();
 });
 

@@ -159,12 +159,14 @@ type EventMonthSectionProps = {
   openRoster: (id: number) => void
   openEditModal: (ev: EventRow) => void
   handleDelete: (id: number, title: string) => void
+  readOnly?: boolean
 }
 
 function EventMonthSection({
   month, items, past,
   selected, allSelected, toggleSelectAll, toggleSelect,
   openRoster, openEditModal, handleDelete,
+  readOnly,
 }: EventMonthSectionProps) {
   return (
     <section className={past ? "opacity-60" : ""}>
@@ -176,12 +178,12 @@ function EventMonthSection({
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
               <tr>
-                {!past && (
+                {!past && !readOnly && (
                   <th className="px-4 py-3 w-8">
                     <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="w-4 h-4 rounded accent-[#006B3C]" />
                   </th>
                 )}
-                {past && <th className="px-4 py-3 w-8" />}
+                {past && !readOnly && <th className="px-4 py-3 w-8" />}
                 <th className="px-6 py-3 font-semibold">When</th>
                 <th className="px-4 py-3 font-semibold">Photo</th>
                 <th className="px-6 py-3 font-semibold">Kind</th>
@@ -199,11 +201,13 @@ function EventMonthSection({
                 const tz = eventTz(ev.startsAt)
                 return (
                   <tr key={ev.id} className={`hover:bg-muted/10 ${selected.has(ev.id) ? "bg-green-50/50" : ""}`}>
-                    <td className="px-4 py-4">
-                      {!past && (
-                        <input type="checkbox" checked={selected.has(ev.id)} onChange={() => toggleSelect(ev.id)} className="w-4 h-4 rounded accent-[#006B3C]" />
-                      )}
-                    </td>
+                    {!readOnly && (
+                      <td className="px-4 py-4">
+                        {!past && (
+                          <input type="checkbox" checked={selected.has(ev.id)} onChange={() => toggleSelect(ev.id)} className="w-4 h-4 rounded accent-[#006B3C]" />
+                        )}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="font-semibold text-foreground">
                         {new Date(ev.startsAt).toLocaleDateString("en-GB", {
@@ -268,12 +272,16 @@ function EventMonthSection({
                         <button onClick={() => openRoster(ev.id)} title="View RSVPs" className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all">
                           <ClipboardList className="w-4 h-4" />
                         </button>
-                        <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(ev.id, ev.title)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!readOnly && (
+                          <>
+                            <button onClick={() => openEditModal(ev)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDelete(ev.id, ev.title)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -287,7 +295,7 @@ function EventMonthSection({
   )
 }
 
-export default function Events() {
+export default function Events({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const { data: teams = [] } = useListTeams()
   const [events, setEvents] = useState<EventRow[]>([])
@@ -416,7 +424,8 @@ export default function Events() {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/events", { headers: authHeaders() })
+      const url = scope ? `/api/events?scope=${scope}` : "/api/events"
+      const res = await fetch(url, { headers: authHeaders() })
       if (!res.ok) throw new Error("Failed to load events")
       const data = await res.json() as EventRow[]
       setEvents(data)
@@ -425,7 +434,7 @@ export default function Events() {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, scope])
 
   useEffect(() => { refresh() }, [refresh])
 
@@ -650,12 +659,16 @@ export default function Events() {
               <CalendarRange className="w-3.5 h-3.5" /> Programme
             </button>
           </div>
-          <Button variant="outline" onClick={() => setShowCsvImport(true)}>
-            <Upload className="w-4 h-4 mr-1.5" /> Import CSV
-          </Button>
-          <Button onClick={openAddModal}>
-            <Plus className="w-5 h-5 mr-2" /> Add Event
-          </Button>
+          {!readOnly && (
+            <>
+              <Button variant="outline" onClick={() => setShowCsvImport(true)}>
+                <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+              </Button>
+              <Button onClick={openAddModal}>
+                <Plus className="w-5 h-5 mr-2" /> Add Event
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -704,6 +717,7 @@ export default function Events() {
               openRoster={openRoster}
               openEditModal={openEditModal}
               handleDelete={handleDelete}
+              readOnly={readOnly}
             />
           ))}
 
@@ -740,6 +754,7 @@ export default function Events() {
                       openRoster={openRoster}
                       openEditModal={openEditModal}
                       handleDelete={handleDelete}
+                      readOnly={readOnly}
                     />
                   ))}
                 </div>
@@ -749,7 +764,7 @@ export default function Events() {
         </div>
       ) : null}
 
-      {someSelected && (
+      {!readOnly && someSelected && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white rounded-2xl shadow-2xl px-5 py-3">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="w-px h-5 bg-white/20" />

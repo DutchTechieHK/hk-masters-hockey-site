@@ -28,6 +28,7 @@ app.use("/api/news", newsRouter);
 
 const TEST_SLUG = `test-publishedat-regression-${Date.now()}`;
 let postId: number;
+let archiveId: number;
 const originalPublishedAt = new Date("2026-01-15T08:30:00.000Z");
 
 beforeAll(async () => {
@@ -37,17 +38,41 @@ beforeAll(async () => {
       title: "PublishedAt regression test post",
       slug: TEST_SLUG,
       status: "published",
+      operationalScope: "local_2026_27",
       publishedAt: originalPublishedAt,
     })
     .returning();
   postId = row.id;
+  const [archive] = await db.insert(newsPostsTable).values({
+    title: "Archived news post",
+    slug: `${TEST_SLUG}-archive`,
+    status: "published",
+  }).returning();
+  archiveId = archive.id;
 });
 
 afterAll(async () => {
   await db.delete(newsPostsTable).where(eq(newsPostsTable.slug, TEST_SLUG));
+  await db.delete(newsPostsTable).where(eq(newsPostsTable.id, archiveId));
 });
 
 describe("PATCH /api/news/:id publishedAt handling", () => {
+  it("keeps archived content out of current lists but exposes it in archive lists", async () => {
+    const current = await request(app).get("/api/news/admin/all");
+    expect(current.status).toBe(200);
+    expect(current.body.posts.some((post: { id: number }) => post.id === archiveId)).toBe(false);
+    const archive = await request(app).get("/api/news/admin/all?scope=world_cup_2026");
+    expect(archive.status).toBe(200);
+    expect(archive.body.posts.some((post: { id: number }) => post.id === archiveId)).toBe(true);
+  });
+
+  it("does not allow archived content to be mutated", async () => {
+    const patch = await request(app).patch(`/api/news/${archiveId}`).send({ title: "Should not change" });
+    expect(patch.status).toBe(409);
+    const deletion = await request(app).delete(`/api/news/${archiveId}`);
+    expect(deletion.status).toBe(409);
+  });
+
   it("keeps publishedAt unchanged when editing content fields without status", async () => {
     const res = await request(app)
       .patch(`/api/news/${postId}`)

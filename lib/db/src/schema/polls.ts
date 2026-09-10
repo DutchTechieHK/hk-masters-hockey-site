@@ -9,6 +9,7 @@ export const pollsTable = pgTable("polls", {
   allowMultiple: boolean("allow_multiple").notNull().default(false),
   deadline: timestamp("deadline"),
   closedAt: timestamp("closed_at"),
+  operationalScope: text("operational_scope").notNull().default("world_cup_2026"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,11 +1,10 @@
 import { useMemo, useState } from "react"
 import {
   useListFundraising,
-  useListPlayers,
-  useListTeams,
   getListFundraisingQueryKey,
-  getListPlayersQueryKey,
 } from "@workspace/api-client-react"
+import { useScopedPlayers, useScopedTeams } from "@/hooks/use-scoped-data"
+import { useScopedFundraising } from "@/hooks/use-scoped-fundraising"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
@@ -162,14 +161,12 @@ function PledgeTierBadge({ row }: { row: PledgeReportRow }) {
   )
 }
 
-function PledgeReport({ teams }: { teams: Array<{ id: number; name: string }> }) {
+function PledgeReport({ teams, scope }: { teams: Array<{ id: number; name: string }>, scope?: string }) {
   const [query, setQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [tierFilter, setTierFilter] = useState("all")
   const [teamFilter, setTeamFilter] = useState("all")
-  const { data: fundraisingEntries = [], isLoading, isError, refetch } = useListFundraising({
-    query: { queryKey: getListFundraisingQueryKey() },
-  })
+  const { data: fundraisingEntries = [], isLoading, isError, refetch } = useScopedFundraising(scope)
 
   const rows = useMemo(
     () =>
@@ -442,21 +439,18 @@ function PledgeReport({ teams }: { teams: Array<{ id: number; name: string }> })
   )
 }
 
-export default function Reports() {
+export default function Reports({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>("all")
   const [customKeys, setCustomKeys] = useState<string[]>(["name", "teamName"])
 
-  const { data: teams = [] } = useListTeams()
-  const { data: players = [], isLoading } = useListPlayers(
-    selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined,
-    {
-      query: {
-        queryKey: getListPlayersQueryKey(
-          selectedTeamFilter !== "all" ? { teamId: parseInt(selectedTeamFilter) } : undefined,
-        ),
-      },
-    },
-  )
+  const { data: teams = [] } = useScopedTeams(scope)
+  const { data: allPlayers = [], isLoading } = useScopedPlayers(scope)
+
+  const players = useMemo(() => {
+    if (selectedTeamFilter === "all") return allPlayers
+    const tId = parseInt(selectedTeamFilter)
+    return allPlayers.filter(p => p.teamId === tId)
+  }, [allPlayers, selectedTeamFilter])
 
   const sortedPlayers = useMemo(() => [...players].sort((a, b) => a.name.localeCompare(b.name)), [players])
   const scopeLabel = selectedTeamFilter === "all" ? "All teams" : teams.find(t => String(t.id) === selectedTeamFilter)?.name ?? "Selected team"
@@ -514,7 +508,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <PledgeReport teams={teams} />
+      <PledgeReport teams={teams} scope={scope} />
     </PageLayout>
   )
 }

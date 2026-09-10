@@ -7,6 +7,8 @@ import {
   teamsTable,
   playerPaymentsTable,
   emailBlastsTable,
+  worldCupPlayerSnapshotsTable,
+  worldCupTeamSnapshotsTable,
   emailBlastRecipientsTable,
   playerSessionsTable,
   seasonsTable,
@@ -38,6 +40,7 @@ import {
   BulkAssignMembershipSectionResponse,
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
+import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { buildSeasonFeeAccount, membershipCategoryAmountDue, MEMBERSHIP_CATEGORIES } from "../utils/membershipFees";
@@ -52,6 +55,12 @@ import {
 } from "../lib/notionMemberSync";
 
 const router = Router();
+
+const LEGACY_PAYMENT_FIELDS = ["paymentAmountPaid", "paymentDate", "feePaid"] as const;
+function hasLegacyPaymentMutation(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  return LEGACY_PAYMENT_FIELDS.some((field) => Object.prototype.hasOwnProperty.call(body, field));
+}
 
 const CURRENT_SEASON_SLUG = "membership-2026-27";
 const ROTTERDAM_SEASON_SLUG = "rotterdam-2026";
@@ -162,6 +171,28 @@ export function mapPlayer(
 
 function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
+}
+
+function overlayWorldCupSnapshot(
+  player: typeof playersTable.$inferSelect,
+  snapshot: unknown,
+  authoritativeTeamId?: number | null,
+) {
+  if (!snapshot || typeof snapshot !== "object") return player;
+  const source = snapshot as Record<string, unknown>;
+  const overlay: Record<string, unknown> = {};
+  for (const key of Object.keys(player)) {
+    const databaseKey = key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+    if (databaseKey in source) overlay[key] = source[databaseKey];
+  }
+  for (const key of [
+    "createdAt", "passportCopyUploadedAt", "hkidCopyUploadedAt",
+    "membershipTierUpdatedAt", "travelReminderSentAt", "feeReminderSentAt",
+    "insuranceReminderSentAt", "onboardingInviteSentAt", "lastPortalAccessAt",
+  ]) {
+    if (overlay[key] != null && typeof overlay[key] === "string") overlay[key] = new Date(overlay[key] as string);
+  }
+  return { ...player, ...overlay, id: player.id, teamId: authoritativeTeamId === undefined ? player.teamId : authoritativeTeamId } as typeof player;
 }
 
 function legacyRotterdamSnapshot(player: typeof playersTable.$inferSelect) {
@@ -813,6 +844,38 @@ router.get("/:id/participations", requireAdminAccess, async (req, res) => {
 
 router.get("/", requireAdminAccess, async (req, res) => {
   const query = ListPlayersQueryParams.parse(req.query);
+  if (query.scope === "world_cup_2026") {
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, ROTTERDAM_SEASON_SLUG));
+    if (!season) return res.json([]);
+    const archiveRows = await db.select({ player: playersTable, participation: playerParticipationsTable, teamSnapshot: worldCupTeamSnapshotsTable.snapshot, snapshot: worldCupPlayerSnapshotsTable.snapshot })
+      .from(playerParticipationsTable)
+      .innerJoin(playersTable, eq(playerParticipationsTable.playerId, playersTable.id))
+      .leftJoin(worldCupTeamSnapshotsTable, eq(playerParticipationsTable.teamId, worldCupTeamSnapshotsTable.teamId))
+      .leftJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playersTable.id))
+      .where(and(
+        eq(playerParticipationsTable.seasonId, season.id),
+        eq(playerParticipationsTable.participationStatus, "active"),
+        query.teamId ? eq(playerParticipationsTable.teamId, query.teamId) : undefined,
+      ))
+      .orderBy(playersTable.id);
+    const ids = archiveRows.map(({ player }) => player.id);
+    const payments = ids.length === 0 ? [] : await db.select().from(playerPaymentsTable)
+      .where(and(eq(playerPaymentsTable.seasonId, season.id), inArray(playerPaymentsTable.playerId, ids)));
+    const paidByPlayer = new Map<number, number>();
+    for (const payment of payments) paidByPlayer.set(payment.playerId, (paidByPlayer.get(payment.playerId) ?? 0) + Number(payment.amount));
+    return res.json(archiveRows.map(({ player, participation, teamSnapshot, snapshot }) => {
+      // A snapshot is authoritative for campaign/player fields. Participation,
+      // team, and payments remain sourced from the Rotterdam season tables.
+      const archivedPlayer = overlayWorldCupSnapshot(player, snapshot, participation.teamId);
+      const due = participation.amountDue == null ? null : Number(participation.amountDue);
+      const paid = paidByPlayer.get(player.id) ?? 0;
+      const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
+      return mapPlayer(archivedPlayer, participation.teamId == null ? null : team.name as string | null ?? null, undefined, {
+        amountDue: due, amountPaid: paid, balance: due == null ? null : due - paid,
+        feePaid: due != null && paid >= due, latestPaymentDate: null,
+      });
+    }));
+  }
   const filters = [
     query.teamId ? eq(playersTable.teamId, query.teamId) : undefined,
     query.position
@@ -847,10 +910,19 @@ router.get("/", requireAdminAccess, async (req, res) => {
   const membershipFees = await getMembershipFeeAccounts(players.map(({ player }) => player.id));
   res.json(players.map(({ player, teamName, lastLoginAt }) =>
     mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id))));
+  return;
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {
+  if (hasLegacyPaymentMutation(req.body)) {
+    res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
+    return;
+  }
   const body = CreatePlayerBody.parse(req.body);
+  if (await isArchivedRotterdamTeam(body.teamId)) {
+    res.status(409).json({ error: "Archived content is read-only" });
+    return;
+  }
   const [player] = await db
     .insert(playersTable)
     .values({ ...(body as any), accessToken: crypto.randomUUID() })
@@ -1198,29 +1270,8 @@ router.get("/:id/payments", requireAdminAccess, async (req, res) => {
 });
 
 router.post("/:id/payments", requireAdminAccess, async (req, res) => {
-  const { id } = CreatePlayerPaymentParams.parse(req.params);
-  const body = CreatePlayerPaymentBody.parse(req.body);
-  const [player] = await db.select({ id: playersTable.id }).from(playersTable).where(eq(playersTable.id, id));
-  if (!player) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-  const foundation = await ensureMembershipFoundation();
-  const seasonId = foundation.rotterdamSeasonId;
-  const [created] = await db
-    .insert(playerPaymentsTable)
-    .values({
-      playerId: id,
-      seasonId,
-      amount: body.amount.toFixed(2),
-      paymentDate: body.paymentDate,
-      method: body.method ?? "",
-      notes: body.notes ?? "",
-    })
-    .returning();
-  if (seasonId === foundation.rotterdamSeasonId) await recomputePlayerAggregates(id);
-  const [season] = await db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId));
-  res.status(201).json(mapPayment(created, season));
+  res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
+  return;
 });
 
 router.get("/:id/membership-payments", requireAdminAccess, async (req, res) => {
@@ -1266,22 +1317,8 @@ router.post("/:id/membership-payments", requireAdminAccess, async (req, res) => 
 });
 
 router.delete("/:playerId/payments/:paymentId", requireAdminAccess, async (req, res) => {
-  const { playerId, paymentId } = DeletePlayerPaymentParams.parse(req.params);
-  const foundation = await ensureMembershipFoundation();
-  const result = await db
-    .delete(playerPaymentsTable)
-    .where(and(
-      eq(playerPaymentsTable.id, paymentId),
-      eq(playerPaymentsTable.playerId, playerId),
-      eq(playerPaymentsTable.seasonId, foundation.rotterdamSeasonId),
-    ))
-    .returning({ id: playerPaymentsTable.id });
-  if (result.length === 0) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
-  await recomputePlayerAggregates(playerId);
-  res.status(204).send();
+  res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
+  return;
 });
 
 router.delete("/:playerId/membership-payments/:paymentId", requireAdminAccess, async (req, res) => {
@@ -1411,6 +1448,7 @@ router.post("/send-onboarding-invites", requireSession, async (req, res) => {
       sentCount: sent,
       failedCount: failed,
       sentByEmail: null,
+      operationalScope: "local_2026_27",
     });
   }
 
@@ -1516,6 +1554,7 @@ router.post("/send-insurance-reminders", requireSession, async (req, res) => {
       sentCount: sent,
       failedCount: failed,
       sentByEmail: null,
+      operationalScope: "local_2026_27",
     });
   }
 
@@ -1569,7 +1608,20 @@ router.patch("/membership-sections", requireAdminAccess, async (req, res) => {
 
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdatePlayerParams.parse(req.params);
+  if (hasLegacyPaymentMutation(req.body)) {
+    res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
+    return;
+  }
   const body = UpdatePlayerBody.parse(req.body);
+  const [existingPlayer] = await db.select({ teamId: playersTable.teamId }).from(playersTable).where(eq(playersTable.id, id));
+  if (!existingPlayer) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (body.teamId !== existingPlayer.teamId && await isArchivedRotterdamTeam(body.teamId)) {
+    res.status(409).json({ error: "Archived content is read-only" });
+    return;
+  }
   // Strip ledger-derived fields from the direct update — they are
   // owned by player_payments and recomputed below. If the caller
   // provided an explicit paymentAmountPaid, treat it as a delta and
@@ -1758,6 +1810,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     sentCount: sent,
     failedCount: failed,
     sentByEmail: null,
+    operationalScope: "local_2026_27",
   }).returning();
 
   // Record per-recipient delivery status
@@ -1838,6 +1891,7 @@ router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
 });
 
 router.get("/email-blasts", requireAdminAccess, async (req, res) => {
+  const scope = req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const rows = await db
     .select({
       id: emailBlastsTable.id,
@@ -1851,8 +1905,10 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
       failedCount: emailBlastsTable.failedCount,
       sentByEmail: emailBlastsTable.sentByEmail,
       sentAt: emailBlastsTable.sentAt,
+      operationalScope: emailBlastsTable.operationalScope,
     })
     .from(emailBlastsTable)
+    .where(eq(emailBlastsTable.operationalScope, scope))
     .orderBy(desc(emailBlastsTable.sentAt));
 
   const individualBlastIds = rows
@@ -1916,8 +1972,37 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
   }));
 });
 
-router.get("/arrivals", requireAdminAccess, async (_req, res) => {
+router.get("/arrivals", requireAdminAccess, async (req, res) => {
   const ISO_DATE_RE = /^[0-9]{4}-[0-9]{2}-[0-9]{2}/;
+  if (req.query.scope === "world_cup_2026") {
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, ROTTERDAM_SEASON_SLUG));
+    const archived = season ? await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
+      .from(playerParticipationsTable)
+      .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
+      .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"))) : [];
+    const allRows = archived.map(({ participation, playerSnapshot, teamSnapshot }) => {
+      const player = playerSnapshot as Record<string, unknown>;
+      const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
+      return {
+        id: participation.playerId,
+        name: String(player.name ?? ""),
+        arrival: player.flight_arrival_date_time as string | null ?? null,
+        arrivalCity: player.arrival_city as string | null ?? null,
+        travelNote: player.travel_note as string | null ?? null,
+        departure: player.flight_departure_date_time as string | null ?? null,
+        departureNote: player.departure_note as string | null ?? null,
+        teamCategory: participation.teamId == null ? null : team.category as string | null ?? null,
+        teamName: participation.teamId == null ? null : team.name as string | null ?? null,
+      };
+    });
+    const withArrival = allRows.filter((r) => r.arrival && ISO_DATE_RE.test(r.arrival)).map((r) => ({ id: r.id, name: r.name, arrival: r.arrival!, arrivalCity: r.arrivalCity, travelNote: r.travelNote, teamCategory: r.teamCategory, teamName: r.teamName }));
+    const withoutArrival = allRows.filter((r) => !r.arrival || !ISO_DATE_RE.test(r.arrival)).map((r) => ({ id: r.id, name: r.name, teamCategory: r.teamCategory, teamName: r.teamName }));
+    const departureRows = [...allRows].sort((a, b) => (a.departure ?? "").localeCompare(b.departure ?? ""));
+    const withDeparture = departureRows.filter((r) => r.departure && ISO_DATE_RE.test(r.departure)).map((r) => ({ id: r.id, name: r.name, departure: r.departure!, departureCity: r.arrivalCity, departureNote: r.departureNote, teamCategory: r.teamCategory, teamName: r.teamName }));
+    const withoutDeparture = departureRows.filter((r) => !r.departure || !ISO_DATE_RE.test(r.departure)).map((r) => ({ id: r.id, name: r.name, teamCategory: r.teamCategory, teamName: r.teamName }));
+    return res.json({ withArrival, withoutArrival, withDeparture, withoutDeparture });
+  }
 
   const allRows = await db
     .select({
@@ -1982,6 +2067,7 @@ router.get("/arrivals", requireAdminAccess, async (_req, res) => {
     }));
 
   res.json({ withArrival, withoutArrival, withDeparture, withoutDeparture });
+  return;
 });
 
 export default router;

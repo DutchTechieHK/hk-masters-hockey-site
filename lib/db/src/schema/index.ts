@@ -26,3 +26,5 @@ export * from "./polls";
 export * from "./player-payouts";
 export * from "./news-posts";
 export * from "./site-content";
+export * from "./world-cup-player-snapshots";
+export * from "./world-cup-team-snapshots";

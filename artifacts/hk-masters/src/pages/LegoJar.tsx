@@ -209,7 +209,7 @@ function SquadCombobox({
   )
 }
 
-export default function LegoJar() {
+export default function LegoJar({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
 
   const [config, setConfig] = useState<Config | null>(null)
@@ -787,12 +787,16 @@ export default function LegoJar() {
           <Button variant="outline" onClick={load} disabled={loading}>
             <RefreshCw className={`w-4 h-4 mr-1.5 ${loading ? "animate-spin" : ""}`} /> Refresh
           </Button>
-          <Button variant="outline" onClick={() => setGuessOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Log Guess
-          </Button>
-          <Button onClick={() => setPassJarOpen(true)}>
-            <PackageOpen className="w-4 h-4 mr-1.5" /> Pass the Jar
-          </Button>
+          {!readOnly && (
+            <>
+              <Button variant="outline" onClick={() => setGuessOpen(true)}>
+                <Plus className="w-4 h-4 mr-1.5" /> Log Guess
+              </Button>
+              <Button onClick={() => setPassJarOpen(true)}>
+                <PackageOpen className="w-4 h-4 mr-1.5" /> Pass the Jar
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -895,11 +899,12 @@ export default function LegoJar() {
                           </span>
                         )}
                         <button
-                          onClick={() => togglePaid(g)}
+                          onClick={() => !readOnly && togglePaid(g)}
+                          disabled={readOnly}
                           title={g.paid ? "Mark as pending" : "Mark payment received"}
                           className={`text-xs px-2 py-0.5 rounded-full font-semibold border transition-colors ${
                             g.paid ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-amber-100 text-amber-700 border-amber-200 hover:bg-emerald-50"
-                          }`}
+                          } ${readOnly ? "opacity-75 cursor-default hover:bg-amber-100" : ""}`}
                         >
                           {g.paid ? "Received" : "Pending"}
                         </button>
@@ -1102,13 +1107,15 @@ export default function LegoJar() {
                                     <span>{g.paid ? "✓" : "·"}</span>
                                     <span>{g.guessNumber.toLocaleString()}</span>
                                   </button>
-                                  <button
-                                    onClick={() => setDeleteGuessId(g.id)}
-                                    title="Delete this guess"
-                                    className="opacity-0 group-hover/chip:opacity-100 p-0.5 text-muted-foreground hover:text-destructive rounded transition-all"
-                                  >
-                                    <X className="w-2.5 h-2.5" />
-                                  </button>
+                                  {!readOnly && (
+                                    <button
+                                      onClick={() => setDeleteGuessId(g.id)}
+                                      title="Delete this guess"
+                                      className="opacity-0 group-hover/chip:opacity-100 p-0.5 text-muted-foreground hover:text-destructive rounded transition-all"
+                                    >
+                                      <X className="w-2.5 h-2.5" />
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -1118,7 +1125,7 @@ export default function LegoJar() {
                               <span className={`text-xs font-semibold ${allPaid ? "text-emerald-700" : nonePaid ? "text-gray-400" : "text-amber-600"}`}>
                                 {group.paidCount} / {group.guesses.length}
                               </span>
-                              {!allPaid && (
+                              {!allPaid && !readOnly && (
                                 <button
                                   onClick={() => toggleAllPaid(group)}
                                   className="text-xs text-muted-foreground hover:text-emerald-700 underline underline-offset-2 transition-colors"
@@ -1146,22 +1153,26 @@ export default function LegoJar() {
                             {format(parseISO(group.earliestDate), "d MMM yyyy")}
                           </td>
                           <td className="px-4 py-3 text-right whitespace-nowrap">
-                            {websiteRound && group.guesses.some((g) => g.roundId !== websiteRound.id) && (
-                              <button
-                                onClick={() => moveGroupToWebsite(group)}
-                                className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-blue-600 rounded transition-all"
-                                title="Move to Website designation"
-                              >
-                                <Globe className="w-4 h-4" />
-                              </button>
+                            {!readOnly && (
+                              <div className="flex justify-end gap-1">
+                                {websiteRound && group.guesses.some((g) => g.roundId !== websiteRound.id) && (
+                                  <button
+                                    onClick={() => moveGroupToWebsite(group)}
+                                    className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-blue-600 rounded transition-all"
+                                    title="Move to Website designation"
+                                  >
+                                    <Globe className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => openEditGroup(group)}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded transition-all"
+                                  title="Edit contact info"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                              </div>
                             )}
-                            <button
-                              onClick={() => openEditGroup(group)}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 text-muted-foreground hover:text-primary rounded transition-all"
-                              title="Edit contact info"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
                           </td>
                         </tr>
                       )

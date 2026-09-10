@@ -152,6 +152,7 @@ async function runDailyPledgeDigest() {
           sentCount: sentEntries.length,
           failedCount: failedEntries.length,
           sentByEmail: "system",
+          operationalScope: "local_2026_27",
         })
         .returning();
 

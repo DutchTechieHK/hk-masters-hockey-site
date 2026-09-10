@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Api
   version: 0.1.0
-  description: HK 2026 Masters World Cup API
+  description: HK Masters League, Socials, and World Cup archive API
 servers:
   - url: /api
     description: Base API path
@@ -47,6 +47,13 @@ paths:
       operationId: listAnnouncements
       tags: [announcements]
       summary: List announcements visible to the current admin or active player
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [local_2026_27, world_cup_2026]
       responses:
         "200":
           description: Visible announcements
@@ -122,6 +129,12 @@ paths:
           in: query
           schema:
             type: integer
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [local_2026_27, world_cup_2026]
         - name: membershipSection
           in: query
           schema:
@@ -153,6 +166,13 @@ paths:
       operationId: listTeams
       tags: [teams]
       summary: List all teams
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [local_2026_27, world_cup_2026]
       responses:
         "200":
           description: List of teams
@@ -304,6 +324,12 @@ paths:
           schema:
             type: string
             enum: [not_set, men, women]
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [local_2026_27, world_cup_2026]
       responses:
         "200":
           description: List of players
@@ -1095,6 +1121,12 @@ paths:
       tags: [matches]
       summary: List all matches
       parameters:
+        - name: scope
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [local_2026_27, world_cup_2026]
         - name: teamId
           in: query
           required: false
@@ -1240,6 +1272,9 @@ components:
     Announcement:
       type: object
       properties:
+        operationalScope:
+          type: string
+          enum: [local_2026_27, world_cup_2026]
         id:
           type: integer
         title:
@@ -1954,7 +1989,6 @@ components:
         - teamId
         - name
         - email
-        - feePaid
 
     MembershipInitializationResult:
       type: object

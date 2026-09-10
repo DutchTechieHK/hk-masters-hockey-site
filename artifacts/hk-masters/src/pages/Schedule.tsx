@@ -8,7 +8,8 @@ import {
   useListTeams,
   getListTeamsQueryKey,
 } from "@workspace/api-client-react"
-import { useQueryClient } from "@tanstack/react-query"
+import { getStoredAdminToken } from "@/lib/admin-auth"
+import { useQueryClient, useQuery } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -79,50 +80,10 @@ const STATUS_COLORS: Record<string, string> = {
   cancelled: "bg-rose-100 text-rose-700",
 }
 
-const ROTTERDAM_TZ = "Europe/Amsterdam"
+import { getScopeTimezone, getScopeTimezoneLabel, toZoneInputValue, zoneInputToIso, formatZoneTime } from "@/lib/timezone"
 
-function zoneOffsetMs(instant: number, tz: string): number {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: tz, hour12: false,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-    }).formatToParts(new Date(instant))
-      .filter(p => p.type !== "literal")
-      .map(p => [p.type, p.value])
-  ) as Record<string, string>
-  const wallAsUtc = Date.UTC(
-    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour), Number(parts.minute), Number(parts.second),
-  )
-  return wallAsUtc - instant
-}
-
-// Convert a UTC ISO string to a "YYYY-MM-DDTHH:mm" wall-clock string in the given zone.
-function toZoneInputValue(iso: string, tz: string): string {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: tz, hour12: false,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit",
-    }).formatToParts(new Date(iso))
-      .filter(p => p.type !== "literal")
-      .map(p => [p.type, p.value])
-  ) as Record<string, string>
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`
-}
-
-// Treat a "YYYY-MM-DDTHH:mm" string as wall-clock time in the given zone and return UTC ISO.
-function zoneInputToIso(localDateTime: string, tz: string): string {
-  const target = new Date(`${localDateTime}:00Z`).getTime()
-  let offset = zoneOffsetMs(target, tz)
-  let instant = target - offset
-  offset = zoneOffsetMs(instant, tz)
-  instant = target - offset
-  return new Date(instant).toISOString()
-}
-
-export default function Schedule() {
+export default function Schedule({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
+  const tz = getScopeTimezone(scope);
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [sessionToken, setSessionToken] = useState<string | null>(null)
@@ -160,8 +121,40 @@ export default function Schedule() {
     }
   }
 
-  const { data: matches = [], isLoading } = useListMatches(undefined, { query: { queryKey: getListMatchesQueryKey(), enabled: !!sessionToken } })
-  const { data: teams = [] } = useListTeams({ query: { queryKey: getListTeamsQueryKey(), enabled: !!sessionToken } })
+  const { data: defaultMatches = [], isLoading: defaultLoading } = useListMatches({ query: { queryKey: getListMatchesQueryKey(), enabled: !!sessionToken && !scope } } as any)
+
+  const { data: archiveMatches = [], isLoading: archiveLoading } = useQuery({
+    queryKey: ["matches", scope],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const headers = { "Content-Type": "application/json", ...(token ? { "x-session-token": token } : {}) }
+      const res = await fetch(`/api/matches?scope=${scope}`, { headers })
+      if (!res.ok) throw new Error("Failed to load matches")
+      return res.json() as Promise<Match[]>
+    },
+    enabled: !!scope
+  })
+
+  const matches = scope ? archiveMatches : defaultMatches
+  const isLoading = scope ? archiveLoading : defaultLoading
+
+  const { data: defaultTeams = [] } = useListTeams(
+    { query: { queryKey: getListTeamsQueryKey(), enabled: !!sessionToken && !scope } } as any,
+  )
+
+  const { data: archiveTeams = [] } = useQuery({
+    queryKey: ["teams", scope],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const headers = { "Content-Type": "application/json", ...(token ? { "x-session-token": token } : {}) }
+      const res = await fetch(`/api/teams?scope=${scope}`, { headers })
+      if (!res.ok) throw new Error("Failed to load teams")
+      return res.json() as Promise<any[]>
+    },
+    enabled: !!scope
+  })
+
+  const teams = scope ? archiveTeams : defaultTeams
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editing, setEditing] = useState<Match | null>(null)
@@ -199,7 +192,7 @@ export default function Schedule() {
     reset({
       teamId: m.teamId,
       opponent: m.opponent,
-      kickoffAt: toZoneInputValue(m.kickoffAt, ROTTERDAM_TZ),
+      kickoffAt: toZoneInputValue(m.kickoffAt, tz),
       venue: m.venue || "",
       status: m.status,
       ourScore: m.ourScore ?? "",
@@ -248,7 +241,7 @@ export default function Schedule() {
       const payload = {
         teamId: data.teamId,
         opponent: data.opponent,
-        kickoffAt: zoneInputToIso(data.kickoffAt, ROTTERDAM_TZ),
+        kickoffAt: zoneInputToIso(data.kickoffAt, tz),
         venue: data.venue || undefined,
         status: data.status,
         ourScore: data.ourScore === "" || data.ourScore === undefined ? null : Number(data.ourScore),
@@ -319,14 +312,16 @@ export default function Schedule() {
       title="Matches"
       description="Add and manage match fixtures. Visible on the public website."
       action={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowCsvImport(true)} disabled={teams.length === 0}>
-            <Upload className="w-4 h-4 mr-1.5" /> Import CSV
-          </Button>
-          <Button onClick={openAddModal} disabled={teams.length === 0}>
-            <Plus className="w-5 h-5 mr-2" /> Add Match
-          </Button>
-        </div>
+        !readOnly ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowCsvImport(true)} disabled={teams.length === 0}>
+              <Upload className="w-4 h-4 mr-1.5" /> Import CSV
+            </Button>
+            <Button onClick={openAddModal} disabled={teams.length === 0}>
+              <Plus className="w-5 h-5 mr-2" /> Add Match
+            </Button>
+          </div>
+        ) : undefined
       }
     >
       {teams.length === 0 && (
@@ -376,15 +371,15 @@ export default function Schedule() {
                               <div className="font-semibold text-foreground">
                                 {new Date(m.kickoffAt).toLocaleDateString("en-GB", {
                                   weekday: "short", day: "numeric", month: "short", year: "numeric",
-                                  timeZone: ROTTERDAM_TZ,
+                                  timeZone: tz,
                                 })}
                               </div>
                               <div className="text-xs text-muted-foreground flex items-center gap-1">
                                 {new Date(m.kickoffAt).toLocaleTimeString("en-GB", {
                                   hour: "2-digit", minute: "2-digit", hour12: false,
-                                  timeZone: ROTTERDAM_TZ,
+                                  timeZone: tz,
                                 })}
-                                <span className="text-[10px] font-bold uppercase tracking-wide text-[#006B3C]">CEST</span>
+                                <span className="text-[10px] font-bold uppercase tracking-wide text-[#006B3C]">{getScopeTimezoneLabel(scope)}</span>
                               </div>
                             </td>
                             <td className="px-6 py-4 font-medium text-foreground">
@@ -412,45 +407,47 @@ export default function Schedule() {
                                 : <span className="text-muted-foreground">—</span>}
                             </td>
                             <td className="px-6 py-4 text-right">
-                              <div className="flex justify-end items-center gap-1 flex-wrap">
-                                {m.status === "scheduled" && (
-                                  <button
-                                    onClick={() => quickStatus(m, "in_progress")}
-                                    title="Mark as live (in progress)"
-                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded border border-emerald-200 transition-colors"
-                                  >
-                                    <Radio className="w-3 h-3" /> Live
+                              {!readOnly && (
+                                <div className="flex justify-end items-center gap-1 flex-wrap">
+                                  {m.status === "scheduled" && (
+                                    <button
+                                      onClick={() => quickStatus(m, "in_progress")}
+                                      title="Mark as live (in progress)"
+                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded border border-emerald-200 transition-colors"
+                                    >
+                                      <Radio className="w-3 h-3" /> Live
+                                    </button>
+                                  )}
+                                  {(m.status === "scheduled" || m.status === "in_progress") && (
+                                    <>
+                                      <button
+                                        onClick={() => openEditModal({ ...m, status: "final" })}
+                                        title="Enter final score"
+                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
+                                      >
+                                        <Flag className="w-3 h-3" /> Final
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          if (confirm(`Cancel ${m.opponent} on ${format(new Date(m.kickoffAt), "EEE d MMM")}?`)) {
+                                            quickStatus(m, "cancelled")
+                                          }
+                                        }}
+                                        title="Cancel match"
+                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded border border-rose-200 transition-colors"
+                                      >
+                                        <Ban className="w-3 h-3" /> Cancel
+                                      </button>
+                                    </>
+                                  )}
+                                  <button onClick={() => openEditModal(m)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
+                                    <Edit2 className="w-4 h-4" />
                                   </button>
-                                )}
-                                {(m.status === "scheduled" || m.status === "in_progress") && (
-                                  <>
-                                    <button
-                                      onClick={() => openEditModal({ ...m, status: "final" })}
-                                      title="Enter final score"
-                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
-                                    >
-                                      <Flag className="w-3 h-3" /> Final
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        if (confirm(`Cancel ${m.opponent} on ${format(new Date(m.kickoffAt), "EEE d MMM")}?`)) {
-                                          quickStatus(m, "cancelled")
-                                        }
-                                      }}
-                                      title="Cancel match"
-                                      className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50 rounded border border-rose-200 transition-colors"
-                                    >
-                                      <Ban className="w-3 h-3" /> Cancel
-                                    </button>
-                                  </>
-                                )}
-                                <button onClick={() => openEditModal(m)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
-                                  <Edit2 className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => handleDelete(m.id)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
+                                  <button onClick={() => handleDelete(m.id)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -465,7 +462,7 @@ export default function Schedule() {
       )}
 
       {showCsvImport && sessionToken && (
-        <MatchesCsvImport
+        <MatchesCsvImport scope={scope}
           teams={teams}
           sessionToken={sessionToken}
           onClose={() => setShowCsvImport(false)}
@@ -497,7 +494,7 @@ export default function Schedule() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-semibold flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Kick-off (Rotterdam time)
+                <Clock className="w-3.5 h-3.5" /> Kick-off ({getScopeTimezoneLabel(scope)})
               </label>
               <Input type="datetime-local" {...register("kickoffAt")} />
               {errors.kickoffAt && <p className="text-xs text-destructive">{errors.kickoffAt.message}</p>}
@@ -506,7 +503,7 @@ export default function Schedule() {
               <label className="text-sm font-semibold flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5" /> Venue
               </label>
-              <Input {...register("venue")} placeholder="e.g. HC Rotterdam, Pitch 2" />
+              <Input {...register("venue")} placeholder={scope === "world_cup_2026" ? "e.g. HC Rotterdam, Pitch 2" : "e.g. King's Park"} />
             </div>
           </div>
 

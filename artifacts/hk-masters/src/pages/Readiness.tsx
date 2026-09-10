@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
-import { useListPlayers, useListTeams } from "@workspace/api-client-react"
+import { useScopedPlayers, useScopedTeams } from "@/hooks/use-scoped-data"
 import { TemplateLoader } from "@/components/email/TemplateLoader"
 import type { Player } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
@@ -174,9 +174,9 @@ function authHeaders(): Record<string, string> {
   return headers
 }
 
-export default function Readiness() {
-  const { data: players = [], isLoading } = useListPlayers()
-  const { data: teams = [] } = useListTeams()
+export default function Readiness({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
+  const { data: players = [], isLoading } = useScopedPlayers(scope)
+  const { data: teams = [] } = useScopedTeams(scope)
   const { toast } = useToast()
 
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -333,7 +333,7 @@ export default function Readiness() {
                   <Filter className="w-3.5 h-3.5" />
                   Incomplete only
                 </button>
-                {incompletePlayers.length > 0 && (
+                {!readOnly && incompletePlayers.length > 0 && (
                   <button
                     onClick={() => {
                       setChaseSubject(DEFAULT_CHASE_SUBJECT)
@@ -377,19 +377,18 @@ export default function Readiness() {
                     filteredRows.map(({ player, criteria, ready }) => {
                       const team = teamMap[player.teamId]
                       return (
-                        <Link key={player.id} href={`/players?playerId=${player.id}`} asChild>
-                          <tr className="hover:bg-muted/10 cursor-pointer group">
-                            <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-muted/10 border-r border-border/50">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                                  {player.shirtNumber ?? "—"}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-foreground truncate">{player.name}</p>
-                                  {team && <p className="text-xs text-muted-foreground truncate">{team.name}</p>}
-                                </div>
+                        <tr key={player.id} className="hover:bg-muted/10 group">
+                          <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-muted/10 border-r border-border/50">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                                {player.shirtNumber ?? "—"}
                               </div>
-                            </td>
+                              <div className="min-w-0">
+                                <p className="font-medium text-foreground truncate">{player.name}</p>
+                                {team && <p className="text-xs text-muted-foreground truncate">{team.name}</p>}
+                              </div>
+                            </div>
+                          </td>
                             <td className="text-center px-3 py-2.5">
                               {ready ? (
                                 <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5">
@@ -424,7 +423,6 @@ export default function Readiness() {
                               )
                             })}
                           </tr>
-                        </Link>
                       )
                     })
                   )}

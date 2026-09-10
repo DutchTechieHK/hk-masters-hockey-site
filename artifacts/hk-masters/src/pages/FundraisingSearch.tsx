@@ -102,7 +102,7 @@ function SectionHeader({ icon: Icon, label, count, color }: { icon: typeof Searc
   )
 }
 
-export default function FundraisingSearch() {
+export default function FundraisingSearch({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResults | null>(null)
   const [loading, setLoading] = useState(false)
@@ -121,7 +121,8 @@ export default function FundraisingSearch() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/fundraising/search?q=${encodeURIComponent(q)}`, {
+        const fetchUrl = scope ? `/api/fundraising/search?q=${encodeURIComponent(q)}&scope=${scope}` : `/api/fundraising/search?q=${encodeURIComponent(q)}`
+        const res = await fetch(fetchUrl, {
           headers: { "x-session-token": getToken() },
         })
         if (!res.ok) throw new Error("Search failed")

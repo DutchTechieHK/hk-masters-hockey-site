@@ -12,6 +12,7 @@ export const emailBlastsTable = pgTable("email_blasts", {
   failedCount: integer("failed_count").notNull().default(0),
   sentByEmail: text("sent_by_email"),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
+  operationalScope: text("operational_scope").notNull().default("world_cup_2026"),
 }, (t) => ({
   sentAtIdx: index("email_blasts_sent_at_idx").on(t.sentAt),
 }));

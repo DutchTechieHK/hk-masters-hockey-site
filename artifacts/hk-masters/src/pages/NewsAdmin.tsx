@@ -359,8 +359,8 @@ function PostCard({
 }: {
   post: NewsPost
   onEdit: () => void
-  onDelete: () => void
-  onTogglePublish: () => void
+  onDelete?: () => void
+  onTogglePublish?: () => void
 }) {
   const isPublished = post.status === "published"
   const dateStr = post.publishedAt
@@ -389,19 +389,23 @@ function PostCard({
             {post.excerpt && <p className="text-sm text-gray-500 mt-1 line-clamp-2">{post.excerpt}</p>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={onTogglePublish}
-              title={isPublished ? "Unpublish" : "Publish"}
-              className={`p-1.5 rounded border transition-all ${isPublished ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-amber-600 border-amber-200 hover:bg-amber-50"}`}
-            >
-              {isPublished ? <Globe className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            </button>
+            {onTogglePublish && (
+              <button
+                onClick={onTogglePublish}
+                title={isPublished ? "Unpublish" : "Publish"}
+                className={`p-1.5 rounded border transition-all ${isPublished ? "text-emerald-600 border-emerald-200 hover:bg-emerald-50" : "text-amber-600 border-amber-200 hover:bg-amber-50"}`}
+              >
+                {isPublished ? <Globe className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+            )}
             <button onClick={onEdit} title="Edit" className="p-1.5 text-gray-500 hover:text-primary rounded border border-transparent hover:border-border transition-all">
-              <Pencil className="w-4 h-4" />
+              {onTogglePublish ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
-            <button onClick={onDelete} title="Delete" className="p-1.5 text-gray-500 hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {onDelete && (
+              <button onClick={onDelete} title="Delete" className="p-1.5 text-gray-500 hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -410,7 +414,7 @@ function PostCard({
 }
 
 /* ── Main page ──────────────────────────────────────────── */
-export default function NewsAdmin() {
+export default function NewsAdmin({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const [posts, setPosts] = useState<NewsPost[]>([])
   const [loading, setLoading] = useState(true)
@@ -427,7 +431,8 @@ export default function NewsAdmin() {
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch("/api/news/admin/all", { headers: authHeaders() })
+      const url = scope ? `/api/news/admin/all?scope=${scope}` : "/api/news/admin/all"
+      const res = await fetch(url, { headers: authHeaders() })
       const data = await res.json()
       setPosts(data.posts ?? [])
     } catch {
@@ -540,9 +545,11 @@ export default function NewsAdmin() {
             <h1 className="text-2xl font-bold text-gray-900">News</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Write and publish news articles for the public website</p>
           </div>
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="w-4 h-4" /> New post
-          </Button>
+          {!readOnly && (
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="w-4 h-4" /> New post
+            </Button>
+          )}
         </div>
 
         {loading && (
@@ -557,8 +564,12 @@ export default function NewsAdmin() {
           <div className="bg-gray-50 border border-gray-100 rounded-2xl p-12 text-center">
             <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             <p className="font-semibold text-gray-700 mb-1">No news posts yet</p>
-            <p className="text-sm text-gray-500 mb-4">Create your first post and it'll appear on the public website when published.</p>
-            <Button onClick={openCreate} size="sm" className="gap-2"><Plus className="w-4 h-4" /> Write first post</Button>
+            {!readOnly && (
+              <>
+                <p className="text-sm text-gray-500 mb-4">Create your first post and it'll appear on the public website when published.</p>
+                <Button onClick={openCreate} size="sm" className="gap-2"><Plus className="w-4 h-4" /> Write first post</Button>
+              </>
+            )}
           </div>
         )}
 
@@ -567,7 +578,13 @@ export default function NewsAdmin() {
             <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Published — {published.length}</h2>
             <div className="space-y-3">
               {published.map((p) => (
-                <PostCard key={p.id} post={p} onEdit={() => openEdit(p)} onDelete={() => setDeleteTarget(p)} onTogglePublish={() => handleTogglePublish(p)} />
+                <PostCard
+                  key={p.id}
+                  post={p}
+                  onEdit={() => openEdit(p)}
+                  onDelete={readOnly ? undefined : () => setDeleteTarget(p)}
+                  onTogglePublish={readOnly ? undefined : () => handleTogglePublish(p)}
+                />
               ))}
             </div>
           </section>
@@ -578,7 +595,13 @@ export default function NewsAdmin() {
             <h2 className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Drafts — {drafts.length}</h2>
             <div className="space-y-3">
               {drafts.map((p) => (
-                <PostCard key={p.id} post={p} onEdit={() => openEdit(p)} onDelete={() => setDeleteTarget(p)} onTogglePublish={() => handleTogglePublish(p)} />
+                <PostCard
+                  key={p.id}
+                  post={p}
+                  onEdit={() => openEdit(p)}
+                  onDelete={readOnly ? undefined : () => setDeleteTarget(p)}
+                  onTogglePublish={readOnly ? undefined : () => handleTogglePublish(p)}
+                />
               ))}
             </div>
           </section>

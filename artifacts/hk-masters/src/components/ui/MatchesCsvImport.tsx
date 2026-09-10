@@ -2,6 +2,7 @@ import { useState, useRef } from "react"
 import { Modal } from "@/components/ui/modal"
 import { Button } from "@/components/ui/button"
 import { Upload, Download, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
+import { getScopeTimezone, getScopeTimezoneLabel, zoneInputToIso } from "@/lib/timezone"
 
 type Team = { id: number; name: string }
 
@@ -22,12 +23,11 @@ type ParsedRow = {
 type ImportResult = { rowNum: number; opponent: string; ok: boolean; error?: string }
 
 const ALLOWED_STATUSES = ["scheduled", "in_progress", "final", "cancelled"]
-const ROTTERDAM_TZ = "Europe/Amsterdam"
 
 const TEMPLATE_CSV = `team,opponent,kickoff_at,venue,status,notes
-MO40,Netherlands MO40,2026-07-23 10:00,HC Rotterdam Pitch 1,scheduled,
-MO40,Germany MO40,2026-07-25 14:00,HC Rotterdam Pitch 2,scheduled,
-MO50,England MO50,2026-07-24 09:00,HC Rotterdam Pitch 1,scheduled,
+Men's Squad,KCCA,2024-09-15 20:00,King's Park Pitch 1,scheduled,
+Men's Squad,Valley,2024-09-22 14:00,Happy Valley,scheduled,
+League Team,HKFC,2024-09-24 19:30,HKFC Pitch,scheduled,
 `
 
 function downloadTemplate() {
@@ -68,34 +68,8 @@ function parseCsv(text: string): string[][] {
   return rows
 }
 
-function zoneOffsetMs(instant: number, tz: string): number {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-GB", {
-      timeZone: tz, hour12: false,
-      year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
-    }).formatToParts(new Date(instant))
-      .filter(p => p.type !== "literal")
-      .map(p => [p.type, p.value])
-  ) as Record<string, string>
-  const wallAsUtc = Date.UTC(
-    Number(parts.year), Number(parts.month) - 1, Number(parts.day),
-    Number(parts.hour), Number(parts.minute), Number(parts.second),
-  )
-  return wallAsUtc - instant
-}
 
-function zoneInputToIso(local: string, tz: string): string {
-  const normalised = local.trim().replace(" ", "T").replace(/T(\d{2}:\d{2})$/, "T$1")
-  const target = new Date(`${normalised}:00Z`).getTime()
-  let offset = zoneOffsetMs(target, tz)
-  let instant = target - offset
-  offset = zoneOffsetMs(instant, tz)
-  instant = target - offset
-  return new Date(instant).toISOString()
-}
-
-function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
+function validateRows(raw: string[][], teams: Team[], tz: string): ParsedRow[] {
   const teamLower = new Map(teams.map(t => [t.name.toLowerCase(), t.id]))
 
   return raw.map((cols, idx) => {
@@ -121,7 +95,7 @@ function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
       errors.push("kickoff_at is required")
     } else {
       try {
-        kickoffAtIso = zoneInputToIso(kickoff_at, ROTTERDAM_TZ)
+        kickoffAtIso = zoneInputToIso(kickoff_at, tz)
         if (isNaN(new Date(kickoffAtIso).getTime())) throw new Error()
       } catch {
         errors.push("kickoff_at invalid — use YYYY-MM-DD HH:mm")
@@ -150,13 +124,15 @@ function validateRows(raw: string[][], teams: Team[]): ParsedRow[] {
 }
 
 type Props = {
+  scope?: string;
   teams: Team[]
   sessionToken: string
   onClose: () => void
   onImported: () => void
 }
 
-export default function MatchesCsvImport({ teams, sessionToken, onClose, onImported }: Props) {
+export default function MatchesCsvImport({ teams, sessionToken, onClose, onImported, scope }: Props) {
+  const tz = getScopeTimezone(scope);
   const [step, setStep] = useState<"input" | "preview" | "results">("input")
   const [rawText, setRawText] = useState("")
   const [rows, setRows] = useState<ParsedRow[]>([])
@@ -195,7 +171,7 @@ export default function MatchesCsvImport({ teams, sessionToken, onClose, onImpor
       idx.status >= 0 ? row[idx.status] : "",
       idx.notes >= 0 ? row[idx.notes] : "",
     ])
-    setRows(validateRows(mapped, teams))
+    setRows(validateRows(mapped, teams, tz))
     setStep("preview")
   }
 
@@ -298,7 +274,7 @@ export default function MatchesCsvImport({ teams, sessionToken, onClose, onImpor
                   <th className="px-3 py-2 text-left">#</th>
                   <th className="px-3 py-2 text-left">Team</th>
                   <th className="px-3 py-2 text-left">Opponent</th>
-                  <th className="px-3 py-2 text-left">Kick-off (CEST)</th>
+                  <th className="px-3 py-2 text-left">{`Kick-off (${getScopeTimezoneLabel(scope)})`}</th>
                   <th className="px-3 py-2 text-left">Venue</th>
                   <th className="px-3 py-2 text-left">Status</th>
                 </tr>

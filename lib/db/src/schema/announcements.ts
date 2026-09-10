@@ -7,6 +7,7 @@ export const announcementsTable = pgTable("announcements", {
   body: text("body").notNull(),
   teamId: integer("team_id").references(() => teamsTable.id, { onDelete: "set null" }),
   membershipSection: text("membership_section"),
+  operationalScope: text("operational_scope").notNull().default("world_cup_2026"),
   pinned: boolean("pinned").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

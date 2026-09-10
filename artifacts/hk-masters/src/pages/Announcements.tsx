@@ -133,7 +133,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
   )
 }
 
-export default function Announcements() {
+export default function Announcements({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const { data: teams = [] } = useListTeams()
   const { data: allPlayers = [] } = useListPlayers()
@@ -180,7 +180,8 @@ export default function Announcements() {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("/api/announcements", { headers: authHeaders() })
+      const url = scope ? `/api/announcements?scope=${scope}` : "/api/announcements"
+      const res = await fetch(url, { headers: authHeaders() })
       if (!res.ok) throw new Error("Failed to load announcements")
       setItems(await res.json())
     } catch (err) {
@@ -568,7 +569,7 @@ export default function Announcements() {
     <PageLayout
       title="Announcements"
       description="Post in-app updates, send emails, or share via WhatsApp."
-      action={activeTab === "announcements" ? (
+      action={activeTab === "announcements" && !readOnly ? (
         <Button onClick={openCreate} className="gap-2">
           <Plus className="w-4 h-4" /> New announcement
         </Button>
@@ -586,26 +587,30 @@ export default function Announcements() {
         >
           <Megaphone className="w-4 h-4" /> In-app feed
         </button>
-        <button
-          onClick={() => changeTab("email")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === "email"
-              ? "bg-white shadow-sm text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Mail className="w-4 h-4" /> Email players
-        </button>
-        <button
-          onClick={() => changeTab("whatsapp")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-            activeTab === "whatsapp"
-              ? "bg-white shadow-sm text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <WhatsAppIcon className="w-4 h-4" /> WhatsApp
-        </button>
+        {!readOnly && (
+          <button
+            onClick={() => changeTab("email")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "email"
+                ? "bg-white shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Mail className="w-4 h-4" /> Email players
+          </button>
+        )}
+        {!readOnly && (
+          <button
+            onClick={() => changeTab("whatsapp")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "whatsapp"
+                ? "bg-white shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <WhatsAppIcon className="w-4 h-4" /> WhatsApp
+          </button>
+        )}
       </div>
 
       {/* In-app Announcements Tab */}
@@ -639,45 +644,47 @@ export default function Announcements() {
                         {format(new Date(a.createdAt), "d MMM yyyy 'at' HH:mm")} · For {announcementAudienceLabel(a)}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleShareWhatsApp(a)}
-                        title="Share to WhatsApp"
-                        className="p-1.5 text-muted-foreground hover:text-green-600 rounded border border-transparent hover:border-green-200 transition-all"
-                      >
-                        <WhatsAppIcon className="w-4 h-4" />
-                      </button>
-                      {a.teamId && teams.find((t) => t.id === a.teamId)?.whatsappGroupLink && (
+                    {!readOnly && (
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => handleOpenSquadGroup(a, teams.find((t) => t.id === a.teamId)!.whatsappGroupLink!)}
-                          title="Open squad WhatsApp group (copies the message first)"
+                          onClick={() => handleShareWhatsApp(a)}
+                          title="Share to WhatsApp"
                           className="p-1.5 text-muted-foreground hover:text-green-600 rounded border border-transparent hover:border-green-200 transition-all"
                         >
-                          <Users className="w-4 h-4" />
+                          <WhatsAppIcon className="w-4 h-4" />
                         </button>
-                      )}
-                      <button
-                        onClick={() => togglePin(a)}
-                        title={a.pinned ? "Unpin" : "Pin to top"}
-                        className="p-1.5 text-muted-foreground hover:text-amber-700 rounded border border-transparent hover:border-amber-200 transition-all"
-                      >
-                        {a.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => openEdit(a)}
-                        title="Edit"
-                        className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(a)}
-                        title="Delete"
-                        className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                        {a.teamId && teams.find((t) => t.id === a.teamId)?.whatsappGroupLink && (
+                          <button
+                            onClick={() => handleOpenSquadGroup(a, teams.find((t) => t.id === a.teamId)!.whatsappGroupLink!)}
+                            title="Open squad WhatsApp group (copies the message first)"
+                            className="p-1.5 text-muted-foreground hover:text-green-600 rounded border border-transparent hover:border-green-200 transition-all"
+                          >
+                            <Users className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => togglePin(a)}
+                          title={a.pinned ? "Unpin" : "Pin to top"}
+                          className="p-1.5 text-muted-foreground hover:text-amber-700 rounded border border-transparent hover:border-amber-200 transition-all"
+                        >
+                          {a.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => openEdit(a)}
+                          title="Edit"
+                          className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(a)}
+                          title="Delete"
+                          className="p-1.5 text-muted-foreground hover:text-rose-600 rounded border border-transparent hover:border-rose-200 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </li>
               ))}

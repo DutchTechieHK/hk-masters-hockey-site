@@ -7,6 +7,8 @@ import {
   playersTable,
   seasonsTable,
   teamsTable,
+  playerParticipationsTable,
+  worldCupPlayerSnapshotsTable,
 } from "@workspace/db/schema";
 import { eq, inArray } from "drizzle-orm";
 

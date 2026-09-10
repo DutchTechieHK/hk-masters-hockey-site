@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react"
 import { useGetAdminArrivals } from "@workspace/api-client-react"
+import { useQuery } from "@tanstack/react-query"
+import { getStoredAdminToken } from "@/lib/admin-auth"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Badge } from "@/components/ui/badge"
 import { Plane, MapPin, AlertTriangle, MessageSquare } from "lucide-react"
@@ -24,8 +26,22 @@ function categoryColor(category: string | null): string {
   return "bg-muted text-muted-foreground border-border"
 }
 
-export default function TravelOverview() {
-  const { data, isLoading } = useGetAdminArrivals()
+export default function TravelOverview({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
+  const { data: defaultData, isLoading: defaultLoading } = useGetAdminArrivals({ enabled: !scope } as any)
+  const { data: archiveData, isLoading: archiveLoading } = useQuery({
+    queryKey: ["admin-arrivals", scope],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const headers = { "Content-Type": "application/json", ...(token ? { "x-session-token": token } : {}) }
+      const res = await fetch(`/api/players/arrivals?scope=${scope}`, { headers })
+      if (!res.ok) throw new Error("Failed to load")
+      return res.json()
+    },
+    enabled: !!scope
+  })
+
+  const data = scope ? archiveData : defaultData
+  const isLoading = scope ? archiveLoading : defaultLoading
   const [activeTab, setActiveTab] = useState<"arrivals" | "departures">("arrivals")
 
   const arrivalDayGroups = useMemo(() => {
@@ -129,7 +145,7 @@ export default function TravelOverview() {
                         </Badge>
                       </div>
                       <div className="divide-y divide-border">
-                        {entries.map((entry) => (
+                        {entries.map((entry: any) => (
                           <div key={entry.id} className="flex flex-wrap items-start gap-3 px-5 py-3.5">
                             <div className="w-14 shrink-0 font-mono text-sm font-semibold text-foreground tabular-nums pt-0.5">
                               {formatTime(entry.arrival)}
@@ -177,7 +193,7 @@ export default function TravelOverview() {
                         </Badge>
                       </div>
                       <div className="divide-y divide-border">
-                        {data.withoutArrival.map((entry) => (
+                        {data.withoutArrival.map((entry: any) => (
                           <div key={entry.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
                             <span className="font-medium text-foreground text-sm">{entry.name}</span>
                             {entry.teamCategory && (
@@ -235,7 +251,7 @@ export default function TravelOverview() {
                         </Badge>
                       </div>
                       <div className="divide-y divide-border">
-                        {entries.map((entry) => (
+                        {entries.map((entry: any) => (
                           <div key={entry.id} className="flex flex-wrap items-start gap-3 px-5 py-3.5">
                             <div className="w-14 shrink-0 font-mono text-sm font-semibold text-foreground tabular-nums pt-0.5">
                               {formatTime(entry.departure)}
@@ -283,7 +299,7 @@ export default function TravelOverview() {
                         </Badge>
                       </div>
                       <div className="divide-y divide-border">
-                        {data.withoutDeparture.map((entry) => (
+                        {data.withoutDeparture.map((entry: any) => (
                           <div key={entry.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
                             <span className="font-medium text-foreground text-sm">{entry.name}</span>
                             {entry.teamCategory && (

@@ -22,6 +22,9 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { format } from "date-fns"
+import { useQuery } from "@tanstack/react-query"
+import { getStoredAdminToken } from "@/lib/admin-auth"
+import { isTeamVisibleForScope } from "@/lib/teamScope"
 import type { Team } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -47,13 +50,28 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
-const ROTTERDAM_ARCHIVE_CATEGORIES = new Set(["MO40", "MO50"])
 
-function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; onEdit: (team: Team) => void }) {
+function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onBack: () => void; onEdit: (team: Team) => void; readOnly?: boolean; scope?: string }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const isLeagueSquad = team.name === "Masters Div. 1"
-  const { data: players = [], isLoading } = useListPlayers({ teamId: team.id })
+  const isLeagueSquad = team.name === "Masters Div. 1" && !scope
+  const { data: defaultPlayers = [], isLoading: defaultLoading } = useListPlayers({ teamId: team.id }, { query: { enabled: !scope } } as any)
+
+  const { data: archivePlayers = [], isLoading: archiveLoading } = useQuery({
+    queryKey: ["players", scope, team.id],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const headers = { "Content-Type": "application/json", ...(token ? { "x-session-token": token } : {}) }
+      const res = await fetch(`/api/players?scope=${scope}&teamId=${team.id}`, { headers })
+      if (!res.ok) throw new Error("Failed to load players")
+      return res.json() as Promise<any[]>
+    },
+    enabled: !!scope
+  })
+
+  const players = scope ? archivePlayers : defaultPlayers
+  const isLoading = scope ? archiveLoading : defaultLoading
+
   const { data: squadCandidates = [], isLoading: squadLoading } = useListCurrentSquadCandidates(team.id, {
     query: {
       queryKey: getListCurrentSquadCandidatesQueryKey(team.id),
@@ -95,9 +113,11 @@ function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; 
               <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>
             )}
           </div>
-          <Button variant="outline" onClick={() => onEdit(team)} className="shrink-0">
-            <Edit2 className="w-4 h-4 mr-2" /> Edit Team
-          </Button>
+          {!readOnly && (
+            <Button variant="outline" onClick={() => onEdit(team)} className="shrink-0">
+              <Edit2 className="w-4 h-4 mr-2" /> Edit Team
+            </Button>
+          )}
         </div>
         <div className="p-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
           <div>
@@ -152,13 +172,15 @@ function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; 
                       {candidate.shirtNumber != null ? ` · #${candidate.shirtNumber}` : ""}
                     </p>
                   </div>
-                  <Button
-                    variant={candidate.selected ? "outline" : "default"}
-                    disabled={squadMutation.isPending}
-                    onClick={() => updateSquadSelection(candidate.playerId, !candidate.selected)}
-                  >
-                    {candidate.selected ? "Remove" : "Add to squad"}
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant={candidate.selected ? "outline" : "default"}
+                      disabled={squadMutation.isPending}
+                      onClick={() => updateSquadSelection(candidate.playerId, !candidate.selected)}
+                    >
+                      {candidate.selected ? "Remove" : "Add to squad"}
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -229,12 +251,33 @@ function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; 
   )
 }
 
-export default function Teams() {
+export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const { data: teams = [], isLoading } = useListTeams()
-  const currentTeams = teams.filter((team) => !ROTTERDAM_ARCHIVE_CATEGORIES.has(team.category))
-  
+  const { data: defaultTeams = [], isLoading: defaultLoading } = useListTeams(
+    undefined,
+    { query: { queryKey: getListTeamsQueryKey(), enabled: !scope } },
+  )
+  const { data: archiveTeams = [], isLoading: archiveLoading } = useQuery({
+    queryKey: ["teams", scope],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { "x-session-token": token } : {}),
+      }
+      const res = await fetch(`/api/teams?scope=${scope}`, { headers })
+      if (!res.ok) throw new Error("Failed to load")
+      return res.json() as Promise<Team[]>
+    },
+    enabled: !!scope
+  })
+
+  const teams = scope ? archiveTeams : defaultTeams
+  const isLoading = scope ? archiveLoading : defaultLoading
+
+  const currentTeams = teams.filter((team) => isTeamVisibleForScope(team.category, scope))
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTeam, setEditingTeam] = useState<Team | null>(null)
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
@@ -250,7 +293,7 @@ export default function Teams() {
   const openAddModal = () => {
     setEditingTeam(null)
     reset({
-      name: "", category: "MO40",
+      name: "", category: "Men's Squad",
       managerName: "", managerEmail: "", managerPhone: "",
       assistantManagerName: "", assistantManagerContact: "",
       whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: "",
@@ -316,7 +359,7 @@ export default function Teams() {
       title="Teams"
       description="Manage current Hong Kong Masters hockey teams and league squads."
       action={
-        !selectedTeam ? (
+        !selectedTeam && !readOnly ? (
           <Button onClick={openAddModal}>
             <Plus className="w-5 h-5 mr-2" /> Add Team
           </Button>
@@ -329,6 +372,8 @@ export default function Teams() {
           team={selectedTeam}
           onBack={() => setSelectedTeam(null)}
           onEdit={(team) => openEditModal(team)}
+          readOnly={readOnly}
+          scope={scope}
         />
       ) : (
         <>
@@ -345,22 +390,24 @@ export default function Teams() {
                   onClick={() => setSelectedTeam(team)}
                 >
                   <div className="p-6 border-b border-border bg-gradient-to-br from-primary/5 to-transparent relative">
-                    <div className="absolute top-4 right-4 flex space-x-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openEditModal(team) }}
-                        className="p-1.5 bg-white rounded-md shadow text-blue-600 hover:bg-blue-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      {!CANONICAL_TEAM_NAMES.has(team.name) && (
+                    {!readOnly && (
+                      <div className="absolute top-4 right-4 flex space-x-2">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
-                          className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          onClick={(e) => { e.stopPropagation(); openEditModal(team) }}
+                          className="p-1.5 bg-white rounded-md shadow text-blue-600 hover:bg-blue-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
-                      )}
-                    </div>
+                        {!CANONICAL_TEAM_NAMES.has(team.name) && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
+                            className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <Badge className="mb-3">{team.category}</Badge>
                     <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
                     {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>}
@@ -425,14 +472,16 @@ export default function Teams() {
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Category</label>
-              <Select {...register("category")}>
-                <option value="MO40">MO40</option>
-                <option value="MO50">MO50</option>
+              <Select {...register("category")} defaultValue="Men's Squad">
+                <option value="Men's Squad">Men's Squad</option>
+                <option value="Women's Squad">Women's Squad</option>
+                <option value="League Team">League Team</option>
+                <option value="Social">Social</option>
               </Select>
               {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
             </div>
           </div>
-          
+
           <div className="space-y-4 pt-4 border-t border-border">
             <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Manager Details</h4>
             <div className="space-y-2">

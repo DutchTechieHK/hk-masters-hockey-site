@@ -15,6 +15,7 @@ import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit2, Download, AlertTriangle, CheckCircle2, Package } from "lucide-react"
 import { useForm } from "react-hook-form"
+import { useScopedPlayers } from "@/hooks/use-scoped-data"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import type { KitOrder } from "@workspace/api-client-react"
@@ -91,14 +92,14 @@ type KitFormValues = z.infer<typeof kitSchema>
 
 type ActiveTab = "orders" | "sizing" | "summary" | "distribution"
 
-export default function Kits() {
+export default function Kits({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState<ActiveTab>("orders")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingOrder, setEditingOrder] = useState<KitOrder | null>(null)
 
-  const { data: players = [] } = useListPlayers()
+  const { data: players = [] } = useScopedPlayers(scope)
   const { data: orders = [], isLoading } = useListKits()
   const { data: distributions = [] } = useListKitDistributions()
 
@@ -369,9 +370,11 @@ export default function Kits() {
             <Button variant="outline" onClick={exportOrders} disabled={orders.length === 0}>
               <Download className="w-4 h-4 mr-2" /> Export Excel
             </Button>
-            <Button onClick={openAddModal}>
-              <Plus className="w-5 h-5 mr-2" /> Add Order
-            </Button>
+            {!readOnly && (
+              <Button onClick={openAddModal}>
+                <Plus className="w-5 h-5 mr-2" /> Add Order
+              </Button>
+            )}
           </div>
         ) : activeTab === "distribution" ? null : (
           <Button variant="outline" onClick={activeTab === "sizing" ? exportSizingSheet : exportSizeSummary}>
@@ -480,14 +483,16 @@ export default function Kits() {
                             </Badge>
                           </td>
                           <td className="px-5 py-4 text-right">
-                            <div className="flex justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => openEditModal(order)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleDelete(order.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
+                            {!readOnly && (
+                              <div className="flex justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => openEditModal(order)} className="p-2 text-muted-foreground hover:text-blue-600 rounded bg-background shadow-sm border transition-all">
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDelete(order.id)} className="p-2 text-muted-foreground hover:text-rose-600 rounded bg-background shadow-sm border transition-all">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       )
@@ -698,12 +703,13 @@ export default function Kits() {
                                   )}
                                 </div>
                                 <button
-                                  onClick={() => toggleCollection(player.id, itemType)}
+                                  onClick={() => !readOnly && toggleCollection(player.id, itemType)}
+                                  disabled={readOnly}
                                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                                     collected
                                       ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                                       : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-                                  }`}
+                                  } ${readOnly ? "opacity-75 cursor-default" : ""}`}
                                 >
                                   {collected ? (
                                     <><CheckCircle2 className="w-3.5 h-3.5" /> Collected</>

@@ -1,14 +1,18 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { teamsTable, playersTable, playerPaymentsTable, playerParticipationsTable, fundraisingTable, logisticsTable, matchesTable, eventsTable, documentsTable, auctionItemsTable, auctionBidsTable, auctionSettingsTable, sponsorsTable, legoJarGuessesTable, legoJarConfigTable, funRunIncomeTable, playerPayoutsTable } from "@workspace/db/schema";
-import { eq, sql, gte, ne, and, asc, inArray } from "drizzle-orm";
+import { teamsTable, playersTable, playerPaymentsTable, playerParticipationsTable, matchesTable, eventsTable } from "@workspace/db/schema";
+import { eq, gte, ne, and, asc, inArray, notInArray } from "drizzle-orm";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { ensureMembershipFoundation } from "./players";
 
 const router = Router();
 
 router.get("/", requireAdminAccess, async (_req, res) => {
-  const teams = await db.select().from(teamsTable).orderBy(teamsTable.id);
+  const teams = await db
+    .select()
+    .from(teamsTable)
+    .where(notInArray(teamsTable.category, ["MO40", "MO50"]))
+    .orderBy(teamsTable.id);
 
   const allPlayers = await db.select().from(playersTable)
     .where(eq(playersTable.memberStatus, "active"));
@@ -57,61 +61,15 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const feesAmountPaid = feeAccounts.reduce((sum, fee) => sum + fee.paid, 0);
   const feesAmountOutstanding = feeAccounts.reduce((sum, fee) => sum + Math.max(0, fee.due - fee.paid), 0);
 
-  // Online pledges
-  const fundraisingRows = await db.select().from(fundraisingTable);
-  const onlinePledges = fundraisingRows.reduce((sum, f) => sum + parseFloat(f.amountReceived ?? "0"), 0);
-
-  // Lego Jar: sum of amountPaid for paid guesses (fallback to pricePerGuess from config)
-  const [legoConfig] = await db.select().from(legoJarConfigTable).where(eq(legoJarConfigTable.id, 1));
-  const pricePerGuess = Number(legoConfig?.pricePerGuess ?? 50);
-  const [legoTotals] = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(CASE WHEN paid THEN COALESCE(amount_paid, ${pricePerGuess}) ELSE 0 END), 0)`,
-    })
-    .from(legoJarGuessesTable);
-  const legoJarTotal = Number(legoTotals?.total ?? 0);
-
-  // Sponsors: sum of contribution_amount for active sponsors, with tier breakdown
-  const sponsorRows = await db.select({ contributionAmount: sponsorsTable.contributionAmount, tier: sponsorsTable.tier }).from(sponsorsTable).where(eq(sponsorsTable.active, true));
-  const sponsorsTotal = sponsorRows.reduce((sum, s) => sum + (s.contributionAmount != null ? Number(s.contributionAmount) : 0), 0);
-  const sponsorCount = sponsorRows.length;
-  const sponsorTierBreakdown = {
-    gold: sponsorRows.filter((s) => s.tier?.toLowerCase() === "gold").length,
-    silver: sponsorRows.filter((s) => s.tier?.toLowerCase() === "silver").length,
-    bronze: sponsorRows.filter((s) => s.tier?.toLowerCase() === "bronze").length,
-  };
-
-  // Fun Run: sum of all income entries
-  const [funRunTotals] = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(amount_hkd), 0)`,
-    })
-    .from(funRunIncomeTable);
-  const funRunTotal = Number(funRunTotals?.total ?? 0);
-
   const fundraisingTarget = 300000;
 
-  const upcomingTasks = await db
-    .select({ task: logisticsTable, teamName: teamsTable.name })
-    .from(logisticsTable)
-    .leftJoin(teamsTable, eq(logisticsTable.teamId, teamsTable.id))
-    .where(sql`${logisticsTable.dueDate} IS NOT NULL AND ${logisticsTable.status} != 'done'`);
-
-  const upcomingDeadlines = upcomingTasks
-    .filter((t) => t.task.dueDate)
-    .sort((a, b) => (a.task.dueDate ?? "").localeCompare(b.task.dueDate ?? ""))
-    .slice(0, 5)
-    .map((t) => ({
-      title: t.task.title,
-      dueDate: t.task.dueDate!,
-      category: t.task.category,
-    }));
+  const upcomingDeadlines: Array<{ title: string; dueDate: string; category: string }> = [];
 
   const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
   const upcomingMatches = await db
     .select()
     .from(matchesTable)
-    .where(and(gte(matchesTable.kickoffAt, cutoff), ne(matchesTable.status, "cancelled")))
+    .where(and(gte(matchesTable.kickoffAt, cutoff), ne(matchesTable.status, "cancelled"), eq(matchesTable.operationalScope, "local_2026_27")))
     .orderBy(asc(matchesTable.kickoffAt));
   const upcomingMatchCount = upcomingMatches.length;
   const nextMatchKickoffAt = upcomingMatches[0]?.kickoffAt?.toISOString() ?? null;
@@ -120,74 +78,31 @@ router.get("/", requireAdminAccess, async (_req, res) => {
   const upcomingEvents = await db
     .select()
     .from(eventsTable)
-    .where(gte(eventsTable.startsAt, eventsCutoff))
+    .where(and(gte(eventsTable.startsAt, eventsCutoff), eq(eventsTable.operationalScope, "local_2026_27")))
     .orderBy(asc(eventsTable.startsAt));
   const upcomingEventCount = upcomingEvents.length;
   const nextEventStartsAt = upcomingEvents[0]?.startsAt?.toISOString() ?? null;
   const nextEventTitle = upcomingEvents[0]?.title ?? null;
 
-  const allDocuments = await db.select({ category: documentsTable.category }).from(documentsTable);
   const documentCounts = {
-    total: allDocuments.length,
-    mandatory: allDocuments.filter((d) => d.category === "mandatory-form").length,
-    regulation: allDocuments.filter((d) => d.category === "regulation").length,
-    information: allDocuments.filter((d) => d.category === "information").length,
+    total: 0,
+    mandatory: 0,
+    regulation: 0,
+    information: 0,
   };
-
-  // Auction stats: sum top bids per item
-  const auctionItems = await db.select({ id: auctionItemsTable.id }).from(auctionItemsTable);
-  const auctionSettings = await db.select().from(auctionSettingsTable).limit(1);
-  const auctionIsLive = auctionSettings[0]?.isLive ?? false;
-  const topBidRows = await db.execute<{ item_id: number; amount: string }>(sql`
-    SELECT DISTINCT ON (item_id) item_id, amount::text
-    FROM auction_bids
-    ORDER BY item_id, amount DESC, placed_at DESC
-  `);
-  const auctionItemCount = auctionItems.length;
-  const auctionItemsWithBids = topBidRows.rows.length;
-  const auctionTotalBidValue = topBidRows.rows.reduce((sum, r) => sum + parseFloat(r.amount), 0);
 
   const fundraisingBreakdown = {
-    onlinePledges,
-    legoJar: legoJarTotal,
-    sponsors: sponsorsTotal,
-    funRun: funRunTotal,
-    auction: auctionTotalBidValue,
+    onlinePledges: 0, legoJar: 0, sponsors: 0, funRun: 0, auction: 0,
   };
-  const totalFundsRaised = onlinePledges + legoJarTotal + sponsorsTotal + funRunTotal + auctionTotalBidValue;
+  const totalFundsRaised = 0;
 
   // Payout summary
-  const payoutSourceRows = await db
-    .select({
-      source: playerPayoutsTable.source,
-      total: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
-    })
-    .from(playerPayoutsTable)
-    .groupBy(playerPayoutsTable.source);
   const payoutBySource: Record<string, number> = {};
-  for (const row of payoutSourceRows) {
-    payoutBySource[row.source] = parseFloat(row.total);
-  }
-  const totalPaidOut = Object.values(payoutBySource).reduce((s, v) => s + v, 0);
+  const totalPaidOut = 0;
   const payoutNetBalance = totalFundsRaised - totalPaidOut;
 
   // Payout breakdown by team
-  const payoutByTeamRows = await db
-    .select({
-      teamId: playersTable.teamId,
-      teamName: teamsTable.name,
-      total: sql<string>`COALESCE(SUM(${playerPayoutsTable.amount}), 0)`,
-    })
-    .from(playerPayoutsTable)
-    .innerJoin(playersTable, eq(playerPayoutsTable.playerId, playersTable.id))
-    .innerJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
-    .groupBy(playersTable.teamId, teamsTable.name)
-    .orderBy(teamsTable.name);
-  const payoutByTeam = payoutByTeamRows.map((r) => ({
-    teamId: r.teamId,
-    teamName: r.teamName,
-    total: parseFloat(r.total),
-  }));
+  const payoutByTeam: Array<{ teamId: number | null; teamName: string; total: number }> = [];
 
   res.json({
     upcomingEventCount,
@@ -207,15 +122,12 @@ router.get("/", requireAdminAccess, async (_req, res) => {
     upcomingDeadlines,
     documentCounts,
     sponsorStats: {
-      count: sponsorCount,
-      contributionTotal: sponsorsTotal,
-      tierBreakdown: sponsorTierBreakdown,
+       count: 0,
+       contributionTotal: 0,
+       tierBreakdown: { gold: 0, silver: 0, bronze: 0 },
     },
     auctionStats: {
-      itemCount: auctionItemCount,
-      itemsWithBids: auctionItemsWithBids,
-      totalBidValue: auctionTotalBidValue,
-      isLive: auctionIsLive,
+       itemCount: 0, itemsWithBids: 0, totalBidValue: 0, isLive: false,
     },
     payoutStats: {
       totalPaidOut,

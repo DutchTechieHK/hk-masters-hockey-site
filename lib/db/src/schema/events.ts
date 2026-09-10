@@ -12,6 +12,7 @@ export const eventsTable = pgTable("events", {
   teamId: integer("team_id").references(() => teamsTable.id, { onDelete: "set null" }),
   isPublic: boolean("is_public").notNull().default(false),
   photoUrl: text("photo_url"),
+  operationalScope: text("operational_scope"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
   startsAtIdx: index("events_starts_at_idx").on(t.startsAt),

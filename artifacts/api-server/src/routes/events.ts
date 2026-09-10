@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
-import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus } from "@workspace/db";
+import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db";
 import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
@@ -8,6 +8,8 @@ import { sendPushToAll, sendPushToTeam } from "../utils/push";
 import { requirePlayerSession } from "../middleware/playerSession";
 import { ObjectStorageService, ObjectNotFoundError, extractUploadObjectId } from "../lib/objectStorage";
 import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
+import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
+import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { formatEventDateTime } from "../utils/eventTime";
 
 const router: IRouter = Router();
@@ -186,13 +188,15 @@ async function loadMyRsvps(playerId: number, eventIds: number[]): Promise<Map<nu
 // Public, unauthenticated: events explicitly marked as public, for the public website.
 // photoUrl is resolved to an absolute URL via resolvePhotoUrl (see convention comment above).
 router.get("/public", (async (req, res) => {
+  const scope = req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const rows = await db
     .select({ event: eventsTable, teamCategory: teamsTable.category })
     .from(eventsTable)
     .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
-    .where(eq(eventsTable.isPublic, true))
+    .where(and(eq(eventsTable.isPublic, true), eq(eventsTable.operationalScope, scope)))
     .orderBy(asc(eventsTable.startsAt));
   const base = requestBase(req);
+  const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map(({ event }) => event.teamId).filter((id): id is number => id != null)) : new Map();
   res.json(rows.map(({ event: r, teamCategory }) => ({
     id: r.id,
     kind: r.kind,
@@ -202,23 +206,26 @@ router.get("/public", (async (req, res) => {
     location: r.location,
     description: r.description,
     teamId: r.teamId,
-    teamCategory: teamCategory ?? null,
+    teamCategory: snapshots.get(r.teamId ?? -1)?.category ?? teamCategory ?? null,
     photoUrl: resolvePhotoUrl(base, r.photoUrl),
   })));
 }) as (req: Request, res: Response) => Promise<void>);
 
 router.get("/", requireAdminOrPlayer, (async (req, res) => {
   const isAdmin = (req as Request & { isAdmin?: boolean }).isAdmin === true;
+  const scope = isAdmin && req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const base = requestBase(req);
   if (isAdmin) {
     const rows = await db
       .select({ event: eventsTable, teamName: teamsTable.name })
       .from(eventsTable)
       .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
+      .where(eq(eventsTable.operationalScope, scope))
       .orderBy(asc(eventsTable.startsAt));
     const counts = await loadRsvpCounts(rows.map((r) => r.event.id));
+    const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map(({ event }) => event.teamId).filter((id): id is number => id != null)) : new Map();
     res.json(rows.map(({ event, teamName }) =>
-      serialize(event, teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() }, base)));
+      serialize(event, snapshots.get(event.teamId ?? -1)?.name ?? teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() }, base)));
     return;
   }
   const filtered = await listEventsForPlayer(req.player?.teamId ?? null, req.player?.id ?? null, base);
@@ -228,9 +235,14 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
 router.post("/", requireAdminAccess, async (req, res) => {
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+  const parsedTeamId = "teamId" in parsed ? parsed.teamId : null;
+  if (parsedTeamId != null && await isArchivedRotterdamTeam(parsedTeamId)) {
+    res.status(409).json({ error: "Archived content is read-only" });
+    return;
+  }
   const { sendNotify, photoUrl, ...coreValues } = parsed;
   // For POST, undefined photoUrl means no photo (store null); explicit value stored as-is.
-  const [row] = await db.insert(eventsTable).values({ ...coreValues, photoUrl: photoUrl ?? null }).returning();
+  const [row] = await db.insert(eventsTable).values({ ...coreValues, photoUrl: photoUrl ?? null, operationalScope: "local_2026_27" }).returning();
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
     : null;
@@ -260,8 +272,8 @@ router.post("/", requireAdminAccess, async (req, res) => {
 
     (async () => {
       try {
-        if (parsed.teamId != null) {
-          await sendPushToTeam(parsed.teamId, pushPayload);
+        if (parsedTeamId != null) {
+          await sendPushToTeam(parsedTeamId, pushPayload);
         } else {
           await sendPushToAll(pushPayload);
         }
@@ -272,10 +284,10 @@ router.post("/", requireAdminAccess, async (req, res) => {
 
     (async () => {
       try {
-        const players = parsed.teamId != null
+        const players = parsedTeamId != null
           ? await db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
               .from(playersTable)
-              .where(eq(playersTable.teamId, parsed.teamId!))
+              .where(eq(playersTable.teamId, parsedTeamId))
               .orderBy(asc(playersTable.name))
           : await db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
               .from(playersTable)
@@ -302,13 +314,23 @@ router.post("/", requireAdminAccess, async (req, res) => {
       }
     })();
   }
+  return;
 });
 
 router.patch("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  const [existingScope] = await db.select({ operationalScope: eventsTable.operationalScope }).from(eventsTable).where(eq(eventsTable.id, id));
+  if (!existingScope) return res.status(404).json({ error: "Event not found" });
+  if (existingScope.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
+  if (existingScope.operationalScope == null) return res.status(409).json({ error: "Unclassified records must be classified before editing" });
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+  const updateTeamId = "teamId" in parsed ? parsed.teamId : null;
+  if (updateTeamId != null && await isArchivedRotterdamTeam(updateTeamId)) {
+    res.status(409).json({ error: "Archived content is read-only" });
+    return;
+  }
   const { sendNotify: _sendNotify, photoUrl, ...coreValues } = parsed;
   // Only update photoUrl in DB if the caller explicitly sent the key.
   // This makes bulk PATCH (e.g. toggle isPublic) safe — omitting photoUrl preserves the existing value.
@@ -335,19 +357,25 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
   if (oldId && oldId !== newId) {
     cleanupOrphanedUpload(oldId).catch(() => {});
   }
+  return;
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
+  const [scopeRow] = await db.select({ operationalScope: eventsTable.operationalScope }).from(eventsTable).where(eq(eventsTable.id, id));
+  if (!scopeRow) return res.status(404).json({ error: "Event not found" });
+  if (scopeRow.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
+  if (scopeRow.operationalScope == null) return res.status(409).json({ error: "Unclassified records must be classified before editing" });
   // Read the photo URL before deleting so we can clean up the storage object.
   const [existing] = await db.select({ photoUrl: eventsTable.photoUrl }).from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
-  await db.delete(eventsTable).where(eq(eventsTable.id, id));
+  await db.delete(eventsTable).where(and(eq(eventsTable.id, id), eq(eventsTable.operationalScope, "local_2026_27")));
   res.status(204).send();
 
   // Fire-and-forget: clean up the orphaned photo (cross-entity ref check inside).
   const oldId = extractUploadObjectId(existing?.photoUrl);
   if (oldId) cleanupOrphanedUpload(oldId).catch(() => {});
+  return;
 });
 
 // ── Image upload / serve ────────────────────────────────────────────────────
@@ -390,7 +418,7 @@ router.post(
 
 // Public: stream event photo from object storage.
 router.get("/serve-image/:objectId", async (req: Request, res: Response) => {
-  const { objectId } = req.params;
+  const objectId = Array.isArray(req.params.objectId) ? req.params.objectId[0] : req.params.objectId;
   if (!objectId || !/^[\w-]+$/.test(objectId)) {
     res.status(400).json({ error: "Invalid objectId" }); return;
   }
@@ -413,6 +441,30 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid id" }); return; }
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+
+  if (event.operationalScope === "world_cup_2026") {
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, "rotterdam-2026"));
+    const archived = season ? await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
+      .from(playerParticipationsTable)
+      .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
+      .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"))) : [];
+    const eligible = archived.filter(({ participation }) => event.teamId == null || participation.teamId === event.teamId);
+    const ids = eligible.map(({ participation }) => participation.playerId);
+    const rsvpRows = ids.length ? await db.select().from(eventRsvpsTable).where(and(eq(eventRsvpsTable.eventId, id), inArray(eventRsvpsTable.playerId, ids))) : [];
+    const byId = new Map(eligible.map(({ participation, playerSnapshot, teamSnapshot }) => {
+      const player = playerSnapshot as Record<string, unknown>;
+      const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
+      return [participation.playerId, { name: String(player.name ?? ""), shirtNumber: player.shirt_number as number | null ?? null, teamId: participation.teamId, teamName: participation.teamId == null ? null : team.name as string | null ?? null }];
+    }));
+    const responses = rsvpRows.map((r) => ({ ...byId.get(r.playerId)!, playerId: r.playerId, status: r.status, note: r.note ?? null, respondedAt: r.respondedAt.toISOString() }));
+    const respondedIds = new Set(responses.map((r) => r.playerId));
+    const noResponse = eligible.filter(({ participation }) => !respondedIds.has(participation.playerId)).map(({ participation }) => ({ ...byId.get(participation.playerId)!, playerId: participation.playerId }));
+    const counts = emptyCounts();
+    for (const response of responses) if (response.status === "yes" || response.status === "no" || response.status === "maybe") counts[response.status]++;
+    res.json({ event: serialize(event, null, { rsvpCounts: counts }), counts: { ...counts, noResponse: noResponse.length, invited: eligible.length }, responses, noResponse });
+    return;
+  }
 
   const rows = await db
     .select({
@@ -486,6 +538,8 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
 
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+  if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
+  if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
 
   // Determine invited players.
   const invitedQuery = event.teamId == null
@@ -554,6 +608,8 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
 
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+  if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
+  if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
   if (event.teamId != null && event.teamId !== player.teamId) {
     res.status(403).json({ error: "Event not available to your team" }); return;
   }
@@ -577,9 +633,12 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
     .from(eventsTable)
     .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
     .where(
-      playerTeamId == null
-        ? isNull(eventsTable.teamId)
-        : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, playerTeamId)),
+      and(
+        eq(eventsTable.operationalScope, "local_2026_27"),
+        playerTeamId == null
+          ? isNull(eventsTable.teamId)
+          : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, playerTeamId)),
+      ),
     )
     .orderBy(asc(eventsTable.startsAt));
 

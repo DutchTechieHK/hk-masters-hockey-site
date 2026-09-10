@@ -200,7 +200,7 @@ function LoginPanel({ onLogin }: { onLogin: (token: string) => void }) {
   )
 }
 
-export default function Journal() {
+export default function Journal({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -551,25 +551,27 @@ export default function Journal() {
       title="Journal"
       description="Review and moderate community-submitted articles and photos."
       action={
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleBackfillSlugs} disabled={backfillLoading} className="gap-2">
-            <Wrench className="w-4 h-4" /> {backfillLoading ? "Repairing..." : "Repair Slugs"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowTrash((v) => !v)}
-            className={`gap-2 ${showTrash ? "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" : ""}`}
-          >
-            <Trash2 className="w-4 h-4" />
-            Trash
-            {trashContributions.length > 0 && (
-              <span className="ml-0.5 bg-rose-100 text-rose-700 rounded-full px-1.5 py-0 text-xs font-medium">
-                {trashContributions.length}
-              </span>
-            )}
-          </Button>
-        </div>
+        !readOnly ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleBackfillSlugs} disabled={backfillLoading} className="gap-2">
+              <Wrench className="w-4 h-4" /> {backfillLoading ? "Repairing..." : "Repair Slugs"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTrash((v) => !v)}
+              className={`gap-2 ${showTrash ? "bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100" : ""}`}
+            >
+              <Trash2 className="w-4 h-4" />
+              Trash
+              {trashContributions.length > 0 && (
+                <span className="ml-0.5 bg-rose-100 text-rose-700 rounded-full px-1.5 py-0 text-xs font-medium">
+                  {trashContributions.length}
+                </span>
+              )}
+            </Button>
+          </div>
+        ) : undefined
       }
     >
       {showTrash && (
@@ -603,31 +605,33 @@ export default function Journal() {
                       {c.deletedAt ? format(parseISO(c.deletedAt), "d MMM yyyy, HH:mm") : "—"}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1.5 h-7 text-xs"
-                          disabled={restoreMutation.isPending || purgeMutation.isPending}
-                          onClick={() => restoreMutation.mutate(c.id)}
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          Restore
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5 h-7 text-xs"
-                          disabled={restoreMutation.isPending || purgeMutation.isPending}
-                          onClick={() => {
-                            if (!window.confirm(`Permanently delete "${c.title}"? This cannot be undone.`)) return
-                            purgeMutation.mutate(c.id)
-                          }}
-                        >
-                          <AlertTriangle className="w-3 h-3" />
-                          Delete permanently
-                        </Button>
-                      </div>
+                      {!readOnly && (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1.5 h-7 text-xs"
+                            disabled={restoreMutation.isPending || purgeMutation.isPending}
+                            onClick={() => restoreMutation.mutate(c.id)}
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Restore
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-200 text-red-700 hover:bg-red-50 gap-1.5 h-7 text-xs"
+                            disabled={restoreMutation.isPending || purgeMutation.isPending}
+                            onClick={() => {
+                              if (!window.confirm(`Permanently delete "${c.title}"? This cannot be undone.`)) return
+                              purgeMutation.mutate(c.id)
+                            }}
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                            Delete permanently
+                          </Button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -993,45 +997,53 @@ export default function Journal() {
               />
             </div>
 
-            <div className="flex justify-between gap-3 pt-2 border-t">
-              <div className="flex gap-2">
+            {!readOnly ? (
+              <div className="flex justify-between gap-3 pt-2 border-t">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]); setEditTouchDrag({ from: null, over: null }); setEditDragPos(null) }}>
+                    Close
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-red-200 text-red-700 hover:bg-red-50"
+                    disabled={deleteMutation.isPending || updateMutation.isPending}
+                    onClick={() => {
+                      if (!selectedContribution) return
+                      setDeleteReason("")
+                      setShowDeleteDialog(true)
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1.5" />
+                    {deleteMutation.isPending ? "Moving..." : "Move to Trash"}
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="border-rose-200 text-rose-700 hover:bg-rose-50"
+                    disabled={updateMutation.isPending || selectedContribution.status === "declined" || !editTitle.trim()}
+                    onClick={() => handleDecision("declined")}
+                  >
+                    <XCircle className="w-4 h-4 mr-1.5" />
+                    {updateMutation.isPending ? "Saving..." : "Decline"}
+                  </Button>
+                  <Button
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    disabled={updateMutation.isPending || !editTitle.trim()}
+                    onClick={() => handleDecision("approved")}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-1.5" />
+                    {updateMutation.isPending ? "Saving..." : selectedContribution.status === "approved" ? "Save changes" : "Approve"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between gap-3 pt-2 border-t">
                 <Button variant="outline" onClick={() => { setSelectedContribution(null); setAdminNote(""); setEditTitle(""); setEditArticleBody(""); setEditPhotoUrls([]); setEditTouchDrag({ from: null, over: null }); setEditDragPos(null) }}>
                   Close
                 </Button>
-                <Button
-                  variant="outline"
-                  className="border-red-200 text-red-700 hover:bg-red-50"
-                  disabled={deleteMutation.isPending || updateMutation.isPending}
-                  onClick={() => {
-                    if (!selectedContribution) return
-                    setDeleteReason("")
-                    setShowDeleteDialog(true)
-                  }}
-                >
-                  <Trash2 className="w-4 h-4 mr-1.5" />
-                  {deleteMutation.isPending ? "Moving..." : "Move to Trash"}
-                </Button>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="border-rose-200 text-rose-700 hover:bg-rose-50"
-                  disabled={updateMutation.isPending || selectedContribution.status === "declined" || !editTitle.trim()}
-                  onClick={() => handleDecision("declined")}
-                >
-                  <XCircle className="w-4 h-4 mr-1.5" />
-                  {updateMutation.isPending ? "Saving..." : "Decline"}
-                </Button>
-                <Button
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  disabled={updateMutation.isPending || !editTitle.trim()}
-                  onClick={() => handleDecision("approved")}
-                >
-                  <CheckCircle className="w-4 h-4 mr-1.5" />
-                  {updateMutation.isPending ? "Saving..." : selectedContribution.status === "approved" ? "Save changes" : "Approve"}
-                </Button>
-              </div>
-            </div>
+            )}
           </div>
         </Modal>
       )}

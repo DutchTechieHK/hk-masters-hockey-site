@@ -158,7 +158,15 @@ router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
 });
 
 router.get("/me", requirePlayerSession, async (req, res) => {
-  res.json({ ...mapPlayer(req.player!, null), accessToken: req.player!.accessToken });
+  const player = req.player!;
+  const foundation = await ensureMembershipFoundation();
+  const [participation] = await db.select({ amountDue: playerParticipationsTable.amountDue }).from(playerParticipationsTable)
+    .where(and(eq(playerParticipationsTable.playerId, player.id), eq(playerParticipationsTable.seasonId, foundation.currentSeasonId)));
+  const payments = await db.select().from(playerPaymentsTable).where(and(
+    eq(playerPaymentsTable.playerId, player.id), eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
+  ));
+  const account = buildSeasonFeeAccount(foundation.currentSeasonId, participation?.amountDue == null ? null : parseFloat(participation.amountDue), payments);
+  res.json({ ...mapPlayer(player, null, undefined, account), accessToken: player.accessToken });
 });
 
 router.get("/my-schedule", requirePlayerSession, async (req, res) => {
@@ -406,7 +414,7 @@ router.get("/polls", requirePlayerSession, async (req, res) => {
   }
 
   // Fetch all polls that are open (not closed, deadline not passed)
-  const allPolls = await db.select().from(pollsTable).orderBy(pollsTable.id);
+  const allPolls = await db.select().from(pollsTable).where(eq(pollsTable.operationalScope, "local_2026_27")).orderBy(pollsTable.id);
   const openPolls = allPolls.filter((p) => {
     if (p.closedAt) return false;
     if (p.deadline && now > p.deadline) return false;

@@ -156,7 +156,7 @@ function applyMapping(lines: string[][], roles: ColRole[], defaultCategory: Cate
   return results
 }
 
-export default function FunRun() {
+export default function FunRun({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
   const [rows, setRows] = useState<IncomeRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -403,12 +403,16 @@ export default function FunRun() {
           <Button variant="outline" onClick={handleExport} className="gap-2">
             <Download className="w-4 h-4" /> Export CSV
           </Button>
-          <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="gap-2">
-            <Upload className="w-4 h-4" /> Bulk Import
-          </Button>
-          <Button onClick={openAdd} className="gap-2">
-            <Plus className="w-4 h-4" /> Add Row
-          </Button>
+          {!readOnly && (
+            <>
+              <Button variant="outline" onClick={() => setIsBulkOpen(true)} className="gap-2">
+                <Upload className="w-4 h-4" /> Bulk Import
+              </Button>
+              <Button onClick={openAdd} className="gap-2">
+                <Plus className="w-4 h-4" /> Add Row
+              </Button>
+            </>
+          )}
         </div>
       }
     >
@@ -475,14 +479,16 @@ export default function FunRun() {
                       <span className="block truncate text-xs" title={r.notes ?? ""}>{r.notes || <span className="italic">—</span>}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openEdit(r)} title="Edit" className="p-1.5 text-muted-foreground hover:text-primary rounded transition-colors">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button onClick={() => handleDelete(r)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded transition-colors">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      {!readOnly && (
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => openEdit(r)} title="Edit" className="p-1.5 text-muted-foreground hover:text-primary rounded transition-colors">
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => handleDelete(r)} title="Delete" className="p-1.5 text-muted-foreground hover:text-rose-600 rounded transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))
