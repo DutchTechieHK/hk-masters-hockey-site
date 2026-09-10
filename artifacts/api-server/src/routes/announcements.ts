@@ -1,9 +1,9 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { db, announcementsTable, teamsTable } from "@workspace/db";
-import { eq, desc, or, isNull } from "drizzle-orm";
+import { and, eq, desc, or, isNull } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { requirePlayerSession } from "../middleware/playerSession";
-import { sendPushToAll, sendPushToTeam } from "../utils/push";
+import { sendPushToAll, sendPushToMembershipSection, sendPushToTeam } from "../utils/push";
 
 const router: IRouter = Router();
 
@@ -22,6 +22,7 @@ function serialize(row: typeof announcementsTable.$inferSelect, teamName?: strin
     body: row.body,
     teamId: row.teamId,
     teamName: teamName ?? null,
+    membershipSection: row.membershipSection,
     pinned: row.pinned,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -49,6 +50,7 @@ function parseBody(body: unknown): {
   title: string;
   body: string;
   teamId: number | null;
+  membershipSection: "men" | "women" | null;
   pinned: boolean;
   sendPush: boolean;
 } | { error: string } {
@@ -66,9 +68,24 @@ function parseBody(body: unknown): {
     if (!Number.isInteger(n) || n <= 0) return { error: "Invalid teamId" };
     teamId = n;
   }
+  const membershipSection =
+    b.membershipSection === "men" || b.membershipSection === "women"
+      ? b.membershipSection
+      : null;
+  if (
+    b.membershipSection !== null &&
+    b.membershipSection !== undefined &&
+    b.membershipSection !== "" &&
+    membershipSection === null
+  ) {
+    return { error: "Invalid membershipSection" };
+  }
+  if (teamId !== null && membershipSection !== null) {
+    return { error: "Choose either a squad or a membership section" };
+  }
   const pinned = b.pinned === true || b.pinned === "true";
   const sendPush = b.sendPush !== false && b.sendPush !== "false";
-  return { title, body: messageBody, teamId, pinned, sendPush };
+  return { title, body: messageBody, teamId, membershipSection, pinned, sendPush };
 }
 
 router.get("/", requireAdminOrPlayer, async (req, res) => {
@@ -82,9 +99,16 @@ router.get("/", requireAdminOrPlayer, async (req, res) => {
   const rows = isAdmin
     ? await baseQuery
     : await baseQuery.where(
-        req.player!.teamId == null
-          ? isNull(announcementsTable.teamId)
-          : or(isNull(announcementsTable.teamId), eq(announcementsTable.teamId, req.player!.teamId)),
+        or(
+          and(
+            isNull(announcementsTable.teamId),
+            isNull(announcementsTable.membershipSection),
+          ),
+          req.player!.teamId == null
+            ? undefined
+            : eq(announcementsTable.teamId, req.player!.teamId),
+          eq(announcementsTable.membershipSection, req.player!.currentMembershipSection),
+        ),
       );
 
   res.json(rows.map(({ a, teamName }) => serialize(a, teamName)));
@@ -106,6 +130,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     title: parsed.title,
     body: parsed.body,
     teamId: parsed.teamId,
+    membershipSection: parsed.membershipSection,
     pinned: parsed.pinned,
   }).returning();
 
@@ -114,12 +139,14 @@ router.post("/", requireAdminAccess, async (req, res) => {
     const pushPayload = { title: parsed.title, body: excerpt, url: "/announcements" };
     if (parsed.teamId != null) {
       sendPushToTeam(parsed.teamId, pushPayload).catch(console.error);
+    } else if (parsed.membershipSection != null) {
+      sendPushToMembershipSection(parsed.membershipSection, pushPayload).catch(console.error);
     } else {
       sendPushToAll(pushPayload).catch(console.error);
     }
   }
 
-  res.status(201).json(serialize(row, teamResult.team?.name));
+  return res.status(201).json(serialize(row, teamResult.team?.name));
 });
 
 router.patch("/:id", requireAdminAccess, async (req, res) => {
@@ -135,20 +162,21 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
       title: parsed.title,
       body: parsed.body,
       teamId: parsed.teamId,
+      membershipSection: parsed.membershipSection,
       pinned: parsed.pinned,
       updatedAt: new Date(),
     })
     .where(eq(announcementsTable.id, id))
     .returning();
   if (!row) return res.status(404).json({ error: "Announcement not found" });
-  res.json(serialize(row, teamResult.team?.name));
+  return res.json(serialize(row, teamResult.team?.name));
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   await db.delete(announcementsTable).where(eq(announcementsTable.id, id));
-  res.status(204).send();
+  return res.status(204).send();
 });
 
 export default router;

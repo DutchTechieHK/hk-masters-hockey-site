@@ -1,6 +1,6 @@
 import webpush from "web-push";
-import { db, pushSubscriptionsTable } from "@workspace/db";
-import { inArray } from "drizzle-orm";
+import { db, playersTable, pushSubscriptionsTable } from "@workspace/db";
+import { and, eq, inArray } from "drizzle-orm";
 
 let configured = false;
 
@@ -61,14 +61,30 @@ export async function sendPushToTeam(teamId: number, payload: PushPayload): Prom
   ensureConfigured();
   if (!configured) return;
 
-  const { playersTable } = await import("@workspace/db");
-  const { eq } = await import("drizzle-orm");
-
   const rows = await db
     .select({ sub: pushSubscriptionsTable })
     .from(pushSubscriptionsTable)
     .innerJoin(playersTable, eq(playersTable.id, pushSubscriptionsTable.playerId))
     .where(eq(playersTable.teamId, teamId));
+
+  await deliverAndClean(rows.map((r) => r.sub), payload);
+}
+
+export async function sendPushToMembershipSection(
+  membershipSection: "men" | "women",
+  payload: PushPayload,
+): Promise<void> {
+  ensureConfigured();
+  if (!configured) return;
+
+  const rows = await db
+    .select({ sub: pushSubscriptionsTable })
+    .from(pushSubscriptionsTable)
+    .innerJoin(playersTable, eq(playersTable.id, pushSubscriptionsTable.playerId))
+    .where(and(
+      eq(playersTable.memberStatus, "active"),
+      eq(playersTable.currentMembershipSection, membershipSection),
+    ));
 
   await deliverAndClean(rows.map((r) => r.sub), payload);
 }

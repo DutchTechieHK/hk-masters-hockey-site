@@ -5,6 +5,61 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+/**
+ * @nullable
+ */
+export type AnnouncementMembershipSection =
+  | (typeof AnnouncementMembershipSection)[keyof typeof AnnouncementMembershipSection]
+  | null;
+
+export const AnnouncementMembershipSection = {
+  men: "men",
+  women: "women",
+} as const;
+
+export interface Announcement {
+  id: number;
+  title: string;
+  body: string;
+  /** @nullable */
+  teamId: number | null;
+  /** @nullable */
+  teamName: string | null;
+  /** @nullable */
+  membershipSection: AnnouncementMembershipSection;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * @nullable
+ */
+export type AnnouncementInputMembershipSection =
+  | (typeof AnnouncementInputMembershipSection)[keyof typeof AnnouncementInputMembershipSection]
+  | null;
+
+export const AnnouncementInputMembershipSection = {
+  men: "men",
+  women: "women",
+} as const;
+
+export interface AnnouncementInput {
+  /**
+   * @minLength 1
+   * @maxLength 200
+   */
+  title: string;
+  /** @minLength 1 */
+  body: string;
+  /** @nullable */
+  teamId?: number | null;
+  /** @nullable */
+  membershipSection?: AnnouncementInputMembershipSection;
+  pinned?: boolean;
+  sendPush?: boolean;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -1050,6 +1105,9 @@ export const EmailBlastRecordAudienceType = {
   women: "women",
   teams: "teams",
   individuals: "individuals",
+  onboarding: "onboarding",
+  "insurance-reminder": "insurance-reminder",
+  "pledge-digest": "pledge-digest",
 } as const;
 
 export interface EmailBlastRecord {

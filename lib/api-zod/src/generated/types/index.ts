@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./announcement";
+export * from "./announcementInput";
+export * from "./announcementInputMembershipSection";
+export * from "./announcementMembershipSection";
 export * from "./createFundraisingEntry";
 export * from "./createFundraisingEntryStatus";
 export * from "./createKitOrder";

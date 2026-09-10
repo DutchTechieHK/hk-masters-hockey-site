@@ -15,4 +15,7 @@ export const EmailBlastRecordAudienceType = {
   women: "women",
   teams: "teams",
   individuals: "individuals",
+  onboarding: "onboarding",
+  "insurance-reminder": "insurance-reminder",
+  "pledge-digest": "pledge-digest",
 } as const;

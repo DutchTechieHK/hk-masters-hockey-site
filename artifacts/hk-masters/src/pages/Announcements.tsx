@@ -21,6 +21,7 @@ type Announcement = {
   body: string
   teamId: number | null
   teamName: string | null
+  membershipSection: "men" | "women" | null
   pinned: boolean
   createdAt: string
   updatedAt: string
@@ -29,7 +30,7 @@ type Announcement = {
 type FormState = {
   title: string
   body: string
-  teamId: string
+  audience: string
   pinned: boolean
   sendPush: boolean
 }
@@ -77,7 +78,7 @@ const EMPTY_EMAIL_FORM: EmailFormState = {
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
 const MAX_ATTACHMENTS = 5
 
-const EMPTY_FORM: FormState = { title: "", body: "", teamId: "", pinned: false, sendPush: true }
+const EMPTY_FORM: FormState = { title: "", body: "", audience: "all", pinned: false, sendPush: true }
 
 type WhatsAppFormState = {
   title: string
@@ -99,6 +100,13 @@ function audienceLabel(audienceType: string) {
   if (audienceType === "women") return "Women members"
   if (audienceType === "teams") return "By squad"
   return "Selected players"
+}
+
+function announcementAudienceLabel(announcement: Announcement) {
+  if (announcement.membershipSection === "men") return "Men members"
+  if (announcement.membershipSection === "women") return "Women members"
+  if (announcement.teamName) return announcement.teamName
+  return "All players"
 }
 
 // Strip simple HTML tags an announcement body might contain, so the WhatsApp
@@ -270,7 +278,13 @@ export default function Announcements() {
 
   const openEdit = (a: Announcement) => {
     setEditing(a)
-    setForm({ title: a.title, body: a.body, teamId: a.teamId ? String(a.teamId) : "", pinned: a.pinned, sendPush: false })
+    setForm({
+      title: a.title,
+      body: a.body,
+      audience: a.membershipSection ?? (a.teamId ? `team:${a.teamId}` : "all"),
+      pinned: a.pinned,
+      sendPush: false,
+    })
     setFormError(null)
     setIsModalOpen(true)
   }
@@ -363,7 +377,13 @@ export default function Announcements() {
       const res = await fetch(`/api/announcements/${a.id}`, {
         method: "PATCH",
         headers: authHeaders(),
-        body: JSON.stringify({ title: a.title, body: a.body, teamId: a.teamId, pinned: !a.pinned }),
+        body: JSON.stringify({
+          title: a.title,
+          body: a.body,
+          teamId: a.teamId,
+          membershipSection: a.membershipSection,
+          pinned: !a.pinned,
+        }),
       })
       if (!res.ok) throw new Error("Could not update pin")
       refresh()
@@ -380,7 +400,8 @@ export default function Announcements() {
       const payload = {
         title: form.title.trim(),
         body: form.body.trim(),
-        teamId: form.teamId === "" ? null : Number(form.teamId),
+        teamId: form.audience.startsWith("team:") ? Number(form.audience.slice(5)) : null,
+        membershipSection: form.audience === "men" || form.audience === "women" ? form.audience : null,
         pinned: form.pinned,
         sendPush: !editing && form.sendPush,
       }
@@ -581,7 +602,7 @@ export default function Announcements() {
                       </div>
                       <p className="mt-2 text-sm text-foreground whitespace-pre-line">{a.body}</p>
                       <p className="mt-3 text-xs text-muted-foreground">
-                        {format(new Date(a.createdAt), "d MMM yyyy 'at' HH:mm")} · {a.teamName ? `For ${a.teamName}` : "All squads"}
+                        {format(new Date(a.createdAt), "d MMM yyyy 'at' HH:mm")} · For {announcementAudienceLabel(a)}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -1067,10 +1088,12 @@ export default function Announcements() {
           </div>
           <div className="space-y-2">
             <label className="text-sm font-semibold">Visible to</label>
-            <Select value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
-              <option value="">All squads</option>
+            <Select value={form.audience} onChange={(e) => setForm({ ...form, audience: e.target.value })}>
+              <option value="all">All players</option>
+              <option value="men">Men members</option>
+              <option value="women">Women members</option>
               {teams.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+                <option key={t.id} value={`team:${t.id}`}>{t.name}</option>
               ))}
             </Select>
           </div>

@@ -10,3 +10,9 @@ CREATE TABLE IF NOT EXISTS announcements (
 
 CREATE INDEX IF NOT EXISTS announcements_created_at_idx ON announcements (created_at DESC);
 CREATE INDEX IF NOT EXISTS announcements_team_idx ON announcements (team_id);
+
+ALTER TABLE announcements
+  ADD COLUMN IF NOT EXISTS membership_section TEXT;
+
+CREATE INDEX IF NOT EXISTS announcements_membership_section_idx
+  ON announcements (membership_section);

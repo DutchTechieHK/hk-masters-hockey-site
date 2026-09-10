@@ -15,6 +15,83 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary List announcements visible to the current admin or active player
+ */
+export const ListAnnouncementsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  body: zod.string(),
+  teamId: zod.number().nullable(),
+  teamName: zod.string().nullable(),
+  membershipSection: zod
+    .union([zod.literal("men"), zod.literal("women"), zod.literal(null)])
+    .nullable(),
+  pinned: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListAnnouncementsResponse = zod.array(
+  ListAnnouncementsResponseItem,
+);
+
+/**
+ * @summary Create an announcement
+ */
+export const createAnnouncementBodyTitleMax = 200;
+
+export const CreateAnnouncementBody = zod.object({
+  title: zod.string().min(1).max(createAnnouncementBodyTitleMax),
+  body: zod.string().min(1),
+  teamId: zod.number().nullish(),
+  membershipSection: zod
+    .union([zod.literal("men"), zod.literal("women"), zod.literal(null)])
+    .nullish(),
+  pinned: zod.boolean().optional(),
+  sendPush: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update an announcement
+ */
+export const UpdateAnnouncementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const updateAnnouncementBodyTitleMax = 200;
+
+export const UpdateAnnouncementBody = zod.object({
+  title: zod.string().min(1).max(updateAnnouncementBodyTitleMax),
+  body: zod.string().min(1),
+  teamId: zod.number().nullish(),
+  membershipSection: zod
+    .union([zod.literal("men"), zod.literal("women"), zod.literal(null)])
+    .nullish(),
+  pinned: zod.boolean().optional(),
+  sendPush: zod.boolean().optional(),
+});
+
+export const UpdateAnnouncementResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  body: zod.string(),
+  teamId: zod.number().nullable(),
+  teamName: zod.string().nullable(),
+  membershipSection: zod
+    .union([zod.literal("men"), zod.literal("women"), zod.literal(null)])
+    .nullable(),
+  pinned: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete an announcement
+ */
+export const DeleteAnnouncementParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get dashboard stats
  */
 export const GetDashboardResponse = zod.object({

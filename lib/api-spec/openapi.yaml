@@ -25,6 +25,8 @@ tags:
     description: Sponsor operations
   - name: matches
     description: Match schedule operations
+  - name: announcements
+    description: In-app announcement operations
 
 paths:
   /healthz:
@@ -39,6 +41,76 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /announcements:
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      summary: List announcements visible to the current admin or active player
+      responses:
+        "200":
+          description: Visible announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      summary: Create an announcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementInput"
+      responses:
+        "201":
+          description: Created announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+
+  /announcements/{id}:
+    patch:
+      operationId: updateAnnouncement
+      tags: [announcements]
+      summary: Update an announcement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementInput"
+      responses:
+        "200":
+          description: Updated announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+    delete:
+      operationId: deleteAnnouncement
+      tags: [announcements]
+      summary: Delete an announcement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Announcement deleted
 
   /dashboard:
     get:
@@ -1142,6 +1214,51 @@ paths:
 
 components:
   schemas:
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+        teamId:
+          type: [integer, "null"]
+        teamName:
+          type: [string, "null"]
+        membershipSection:
+          type: [string, "null"]
+          enum: [men, women, null]
+        pinned:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, title, body, teamId, teamName, membershipSection, pinned, createdAt, updatedAt]
+
+    AnnouncementInput:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        body:
+          type: string
+          minLength: 1
+        teamId:
+          type: [integer, "null"]
+        membershipSection:
+          type: [string, "null"]
+          enum: [men, women, null]
+        pinned:
+          type: boolean
+        sendPush:
+          type: boolean
+      required: [title, body]
+
     HealthStatus:
       type: object
       properties:
@@ -2651,7 +2768,7 @@ components:
           type: string
         audienceType:
           type: string
-          enum: [all, men, women, teams, individuals]
+          enum: [all, men, women, teams, individuals, onboarding, insurance-reminder, pledge-digest]
         teamIds:
           type: string
           nullable: true
