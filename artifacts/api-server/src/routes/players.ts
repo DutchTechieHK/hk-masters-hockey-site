@@ -1760,6 +1760,11 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
       eq(playersTable.currentMembershipSection, audienceType),
       eq(playersTable.memberStatus, "active"),
     ));
+  } else if (audienceType === "trials") {
+    players = await db.select().from(playersTable).where(and(
+      eq(playersTable.currentMembershipTier, "trials"),
+      eq(playersTable.memberStatus, "active"),
+    ));
   } else if (audienceType === "teams" && teamIds && teamIds.length > 0) {
     players = await db.select().from(playersTable).where(and(
       inArray(playersTable.teamId, teamIds),

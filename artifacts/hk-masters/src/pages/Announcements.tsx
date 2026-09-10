@@ -55,7 +55,7 @@ type BlastRecipient = {
   errorMessage: string | null
 }
 
-type AudienceType = "all" | "men" | "women" | "teams" | "individuals"
+type AudienceType = "all" | "men" | "women" | "trials" | "teams" | "individuals"
 
 type EmailFormState = {
   audienceType: AudienceType
@@ -77,6 +77,7 @@ const EMPTY_EMAIL_FORM: EmailFormState = {
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
 const MAX_ATTACHMENTS = 5
+const CURRENT_SQUAD_EXCLUDED_CATEGORIES = new Set(["MO40", "MO50", "Awaiting Selection"])
 
 const EMPTY_FORM: FormState = { title: "", body: "", audience: "all", pinned: false, sendPush: true }
 
@@ -98,6 +99,7 @@ function audienceLabel(audienceType: string) {
   if (audienceType === "all") return "All players"
   if (audienceType === "men") return "Men members"
   if (audienceType === "women") return "Women members"
+  if (audienceType === "trials") return "Trials"
   if (audienceType === "teams") return "By squad"
   return "Selected players"
 }
@@ -135,7 +137,11 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export default function Announcements({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const { toast } = useToast()
-  const { data: teams = [] } = useListTeams()
+  const { data: allTeams = [] } = useListTeams()
+  const teams = useMemo(
+    () => allTeams.filter((team) => !CURRENT_SQUAD_EXCLUDED_CATEGORIES.has(team.category)),
+    [allTeams],
+  )
   const { data: allPlayers = [] } = useListPlayers()
   const activePlayers = useMemo(
     () => allPlayers.filter(player => player.memberStatus === "active"),
@@ -462,6 +468,9 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
     if (emailForm.audienceType === "men" || emailForm.audienceType === "women") {
       return activePlayers.filter((p) => p.currentMembershipSection === emailForm.audienceType)
     }
+    if (emailForm.audienceType === "trials") {
+      return activePlayers.filter((p) => p.currentMembershipTier === "trials")
+    }
     if (emailForm.audienceType === "teams") {
       if (emailForm.teamIds.length === 0) return []
       return activePlayers.filter((p) => emailForm.teamIds.includes(p.teamId))
@@ -706,7 +715,7 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
             <div className="space-y-3">
               <label className="text-sm font-semibold">Audience</label>
               <div className="flex gap-2 flex-wrap">
-                {(["all", "men", "women", "teams", "individuals"] as AudienceType[]).map((t) => (
+                {(["all", "men", "women", "trials", "teams", "individuals"] as AudienceType[]).map((t) => (
                   <button
                     key={t}
                     onClick={() => setEmailForm((f) => ({ ...f, audienceType: t, teamIds: [], playerIds: [] }))}
@@ -722,9 +731,11 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
                         ? "Men members"
                         : t === "women"
                           ? "Women members"
-                          : t === "teams"
-                            ? "By squad"
-                            : "Individuals"}
+                          : t === "trials"
+                            ? "Trials"
+                            : t === "teams"
+                              ? "By squad"
+                              : "Individuals"}
                   </button>
                 ))}
               </div>
