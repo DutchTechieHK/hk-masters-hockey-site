@@ -372,6 +372,19 @@ export const CreatePlayerBody = zod.object({
 });
 
 /**
+ * @summary Assign a membership section to multiple members
+ */
+
+export const BulkAssignMembershipSectionBody = zod.object({
+  playerIds: zod.array(zod.number()).min(1),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
+});
+
+export const BulkAssignMembershipSectionResponse = zod.object({
+  updated: zod.number().describe("Number of members whose section changed."),
+});
+
+/**
  * @summary Send travel reminder emails to players missing flight info
  */
 export const SendTravelRemindersBody = zod.object({

@@ -45,6 +45,8 @@ import type {
   MembershipInterestImportResult,
   MembershipInterestResolution,
   MembershipInterestSubmission,
+  MembershipSectionAssignment,
+  MembershipSectionAssignmentResult,
   NotionMembershipSyncResult,
   NotionMembershipSyncStatus,
   OnboardingInviteRequest,
@@ -906,6 +908,96 @@ export const useCreatePlayer = <
   TContext
 > => {
   return useMutation(getCreatePlayerMutationOptions(options));
+};
+
+/**
+ * @summary Assign a membership section to multiple members
+ */
+export const getBulkAssignMembershipSectionUrl = () => {
+  return `/api/players/membership-sections`;
+};
+
+export const bulkAssignMembershipSection = async (
+  membershipSectionAssignment: MembershipSectionAssignment,
+  options?: RequestInit,
+): Promise<MembershipSectionAssignmentResult> => {
+  return customFetch<MembershipSectionAssignmentResult>(
+    getBulkAssignMembershipSectionUrl(),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(membershipSectionAssignment),
+    },
+  );
+};
+
+export const getBulkAssignMembershipSectionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkAssignMembershipSection>>,
+    TError,
+    { data: BodyType<MembershipSectionAssignment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkAssignMembershipSection>>,
+  TError,
+  { data: BodyType<MembershipSectionAssignment> },
+  TContext
+> => {
+  const mutationKey = ["bulkAssignMembershipSection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkAssignMembershipSection>>,
+    { data: BodyType<MembershipSectionAssignment> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return bulkAssignMembershipSection(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BulkAssignMembershipSectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkAssignMembershipSection>>
+>;
+export type BulkAssignMembershipSectionMutationBody =
+  BodyType<MembershipSectionAssignment>;
+export type BulkAssignMembershipSectionMutationError = ErrorType<void>;
+
+/**
+ * @summary Assign a membership section to multiple members
+ */
+export const useBulkAssignMembershipSection = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkAssignMembershipSection>>,
+    TError,
+    { data: BodyType<MembershipSectionAssignment> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof bulkAssignMembershipSection>>,
+  TError,
+  { data: BodyType<MembershipSectionAssignment> },
+  TContext
+> => {
+  return useMutation(getBulkAssignMembershipSectionMutationOptions(options));
 };
 
 /**

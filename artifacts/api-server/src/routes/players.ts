@@ -34,6 +34,8 @@ import {
   ResolveMembershipInterestSubmissionBody,
   ResolveMembershipInterestSubmissionParams,
   ListPlayerParticipationsParams,
+  BulkAssignMembershipSectionBody,
+  BulkAssignMembershipSectionResponse,
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { requireSession } from "../middleware/adminSession";
@@ -1519,6 +1521,41 @@ router.post("/send-insurance-reminders", requireSession, async (req, res) => {
 
   console.log(`[insurance-reminders] Sent ${sent}, failed ${failed} out of ${players.length} targeted players`);
   res.json({ sent, failed, total: players.length });
+});
+
+router.patch("/membership-sections", requireAdminAccess, async (req, res) => {
+  const { playerIds, membershipSection } = BulkAssignMembershipSectionBody.parse(req.body);
+  const [currentSeason] = await db.select({ id: seasonsTable.id })
+    .from(seasonsTable)
+    .where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG))
+    .limit(1);
+  if (!currentSeason) {
+    res.status(409).json({ error: "Current membership season is not initialized" });
+    return;
+  }
+  const updated = await db.transaction(async (tx) => {
+    const changedPlayers = await tx.update(playersTable).set({
+      currentMembershipSection: membershipSection,
+    }).where(and(
+      inArray(playersTable.id, playerIds),
+      sql`${playersTable.currentMembershipSection} IS DISTINCT FROM ${membershipSection}`,
+    )).returning({ id: playersTable.id });
+
+    if (changedPlayers.length > 0) {
+      const changedPlayerIds = changedPlayers.map((player) => player.id);
+      await tx.update(playerParticipationsTable).set({
+        membershipSection,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(playerParticipationsTable.seasonId, currentSeason.id),
+        inArray(playerParticipationsTable.playerId, changedPlayerIds),
+      ));
+    }
+
+    return changedPlayers.length;
+  });
+
+  res.json(BulkAssignMembershipSectionResponse.parse({ updated }));
 });
 
 router.put("/:id", requireAdminAccess, async (req, res) => {

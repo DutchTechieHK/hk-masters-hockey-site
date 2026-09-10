@@ -25,6 +25,26 @@ export interface OnboardingInviteRequest {
   playerIds?: number[];
 }
 
+export type MembershipSectionAssignmentMembershipSection =
+  (typeof MembershipSectionAssignmentMembershipSection)[keyof typeof MembershipSectionAssignmentMembershipSection];
+
+export const MembershipSectionAssignmentMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
+
+export interface MembershipSectionAssignment {
+  /** @minItems 1 */
+  playerIds: number[];
+  membershipSection: MembershipSectionAssignmentMembershipSection;
+}
+
+export interface MembershipSectionAssignmentResult {
+  /** Number of members whose section changed. */
+  updated: number;
+}
+
 export interface OnboardingInviteResult {
   sent: number;
   failed: number;

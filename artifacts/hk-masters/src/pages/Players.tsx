@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites, useListFundraising, getListFundraisingQueryKey } from "@workspace/api-client-react"
+import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites, useListFundraising, getListFundraisingQueryKey, useBulkAssignMembershipSection } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -211,6 +211,9 @@ export default function Players() {
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
   const [participations, setParticipations] = useState<PlayerParticipation[]>([])
   const [participationsLoading, setParticipationsLoading] = useState(false)
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set())
+  const [bulkSection, setBulkSection] = useState<"not_set" | "men" | "women">("not_set")
+  const [bulkSectionModalOpen, setBulkSectionModalOpen] = useState(false)
 
   const acknowledgePassport = (playerId: number) => {
     setPassportAck(playerId)
@@ -265,6 +268,7 @@ export default function Players() {
   const updateMutation = useUpdatePlayer()
   const deleteMutation = useDeletePlayer()
   const sendInvitesMutation = useSendOnboardingInvites()
+  const bulkSectionMutation = useBulkAssignMembershipSection()
 
   const handleSendInvite = async (player: Player) => {
     if (!player.email) {
@@ -302,6 +306,47 @@ export default function Players() {
       ? a.name.localeCompare(b.name)
       : b.name.localeCompare(a.name)
     )
+
+  const selectedPlayers = filteredPlayers.filter((player) => selectedPlayerIds.has(player.id))
+  const bulkChangeCount = selectedPlayers.filter((player) => player.currentMembershipSection !== bulkSection).length
+  const allFilteredSelected = filteredPlayers.length > 0 && filteredPlayers.every((player) => selectedPlayerIds.has(player.id))
+
+  useEffect(() => {
+    setSelectedPlayerIds(new Set())
+  }, [positionFilter, memberStatusFilter, membershipSectionFilter, membershipTierFilter, searchQuery])
+
+  const togglePlayerSelection = (playerId: number) => {
+    setSelectedPlayerIds((current) => {
+      const next = new Set(current)
+      if (next.has(playerId)) next.delete(playerId)
+      else next.add(playerId)
+      return next
+    })
+  }
+
+  const toggleAllFiltered = () => {
+    setSelectedPlayerIds(allFilteredSelected
+      ? new Set()
+      : new Set(filteredPlayers.map((player) => player.id)))
+  }
+
+  const handleBulkSectionAssignment = async () => {
+    if (bulkChangeCount === 0) return
+    try {
+      const result = await bulkSectionMutation.mutateAsync({
+        data: {
+          playerIds: selectedPlayers.map((player) => player.id),
+          membershipSection: bulkSection,
+        },
+      })
+      await queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
+      setSelectedPlayerIds(new Set())
+      setBulkSectionModalOpen(false)
+      toast({ title: `${result.updated} member${result.updated === 1 ? "" : "s"} updated` })
+    } catch {
+      toast({ title: "Failed to assign membership section", variant: "destructive" })
+    }
+  }
 
 
   const blankForm = (): Partial<PlayerFormValues> => ({
@@ -836,11 +881,47 @@ export default function Players() {
           </Select>
         </div>
 
+        {selectedPlayerIds.size > 0 && (
+          <div className="px-4 py-3 border-b border-border bg-primary/5 flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-sm font-semibold">{selectedPlayerIds.size} selected</span>
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              <Select
+                className="w-36 bg-white"
+                value={bulkSection}
+                onChange={(e) => setBulkSection(e.target.value as "not_set" | "men" | "women")}
+              >
+                {Object.entries(MEMBERSHIP_SECTION_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </Select>
+              <Button
+                size="sm"
+                disabled={bulkChangeCount === 0}
+                onClick={() => setBulkSectionModalOpen(true)}
+              >
+                Assign section
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setSelectedPlayerIds(new Set())}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Table */}
         <div className="overflow-x-auto flex-1">
           <table className="w-full text-sm text-left">
             <thead className="text-xs text-muted-foreground uppercase bg-muted/30 border-b border-border">
               <tr>
+                <th className="px-4 py-4 font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleAllFiltered}
+                    aria-label={`Select all ${filteredPlayers.length} filtered members`}
+                    className="w-4 h-4 rounded accent-primary"
+                  />
+                </th>
                 <th className="px-4 py-4 font-semibold">#</th>
                 <th className="px-4 py-4 font-semibold">
                   <button
@@ -863,11 +944,11 @@ export default function Players() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
+                  <td colSpan={10} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">
                     {players.length === 0 ? "No members yet. Add your first member to get started." : "No members match your search."}
                   </td>
                 </tr>
@@ -875,6 +956,15 @@ export default function Players() {
                 filteredPlayers.map(player => {
                   return (
                     <tr key={player.id} className="hover:bg-muted/10 transition-colors group cursor-pointer" onClick={() => openEditModal(player)}>
+                      <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayerIds.has(player.id)}
+                          onChange={() => togglePlayerSelection(player.id)}
+                          aria-label={`Select ${player.name}`}
+                          className="w-4 h-4 rounded accent-primary"
+                        />
+                      </td>
                       {/* Shirt Number */}
                       <td className="px-4 py-4">
                         {player.shirtNumber != null ? (
@@ -1062,6 +1152,33 @@ export default function Players() {
           </table>
         </div>
       </div>
+
+      <Modal
+        isOpen={bulkSectionModalOpen}
+        onClose={() => !bulkSectionMutation.isPending && setBulkSectionModalOpen(false)}
+        title="Confirm section assignment"
+        description={`Assign ${MEMBERSHIP_SECTION_LABELS[bulkSection]} to the selected members.`}
+      >
+        <div className="space-y-5">
+          <p className="text-sm text-foreground">
+            <strong>{bulkChangeCount} member{bulkChangeCount === 1 ? "" : "s"}</strong> will change.
+            {selectedPlayers.length > bulkChangeCount && (
+              <> {selectedPlayers.length - bulkChangeCount} already {selectedPlayers.length - bulkChangeCount === 1 ? "has" : "have"} this section and will not change.</>
+            )}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Membership categories, fees, squad assignments, and Rotterdam history will stay unchanged.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setBulkSectionModalOpen(false)} disabled={bulkSectionMutation.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkSectionAssignment} disabled={bulkSectionMutation.isPending || bulkChangeCount === 0}>
+              {bulkSectionMutation.isPending ? "Assigning…" : `Change ${bulkChangeCount} member${bulkChangeCount === 1 ? "" : "s"}`}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Form Modal */}
       <Modal
