@@ -123,6 +123,69 @@ paths:
         "204":
           description: Deleted
 
+  /teams/{id}/squad:
+    get:
+      operationId: listCurrentSquadCandidates
+      tags: [teams]
+      summary: List current members and their squad selection status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Current members eligible for squad selection
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SquadCandidate"
+        "401":
+          description: Admin authentication required
+        "404":
+          description: Masters Div. 1 squad not found
+        "409":
+          description: Current membership season is not configured
+
+  /teams/{id}/squad/{playerId}:
+    put:
+      operationId: updateCurrentSquadSelection
+      tags: [teams]
+      summary: Add or remove a current member from the squad
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SquadSelectionUpdate"
+      responses:
+        "200":
+          description: Updated squad selection
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SquadCandidate"
+        "401":
+          description: Admin authentication required
+        "404":
+          description: Masters Div. 1 squad or current member not found
+        "409":
+          description: Current season is unavailable or the member is no longer eligible
+
   /players:
     get:
       operationId: listPlayers
@@ -1336,6 +1399,35 @@ components:
         - managerName
         - managerEmail
         - managerPhone
+
+    SquadCandidate:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        position:
+          type: string
+          nullable: true
+        shirtNumber:
+          type: integer
+          nullable: true
+        membershipTier:
+          type: string
+          nullable: true
+        selected:
+          type: boolean
+      required: [playerId, name, email, selected]
+
+    SquadSelectionUpdate:
+      type: object
+      properties:
+        selected:
+          type: boolean
+      required: [selected]
 
     Player:
       type: object

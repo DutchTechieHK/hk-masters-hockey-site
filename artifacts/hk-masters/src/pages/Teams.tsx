@@ -1,5 +1,15 @@
 import { useState } from "react"
-import { useListTeams, useCreateTeam, useUpdateTeam, useDeleteTeam, getListTeamsQueryKey, useListPlayers } from "@workspace/api-client-react"
+import {
+  useListTeams,
+  useCreateTeam,
+  useUpdateTeam,
+  useDeleteTeam,
+  getListTeamsQueryKey,
+  useListPlayers,
+  useListCurrentSquadCandidates,
+  useUpdateCurrentSquadSelection,
+  getListCurrentSquadCandidatesQueryKey,
+} from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -36,9 +46,32 @@ const teamSchema = z.object({
 })
 
 type TeamFormValues = z.infer<typeof teamSchema>
+const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
 
 function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; onEdit: (team: Team) => void }) {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const isLeagueSquad = team.name === "Masters Div. 1"
   const { data: players = [], isLoading } = useListPlayers({ teamId: team.id })
+  const { data: squadCandidates = [], isLoading: squadLoading } = useListCurrentSquadCandidates(team.id, {
+    query: {
+      queryKey: getListCurrentSquadCandidatesQueryKey(team.id),
+      enabled: isLeagueSquad,
+      refetchInterval: isLeagueSquad ? 30_000 : false,
+    },
+  })
+  const squadMutation = useUpdateCurrentSquadSelection()
+  const selectedCount = squadCandidates.filter((candidate) => candidate.selected).length
+
+  const updateSquadSelection = async (playerId: number, selected: boolean) => {
+    try {
+      await squadMutation.mutateAsync({ id: team.id, playerId, data: { selected } })
+      await queryClient.invalidateQueries({ queryKey: getListCurrentSquadCandidatesQueryKey(team.id) })
+      toast({ title: selected ? "Member added to the squad" : "Member removed from the squad" })
+    } catch {
+      toast({ title: "Could not update the squad", variant: "destructive" })
+    }
+  }
 
   return (
     <div>
@@ -81,7 +114,57 @@ function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; 
         </div>
       </div>
 
-      {/* Players roster */}
+      {/* Current league squad selection */}
+      {isLeagueSquad ? (
+        <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-bold text-foreground">Current League Squad</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {selectedCount} selected from {squadCandidates.length} current member{squadCandidates.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+            <Badge variant="outline">2026/27 season</Badge>
+          </div>
+          <div className="px-6 py-4 bg-primary/5 border-b border-border text-sm text-muted-foreground">
+            Adding or removing a member here only changes this season&apos;s league squad. Their membership category, fees, and Rotterdam team remain unchanged.
+          </div>
+
+          {squadLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading current members...</div>
+          ) : squadCandidates.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">
+              <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              <p className="font-medium">No current members are available.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {squadCandidates.map((candidate) => (
+                <div key={candidate.playerId} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/10">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-foreground truncate">{candidate.name}</p>
+                      {candidate.selected && <Badge variant="success">Selected</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {candidate.position || "Position not set"}
+                      {candidate.shirtNumber != null ? ` · #${candidate.shirtNumber}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    variant={candidate.selected ? "outline" : "default"}
+                    disabled={squadMutation.isPending}
+                    onClick={() => updateSquadSelection(candidate.playerId, !candidate.selected)}
+                  >
+                    {candidate.selected ? "Remove" : "Add to squad"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+      /* Archived Rotterdam roster */
       <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
         <div className="p-6 border-b border-border flex items-center justify-between">
           <div>
@@ -140,6 +223,7 @@ function TeamDetail({ team, onBack, onEdit }: { team: Team; onBack: () => void; 
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
@@ -266,12 +350,14 @@ export default function Teams() {
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
-                        className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {!CANONICAL_TEAM_NAMES.has(team.name) && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(team.id) }}
+                          className="p-1.5 bg-white rounded-md shadow text-rose-600 hover:bg-rose-50 transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                     <Badge className="mb-3">{team.category}</Badge>
                     <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
@@ -324,7 +410,15 @@ export default function Teams() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
               <label className="text-sm font-semibold">Team Name</label>
-              <Input placeholder="e.g. Hong Kong Dragons" {...register("name")} />
+              <Input
+                placeholder="e.g. Hong Kong Dragons"
+                readOnly={editingTeam != null && CANONICAL_TEAM_NAMES.has(editingTeam.name)}
+                className={editingTeam != null && CANONICAL_TEAM_NAMES.has(editingTeam.name) ? "bg-muted/40" : undefined}
+                {...register("name")}
+              />
+              {editingTeam != null && CANONICAL_TEAM_NAMES.has(editingTeam.name) && (
+                <p className="text-xs text-muted-foreground">This team name is fixed because it identifies a system-managed squad.</p>
+              )}
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">

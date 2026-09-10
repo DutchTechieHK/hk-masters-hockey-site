@@ -54,6 +54,8 @@ import type {
   PlayerPayment,
   SelfPlayer,
   Sponsor,
+  SquadCandidate,
+  SquadSelectionUpdate,
   Team,
   TravelReminderRequest,
   TravelReminderResult,
@@ -540,6 +542,190 @@ export const useDeleteTeam = <
   TContext
 > => {
   return useMutation(getDeleteTeamMutationOptions(options));
+};
+
+/**
+ * @summary List current members and their squad selection status
+ */
+export const getListCurrentSquadCandidatesUrl = (id: number) => {
+  return `/api/teams/${id}/squad`;
+};
+
+export const listCurrentSquadCandidates = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SquadCandidate[]> => {
+  return customFetch<SquadCandidate[]>(getListCurrentSquadCandidatesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCurrentSquadCandidatesQueryKey = (id: number) => {
+  return [`/api/teams/${id}/squad`] as const;
+};
+
+export const getListCurrentSquadCandidatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCurrentSquadCandidates>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCurrentSquadCandidates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCurrentSquadCandidatesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCurrentSquadCandidates>>
+  > = ({ signal }) =>
+    listCurrentSquadCandidates(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCurrentSquadCandidates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCurrentSquadCandidatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCurrentSquadCandidates>>
+>;
+export type ListCurrentSquadCandidatesQueryError = ErrorType<void>;
+
+/**
+ * @summary List current members and their squad selection status
+ */
+
+export function useListCurrentSquadCandidates<
+  TData = Awaited<ReturnType<typeof listCurrentSquadCandidates>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCurrentSquadCandidates>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCurrentSquadCandidatesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add or remove a current member from the squad
+ */
+export const getUpdateCurrentSquadSelectionUrl = (
+  id: number,
+  playerId: number,
+) => {
+  return `/api/teams/${id}/squad/${playerId}`;
+};
+
+export const updateCurrentSquadSelection = async (
+  id: number,
+  playerId: number,
+  squadSelectionUpdate: SquadSelectionUpdate,
+  options?: RequestInit,
+): Promise<SquadCandidate> => {
+  return customFetch<SquadCandidate>(
+    getUpdateCurrentSquadSelectionUrl(id, playerId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(squadSelectionUpdate),
+    },
+  );
+};
+
+export const getUpdateCurrentSquadSelectionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCurrentSquadSelection>>,
+    TError,
+    { id: number; playerId: number; data: BodyType<SquadSelectionUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCurrentSquadSelection>>,
+  TError,
+  { id: number; playerId: number; data: BodyType<SquadSelectionUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateCurrentSquadSelection"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCurrentSquadSelection>>,
+    { id: number; playerId: number; data: BodyType<SquadSelectionUpdate> }
+  > = (props) => {
+    const { id, playerId, data } = props ?? {};
+
+    return updateCurrentSquadSelection(id, playerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCurrentSquadSelectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCurrentSquadSelection>>
+>;
+export type UpdateCurrentSquadSelectionMutationBody =
+  BodyType<SquadSelectionUpdate>;
+export type UpdateCurrentSquadSelectionMutationError = ErrorType<void>;
+
+/**
+ * @summary Add or remove a current member from the squad
+ */
+export const useUpdateCurrentSquadSelection = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCurrentSquadSelection>>,
+    TError,
+    { id: number; playerId: number; data: BodyType<SquadSelectionUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCurrentSquadSelection>>,
+  TError,
+  { id: number; playerId: number; data: BodyType<SquadSelectionUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateCurrentSquadSelectionMutationOptions(options));
 };
 
 /**

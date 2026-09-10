@@ -84,6 +84,8 @@ export * from "./selfPlayerCurrentMembershipTier";
 export * from "./selfPlayerMemberStatus";
 export * from "./sponsor";
 export * from "./sponsorTier";
+export * from "./squadCandidate";
+export * from "./squadSelectionUpdate";
 export * from "./team";
 export * from "./travelReminderRequest";
 export * from "./travelReminderResult";

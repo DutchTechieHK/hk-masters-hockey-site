@@ -158,6 +158,12 @@ export const DeleteTeamParams = zod.object({
 });
 
 /**
+ * @summary List current members and their squad selection status
+ */
+export const ListCurrentSquadCandidatesParams = zod.object({
+  id: zod.coerce.number(),
+});
+/**
  * @summary List all players
  */
 export const ListPlayersQueryParams = zod.object({
@@ -1562,3 +1568,39 @@ export const UpdateSponsorResponse = zod.object({
 export const DeleteSponsorParams = zod.object({
   id: zod.coerce.number(),
 });
+
+export const ListCurrentSquadCandidatesResponseItem = zod.object({
+  playerId: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  position: zod.string().nullish(),
+  shirtNumber: zod.number().nullish(),
+  membershipTier: zod.string().nullish(),
+  selected: zod.boolean(),
+});
+
+/**
+ * @summary Add or remove a current member from the squad
+ */
+export const UpdateCurrentSquadSelectionParams = zod.object({
+  id: zod.coerce.number(),
+  playerId: zod.coerce.number(),
+});
+
+export const UpdateCurrentSquadSelectionResponse = zod.object({
+  playerId: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  position: zod.string().nullish(),
+  shirtNumber: zod.number().nullish(),
+  membershipTier: zod.string().nullish(),
+  selected: zod.boolean(),
+});
+
+export const UpdateCurrentSquadSelectionBody = zod.object({
+  selected: zod.boolean(),
+});
+
+export const ListCurrentSquadCandidatesResponse = zod.array(
+  ListCurrentSquadCandidatesResponseItem,
+);

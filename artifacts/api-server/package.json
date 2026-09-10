@@ -8,7 +8,7 @@
     "build": "tsx ./build.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "backfill-slugs": "tsx ./src/scripts/backfill-slugs.ts",
-    "test": "vitest run"
+    "test": "vitest run --no-file-parallelism"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.19.0",

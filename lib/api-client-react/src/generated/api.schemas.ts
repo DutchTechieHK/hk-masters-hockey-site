@@ -133,6 +133,15 @@ export interface CreateTeam {
   description?: string;
 }
 
+export interface SquadCandidate {
+  playerId: number;
+  name: string;
+  email: string;
+  position?: string | null;
+  shirtNumber?: number | null;
+  membershipTier?: string | null;
+  selected: boolean;
+}
 export type PlayerMemberStatus =
   (typeof PlayerMemberStatus)[keyof typeof PlayerMemberStatus];
 
@@ -1001,3 +1010,7 @@ export type ListLogisticsParams = {
 export type ListMatchesParams = {
   teamId?: number;
 };
+
+export interface SquadSelectionUpdate {
+  selected: boolean;
+}

@@ -229,6 +229,27 @@ async function ensureCanonicalTeam(
   return concurrent.id;
 }
 
+export async function clearLegacyCopiedCurrentTeamLinks(
+  executor: MembershipDbExecutor,
+  currentSeasonId: number,
+  playerId?: number,
+) {
+  await executor.update(playerParticipationsTable).set({
+    teamId: null,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(playerParticipationsTable.seasonId, currentSeasonId),
+    playerId === undefined ? undefined : eq(playerParticipationsTable.playerId, playerId),
+    eq(playerParticipationsTable.source, "membership_backfill"),
+    sql`${playerParticipationsTable.teamId} IS NOT NULL`,
+    sql`EXISTS (
+      SELECT 1 FROM ${playersTable} legacy_player
+      WHERE legacy_player.id = ${playerParticipationsTable.playerId}
+        AND legacy_player.team_id = ${playerParticipationsTable.teamId}
+    )`,
+  ));
+}
+
 async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExecutor) {
   const [rotterdam] = await executor.insert(seasonsTable).values({
     slug: ROTTERDAM_SEASON_SLUG,
@@ -325,18 +346,7 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
   ));
   // Older current-season rows copied the legacy player.teamId. Remove only
   // those copied links; independently selected league squads remain intact.
-  await executor.update(playerParticipationsTable).set({
-    teamId: null,
-    updatedAt: new Date(),
-  }).where(and(
-    eq(playerParticipationsTable.seasonId, current.id),
-    sql`${playerParticipationsTable.teamId} IS NOT NULL`,
-    sql`EXISTS (
-      SELECT 1 FROM ${playersTable} legacy_player
-      WHERE legacy_player.id = ${playerParticipationsTable.playerId}
-        AND legacy_player.team_id = ${playerParticipationsTable.teamId}
-    )`,
-  ));
+  await clearLegacyCopiedCurrentTeamLinks(executor, current.id);
   for (const category of MEMBERSHIP_CATEGORIES) {
     const expectedAmountDue = membershipCategoryAmountDue(category)?.toFixed(2) ?? null;
     await executor.update(playerParticipationsTable).set({
