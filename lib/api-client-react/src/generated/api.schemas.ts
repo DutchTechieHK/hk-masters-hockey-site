@@ -1110,6 +1110,14 @@ export interface CreateMatch {
   notes?: string;
 }
 
+export interface MatchImportCorrectionResult {
+  correctedCount: number;
+  alreadyCorrectCount: number;
+  classifiedEventCount: number;
+  alreadyClassifiedEventCount: number;
+  matches: Match[];
+}
+
 export type EmailBlastRecordAudienceType =
   (typeof EmailBlastRecordAudienceType)[keyof typeof EmailBlastRecordAudienceType];
 

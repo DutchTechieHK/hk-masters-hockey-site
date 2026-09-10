@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { matchesTable, teamsTable } from "@workspace/db/schema";
-import { eq, asc, and } from "drizzle-orm";
+import { eventsTable, matchesTable, teamsTable } from "@workspace/db/schema";
+import { eq, asc, and, inArray, isNull } from "drizzle-orm";
 import {
   CreateMatchBody,
+  CorrectSeptemberHktImportResponse,
   UpdateMatchBody,
   UpdateMatchParams,
   DeleteMatchParams,
@@ -17,6 +18,22 @@ import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 const router = Router();
 
 type MatchRow = typeof matchesTable.$inferSelect;
+
+const SEPTEMBER_HKT_IMPORT = [
+  { id: 11, teamId: 5, opponent: "KCC B", importedKickoff: "2026-10-09T12:30:00.000Z", correctedKickoff: "2026-10-09T06:30:00.000Z" },
+  { id: 12, teamId: 5, opponent: "Dutch A", importedKickoff: "2026-10-16T12:30:00.000Z", correctedKickoff: "2026-10-16T06:30:00.000Z" },
+  { id: 13, teamId: 5, opponent: "HKCC A", importedKickoff: "2026-10-23T12:30:00.000Z", correctedKickoff: "2026-10-23T06:30:00.000Z" },
+  { id: 14, teamId: 5, opponent: "HKFC C", importedKickoff: "2026-11-13T13:30:00.000Z", correctedKickoff: "2026-11-13T07:30:00.000Z" },
+  { id: 15, teamId: 5, opponent: "Valley A", importedKickoff: "2026-10-02T12:30:00.000Z", correctedKickoff: "2026-10-02T06:30:00.000Z" },
+  { id: 16, teamId: 5, opponent: "HKFC B", importedKickoff: "2026-10-30T13:30:00.000Z", correctedKickoff: "2026-10-30T07:30:00.000Z" },
+  { id: 17, teamId: 5, opponent: "Antlers B", importedKickoff: "2026-11-06T13:30:00.000Z", correctedKickoff: "2026-11-06T07:30:00.000Z" },
+  { id: 18, teamId: 5, opponent: "Khalsa B", importedKickoff: "2026-11-20T13:30:00.000Z", correctedKickoff: "2026-11-20T07:30:00.000Z" },
+] as const;
+
+const SEPTEMBER_TRIAL_EVENTS = [
+  { id: 90, kind: "training", title: "MASTERS TRIALS", startsAt: "2026-09-18T12:00:00.000Z", endsAt: "2026-09-18T13:30:00.000Z" },
+  { id: 91, kind: "training", title: "MASTERS TRIALS", startsAt: "2026-09-25T12:00:00.000Z", endsAt: "2026-09-25T13:30:00.000Z" },
+] as const;
 
 function serialize(
   row: MatchRow,
@@ -166,6 +183,110 @@ router.post("/", requireAdminAccess, async (req, res) => {
   }).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
   res.status(201).json(serialize(match, team?.name, team?.category, true));
+});
+
+router.post("/correct-september-hkt-import", requireAdminAccess, async (req, res): Promise<void> => {
+  const result = await db.transaction(async (tx) => {
+    const rows = await tx
+      .select()
+      .from(matchesTable)
+      .where(inArray(matchesTable.id, SEPTEMBER_HKT_IMPORT.map(({ id }) => id)));
+    const rowsById = new Map(rows.map((row) => [row.id, row]));
+    let correctedCount = 0;
+    let alreadyCorrectCount = 0;
+    let classifiedEventCount = 0;
+    let alreadyClassifiedEventCount = 0;
+
+    for (const expected of SEPTEMBER_HKT_IMPORT) {
+      const row = rowsById.get(expected.id);
+      const isImported = row?.kickoffAt.toISOString() === expected.importedKickoff && row.operationalScope == null;
+      const isCorrect = row?.kickoffAt.toISOString() === expected.correctedKickoff && row.operationalScope === "local_2026_27";
+      const hasExpectedIdentity = row?.teamId === expected.teamId && row.opponent === expected.opponent;
+
+      if (!row || !hasExpectedIdentity || (!isImported && !isCorrect)) {
+        throw new Error(`Match ${expected.id} no longer matches the September 2026 import batch`);
+      }
+      if (isCorrect) {
+        alreadyCorrectCount += 1;
+        continue;
+      }
+
+      const [updated] = await tx
+        .update(matchesTable)
+        .set({
+          kickoffAt: new Date(expected.correctedKickoff),
+          operationalScope: "local_2026_27",
+        })
+        .where(and(
+          eq(matchesTable.id, expected.id),
+          eq(matchesTable.kickoffAt, new Date(expected.importedKickoff)),
+          isNull(matchesTable.operationalScope),
+        ))
+        .returning();
+      if (!updated) {
+        throw new Error(`Match ${expected.id} changed while the correction was being applied`);
+      }
+      rowsById.set(updated.id, updated);
+      correctedCount += 1;
+    }
+
+    const eventRows = await tx
+      .select()
+      .from(eventsTable)
+      .where(inArray(eventsTable.id, SEPTEMBER_TRIAL_EVENTS.map(({ id }) => id)));
+    const eventsById = new Map(eventRows.map((row) => [row.id, row]));
+
+    for (const expected of SEPTEMBER_TRIAL_EVENTS) {
+      const event = eventsById.get(expected.id);
+      const hasExpectedIdentity = event?.kind === expected.kind
+        && event.title === expected.title
+        && event.startsAt.toISOString() === expected.startsAt
+        && event.endsAt?.toISOString() === expected.endsAt;
+      const isUnclassified = event?.operationalScope == null;
+      const isCurrent = event?.operationalScope === "local_2026_27";
+
+      if (!event || !hasExpectedIdentity || (!isUnclassified && !isCurrent)) {
+        throw new Error(`Event ${expected.id} no longer matches the September 2026 trial batch`);
+      }
+      if (isCurrent) {
+        alreadyClassifiedEventCount += 1;
+        continue;
+      }
+
+      const [updated] = await tx
+        .update(eventsTable)
+        .set({ operationalScope: "local_2026_27" })
+        .where(and(eq(eventsTable.id, expected.id), isNull(eventsTable.operationalScope)))
+        .returning({ id: eventsTable.id });
+      if (!updated) {
+        throw new Error(`Event ${expected.id} changed while the correction was being applied`);
+      }
+      classifiedEventCount += 1;
+    }
+
+    return {
+      correctedCount,
+      alreadyCorrectCount,
+      classifiedEventCount,
+      alreadyClassifiedEventCount,
+      matches: SEPTEMBER_HKT_IMPORT.map(({ id }) => serialize(rowsById.get(id)!, undefined, undefined, true)),
+    };
+  }).catch((error: unknown) => {
+    req.log.warn({ error: error instanceof Error ? error.message : String(error) }, "September HKT match correction rejected");
+    return null;
+  });
+
+  if (!result) {
+    res.status(409).json({ error: "The affected matches no longer match the known September 2026 import batch. No records were changed." });
+    return;
+  }
+  req.log.info({
+    correctedCount: result.correctedCount,
+    alreadyCorrectCount: result.alreadyCorrectCount,
+    classifiedEventCount: result.classifiedEventCount,
+    alreadyClassifiedEventCount: result.alreadyClassifiedEventCount,
+  }, "September match and trial event correction applied");
+  res.json(CorrectSeptemberHktImportResponse.parse(result));
 });
 
 async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {

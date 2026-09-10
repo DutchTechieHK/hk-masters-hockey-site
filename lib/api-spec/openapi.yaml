@@ -1159,6 +1159,23 @@ paths:
               schema:
                 $ref: "#/components/schemas/Match"
 
+  /matches/correct-september-hkt-import:
+    post:
+      operationId: correctSeptemberHktImport
+      tags: [matches]
+      summary: Restore the known September 2026 match and trial event imports
+      responses:
+        "200":
+          description: The affected matches were corrected or were already correct
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchImportCorrectionResult"
+        "401":
+          description: Admin authentication required
+        "409":
+          description: The affected records no longer match the known import batch
+
   /matches/{id}:
     patch:
       operationId: updateMatch
@@ -2821,6 +2838,28 @@ components:
         - opponent
         - kickoffAt
         - status
+
+    MatchImportCorrectionResult:
+      type: object
+      properties:
+        correctedCount:
+          type: integer
+        alreadyCorrectCount:
+          type: integer
+        classifiedEventCount:
+          type: integer
+        alreadyClassifiedEventCount:
+          type: integer
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/Match"
+      required:
+        - correctedCount
+        - alreadyCorrectCount
+        - classifiedEventCount
+        - alreadyClassifiedEventCount
+        - matches
 
     EmailBlastRecord:
       type: object

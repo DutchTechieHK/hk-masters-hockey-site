@@ -133,6 +133,12 @@ Community members can submit articles and photos via the public Journal page. Su
 8. Schedule — match fixtures CRUD (login required); per-team grouping; conditional score inputs based on status
 9. Announcements — two tabs: "In-app feed" (pinnable CRUD board for players), "Email players" (bulk email composer with audience selector, recipient preview, confirmation modal, send history table)
 
+## Match Timezones and Operational Scope
+
+- Current Local Masters League & Socials matches use **Hong Kong time (`Asia/Hong_Kong`)** for CSV imports, manual editing, schedule display, and calendar timestamps.
+- World Cup 2026 archive matches retain their historical **Rotterdam time (`Europe/Amsterdam`)** presentation.
+- New current matches must be classified with the `local_2026_27` operational scope. Archived World Cup matches use `world_cup_2026` and remain read-only.
+
 ## Database Tables
 
 - `teams`, `players`, `kits`, `fundraising`, `logistics`

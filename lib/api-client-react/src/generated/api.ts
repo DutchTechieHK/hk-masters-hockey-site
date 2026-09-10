@@ -46,6 +46,7 @@ import type {
   ListTeamsParams,
   LogisticsTask,
   Match,
+  MatchImportCorrectionResult,
   MembershipInitializationResult,
   MembershipInterestImport,
   MembershipInterestImportResult,
@@ -4891,6 +4892,90 @@ export const useCreateMatch = <
   TContext
 > => {
   return useMutation(getCreateMatchMutationOptions(options));
+};
+
+/**
+ * @summary Restore the known September 2026 match and trial event imports
+ */
+export const getCorrectSeptemberHktImportUrl = () => {
+  return `/api/matches/correct-september-hkt-import`;
+};
+
+export const correctSeptemberHktImport = async (
+  options?: RequestInit,
+): Promise<MatchImportCorrectionResult> => {
+  return customFetch<MatchImportCorrectionResult>(
+    getCorrectSeptemberHktImportUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getCorrectSeptemberHktImportMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof correctSeptemberHktImport>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof correctSeptemberHktImport>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["correctSeptemberHktImport"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof correctSeptemberHktImport>>,
+    void
+  > = () => {
+    return correctSeptemberHktImport(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CorrectSeptemberHktImportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof correctSeptemberHktImport>>
+>;
+
+export type CorrectSeptemberHktImportMutationError = ErrorType<void>;
+
+/**
+ * @summary Restore the known September 2026 match and trial event imports
+ */
+export const useCorrectSeptemberHktImport = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof correctSeptemberHktImport>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof correctSeptemberHktImport>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCorrectSeptemberHktImportMutationOptions(options));
 };
 
 /**

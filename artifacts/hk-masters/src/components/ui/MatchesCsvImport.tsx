@@ -220,7 +220,7 @@ export default function MatchesCsvImport({ teams, sessionToken, onClose, onImpor
           <div className="rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800 space-y-1">
             <p className="font-semibold">Required columns: <span className="font-mono font-normal">team, opponent, kickoff_at</span></p>
             <p className="text-blue-700">Optional: <span className="font-mono">venue, status, notes</span></p>
-            <p className="text-blue-700">Times are interpreted as <strong>Rotterdam time (CEST)</strong>. Format: <span className="font-mono">YYYY-MM-DD HH:mm</span></p>
+            <p className="text-blue-700">Times are interpreted as <strong>{getScopeTimezoneLabel(scope)}</strong>. Format: <span className="font-mono">YYYY-MM-DD HH:mm</span></p>
             {teamNames && <p className="text-blue-700">Known teams: <span className="font-medium">{teamNames}</span></p>}
           </div>
 

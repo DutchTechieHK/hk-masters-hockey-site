@@ -71,6 +71,7 @@ export * from "./logisticsTask";
 export * from "./logisticsTaskCategory";
 export * from "./logisticsTaskStatus";
 export * from "./match";
+export * from "./matchImportCorrectionResult";
 export * from "./matchStatus";
 export * from "./membershipInitializationResult";
 export * from "./membershipInterestConflictDetail";

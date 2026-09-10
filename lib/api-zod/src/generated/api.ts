@@ -1652,6 +1652,32 @@ export const CreateMatchBody = zod.object({
 });
 
 /**
+ * @summary Restore the known September 2026 match and trial event imports
+ */
+export const CorrectSeptemberHktImportResponse = zod.object({
+  correctedCount: zod.number(),
+  alreadyCorrectCount: zod.number(),
+  classifiedEventCount: zod.number(),
+  alreadyClassifiedEventCount: zod.number(),
+  matches: zod.array(
+    zod.object({
+      id: zod.number(),
+      teamId: zod.number(),
+      teamName: zod.string().optional(),
+      teamCategory: zod.string().optional(),
+      opponent: zod.string(),
+      kickoffAt: zod.string(),
+      venue: zod.string().optional(),
+      ourScore: zod.number().nullish(),
+      theirScore: zod.number().nullish(),
+      status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+      notes: zod.string().optional(),
+      createdAt: zod.string().optional(),
+    }),
+  ),
+});
+
+/**
  * @summary Update a match
  */
 export const UpdateMatchParams = zod.object({
