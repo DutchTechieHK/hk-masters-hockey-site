@@ -7,6 +7,7 @@ import {
 describe("membershipCategoryAmountDue", () => {
   it("maps current categories to their 2026/27 fees", () => {
     expect(membershipCategoryAmountDue("awaiting_selection")).toBeNull();
+    expect(membershipCategoryAmountDue("trials")).toBeNull();
     expect(membershipCategoryAmountDue("community_member")).toBe(100);
     expect(membershipCategoryAmountDue("social_player")).toBe(300);
     expect(membershipCategoryAmountDue("masters_division_one")).toBe(500);

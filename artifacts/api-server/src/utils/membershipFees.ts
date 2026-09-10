@@ -6,6 +6,7 @@ export type SeasonPayment = {
 
 export const MEMBERSHIP_CATEGORIES = [
   "awaiting_selection",
+  "trials",
   "community_member",
   "social_player",
   "masters_division_one",
@@ -15,6 +16,7 @@ export type MembershipCategory = (typeof MEMBERSHIP_CATEGORIES)[number];
 
 export const MEMBERSHIP_CATEGORY_FEES: Record<MembershipCategory, number | null> = {
   awaiting_selection: null,
+  trials: null,
   community_member: 100,
   social_player: 300,
   masters_division_one: 500,

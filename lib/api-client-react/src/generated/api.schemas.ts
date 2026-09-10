@@ -289,6 +289,7 @@ export type PlayerCurrentMembershipTier =
 
 export const PlayerCurrentMembershipTier = {
   awaiting_selection: "awaiting_selection",
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",
@@ -393,6 +394,7 @@ export type CreatePlayerCurrentMembershipTier =
 
 export const CreatePlayerCurrentMembershipTier = {
   awaiting_selection: "awaiting_selection",
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",
@@ -514,6 +516,7 @@ export type MembershipInterestSubmissionMembershipTier =
 
 export const MembershipInterestSubmissionMembershipTier = {
   awaiting_selection: "awaiting_selection",
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",
@@ -586,6 +589,7 @@ export type MembershipInterestInputMembershipTier =
   (typeof MembershipInterestInputMembershipTier)[keyof typeof MembershipInterestInputMembershipTier];
 
 export const MembershipInterestInputMembershipTier = {
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",
@@ -650,6 +654,7 @@ export type MembershipInterestResolutionMembershipTier =
 
 export const MembershipInterestResolutionMembershipTier = {
   awaiting_selection: "awaiting_selection",
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",
@@ -694,6 +699,7 @@ export type SelfPlayerCurrentMembershipTier =
 
 export const SelfPlayerCurrentMembershipTier = {
   awaiting_selection: "awaiting_selection",
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",

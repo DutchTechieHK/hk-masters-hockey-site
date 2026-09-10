@@ -48,6 +48,7 @@ declare global {
 const SESSION_KEY = "hkm_admin_session"
 const MEMBERSHIP_TIER_LABELS: Record<string, string> = {
   awaiting_selection: "Awaiting Selection",
+  trials: "Trials",
   community_member: "Community Member",
   social_player: "Social Player",
   masters_division_one: "Masters Div. 1",
@@ -183,7 +184,7 @@ const playerSchema = z.object({
   facebookHandle: z.string().optional(),
   memberStatus: z.enum(["active", "inactive", "archived"]).default("active"),
   currentMembershipSection: z.enum(["not_set", "men", "women"]).default("not_set"),
-  currentMembershipTier: z.enum(["awaiting_selection", "community_member", "social_player", "masters_division_one"]).default("awaiting_selection"),
+  currentMembershipTier: z.enum(["awaiting_selection", "trials", "community_member", "social_player", "masters_division_one"]).default("awaiting_selection"),
 })
 
 type PlayerFormValues = z.infer<typeof playerSchema>

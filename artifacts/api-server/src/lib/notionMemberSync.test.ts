@@ -39,6 +39,7 @@ function pageFixture(overrides: Record<string, unknown> = {}) {
         multi_select: [{ id: "forward", name: "Forward" }, { id: "midfield", name: "Midfield" }],
       },
       "Membership Section": { id: "section", type: "select", select: { id: "women", name: "Women" } },
+      "Play in Masters League Team": { id: "league", type: "multi_select", multi_select: [{ id: "yes", name: "Yes" }] },
       Submitted: { id: "submitted", type: "created_time", created_time: "2026-09-01T10:00:00.000Z" },
       "Consent to Be Contacted": { id: "consent", type: "checkbox", checkbox: true },
     },
@@ -57,6 +58,7 @@ describe("Notion member sync rules", () => {
       dateOfBirth: "1984-06-12",
       position: "Forward, Midfield",
       membershipSection: "women",
+      membershipTier: "trials",
       consent: true,
     });
     expect(applicant && isValidNotionApplicant(applicant)).toBe(true);
@@ -82,7 +84,19 @@ describe("Notion member sync rules", () => {
     expect(shouldApplyImportedTier("notion_join", "social_player")).toBe(false);
     expect(shouldApplyImportedTier("notion_join", "masters_division_one")).toBe(false);
     expect(shouldApplyImportedTier("notion_join", "awaiting_selection")).toBe(true);
+    expect(shouldApplyImportedTier("notion_join", "trials")).toBe(true);
     expect(shouldApplyImportedTier("manual_import", "social_player")).toBe(true);
+  });
+
+  it("maps only an explicit Yes answer to the Trials category", () => {
+    expect(pageToNotionApplicant(pageFixture())?.membershipTier).toBe("trials");
+    const noApplicant = pageToNotionApplicant(pageFixture({
+      properties: {
+        ...pageFixture().properties,
+        "Play in Masters League Team": { id: "league", type: "multi_select", multi_select: [{ id: "no", name: "No" }] },
+      },
+    }));
+    expect(noApplicant?.membershipTier).toBe("awaiting_selection");
   });
 
   it("only applies an explicit valid Notion membership section", () => {

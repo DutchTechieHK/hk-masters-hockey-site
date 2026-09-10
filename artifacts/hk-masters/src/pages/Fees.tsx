@@ -76,7 +76,7 @@ function todayStr() {
 }
 
 function isMissingFeeDetails(p: Player): boolean {
-  if (p.currentMembershipTier === "awaiting_selection") return false
+  if (p.currentMembershipTier === "awaiting_selection" || p.currentMembershipTier === "trials") return false
   if (p.membershipFeeAmountDue == null) return true
   if (p.membershipFeePaid) {
     if (!p.membershipFeeAmountPaid || !p.membershipFeePaymentDate) return true
@@ -86,6 +86,7 @@ function isMissingFeeDetails(p: Player): boolean {
 
 const CATEGORY_LABELS: Record<Player["currentMembershipTier"], string> = {
   awaiting_selection: "Awaiting Selection",
+  trials: "Trials",
   community_member: "Community Member",
   social_player: "Social Player",
   masters_division_one: "Masters Div. 1",

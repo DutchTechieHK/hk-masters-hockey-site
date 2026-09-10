@@ -10,6 +10,7 @@ export type MembershipInterestInputMembershipTier =
   (typeof MembershipInterestInputMembershipTier)[keyof typeof MembershipInterestInputMembershipTier];
 
 export const MembershipInterestInputMembershipTier = {
+  trials: "trials",
   community_member: "community_member",
   social_player: "social_player",
   masters_division_one: "masters_division_one",

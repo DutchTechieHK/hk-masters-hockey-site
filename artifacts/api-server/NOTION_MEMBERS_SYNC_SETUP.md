@@ -20,6 +20,7 @@ The current importer expects these Notion properties:
 - `WhatsApp / Phone` (phone)
 - `Year of Birth` (date)
 - `Position(s)` (multi-select)
+- `Play in Masters League Team` (multi-select with `Yes` or `No`) — `Yes` places an unselected applicant in the **Trials** category
 - `Submitted` (created time)
 - `Consent to Be Contacted` (checkbox)
 
@@ -29,7 +30,7 @@ Other form properties are retained in the submission audit data only when consen
 
 - The Notion page ID is the idempotency key.
 - New valid applicants become active members in the internal **Awaiting Selection** holding team.
-- Existing normalized-email matches are linked without changing an already selected membership tier.
+- Existing normalized-email matches are linked without changing an already selected Community, Social, or Masters Div. 1 tier. Applicants still awaiting selection move between **Trials** and **Awaiting Selection** according to the Notion answer.
 - Duplicate emails, changed identity details, malformed rows, and missing consent require review.
 - Withdrawing consent makes a Notion-created applicant inactive and removes PII from the submission audit row.
 - A PostgreSQL advisory lock prevents scheduled and manual syncs from overlapping across server instances.

@@ -389,6 +389,7 @@ export const ListPlayersResponseItem = zod.object({
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",
@@ -469,6 +470,7 @@ export const CreatePlayerBody = zod.object({
   currentMembershipTier: zod
     .enum([
       "awaiting_selection",
+      "trials",
       "community_member",
       "social_player",
       "masters_division_one",
@@ -583,6 +585,7 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   membershipSection: zod.enum(["not_set", "men", "women"]),
   membershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",
@@ -636,6 +639,7 @@ export const ImportMembershipInterestSubmissionsBody = zod.object({
         phone: zod.string().optional(),
         membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
         membershipTier: zod.enum([
+          "trials",
           "community_member",
           "social_player",
           "masters_division_one",
@@ -698,6 +702,7 @@ export const ResolveMembershipInterestSubmissionBody = zod.object({
   playerId: zod.number().nullish(),
   membershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",
@@ -714,6 +719,7 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   membershipSection: zod.enum(["not_set", "men", "women"]),
   membershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",
@@ -794,6 +800,7 @@ export const GetSelfPlayerResponse = zod.object({
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",
@@ -898,6 +905,7 @@ export const UpdateSelfPlayerResponse = zod.object({
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",
@@ -1138,6 +1146,7 @@ export const UpdatePlayerBody = zod.object({
   currentMembershipTier: zod
     .enum([
       "awaiting_selection",
+      "trials",
       "community_member",
       "social_player",
       "masters_division_one",
@@ -1213,6 +1222,7 @@ export const UpdatePlayerResponse = zod.object({
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
+    "trials",
     "community_member",
     "social_player",
     "masters_division_one",

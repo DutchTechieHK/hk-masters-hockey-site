@@ -36,6 +36,7 @@ export type NotionApplicant = {
   dateOfBirth: string | null;
   position: string | null;
   membershipSection?: "men" | "women" | null;
+  membershipTier: "awaiting_selection" | "trials";
   consent: boolean;
   rawData: Record<string, unknown>;
 };
@@ -117,6 +118,11 @@ function membershipSectionValue(property: any): "men" | "women" | null {
   return null;
 }
 
+function membershipTierValue(property: any): "awaiting_selection" | "trials" {
+  const answers = multiSelectValue(property).map((value) => value.trim().toLowerCase());
+  return answers.includes("yes") ? "trials" : "awaiting_selection";
+}
+
 export function validateNotionMemberProperties(properties: Record<string, any>): void {
   const invalid = Object.entries(REQUIRED_PROPERTIES)
     .filter(([name, type]) => properties[name]?.type !== type)
@@ -152,6 +158,7 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
   const membershipSection =
     membershipSectionValue(properties["Membership Section"]) ??
     membershipSectionValue(properties.Category);
+  const membershipTier = membershipTierValue(properties["Play in Masters League Team"]);
   const submitted = properties["Submitted"]?.created_time ?? page.created_time;
   const rawData = Object.fromEntries(
     Object.entries(properties).map(([key, value]) => [key, plainPropertyValue(value)]),
@@ -166,6 +173,7 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
     dateOfBirth,
     position,
     membershipSection,
+    membershipTier,
     consent,
     rawData,
   };
@@ -284,7 +292,7 @@ export function isNotionProfileConflictResolved(
 }
 
 export function shouldApplyImportedTier(source: string, currentTier: string): boolean {
-  return source !== SOURCE || currentTier === "awaiting_selection";
+  return source !== SOURCE || currentTier === "awaiting_selection" || currentTier === "trials";
 }
 
 export function isNotionSnapshotCurrent(stored: Date | null, incoming: Date): boolean {
@@ -295,6 +303,7 @@ type MemberProfile = {
   dateOfBirth: string | null;
   position: string | null;
   currentMembershipSection?: string;
+  currentMembershipTier?: string;
 };
 
 export type NotionMemberConflict = {
@@ -355,7 +364,7 @@ export function getNotionMemberConflicts(
 }
 
 export function resolveNotionMemberProfile(
-  applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position" | "membershipSection">,
+  applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position" | "membershipSection"> & Partial<Pick<NotionApplicant, "membershipTier">>,
   current: MemberProfile,
   notionCreated: boolean,
 ): { updates: Partial<MemberProfile>; conflict: boolean } {
@@ -383,6 +392,13 @@ export function resolveNotionMemberProfile(
       conflict = true;
     }
   }
+  if (
+    applicant.membershipTier &&
+    shouldApplyImportedTier(SOURCE, current.currentMembershipTier ?? "awaiting_selection") &&
+    applicant.membershipTier !== current.currentMembershipTier
+  ) {
+    updates.currentMembershipTier = applicant.membershipTier;
+  }
   return { updates, conflict };
 }
 
@@ -403,7 +419,7 @@ export function hasNotionIdentityConflict(
 }
 
 export function resolveNotionMemberSyncProfile(
-  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position" | "membershipSection">,
+  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position" | "membershipSection"> & Partial<Pick<NotionApplicant, "membershipTier">>,
   current: MemberProfile & { email: string | null },
   notionCreated: boolean,
 ): { updates: Partial<MemberProfile>; conflict: boolean } {
@@ -434,6 +450,7 @@ async function syncNotionMemberProfile(
     dateOfBirth: playersTable.dateOfBirth,
     position: playersTable.position,
     currentMembershipSection: playersTable.currentMembershipSection,
+    currentMembershipTier: playersTable.currentMembershipTier,
   }).from(playersTable).where(eq(playersTable.id, playerId)).limit(1);
   if (!player) return { updated: false, conflict: true };
 
@@ -451,10 +468,18 @@ async function syncNotionMemberProfile(
   );
   const updated = Object.keys(resolution.updates).length > 0;
   if (updated) {
-    await tx.update(playersTable).set(resolution.updates).where(eq(playersTable.id, playerId));
-    if (resolution.updates.currentMembershipSection) {
+    await tx.update(playersTable).set({
+      ...resolution.updates,
+      ...(resolution.updates.currentMembershipTier ? { membershipTierUpdatedAt: new Date() } : {}),
+    }).where(eq(playersTable.id, playerId));
+    if (resolution.updates.currentMembershipSection || resolution.updates.currentMembershipTier) {
       await tx.update(playerParticipationsTable).set({
-        membershipSection: resolution.updates.currentMembershipSection,
+        ...(resolution.updates.currentMembershipSection
+          ? { membershipSection: resolution.updates.currentMembershipSection }
+          : {}),
+        ...(resolution.updates.currentMembershipTier
+          ? { membershipTier: resolution.updates.currentMembershipTier }
+          : {}),
         updatedAt: new Date(),
       }).where(and(
         eq(playerParticipationsTable.playerId, playerId),
@@ -589,7 +614,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               dateOfBirth: applicant.dateOfBirth,
               position: applicant.position,
               memberStatus: "active",
-              currentMembershipTier: "awaiting_selection",
+              currentMembershipTier: applicant.membershipTier,
               currentMembershipSection: applicant.membershipSection ?? "not_set",
               membershipTierUpdatedAt: new Date(),
               notes: "Joined via the Notion membership form.",
@@ -601,7 +626,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               seasonId: currentSeasonId,
               teamId: holdingTeamId,
               participationStatus: "active",
-              membershipTier: "awaiting_selection",
+              membershipTier: applicant.membershipTier,
               membershipSection: applicant.membershipSection ?? "not_set",
               source: SOURCE,
             });
@@ -625,7 +650,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           submittedName: storedApplicant.submittedName,
           submittedEmail: storedApplicant.submittedEmail,
           submittedPhone: storedApplicant.submittedPhone,
-          membershipTier: "awaiting_selection",
+          membershipTier: applicant.membershipTier,
           membershipSection: applicant.membershipSection ?? "not_set",
           matchedPlayerId,
           matchStatus,

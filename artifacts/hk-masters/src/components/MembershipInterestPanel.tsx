@@ -9,13 +9,14 @@ type ImportRow = {
   name: string
   email: string
   phone?: string
-  membershipTier: "community_member" | "social_player" | "masters_division_one"
+  membershipTier: "trials" | "community_member" | "social_player" | "masters_division_one"
   membershipSection?: "not_set" | "men" | "women"
   rawData?: Record<string, unknown>
 }
 
 const TIER_LABELS: Record<string, string> = {
   awaiting_selection: "Awaiting Selection",
+  trials: "Trials",
   community_member: "Community Member",
   social_player: "Social Player",
   masters_division_one: "Masters Div. 1",
@@ -71,7 +72,7 @@ function parseCsvLine(line: string) {
 
 function normalizeTier(value: string): ImportRow["membershipTier"] | null {
   const tier = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
-  if (tier === "community_member" || tier === "social_player" || tier === "masters_division_one") {
+  if (tier === "trials" || tier === "community_member" || tier === "social_player" || tier === "masters_division_one") {
     return tier
   }
   return null

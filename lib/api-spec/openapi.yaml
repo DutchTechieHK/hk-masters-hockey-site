@@ -1838,7 +1838,7 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, community_member, social_player, masters_division_one]
+          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         membershipTierUpdatedAt:
           type: string
           nullable: true
@@ -2001,7 +2001,7 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, community_member, social_player, masters_division_one]
+          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
       required:
         - teamId
         - name
@@ -2081,7 +2081,7 @@ components:
           enum: [not_set, men, women]
         membershipTier:
           type: string
-          enum: [awaiting_selection, community_member, social_player, masters_division_one]
+          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         matchedPlayerId:
           type: integer
           nullable: true
@@ -2140,7 +2140,7 @@ components:
           enum: [not_set, men, women]
         membershipTier:
           type: string
-          enum: [community_member, social_player, masters_division_one]
+          enum: [trials, community_member, social_player, masters_division_one]
         rawData:
           type: object
           additionalProperties: true
@@ -2219,7 +2219,7 @@ components:
           nullable: true
         membershipTier:
           type: string
-          enum: [awaiting_selection, community_member, social_player, masters_division_one]
+          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         membershipSection:
           type: string
           enum: [not_set, men, women]
@@ -2310,7 +2310,7 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, community_member, social_player, masters_division_one]
+          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         paymentAmountDue:
           type: number
           nullable: true
