@@ -4,7 +4,6 @@ import {
   useCreateMatch,
   useUpdateMatch,
   useDeleteMatch,
-  useCorrectSeptemberHktImport,
   getListMatchesQueryKey,
   useListTeams,
   getListTeamsQueryKey,
@@ -18,7 +17,7 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban, Upload, Wrench } from "lucide-react"
+import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban, Upload } from "lucide-react"
 import MatchesCsvImport from "@/components/ui/MatchesCsvImport"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -164,7 +163,6 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
   const createMutation = useCreateMatch()
   const updateMutation = useUpdateMatch()
   const deleteMutation = useDeleteMatch()
-  const correctionMutation = useCorrectSeptemberHktImport()
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<MatchFormValues>({
     resolver: zodResolver(matchSchema),
@@ -264,26 +262,6 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
     }
   }
 
-  const correctSeptemberImport = async () => {
-    if (!confirm("Restore the September 2026 imports? This corrects eight match kick-off times to HKT and restores the two trial dates. Only operational scope and the eight match times will change.")) return
-    try {
-      const result = await correctionMutation.mutateAsync()
-      queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
-      toast({
-        title: result.correctedCount > 0 || result.classifiedEventCount > 0 ? "September imports restored" : "September imports already correct",
-        description: result.correctedCount > 0 || result.classifiedEventCount > 0
-          ? `${result.correctedCount} match times corrected and ${result.classifiedEventCount} trial dates restored.`
-          : "No changes were needed.",
-      })
-    } catch {
-      toast({
-        title: "Correction could not be applied",
-        description: "The imported records no longer match the known batch. No matches were changed.",
-        variant: "destructive",
-      })
-    }
-  }
-
   // group by team
   const groupedByTeam = teams.map((t) => ({
     team: t,
@@ -339,12 +317,6 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
             <Button variant="outline" onClick={() => setShowCsvImport(true)} disabled={teams.length === 0}>
               <Upload className="w-4 h-4 mr-1.5" /> Import CSV
             </Button>
-            {!scope && (
-              <Button variant="outline" onClick={correctSeptemberImport} disabled={correctionMutation.isPending}>
-                <Wrench className="w-4 h-4 mr-1.5" />
-                {correctionMutation.isPending ? "Restoring…" : "Restore Sep imports"}
-              </Button>
-            )}
             <Button onClick={openAddModal} disabled={teams.length === 0}>
               <Plus className="w-5 h-5 mr-2" /> Add Match
             </Button>
