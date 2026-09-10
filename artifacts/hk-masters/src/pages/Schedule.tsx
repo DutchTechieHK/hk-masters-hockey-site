@@ -27,6 +27,8 @@ import type { Match } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getCountryFlagImageUrl } from "@workspace/country-flags"
 
+const CURRENT_MATCH_EXCLUDED_TEAM_CATEGORIES = new Set(["MO40", "MO50", "Awaiting Selection"])
+
 const SESSION_KEY = "hkm_admin_session"
 function getStoredToken(): string | null {
   try { return localStorage.getItem(SESSION_KEY) } catch { return null }
@@ -154,7 +156,9 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
     enabled: !!scope
   })
 
-  const teams = scope ? archiveTeams : defaultTeams
+  const teams = scope
+    ? archiveTeams
+    : defaultTeams.filter((team) => !CURRENT_MATCH_EXCLUDED_TEAM_CATEGORIES.has(team.category))
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editing, setEditing] = useState<Match | null>(null)
