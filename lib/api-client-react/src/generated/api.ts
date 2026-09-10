@@ -19,6 +19,7 @@ import type {
 import type {
   Announcement,
   AnnouncementInput,
+  AnnouncementRecipientCount,
   CreateFundraisingEntry,
   CreateKitOrder,
   CreateLogisticsTask,
@@ -31,6 +32,7 @@ import type {
   FeeReminderRequest,
   FeeReminderResult,
   FundraisingEntry,
+  GetAnnouncementRecipientCountParams,
   GetPlayerAccessToken200,
   HealthStatus,
   InsuranceReminderRequest,
@@ -482,6 +484,115 @@ export const useDeleteAnnouncement = <
 > => {
   return useMutation(getDeleteAnnouncementMutationOptions(options));
 };
+
+/**
+ * @summary Count active players in an announcement audience
+ */
+export const getGetAnnouncementRecipientCountUrl = (
+  params?: GetAnnouncementRecipientCountParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/announcements/recipient-count?${stringifiedParams}`
+    : `/api/announcements/recipient-count`;
+};
+
+export const getAnnouncementRecipientCount = async (
+  params?: GetAnnouncementRecipientCountParams,
+  options?: RequestInit,
+): Promise<AnnouncementRecipientCount> => {
+  return customFetch<AnnouncementRecipientCount>(
+    getGetAnnouncementRecipientCountUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAnnouncementRecipientCountQueryKey = (
+  params?: GetAnnouncementRecipientCountParams,
+) => {
+  return [
+    `/api/announcements/recipient-count`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetAnnouncementRecipientCountQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAnnouncementRecipientCount>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAnnouncementRecipientCountParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAnnouncementRecipientCount>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAnnouncementRecipientCountQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAnnouncementRecipientCount>>
+  > = ({ signal }) =>
+    getAnnouncementRecipientCount(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAnnouncementRecipientCount>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAnnouncementRecipientCountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAnnouncementRecipientCount>>
+>;
+export type GetAnnouncementRecipientCountQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Count active players in an announcement audience
+ */
+
+export function useGetAnnouncementRecipientCount<
+  TData = Awaited<ReturnType<typeof getAnnouncementRecipientCount>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAnnouncementRecipientCountParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAnnouncementRecipientCount>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAnnouncementRecipientCountQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get dashboard stats

@@ -937,18 +937,17 @@ export default function Players() {
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
                 <th className="px-4 py-4 font-semibold">2026/27 Fee</th>
-                <th className="px-4 py-4 font-semibold hidden xl:table-cell">Documents</th>
                 <th className="px-4 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
                     {players.length === 0 ? "No members yet. Add your first member to get started." : "No members match your search."}
                   </td>
                 </tr>
@@ -1044,65 +1043,6 @@ export default function Players() {
                           <Badge variant="success" className="gap-1 whitespace-nowrap"><CheckCircle className="w-3 h-3" /> Paid</Badge>
                         ) : (
                           <Badge variant="destructive" className="gap-1 whitespace-nowrap bg-rose-100 text-rose-800"><XCircle className="w-3 h-3" /> Unpaid</Badge>
-                        )}
-                      </td>
-                      {/* Passport copy remains available */}
-                      <td className="px-4 py-4 hidden xl:table-cell">
-                        {player.passportCopyUrl && (
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <a
-                              href={cloudinaryViewUrl(player.passportCopyUrl)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                              onClick={(e) => { e.stopPropagation(); acknowledgePassport(player.id) }}
-                            >
-                              <LinkIcon className="w-3 h-3" />
-                              View copy
-                            </a>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleToggleReviewed(player) }}
-                              title={player.passportCopyReviewed ? "Reviewed — click to unmark" : "Not yet reviewed — click to mark as reviewed"}
-                              className={`inline-flex items-center gap-1 text-xs font-medium rounded px-1.5 py-0.5 border transition-colors ${
-                                player.passportCopyReviewed
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                  : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                              }`}
-                            >
-                              {player.passportCopyReviewed
-                                ? <><CheckCircle className="w-3 h-3" /> Reviewed</>
-                                : <><Clock className="w-3 h-3" /> Unreviewed</>
-                              }
-                            </button>
-                          </div>
-                        )}
-                        {player.hkidCopyUrl && (
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <a
-                              href={cloudinaryViewUrl(player.hkidCopyUrl)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                              onClick={(e) => { e.stopPropagation(); acknowledgeHkid(player.id) }}
-                            >
-                              <LinkIcon className="w-3 h-3" />
-                              View HKID
-                            </a>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleToggleHkidReviewed(player) }}
-                              title={player.hkidCopyReviewed ? "HKID reviewed — click to unmark" : "HKID not yet reviewed — click to mark as reviewed"}
-                              className={`inline-flex items-center gap-1 text-xs font-medium rounded px-1.5 py-0.5 border transition-colors ${
-                                player.hkidCopyReviewed
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                  : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                              }`}
-                            >
-                              {player.hkidCopyReviewed
-                                ? <><CheckCircle className="w-3 h-3" /> HKID Rev.</>
-                                : <><Clock className="w-3 h-3" /> HKID Unrev.</>
-                              }
-                            </button>
-                          </div>
                         )}
                       </td>
                       {/* Actions */}

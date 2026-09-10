@@ -7,4 +7,4 @@ Membership section is an operational hockey grouping with the values Not set, Me
 
 **Why:** Categories determine fees, while squads represent actual selection. Combining these concepts would duplicate categories, assign members to squads accidentally, and make future section-specific communication harder. Existing records must not be classified by names or historical teams.
 
-**How to apply:** Default new and existing members to Not set unless an admin or an explicit valid integration value assigns a section. Do not use section to alter fees. Preserve archived participation section data, and require the Men section for selection into explicitly Men's squads.
+**How to apply:** Default new and existing members to Not set unless an admin or an explicit valid integration value assigns a section. Do not use section to alter fees. Preserve archived participation section data, and require the Men section for selection into explicitly Men's squads. Every section mutation path, including bulk updates and imports, must clear an incompatible current squad assignment while leaving archived team history unchanged.

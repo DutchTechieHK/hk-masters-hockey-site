@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { db, announcementsTable, teamsTable } from "@workspace/db";
-import { and, eq, desc, or, isNull } from "drizzle-orm";
+import { db, announcementsTable, playersTable, teamsTable } from "@workspace/db";
+import { and, countDistinct, eq, desc, or, isNull } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { requirePlayerSession } from "../middleware/playerSession";
 import { sendPushToAll, sendPushToMembershipSection, sendPushToTeam } from "../utils/push";
@@ -62,30 +62,18 @@ function parseBody(body: unknown): {
   const rawBody = typeof b.body === "string" ? b.body.trim() : "";
   const messageBody = stripHtml(rawBody);
   if (!messageBody) return { error: "body required" };
-  let teamId: number | null = null;
-  if (b.teamId !== null && b.teamId !== undefined && b.teamId !== "") {
-    const n = Number(b.teamId);
-    if (!Number.isInteger(n) || n <= 0) return { error: "Invalid teamId" };
-    teamId = n;
-  }
-  const membershipSection =
-    b.membershipSection === "men" || b.membershipSection === "women"
-      ? b.membershipSection
-      : null;
-  if (
-    b.membershipSection !== null &&
-    b.membershipSection !== undefined &&
-    b.membershipSection !== "" &&
-    membershipSection === null
-  ) {
-    return { error: "Invalid membershipSection" };
-  }
-  if (teamId !== null && membershipSection !== null) {
-    return { error: "Choose either a squad or a membership section" };
-  }
+  const audience = parseAudience(b);
+  if ("error" in audience) return audience;
   const pinned = b.pinned === true || b.pinned === "true";
   const sendPush = b.sendPush !== false && b.sendPush !== "false";
-  return { title, body: messageBody, teamId, membershipSection, pinned, sendPush };
+  return {
+    title,
+    body: messageBody,
+    teamId: audience.teamId,
+    membershipSection: audience.membershipSection,
+    pinned,
+    sendPush,
+  };
 }
 
 router.get("/", requireAdminOrPlayer, async (req, res) => {
@@ -120,6 +108,62 @@ async function resolveTeam(teamId: number | null) {
   if (!team) return { ok: false as const };
   return { ok: true as const, team };
 }
+
+function parseAudience(input: Record<string, unknown>): {
+  teamId: number | null;
+  membershipSection: "men" | "women" | null;
+} | { error: string } {
+  let teamId: number | null = null;
+  if (input.teamId !== null && input.teamId !== undefined && input.teamId !== "") {
+    const n = Number(input.teamId);
+    if (!Number.isInteger(n) || n <= 0) return { error: "Invalid teamId" };
+    teamId = n;
+  }
+  const membershipSection =
+    input.membershipSection === "men" || input.membershipSection === "women"
+      ? input.membershipSection
+      : null;
+  if (
+    input.membershipSection !== null &&
+    input.membershipSection !== undefined &&
+    input.membershipSection !== "" &&
+    membershipSection === null
+  ) {
+    return { error: "Invalid membershipSection" };
+  }
+  if (teamId !== null && membershipSection !== null) {
+    return { error: "Choose either a squad or a membership section" };
+  }
+  return { teamId, membershipSection };
+}
+
+async function countAnnouncementRecipients(
+  teamId: number | null,
+  membershipSection: "men" | "women" | null,
+): Promise<number> {
+  const [result] = await db.select({
+    count: countDistinct(playersTable.id),
+  }).from(playersTable).where(and(
+    eq(playersTable.memberStatus, "active"),
+    teamId != null ? eq(playersTable.teamId, teamId) : undefined,
+    membershipSection != null
+      ? eq(playersTable.currentMembershipSection, membershipSection)
+      : undefined,
+  ));
+  return result?.count ?? 0;
+}
+
+router.get("/recipient-count", requireAdminAccess, async (req, res) => {
+  const audience = parseAudience(req.query as Record<string, unknown>);
+  if ("error" in audience) return res.status(400).json({ error: audience.error });
+  const teamResult = await resolveTeam(audience.teamId);
+  if (!teamResult.ok) return res.status(400).json({ error: "Invalid teamId" });
+  const recipientCount = await countAnnouncementRecipients(
+    audience.teamId,
+    audience.membershipSection,
+  );
+  return res.json({ recipientCount });
+});
 
 router.post("/", requireAdminAccess, async (req, res) => {
   const parsed = parseBody(req.body);

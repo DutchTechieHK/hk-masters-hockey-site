@@ -92,6 +92,22 @@ export const DeleteAnnouncementParams = zod.object({
 });
 
 /**
+ * @summary Count active players in an announcement audience
+ */
+export const GetAnnouncementRecipientCountQueryParams = zod.object({
+  teamId: zod.coerce.number().optional(),
+  membershipSection: zod.enum(["men", "women"]).optional(),
+});
+
+export const getAnnouncementRecipientCountResponseRecipientCountMin = 0;
+
+export const GetAnnouncementRecipientCountResponse = zod.object({
+  recipientCount: zod
+    .number()
+    .min(getAnnouncementRecipientCountResponseRecipientCountMin),
+});
+
+/**
  * @summary Get dashboard stats
  */
 export const GetDashboardResponse = zod.object({

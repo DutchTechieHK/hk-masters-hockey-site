@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { and, eq, inArray } from "drizzle-orm";
-import { announcementsTable, db } from "@workspace/db";
+import { announcementsTable, db, playersTable, teamsTable } from "@workspace/db";
 
 const pushMocks = vi.hoisted(() => ({
   all: vi.fn(async () => undefined),
@@ -44,8 +44,42 @@ app.use(express.json());
 app.use("/api/announcements", announcementsRouter);
 
 const titlePrefix = `section-targeting-${Date.now()}`;
+let countTeamId: number;
+let countPlayerIds: number[] = [];
 
 beforeAll(async () => {
+  const [countTeam] = await db.insert(teamsTable).values({
+    name: `${titlePrefix}-count-team`,
+    category: "TEST",
+    managerName: "Test Manager",
+    managerEmail: `${titlePrefix}@example.com`,
+    managerPhone: "test",
+  }).returning({ id: teamsTable.id });
+  countTeamId = countTeam.id;
+  const countPlayers = await db.insert(playersTable).values([
+    {
+      teamId: countTeamId,
+      name: `${titlePrefix}-active-one`,
+      email: `${titlePrefix}-active-one@example.com`,
+      memberStatus: "active",
+      feePaid: false,
+    },
+    {
+      teamId: countTeamId,
+      name: `${titlePrefix}-active-two`,
+      email: `${titlePrefix}-active-two@example.com`,
+      memberStatus: "active",
+      feePaid: false,
+    },
+    {
+      teamId: countTeamId,
+      name: `${titlePrefix}-archived`,
+      email: `${titlePrefix}-archived@example.com`,
+      memberStatus: "archived",
+      feePaid: false,
+    },
+  ]).returning({ id: playersTable.id });
+  countPlayerIds = countPlayers.map((player) => player.id);
   await db.insert(announcementsTable).values([
     { title: `${titlePrefix}-all`, body: "All players", membershipSection: null },
     { title: `${titlePrefix}-men`, body: "Men only", membershipSection: "men" },
@@ -62,6 +96,12 @@ afterAll(async () => {
       `${titlePrefix}-women`,
       `${titlePrefix}-created`,
     ]));
+  if (countPlayerIds.length > 0) {
+    await db.delete(playersTable).where(inArray(playersTable.id, countPlayerIds));
+  }
+  if (countTeamId) {
+    await db.delete(teamsTable).where(eq(teamsTable.id, countTeamId));
+  }
 });
 
 describe("announcement membership-section targeting", () => {
@@ -129,5 +169,21 @@ describe("announcement membership-section targeting", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toMatch(/either a squad or a membership section/i);
+  });
+
+  it("previews the number of active players in the selected audience", async () => {
+    const response = await request(app)
+      .get(`/api/announcements/recipient-count?teamId=${countTeamId}`)
+      .set("x-test-admin", "true");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ recipientCount: 2 });
+  });
+
+  it("requires admin access for recipient counts", async () => {
+    const response = await request(app)
+      .get(`/api/announcements/recipient-count?teamId=${countTeamId}`);
+
+    expect(response.status).toBe(401);
   });
 });

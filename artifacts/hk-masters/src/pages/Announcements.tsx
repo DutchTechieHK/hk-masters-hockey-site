@@ -153,6 +153,9 @@ export default function Announcements() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [recipientCount, setRecipientCount] = useState<number | null>(null)
+  const [recipientCountLoading, setRecipientCountLoading] = useState(false)
+  const [recipientCountError, setRecipientCountError] = useState<string | null>(null)
 
   // WhatsApp compose state
   const [waForm, setWaForm] = useState<WhatsAppFormState>(EMPTY_WA_FORM)
@@ -225,6 +228,37 @@ export default function Announcements() {
   useEffect(() => {
     if (activeTab === "email") refreshBlasts()
   }, [activeTab, refreshBlasts])
+
+  useEffect(() => {
+    if (!isModalOpen) return
+    const controller = new AbortController()
+    const params = new URLSearchParams()
+    if (form.audience.startsWith("team:")) {
+      params.set("teamId", form.audience.slice(5))
+    } else if (form.audience === "men" || form.audience === "women") {
+      params.set("membershipSection", form.audience)
+    }
+    setRecipientCountLoading(true)
+    setRecipientCount(null)
+    setRecipientCountError(null)
+    fetch(`/api/announcements/recipient-count?${params}`, {
+      headers: authHeaders(),
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data?.error || "Could not count recipients")
+        setRecipientCount(data.recipientCount)
+      })
+      .catch((error) => {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setRecipientCountError((error as Error).message)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setRecipientCountLoading(false)
+      })
+    return () => controller.abort()
+  }, [form.audience, isModalOpen])
 
   // Warn before closing the tab, refreshing, or navigating to an external
   // page while an unsent WhatsApp draft exists.
@@ -1019,6 +1053,19 @@ export default function Announcements() {
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </Select>
+            <div className={`rounded-lg border px-3 py-2 text-sm ${
+              recipientCount === 0
+                ? "border-amber-200 bg-amber-50 text-amber-800"
+                : "border-border bg-muted/20 text-muted-foreground"
+            }`}>
+              {recipientCountLoading
+                ? "Counting active members…"
+                : recipientCountError
+                  ? recipientCountError
+                : recipientCount == null
+                  ? "Recipient count unavailable"
+                  : `This announcement will reach ${recipientCount} active member${recipientCount !== 1 ? "s" : ""}.`}
+            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -1120,7 +1167,12 @@ export default function Announcements() {
           {formError && <p className="text-sm text-rose-600">{formError}</p>}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Saving…" : (editing ? "Save changes" : "Post")}</Button>
+            <Button
+              type="submit"
+              disabled={saving || recipientCountLoading || recipientCount == null}
+            >
+              {saving ? "Saving…" : (editing ? "Save changes" : "Post")}
+            </Button>
           </div>
         </form>
       </Modal>

@@ -60,6 +60,11 @@ export interface AnnouncementInput {
   sendPush?: boolean;
 }
 
+export interface AnnouncementRecipientCount {
+  /** @minimum 0 */
+  recipientCount: number;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -1175,6 +1180,19 @@ export interface UpdateWhatsappTemplateVariables {
   id: number;
   body: WhatsappTemplateUpdateInput;
 }
+
+export type GetAnnouncementRecipientCountParams = {
+  teamId?: number;
+  membershipSection?: GetAnnouncementRecipientCountMembershipSection;
+};
+
+export type GetAnnouncementRecipientCountMembershipSection =
+  (typeof GetAnnouncementRecipientCountMembershipSection)[keyof typeof GetAnnouncementRecipientCountMembershipSection];
+
+export const GetAnnouncementRecipientCountMembershipSection = {
+  men: "men",
+  women: "women",
+} as const;
 
 export type ListPlayersParams = {
   teamId?: number;

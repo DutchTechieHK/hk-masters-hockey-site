@@ -1544,6 +1544,15 @@ router.patch("/membership-sections", requireAdminAccess, async (req, res) => {
     if (changedPlayers.length > 0) {
       const changedPlayerIds = changedPlayers.map((player) => player.id);
       await tx.update(playerParticipationsTable).set({
+        teamId: sql`CASE
+          WHEN ${playerParticipationsTable.teamId} IS NULL THEN NULL
+          WHEN EXISTS (
+            SELECT 1 FROM ${teamsTable} assigned_team
+            WHERE assigned_team.id = ${playerParticipationsTable.teamId}
+              AND assigned_team.membership_section = ${membershipSection}
+          ) THEN ${playerParticipationsTable.teamId}
+          ELSE NULL
+        END`,
         membershipSection,
         updatedAt: new Date(),
       }).where(and(

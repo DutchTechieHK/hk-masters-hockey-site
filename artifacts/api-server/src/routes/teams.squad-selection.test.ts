@@ -204,6 +204,57 @@ describe("Masters Div. 1 current squad selection", () => {
     expect(restored.status).toBe(200);
   });
 
+  it("bulk section assignment preserves fees and Rotterdam history while clearing an incompatible squad", async () => {
+    const selected = await request(app)
+      .put(`/api/teams/${squadTeamId}/squad/${playerId}`)
+      .send({ selected: true });
+    expect(selected.status).toBe(200);
+
+    const [beforePlayer] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+    const [beforeRotterdam] = await db.select().from(playerParticipationsTable).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, rotterdamSeasonId),
+    ));
+
+    const response = await request(app)
+      .patch("/api/players/membership-sections")
+      .send({ playerIds: [playerId], membershipSection: "women" });
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ updated: 1 });
+
+    const [afterPlayer] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+    expect(afterPlayer).toMatchObject({
+      currentMembershipSection: "women",
+      currentMembershipTier: beforePlayer.currentMembershipTier,
+      paymentAmountDue: beforePlayer.paymentAmountDue,
+      paymentAmountPaid: beforePlayer.paymentAmountPaid,
+      feePaid: beforePlayer.feePaid,
+      teamId: beforePlayer.teamId,
+    });
+
+    const [current] = await db.select().from(playerParticipationsTable).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, currentSeasonId),
+    ));
+    expect(current).toMatchObject({
+      teamId: null,
+      membershipSection: "women",
+      membershipTier: "social_player",
+      amountDue: "300.00",
+    });
+
+    const [afterRotterdam] = await db.select().from(playerParticipationsTable).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, rotterdamSeasonId),
+    ));
+    expect(afterRotterdam).toEqual(beforeRotterdam);
+
+    const restored = await request(app)
+      .patch("/api/players/membership-sections")
+      .send({ playerIds: [playerId], membershipSection: "men" });
+    expect(restored.status).toBe(200);
+  });
+
   it("rejects selection after the member becomes inactive", async () => {
     await db.update(playersTable).set({ memberStatus: "inactive" }).where(eq(playersTable.id, playerId));
     const response = await request(app)
