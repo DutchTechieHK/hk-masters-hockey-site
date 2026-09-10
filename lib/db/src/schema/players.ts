@@ -63,6 +63,7 @@ export const playersTable = pgTable("players", {
   instagramHandle: text("instagram_handle"),
   facebookHandle: text("facebook_handle"),
   memberStatus: text("member_status").default("active").notNull(),
+  currentMembershipSection: text("current_membership_section").default("not_set").notNull(),
   currentMembershipTier: text("current_membership_tier").default("awaiting_selection").notNull(),
   membershipTierUpdatedAt: timestamp("membership_tier_updated_at"),
   travelNote: text("travel_note"),

@@ -23,6 +23,7 @@ function mapTeam(t: typeof teamsTable.$inferSelect) {
     id: t.id,
     name: t.name,
     category: t.category,
+    membershipSection: t.membershipSection,
     managerName: t.managerName,
     managerEmail: t.managerEmail,
     managerPhone: t.managerPhone,
@@ -44,6 +45,7 @@ function mapTeamPublic(t: typeof teamsTable.$inferSelect, playerCount: number) {
     id: t.id,
     name: t.name,
     category: t.category,
+    membershipSection: t.membershipSection,
     managerName: t.managerName || null,
     coachName: t.coachName || null,
     captainName: t.captainName || null,
@@ -53,7 +55,7 @@ function mapTeamPublic(t: typeof teamsTable.$inferSelect, playerCount: number) {
 }
 
 function mapSquadCandidate(
-  player: Pick<typeof playersTable.$inferSelect, "id" | "name" | "email" | "position" | "shirtNumber">,
+  player: Pick<typeof playersTable.$inferSelect, "id" | "name" | "email" | "position" | "shirtNumber" | "currentMembershipSection">,
   membershipTier: string | null,
   selected: boolean,
 ) {
@@ -64,6 +66,7 @@ function mapSquadCandidate(
     position: player.position || null,
     shirtNumber: player.shirtNumber,
     membershipTier,
+    membershipSection: player.currentMembershipSection,
     selected,
   };
 }
@@ -154,6 +157,10 @@ router.get("/:id/squad", requireAdminAccess, async (req, res): Promise<void> => 
       eq(playerParticipationsTable.seasonId, currentSeason.id),
       eq(playerParticipationsTable.participationStatus, "active"),
       eq(playersTable.memberStatus, "active"),
+      or(
+        eq(playersTable.currentMembershipSection, team.membershipSection),
+        eq(playerParticipationsTable.teamId, id),
+      ),
     ))
     .orderBy(playersTable.name);
 
@@ -191,7 +198,13 @@ router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise
     sql`EXISTS (
       SELECT 1 FROM ${playersTable}
       WHERE ${playersTable.id} = ${playerParticipationsTable.playerId}
-        AND ${playersTable.memberStatus} = 'active'
+        AND (
+          ${selected} = false
+          OR (
+            ${playersTable.memberStatus} = 'active'
+            AND ${playersTable.currentMembershipSection} = ${team.membershipSection}
+          )
+        )
     )`,
   )).returning();
   if (!updated) {

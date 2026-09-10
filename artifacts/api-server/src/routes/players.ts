@@ -56,6 +56,7 @@ const ROTTERDAM_SEASON_SLUG = "rotterdam-2026";
 const ROTTERDAM_MIGRATION_CUTOFF = new Date("2026-09-09T00:00:00.000Z");
 
 const MEMBERSHIP_TIERS = new Set<string>(MEMBERSHIP_CATEGORIES);
+const MEMBERSHIP_SECTIONS = new Set(["not_set", "men", "women"]);
 const LEGACY_MEMBERSHIP_TIERS = ["masters_registration", "active_player", "division_one_squad"] as const;
 
 const emailUpload = multer({
@@ -145,6 +146,7 @@ export function mapPlayer(
     instagramHandle: player.instagramHandle,
     facebookHandle: player.facebookHandle,
     memberStatus: player.memberStatus,
+    currentMembershipSection: player.currentMembershipSection,
     currentMembershipTier: player.currentMembershipTier,
     membershipTierUpdatedAt: player.membershipTierUpdatedAt?.toISOString() ?? null,
     travelReminderSentAt: player.travelReminderSentAt?.toISOString() ?? null,
@@ -213,7 +215,10 @@ async function ensureCanonicalTeam(
     .limit(1);
   if (existing) {
     await executor.update(teamsTable)
-      .set({ isInternal: values.isInternal ?? false })
+      .set({
+        isInternal: values.isInternal ?? false,
+        membershipSection: values.membershipSection ?? "not_set",
+      })
       .where(eq(teamsTable.id, existing.id));
     return existing.id;
   }
@@ -280,6 +285,7 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
   await ensureCanonicalTeam(executor, {
     name: "Awaiting Selection",
     category: "Awaiting Selection",
+    membershipSection: "not_set",
     managerName: "",
     managerEmail: "",
     managerPhone: "",
@@ -289,6 +295,7 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
   await ensureCanonicalTeam(executor, {
     name: "Masters Div. 1",
     category: "Men's Squad",
+    membershipSection: "men",
     managerName: "",
     managerEmail: "",
     managerPhone: "",
@@ -317,6 +324,7 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
       seasonId: current.id,
       teamId: null,
       participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
+      membershipSection: player.currentMembershipSection,
       membershipTier: player.currentMembershipTier,
       amountDue: membershipCategoryAmountDue(player.currentMembershipTier)?.toFixed(2) ?? null,
       source: "membership_backfill",
@@ -358,6 +366,15 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
       sql`${playerParticipationsTable.amountDue} IS DISTINCT FROM ${expectedAmountDue}`,
     ));
   }
+  await executor.execute(sql`
+    UPDATE ${playerParticipationsTable} AS current_participation
+    SET membership_section = member.current_membership_section,
+        updated_at = NOW()
+    FROM ${playersTable} AS member
+    WHERE current_participation.player_id = member.id
+      AND current_participation.season_id = ${current.id}
+      AND current_participation.membership_section IS DISTINCT FROM member.current_membership_section
+  `);
 
   const participations = await executor.select({
     seasonId: playerParticipationsTable.seasonId,
@@ -464,6 +481,16 @@ async function syncCurrentParticipation(playerId: number) {
   if (!player) return;
   const foundation = await ensureMembershipFoundation();
   await db.update(playerParticipationsTable).set({
+    teamId: sql`CASE
+      WHEN ${playerParticipationsTable.teamId} IS NULL THEN NULL
+      WHEN EXISTS (
+        SELECT 1 FROM ${teamsTable} assigned_team
+        WHERE assigned_team.id = ${playerParticipationsTable.teamId}
+          AND assigned_team.membership_section = ${player.currentMembershipSection}
+      ) THEN ${playerParticipationsTable.teamId}
+      ELSE NULL
+    END`,
+    membershipSection: player.currentMembershipSection,
     membershipTier: player.currentMembershipTier,
     amountDue: membershipCategoryAmountDue(player.currentMembershipTier)?.toFixed(2) ?? null,
     participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
@@ -478,7 +505,7 @@ function mapInterestSubmission(row: {
   submission: typeof membershipInterestSubmissionsTable.$inferSelect;
   matchedPlayer: Pick<
     typeof playersTable.$inferSelect,
-    "name" | "email" | "dateOfBirth" | "position"
+    "name" | "email" | "dateOfBirth" | "position" | "currentMembershipSection"
   > | null;
 }) {
   const rawData = row.submission.rawData && typeof row.submission.rawData === "object"
@@ -500,6 +527,9 @@ function mapInterestSubmission(row: {
         email: row.submission.submittedEmail,
         dateOfBirth: notionDateOfBirth,
         position: notionPosition,
+        membershipSection: row.submission.membershipSection === "not_set"
+          ? null
+          : row.submission.membershipSection as "men" | "women",
       }, row.matchedPlayer)
     : [];
   return {
@@ -508,6 +538,7 @@ function mapInterestSubmission(row: {
     submittedEmail: row.submission.submittedEmail,
     submittedPhone: row.submission.submittedPhone,
     membershipTier: row.submission.membershipTier,
+    membershipSection: row.submission.membershipSection,
     matchedPlayerId: row.submission.matchedPlayerId,
     matchedPlayerName: row.matchedPlayer?.name ?? null,
     matchStatus: row.submission.matchStatus,
@@ -573,6 +604,7 @@ router.get("/membership/interest-submissions", requireAdminAccess, async (_req, 
       email: playersTable.email,
       dateOfBirth: playersTable.dateOfBirth,
       position: playersTable.position,
+      currentMembershipSection: playersTable.currentMembershipSection,
     },
   }).from(membershipInterestSubmissionsTable)
     .leftJoin(playersTable, eq(membershipInterestSubmissionsTable.matchedPlayerId, playersTable.id))
@@ -589,6 +621,7 @@ router.post("/membership/interest-submissions", requireAdminAccess, async (req, 
 
     for (const input of submissions) {
       const normalizedEmail = normalizeEmail(input.email);
+      const membershipSection = input.membershipSection ?? "not_set";
       const candidates = await tx.select().from(playersTable)
         .where(sql`lower(trim(${playersTable.email})) = ${normalizedEmail}`);
       let matchedPlayerId: number | null = null;
@@ -610,16 +643,31 @@ router.post("/membership/interest-submissions", requireAdminAccess, async (req, 
           matchStatus = "matched";
           matchedCandidate = candidate;
         }
+        if (
+          matchedCandidate &&
+          membershipSection !== "not_set" &&
+          matchedCandidate.currentMembershipSection !== "not_set" &&
+          matchedCandidate.currentMembershipSection !== membershipSection
+        ) {
+          matchedPlayerId = matchedCandidate.id;
+          matchedCandidate = null;
+          matchStatus = "conflict";
+        }
       }
 
       if (matchedCandidate) {
         const now = new Date();
+        const resolvedMembershipSection = membershipSection === "not_set"
+          ? matchedCandidate.currentMembershipSection
+          : membershipSection;
         await tx.update(playersTable).set({
           currentMembershipTier: input.membershipTier,
+          currentMembershipSection: resolvedMembershipSection,
           membershipTierUpdatedAt: now,
         }).where(eq(playersTable.id, matchedCandidate.id));
         await tx.update(playerParticipationsTable).set({
           membershipTier: input.membershipTier,
+          membershipSection: resolvedMembershipSection,
           amountDue: membershipCategoryAmountDue(input.membershipTier)?.toFixed(2) ?? null,
           updatedAt: now,
         }).where(and(
@@ -633,6 +681,7 @@ router.post("/membership/interest-submissions", requireAdminAccess, async (req, 
         submittedEmail: normalizedEmail,
         submittedPhone: input.phone?.trim() || null,
         membershipTier: input.membershipTier,
+        membershipSection,
         matchedPlayerId,
         matchStatus,
         rawData: input.rawData ?? input,
@@ -673,6 +722,7 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
   }
   const updated = await db.transaction(async (tx) => {
     const now = new Date();
+    const membershipSection = body.membershipSection ?? existing.membershipSection ?? "not_set";
     const rawData = !body.dismiss &&
       existing.source === "notion_join" &&
       existing.matchStatus === "conflict"
@@ -699,10 +749,26 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
           eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
         ));
       }
+      if (
+        membershipSection !== "not_set" &&
+        (existing.source !== "notion_join" || matchedPlayer.currentMembershipSection === "not_set")
+      ) {
+        await tx.update(playersTable).set({
+          currentMembershipSection: membershipSection,
+        }).where(eq(playersTable.id, matchedPlayer.id));
+        await tx.update(playerParticipationsTable).set({
+          membershipSection,
+          updatedAt: now,
+        }).where(and(
+          eq(playerParticipationsTable.playerId, matchedPlayer.id),
+          eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+        ));
+      }
     }
     const [submission] = await tx.update(membershipInterestSubmissionsTable).set({
       matchedPlayerId,
       membershipTier: body.membershipTier,
+      membershipSection,
       matchStatus,
       rawData,
       reviewedAt: now,
@@ -735,6 +801,7 @@ router.get("/:id/participations", requireAdminAccess, async (req, res) => {
     teamId: participation.teamId,
     teamName,
     participationStatus: participation.participationStatus,
+    membershipSection: participation.membershipSection,
     membershipTier: participation.membershipTier,
     source: participation.source,
     legacySnapshot: participation.legacySnapshot,
@@ -752,6 +819,9 @@ router.get("/", requireAdminAccess, async (req, res) => {
           FROM unnest(string_to_array(${playersTable.position}, ',')) AS player_position
           WHERE lower(trim(player_position)) = lower(${query.position})
         )`
+      : undefined,
+    query.membershipSection
+      ? eq(playersTable.currentMembershipSection, query.membershipSection)
       : undefined,
   ].filter((filter): filter is NonNullable<typeof filter> => filter !== undefined);
 
@@ -903,6 +973,7 @@ function mapSelfPlayer(
     instagramHandle: player.instagramHandle ?? undefined,
     facebookHandle: player.facebookHandle ?? undefined,
     memberStatus: player.memberStatus,
+    currentMembershipSection: player.currentMembershipSection,
     currentMembershipTier: effectiveMembershipTier,
     feePaid: membershipFee?.feePaid ?? false,
     paymentAmountDue: membershipFee?.amountDue ?? null,
@@ -1472,6 +1543,14 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     !MEMBERSHIP_TIERS.has(directUpdate.currentMembershipTier)
   ) {
     res.status(400).json({ error: "Invalid membership tier" });
+    return;
+  }
+  if (
+    "currentMembershipSection" in directUpdate &&
+    directUpdate.currentMembershipSection &&
+    !MEMBERSHIP_SECTIONS.has(directUpdate.currentMembershipSection)
+  ) {
+    res.status(400).json({ error: "Invalid membership section" });
     return;
   }
   if ("currentMembershipTier" in directUpdate) {

@@ -38,6 +38,7 @@ function pageFixture(overrides: Record<string, unknown> = {}) {
         type: "multi_select",
         multi_select: [{ id: "forward", name: "Forward" }, { id: "midfield", name: "Midfield" }],
       },
+      "Membership Section": { id: "section", type: "select", select: { id: "women", name: "Women" } },
       Submitted: { id: "submitted", type: "created_time", created_time: "2026-09-01T10:00:00.000Z" },
       "Consent to Be Contacted": { id: "consent", type: "checkbox", checkbox: true },
     },
@@ -55,6 +56,7 @@ describe("Notion member sync rules", () => {
       phone: "1234",
       dateOfBirth: "1984-06-12",
       position: "Forward, Midfield",
+      membershipSection: "women",
       consent: true,
     });
     expect(applicant && isValidNotionApplicant(applicant)).toBe(true);
@@ -81,6 +83,33 @@ describe("Notion member sync rules", () => {
     expect(shouldApplyImportedTier("notion_join", "masters_division_one")).toBe(false);
     expect(shouldApplyImportedTier("notion_join", "awaiting_selection")).toBe(true);
     expect(shouldApplyImportedTier("manual_import", "social_player")).toBe(true);
+  });
+
+  it("only applies an explicit valid Notion membership section", () => {
+    expect(resolveNotionMemberProfile(
+      {
+        consent: true,
+        dateOfBirth: null,
+        position: null,
+        membershipSection: "women",
+      },
+      {
+        dateOfBirth: null,
+        position: null,
+        currentMembershipSection: "not_set",
+      },
+      false,
+    )).toEqual({
+      updates: { currentMembershipSection: "women" },
+      conflict: false,
+    });
+    const withoutSection = pageToNotionApplicant(pageFixture({
+      properties: {
+        ...pageFixture().properties,
+        "Membership Section": undefined,
+      },
+    }));
+    expect(withoutSection?.membershipSection).toBeNull();
   });
 
   it("keeps a newer stored snapshot authoritative over an older retry", () => {

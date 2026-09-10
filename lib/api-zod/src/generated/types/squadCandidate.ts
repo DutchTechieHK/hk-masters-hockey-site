@@ -5,6 +5,7 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { SquadCandidateMembershipSection } from "./squadCandidateMembershipSection";
 
 export interface SquadCandidate {
   playerId: number;
@@ -13,5 +14,6 @@ export interface SquadCandidate {
   position?: string | null;
   shirtNumber?: number | null;
   membershipTier?: string | null;
+  membershipSection: SquadCandidateMembershipSection;
   selected: boolean;
 }

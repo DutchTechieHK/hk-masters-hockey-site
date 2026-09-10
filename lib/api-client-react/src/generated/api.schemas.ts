@@ -97,10 +97,20 @@ export interface DashboardStats {
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
 }
 
+export type TeamMembershipSection =
+  (typeof TeamMembershipSection)[keyof typeof TeamMembershipSection];
+
+export const TeamMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
+
 export interface Team {
   id: number;
   name: string;
   category: string;
+  membershipSection: TeamMembershipSection;
   managerName: string;
   managerEmail: string;
   managerPhone: string;
@@ -116,9 +126,19 @@ export interface Team {
   createdAt?: string;
 }
 
+export type CreateTeamMembershipSection =
+  (typeof CreateTeamMembershipSection)[keyof typeof CreateTeamMembershipSection];
+
+export const CreateTeamMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
+
 export interface CreateTeam {
   name: string;
   category: string;
+  membershipSection?: CreateTeamMembershipSection;
   managerName: string;
   managerEmail: string;
   managerPhone: string;
@@ -133,6 +153,15 @@ export interface CreateTeam {
   description?: string;
 }
 
+export type SquadCandidateMembershipSection =
+  (typeof SquadCandidateMembershipSection)[keyof typeof SquadCandidateMembershipSection];
+
+export const SquadCandidateMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
+
 export interface SquadCandidate {
   playerId: number;
   name: string;
@@ -140,8 +169,14 @@ export interface SquadCandidate {
   position?: string | null;
   shirtNumber?: number | null;
   membershipTier?: string | null;
+  membershipSection: SquadCandidateMembershipSection;
   selected: boolean;
 }
+
+export interface SquadSelectionUpdate {
+  selected: boolean;
+}
+
 export type PlayerMemberStatus =
   (typeof PlayerMemberStatus)[keyof typeof PlayerMemberStatus];
 
@@ -149,6 +184,15 @@ export const PlayerMemberStatus = {
   active: "active",
   inactive: "inactive",
   archived: "archived",
+} as const;
+
+export type PlayerCurrentMembershipSection =
+  (typeof PlayerCurrentMembershipSection)[keyof typeof PlayerCurrentMembershipSection];
+
+export const PlayerCurrentMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
 } as const;
 
 export type PlayerCurrentMembershipTier =
@@ -226,6 +270,7 @@ export interface Player {
   instagramHandle?: string;
   facebookHandle?: string;
   memberStatus: PlayerMemberStatus;
+  currentMembershipSection: PlayerCurrentMembershipSection;
   currentMembershipTier: PlayerCurrentMembershipTier;
   membershipTierUpdatedAt?: string | null;
   travelReminderSentAt?: string | null;
@@ -243,6 +288,15 @@ export const CreatePlayerMemberStatus = {
   active: "active",
   inactive: "inactive",
   archived: "archived",
+} as const;
+
+export type CreatePlayerCurrentMembershipSection =
+  (typeof CreatePlayerCurrentMembershipSection)[keyof typeof CreatePlayerCurrentMembershipSection];
+
+export const CreatePlayerCurrentMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
 } as const;
 
 export type CreatePlayerCurrentMembershipTier =
@@ -314,6 +368,7 @@ export interface CreatePlayer {
   instagramHandle?: string;
   facebookHandle?: string;
   memberStatus?: CreatePlayerMemberStatus;
+  currentMembershipSection?: CreatePlayerCurrentMembershipSection;
   currentMembershipTier?: CreatePlayerCurrentMembershipTier;
 }
 
@@ -323,6 +378,16 @@ export interface MembershipInitializationResult {
   currentParticipations: number;
   duplicateEmails: string[];
 }
+
+export type PlayerParticipationMembershipSection =
+  | (typeof PlayerParticipationMembershipSection)[keyof typeof PlayerParticipationMembershipSection]
+  | null;
+
+export const PlayerParticipationMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
 
 export type PlayerParticipationLegacySnapshot = {
   [key: string]: unknown;
@@ -339,11 +404,21 @@ export interface PlayerParticipation {
   teamId?: number | null;
   teamName?: string | null;
   participationStatus: string;
+  membershipSection?: PlayerParticipationMembershipSection;
   membershipTier?: string | null;
   source: string;
   legacySnapshot?: PlayerParticipationLegacySnapshot;
   createdAt: string;
 }
+
+export type MembershipInterestSubmissionMembershipSection =
+  (typeof MembershipInterestSubmissionMembershipSection)[keyof typeof MembershipInterestSubmissionMembershipSection];
+
+export const MembershipInterestSubmissionMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
 
 export type MembershipInterestSubmissionMembershipTier =
   (typeof MembershipInterestSubmissionMembershipTier)[keyof typeof MembershipInterestSubmissionMembershipTier];
@@ -374,6 +449,7 @@ export const MembershipInterestConflictDetailField = {
   email: "email",
   dateOfBirth: "dateOfBirth",
   position: "position",
+  membershipSection: "membershipSection",
 } as const;
 
 export type MembershipInterestConflictDetailKind =
@@ -396,6 +472,7 @@ export interface MembershipInterestSubmission {
   submittedName: string;
   submittedEmail: string;
   submittedPhone?: string | null;
+  membershipSection: MembershipInterestSubmissionMembershipSection;
   membershipTier: MembershipInterestSubmissionMembershipTier;
   matchedPlayerId?: number | null;
   matchedPlayerName?: string | null;
@@ -406,6 +483,15 @@ export interface MembershipInterestSubmission {
   reviewedAt?: string | null;
   conflictDetails: MembershipInterestConflictDetail[];
 }
+
+export type MembershipInterestInputMembershipSection =
+  (typeof MembershipInterestInputMembershipSection)[keyof typeof MembershipInterestInputMembershipSection];
+
+export const MembershipInterestInputMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
 
 export type MembershipInterestInputMembershipTier =
   (typeof MembershipInterestInputMembershipTier)[keyof typeof MembershipInterestInputMembershipTier];
@@ -424,6 +510,7 @@ export interface MembershipInterestInput {
   /** @minLength 3 */
   email: string;
   phone?: string;
+  membershipSection?: MembershipInterestInputMembershipSection;
   membershipTier: MembershipInterestInputMembershipTier;
   rawData?: MembershipInterestInputRawData;
 }
@@ -479,9 +566,19 @@ export const MembershipInterestResolutionMembershipTier = {
   masters_division_one: "masters_division_one",
 } as const;
 
+export type MembershipInterestResolutionMembershipSection =
+  (typeof MembershipInterestResolutionMembershipSection)[keyof typeof MembershipInterestResolutionMembershipSection];
+
+export const MembershipInterestResolutionMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
+} as const;
+
 export interface MembershipInterestResolution {
   playerId?: number | null;
   membershipTier: MembershipInterestResolutionMembershipTier;
+  membershipSection?: MembershipInterestResolutionMembershipSection;
   dismiss?: boolean;
 }
 
@@ -492,6 +589,15 @@ export const SelfPlayerMemberStatus = {
   active: "active",
   inactive: "inactive",
   archived: "archived",
+} as const;
+
+export type SelfPlayerCurrentMembershipSection =
+  (typeof SelfPlayerCurrentMembershipSection)[keyof typeof SelfPlayerCurrentMembershipSection];
+
+export const SelfPlayerCurrentMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
 } as const;
 
 export type SelfPlayerCurrentMembershipTier =
@@ -541,6 +647,7 @@ export interface SelfPlayer {
   facebookHandle?: string;
   feePaid: boolean;
   memberStatus: SelfPlayerMemberStatus;
+  currentMembershipSection: SelfPlayerCurrentMembershipSection;
   currentMembershipTier: SelfPlayerCurrentMembershipTier;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;
@@ -983,6 +1090,7 @@ export interface UpdateWhatsappTemplateVariables {
 export type ListPlayersParams = {
   teamId?: number;
   position?: ListPlayersPosition;
+  membershipSection?: ListPlayersMembershipSection;
 };
 
 export type ListPlayersPosition =
@@ -993,6 +1101,15 @@ export const ListPlayersPosition = {
   Defender: "Defender",
   Midfield: "Midfield",
   Forward: "Forward",
+} as const;
+
+export type ListPlayersMembershipSection =
+  (typeof ListPlayersMembershipSection)[keyof typeof ListPlayersMembershipSection];
+
+export const ListPlayersMembershipSection = {
+  not_set: "not_set",
+  men: "men",
+  women: "women",
 } as const;
 
 export type GetPlayerAccessToken200 = {
@@ -1010,7 +1127,3 @@ export type ListLogisticsParams = {
 export type ListMatchesParams = {
   teamId?: number;
 };
-
-export interface SquadSelectionUpdate {
-  selected: boolean;
-}

@@ -5,6 +5,7 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { MembershipInterestInputMembershipSection } from "./membershipInterestInputMembershipSection";
 import type { MembershipInterestInputMembershipTier } from "./membershipInterestInputMembershipTier";
 import type { MembershipInterestInputRawData } from "./membershipInterestInputRawData";
 
@@ -14,6 +15,7 @@ export interface MembershipInterestInput {
   /** @minLength 3 */
   email: string;
   phone?: string;
+  membershipSection?: MembershipInterestInputMembershipSection;
   membershipTier: MembershipInterestInputMembershipTier;
   rawData?: MembershipInterestInputRawData;
 }

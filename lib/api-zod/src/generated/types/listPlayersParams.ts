@@ -5,9 +5,11 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { ListPlayersMembershipSection } from "./listPlayersMembershipSection";
 import type { ListPlayersPosition } from "./listPlayersPosition";
 
 export type ListPlayersParams = {
   teamId?: number;
   position?: ListPlayersPosition;
+  membershipSection?: ListPlayersMembershipSection;
 };

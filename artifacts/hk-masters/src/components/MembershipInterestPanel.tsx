@@ -10,6 +10,7 @@ type ImportRow = {
   email: string
   phone?: string
   membershipTier: "community_member" | "social_player" | "masters_division_one"
+  membershipSection?: "not_set" | "men" | "women"
   rawData?: Record<string, unknown>
 }
 
@@ -24,6 +25,7 @@ const CONFLICT_FIELD_LABELS: Record<string, string> = {
   email: "Email address",
   dateOfBirth: "Date of birth",
   position: "Position",
+  membershipSection: "Membership section",
 }
 
 function displayConflictValue(value: string | null) {
@@ -75,6 +77,13 @@ function normalizeTier(value: string): ImportRow["membershipTier"] | null {
   return null
 }
 
+function normalizeSection(value: string): ImportRow["membershipSection"] {
+  const section = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
+  if (section === "men" || section === "mens") return "men"
+  if (section === "women" || section === "womens") return "women"
+  return "not_set"
+}
+
 function parseImport(text: string, filename: string): ImportRow[] {
   if (filename.toLowerCase().endsWith(".json")) {
     const parsed = JSON.parse(text) as ImportRow[] | { submissions: ImportRow[] }
@@ -88,6 +97,7 @@ function parseImport(text: string, filename: string): ImportRow[] {
   const emailIndex = find(["email", "email address"])
   const phoneIndex = find(["phone", "phone number", "mobile"])
   const tierIndex = find(["membership tier", "tier", "membership"])
+  const sectionIndex = find(["membership section", "section", "playing section"])
   if (nameIndex < 0 || emailIndex < 0 || tierIndex < 0) {
     throw new Error("CSV needs Name, Email and Membership Tier columns.")
   }
@@ -101,6 +111,7 @@ function parseImport(text: string, filename: string): ImportRow[] {
       email: cells[emailIndex] || "",
       phone: phoneIndex >= 0 ? cells[phoneIndex] : undefined,
       membershipTier: tier,
+      membershipSection: sectionIndex >= 0 ? normalizeSection(cells[sectionIndex] || "") : "not_set",
       rawData,
     }
   }).filter((row) => row.name && row.email)
@@ -214,6 +225,7 @@ export function MembershipInterestPanel({
         body: JSON.stringify({
           playerId: dismiss ? null : playerId,
           membershipTier: submission.membershipTier,
+          membershipSection: submission.membershipSection,
           dismiss,
         }),
       })

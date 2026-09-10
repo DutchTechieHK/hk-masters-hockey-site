@@ -203,6 +203,12 @@ paths:
           schema:
             type: string
             enum: [Goalkeeper, Defender, Midfield, Forward]
+        - name: membershipSection
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [not_set, men, women]
       responses:
         "200":
           description: List of players
@@ -1328,6 +1334,9 @@ components:
           type: string
         category:
           type: string
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
         managerName:
           type: string
         managerEmail:
@@ -1358,6 +1367,7 @@ components:
         - id
         - name
         - category
+        - membershipSection
         - managerName
         - managerEmail
         - managerPhone
@@ -1369,6 +1379,9 @@ components:
           type: string
         category:
           type: string
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
         managerName:
           type: string
         managerEmail:
@@ -1418,9 +1431,12 @@ components:
         membershipTier:
           type: string
           nullable: true
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
         selected:
           type: boolean
-      required: [playerId, name, email, selected]
+      required: [playerId, name, email, membershipSection, selected]
 
     SquadSelectionUpdate:
       type: object
@@ -1572,6 +1588,9 @@ components:
         memberStatus:
           type: string
           enum: [active, inactive, archived]
+        currentMembershipSection:
+          type: string
+          enum: [not_set, men, women]
         currentMembershipTier:
           type: string
           enum: [awaiting_selection, community_member, social_player, masters_division_one]
@@ -1602,6 +1621,7 @@ components:
         - email
         - feePaid
         - memberStatus
+        - currentMembershipSection
         - currentMembershipTier
 
     CreatePlayer:
@@ -1731,6 +1751,9 @@ components:
         memberStatus:
           type: string
           enum: [active, inactive, archived]
+        currentMembershipSection:
+          type: string
+          enum: [not_set, men, women]
         currentMembershipTier:
           type: string
           enum: [awaiting_selection, community_member, social_player, masters_division_one]
@@ -1780,6 +1803,10 @@ components:
           nullable: true
         participationStatus:
           type: string
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
+          nullable: true
         membershipTier:
           type: string
           nullable: true
@@ -1805,6 +1832,9 @@ components:
         submittedPhone:
           type: string
           nullable: true
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
         membershipTier:
           type: string
           enum: [awaiting_selection, community_member, social_player, masters_division_one]
@@ -1831,14 +1861,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/MembershipInterestConflictDetail"
-      required: [id, submittedName, submittedEmail, membershipTier, matchStatus, source, submittedAt, conflictDetails]
+      required: [id, submittedName, submittedEmail, membershipSection, membershipTier, matchStatus, source, submittedAt, conflictDetails]
 
     MembershipInterestConflictDetail:
       type: object
       properties:
         field:
           type: string
-          enum: [email, dateOfBirth, position]
+          enum: [email, dateOfBirth, position, membershipSection]
         kind:
           type: string
           enum: [identity, profile]
@@ -1861,6 +1891,9 @@ components:
           minLength: 3
         phone:
           type: string
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
         membershipTier:
           type: string
           enum: [community_member, social_player, masters_division_one]
@@ -1943,6 +1976,9 @@ components:
         membershipTier:
           type: string
           enum: [awaiting_selection, community_member, social_player, masters_division_one]
+        membershipSection:
+          type: string
+          enum: [not_set, men, women]
         dismiss:
           type: boolean
       required: [membershipTier]
@@ -2025,6 +2061,9 @@ components:
         memberStatus:
           type: string
           enum: [active, inactive, archived]
+        currentMembershipSection:
+          type: string
+          enum: [not_set, men, women]
         currentMembershipTier:
           type: string
           enum: [awaiting_selection, community_member, social_player, masters_division_one]
@@ -2047,6 +2086,7 @@ components:
         - name
         - feePaid
         - memberStatus
+        - currentMembershipSection
         - currentMembershipTier
 
     UpdateSelfPlayer:

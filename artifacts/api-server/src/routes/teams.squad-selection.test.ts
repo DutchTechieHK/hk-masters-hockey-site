@@ -16,11 +16,18 @@ vi.mock("../middleware/adminAuth", () => ({
 }));
 
 const { default: teamsRouter } = await import("./teams");
-const { clearLegacyCopiedCurrentTeamLinks } = await import("./players");
+const {
+  clearLegacyCopiedCurrentTeamLinks,
+  default: playersRouter,
+} = await import("./players");
 
 const app = express();
 app.use(express.json());
 app.use("/api/teams", teamsRouter);
+app.use("/api/players", playersRouter);
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
+});
 
 const runId = `${process.pid}-${Date.now()}`;
 let playerId: number;
@@ -52,6 +59,7 @@ beforeAll(async () => {
     name: `Squad Selection Member ${runId}`,
     email: `squad-selection-${runId}@example.com`,
     memberStatus: "active",
+    currentMembershipSection: "men",
     currentMembershipTier: "social_player",
     paymentAmountDue: "975.00",
     paymentAmountPaid: "125.00",
@@ -65,6 +73,7 @@ beforeAll(async () => {
       seasonId: currentSeasonId,
       teamId: null,
       participationStatus: "active",
+      membershipSection: "men",
       membershipTier: "social_player",
       amountDue: "300.00",
       source: "squad_selection_test",
@@ -95,6 +104,7 @@ describe("Masters Div. 1 current squad selection", () => {
     expect(response.body).toContainEqual(expect.objectContaining({
       playerId,
       selected: false,
+      membershipSection: "men",
       membershipTier: "social_player",
     }));
   });
@@ -124,6 +134,7 @@ describe("Masters Div. 1 current squad selection", () => {
     ));
     expect(current[0]).toMatchObject({
       teamId: squadTeamId,
+      membershipSection: "men",
       membershipTier: "social_player",
       amountDue: "300.00",
       participationStatus: "active",
@@ -153,6 +164,44 @@ describe("Masters Div. 1 current squad selection", () => {
       .put(`/api/teams/${squadTeamId}/squad/${playerId}`)
       .send({ selected: false });
     expect(removedAgain.status).toBe(200);
+  });
+
+  it("clears the Men squad assignment when a selected member moves to Women", async () => {
+    const selected = await request(app)
+      .put(`/api/teams/${squadTeamId}/squad/${playerId}`)
+      .send({ selected: true });
+    expect(selected.status).toBe(200);
+
+    const [member] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+    const requiredPlayerFields = {
+      teamId: member.teamId,
+      name: member.name,
+      email: member.email,
+      feePaid: member.feePaid,
+    };
+    const moved = await request(app)
+      .put(`/api/players/${playerId}`)
+      .send({ ...requiredPlayerFields, currentMembershipSection: "women" });
+    expect(moved.status, JSON.stringify(moved.body)).toBe(200);
+
+    const [current] = await db.select().from(playerParticipationsTable).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, currentSeasonId),
+    ));
+    expect(current).toMatchObject({
+      teamId: null,
+      membershipSection: "women",
+      membershipTier: "social_player",
+      amountDue: "300.00",
+    });
+
+    const candidates = await request(app).get(`/api/teams/${squadTeamId}/squad`);
+    expect(candidates.body).not.toContainEqual(expect.objectContaining({ playerId }));
+
+    const restored = await request(app)
+      .put(`/api/players/${playerId}`)
+      .send({ ...requiredPlayerFields, currentMembershipSection: "men" });
+    expect(restored.status).toBe(200);
   });
 
   it("rejects selection after the member becomes inactive", async () => {

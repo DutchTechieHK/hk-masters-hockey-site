@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PlayerParticipationLegacySnapshot } from "./playerParticipationLegacySnapshot";
+import type { PlayerParticipationMembershipSection } from "./playerParticipationMembershipSection";
 
 export interface PlayerParticipation {
   id: number;
@@ -18,6 +19,7 @@ export interface PlayerParticipation {
   teamId?: number | null;
   teamName?: string | null;
   participationStatus: string;
+  membershipSection?: PlayerParticipationMembershipSection;
   membershipTier?: string | null;
   source: string;
   legacySnapshot?: PlayerParticipationLegacySnapshot;

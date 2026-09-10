@@ -71,6 +71,7 @@ export const ListTeamsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
   category: zod.string(),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
   managerName: zod.string(),
   managerEmail: zod.string(),
   managerPhone: zod.string(),
@@ -93,6 +94,7 @@ export const ListTeamsResponse = zod.array(ListTeamsResponseItem);
 export const CreateTeamBody = zod.object({
   name: zod.string(),
   category: zod.string(),
+  membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   managerName: zod.string(),
   managerEmail: zod.string(),
   managerPhone: zod.string(),
@@ -117,6 +119,7 @@ export const UpdateTeamParams = zod.object({
 export const UpdateTeamBody = zod.object({
   name: zod.string(),
   category: zod.string(),
+  membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   managerName: zod.string(),
   managerEmail: zod.string(),
   managerPhone: zod.string(),
@@ -135,6 +138,7 @@ export const UpdateTeamResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
   category: zod.string(),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
   managerName: zod.string(),
   managerEmail: zod.string(),
   managerPhone: zod.string(),
@@ -163,6 +167,44 @@ export const DeleteTeamParams = zod.object({
 export const ListCurrentSquadCandidatesParams = zod.object({
   id: zod.coerce.number(),
 });
+
+export const ListCurrentSquadCandidatesResponseItem = zod.object({
+  playerId: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  position: zod.string().nullish(),
+  shirtNumber: zod.number().nullish(),
+  membershipTier: zod.string().nullish(),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
+  selected: zod.boolean(),
+});
+export const ListCurrentSquadCandidatesResponse = zod.array(
+  ListCurrentSquadCandidatesResponseItem,
+);
+
+/**
+ * @summary Add or remove a current member from the squad
+ */
+export const UpdateCurrentSquadSelectionParams = zod.object({
+  id: zod.coerce.number(),
+  playerId: zod.coerce.number(),
+});
+
+export const UpdateCurrentSquadSelectionBody = zod.object({
+  selected: zod.boolean(),
+});
+
+export const UpdateCurrentSquadSelectionResponse = zod.object({
+  playerId: zod.number(),
+  name: zod.string(),
+  email: zod.string(),
+  position: zod.string().nullish(),
+  shirtNumber: zod.number().nullish(),
+  membershipTier: zod.string().nullish(),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
+  selected: zod.boolean(),
+});
+
 /**
  * @summary List all players
  */
@@ -171,6 +213,7 @@ export const ListPlayersQueryParams = zod.object({
   position: zod
     .enum(["Goalkeeper", "Defender", "Midfield", "Forward"])
     .optional(),
+  membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
 });
 
 export const ListPlayersResponseItem = zod.object({
@@ -238,6 +281,7 @@ export const ListPlayersResponseItem = zod.object({
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
     "community_member",
@@ -316,6 +360,7 @@ export const CreatePlayerBody = zod.object({
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
+  currentMembershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   currentMembershipTier: zod
     .enum([
       "awaiting_selection",
@@ -417,6 +462,7 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   submittedName: zod.string(),
   submittedEmail: zod.string(),
   submittedPhone: zod.string().nullish(),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
   membershipTier: zod.enum([
     "awaiting_selection",
     "community_member",
@@ -439,7 +485,12 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   reviewedAt: zod.string().nullish(),
   conflictDetails: zod.array(
     zod.object({
-      field: zod.enum(["email", "dateOfBirth", "position"]),
+      field: zod.enum([
+        "email",
+        "dateOfBirth",
+        "position",
+        "membershipSection",
+      ]),
       kind: zod.enum(["identity", "profile"]),
       existingValue: zod.string().nullable(),
       submittedValue: zod.string().nullable(),
@@ -465,6 +516,7 @@ export const ImportMembershipInterestSubmissionsBody = zod.object({
           .string()
           .min(importMembershipInterestSubmissionsBodySubmissionsItemEmailMin),
         phone: zod.string().optional(),
+        membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
         membershipTier: zod.enum([
           "community_member",
           "social_player",
@@ -532,6 +584,7 @@ export const ResolveMembershipInterestSubmissionBody = zod.object({
     "social_player",
     "masters_division_one",
   ]),
+  membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   dismiss: zod.boolean().optional(),
 });
 
@@ -540,6 +593,7 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   submittedName: zod.string(),
   submittedEmail: zod.string(),
   submittedPhone: zod.string().nullish(),
+  membershipSection: zod.enum(["not_set", "men", "women"]),
   membershipTier: zod.enum([
     "awaiting_selection",
     "community_member",
@@ -562,7 +616,12 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   reviewedAt: zod.string().nullish(),
   conflictDetails: zod.array(
     zod.object({
-      field: zod.enum(["email", "dateOfBirth", "position"]),
+      field: zod.enum([
+        "email",
+        "dateOfBirth",
+        "position",
+        "membershipSection",
+      ]),
       kind: zod.enum(["identity", "profile"]),
       existingValue: zod.string().nullable(),
       submittedValue: zod.string().nullable(),
@@ -614,6 +673,7 @@ export const GetSelfPlayerResponse = zod.object({
   facebookHandle: zod.string().optional(),
   feePaid: zod.boolean(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
     "community_member",
@@ -717,6 +777,7 @@ export const UpdateSelfPlayerResponse = zod.object({
   facebookHandle: zod.string().optional(),
   feePaid: zod.boolean(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
     "community_member",
@@ -852,6 +913,7 @@ export const ListPlayerParticipationsResponseItem = zod.object({
   teamId: zod.number().nullish(),
   teamName: zod.string().nullish(),
   participationStatus: zod.string(),
+  membershipSection: zod.enum(["not_set", "men", "women"]).nullish(),
   membershipTier: zod.string().nullish(),
   source: zod.string(),
   legacySnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
@@ -954,6 +1016,7 @@ export const UpdatePlayerBody = zod.object({
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
+  currentMembershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   currentMembershipTier: zod
     .enum([
       "awaiting_selection",
@@ -1029,6 +1092,7 @@ export const UpdatePlayerResponse = zod.object({
   instagramHandle: zod.string().optional(),
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
+  currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.enum([
     "awaiting_selection",
     "community_member",
@@ -1568,39 +1632,3 @@ export const UpdateSponsorResponse = zod.object({
 export const DeleteSponsorParams = zod.object({
   id: zod.coerce.number(),
 });
-
-export const ListCurrentSquadCandidatesResponseItem = zod.object({
-  playerId: zod.number(),
-  name: zod.string(),
-  email: zod.string(),
-  position: zod.string().nullish(),
-  shirtNumber: zod.number().nullish(),
-  membershipTier: zod.string().nullish(),
-  selected: zod.boolean(),
-});
-
-/**
- * @summary Add or remove a current member from the squad
- */
-export const UpdateCurrentSquadSelectionParams = zod.object({
-  id: zod.coerce.number(),
-  playerId: zod.coerce.number(),
-});
-
-export const UpdateCurrentSquadSelectionResponse = zod.object({
-  playerId: zod.number(),
-  name: zod.string(),
-  email: zod.string(),
-  position: zod.string().nullish(),
-  shirtNumber: zod.number().nullish(),
-  membershipTier: zod.string().nullish(),
-  selected: zod.boolean(),
-});
-
-export const UpdateCurrentSquadSelectionBody = zod.object({
-  selected: zod.boolean(),
-});
-
-export const ListCurrentSquadCandidatesResponse = zod.array(
-  ListCurrentSquadCandidatesResponseItem,
-);

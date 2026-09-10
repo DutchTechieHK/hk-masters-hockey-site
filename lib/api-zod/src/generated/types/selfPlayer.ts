@@ -5,6 +5,7 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { SelfPlayerCurrentMembershipSection } from "./selfPlayerCurrentMembershipSection";
 import type { SelfPlayerCurrentMembershipTier } from "./selfPlayerCurrentMembershipTier";
 import type { SelfPlayerMemberStatus } from "./selfPlayerMemberStatus";
 
@@ -45,6 +46,7 @@ export interface SelfPlayer {
   facebookHandle?: string;
   feePaid: boolean;
   memberStatus: SelfPlayerMemberStatus;
+  currentMembershipSection: SelfPlayerCurrentMembershipSection;
   currentMembershipTier: SelfPlayerCurrentMembershipTier;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;

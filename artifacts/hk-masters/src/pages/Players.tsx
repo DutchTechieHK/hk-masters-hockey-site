@@ -49,6 +49,11 @@ const MEMBERSHIP_TIER_LABELS: Record<string, string> = {
   social_player: "Social Player",
   masters_division_one: "Masters Div. 1",
 }
+const MEMBERSHIP_SECTION_LABELS: Record<string, string> = {
+  not_set: "Not set",
+  men: "Men",
+  women: "Women",
+}
 const MEMBER_STATUS_LABELS: Record<string, string> = {
   active: "Active",
   inactive: "Inactive",
@@ -177,6 +182,7 @@ const playerSchema = z.object({
   instagramHandle: z.string().optional(),
   facebookHandle: z.string().optional(),
   memberStatus: z.enum(["active", "inactive", "archived"]).default("active"),
+  currentMembershipSection: z.enum(["not_set", "men", "women"]).default("not_set"),
   currentMembershipTier: z.enum(["awaiting_selection", "community_member", "social_player", "masters_division_one"]).default("awaiting_selection"),
 })
 
@@ -196,6 +202,7 @@ export default function Players() {
 
   const [positionFilter, setPositionFilter] = useState<string>("all")
   const [memberStatusFilter, setMemberStatusFilter] = useState<string>("all")
+  const [membershipSectionFilter, setMembershipSectionFilter] = useState<string>("all")
   const [membershipTierFilter, setMembershipTierFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
@@ -242,6 +249,7 @@ export default function Players() {
   })
   const playerQueryParams = {
     ...(positionFilter !== "all" ? { position: positionFilter as "Goalkeeper" | "Defender" | "Midfield" | "Forward" } : {}),
+    ...(membershipSectionFilter !== "all" ? { membershipSection: membershipSectionFilter as "not_set" | "men" | "women" } : {}),
   }
   const hasPlayerQueryParams = Object.keys(playerQueryParams).length > 0
   const { data: players = [], isLoading, isFetching, refetch } = useListPlayers(
@@ -313,7 +321,7 @@ export default function Players() {
     paymentAmountDue: "", paymentAmountPaid: "", paymentDate: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
     instagramHandle: "", facebookHandle: "",
-    memberStatus: "active", currentMembershipTier: "awaiting_selection",
+    memberStatus: "active", currentMembershipSection: "not_set", currentMembershipTier: "awaiting_selection",
   })
 
   const openAddModal = () => {
@@ -386,6 +394,7 @@ export default function Players() {
       instagramHandle: player.instagramHandle || "",
       facebookHandle: player.facebookHandle || "",
       memberStatus: player.memberStatus,
+      currentMembershipSection: player.currentMembershipSection,
       currentMembershipTier: player.currentMembershipTier,
     })
     setIsModalOpen(true)
@@ -806,6 +815,16 @@ export default function Players() {
             <option value="archived">Archived</option>
           </Select>
           <Select
+            className="sm:w-40 bg-white"
+            value={membershipSectionFilter}
+            onChange={(e) => setMembershipSectionFilter(e.target.value)}
+          >
+            <option value="all">All sections</option>
+            {Object.entries(MEMBERSHIP_SECTION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </Select>
+          <Select
             className="sm:w-52 bg-white"
             value={membershipTierFilter}
             onChange={(e) => setMembershipTierFilter(e.target.value)}
@@ -833,6 +852,7 @@ export default function Players() {
                   </button>
                 </th>
                 <th className="px-4 py-4 font-semibold">Category</th>
+                <th className="px-4 py-4 font-semibold">Section</th>
                 <th className="px-4 py-4 font-semibold hidden md:table-cell">Position</th>
                 <th className="px-4 py-4 font-semibold hidden xl:table-cell">Portal</th>
                 <th className="px-4 py-4 font-semibold">2026/27 Fee</th>
@@ -843,11 +863,11 @@ export default function Players() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
+                  <td colSpan={9} className="px-6 py-8 text-center text-muted-foreground">Loading members...</td>
                 </tr>
               ) : filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-6 py-12 text-center text-muted-foreground">
                     {players.length === 0 ? "No members yet. Add your first member to get started." : "No members match your search."}
                   </td>
                 </tr>
@@ -897,6 +917,11 @@ export default function Players() {
                           <Badge variant="outline">{MEMBERSHIP_TIER_LABELS[player.currentMembershipTier] || "Awaiting Selection"}</Badge>
                           <span className="text-[11px] text-muted-foreground">{MEMBER_STATUS_LABELS[player.memberStatus]}</span>
                         </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <Badge variant={player.currentMembershipSection === "not_set" ? "outline" : "secondary"}>
+                          {MEMBERSHIP_SECTION_LABELS[player.currentMembershipSection] || "Not set"}
+                        </Badge>
                       </td>
                       {/* Position */}
                       <td className="px-4 py-4 hidden md:table-cell text-foreground">
@@ -1094,6 +1119,14 @@ export default function Players() {
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
                 <option value="archived">Archived</option>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-semibold">Membership section</label>
+              <Select {...register("currentMembershipSection")}>
+                {Object.entries(MEMBERSHIP_SECTION_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </Select>
             </div>
             <div className="space-y-2">

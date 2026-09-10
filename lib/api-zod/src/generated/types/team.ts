@@ -5,11 +5,13 @@
  * HK 2026 Masters World Cup API
  * OpenAPI spec version: 0.1.0
  */
+import type { TeamMembershipSection } from "./teamMembershipSection";
 
 export interface Team {
   id: number;
   name: string;
   category: string;
+  membershipSection: TeamMembershipSection;
   managerName: string;
   managerEmail: string;
   managerPhone: string;

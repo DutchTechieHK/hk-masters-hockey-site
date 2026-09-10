@@ -13,4 +13,5 @@ export const MembershipInterestConflictDetailField = {
   email: "email",
   dateOfBirth: "dateOfBirth",
   position: "position",
+  membershipSection: "membershipSection",
 } as const;

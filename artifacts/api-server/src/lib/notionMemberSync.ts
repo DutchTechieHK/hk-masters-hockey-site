@@ -35,6 +35,7 @@ export type NotionApplicant = {
   phone: string | null;
   dateOfBirth: string | null;
   position: string | null;
+  membershipSection?: "men" | "women" | null;
   consent: boolean;
   rawData: Record<string, unknown>;
 };
@@ -95,6 +96,14 @@ function plainPropertyValue(property: any): unknown {
   return null;
 }
 
+function membershipSectionValue(property: any): "men" | "women" | null {
+  if (property?.type !== "select") return null;
+  const normalized = String(property.select?.name ?? "").trim().toLowerCase();
+  if (normalized === "men" || normalized === "men's" || normalized === "mens") return "men";
+  if (normalized === "women" || normalized === "women's" || normalized === "womens") return "women";
+  return null;
+}
+
 export function validateNotionMemberProperties(properties: Record<string, any>): void {
   const invalid = Object.entries(REQUIRED_PROPERTIES)
     .filter(([name, type]) => properties[name]?.type !== type)
@@ -127,6 +136,7 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
   const consent = properties["Consent to Be Contacted"]?.type === "checkbox"
     ? Boolean(properties["Consent to Be Contacted"].checkbox)
     : false;
+  const membershipSection = membershipSectionValue(properties["Membership Section"]);
   const submitted = properties["Submitted"]?.created_time ?? page.created_time;
   const rawData = Object.fromEntries(
     Object.entries(properties).map(([key, value]) => [key, plainPropertyValue(value)]),
@@ -140,6 +150,7 @@ export function pageToNotionApplicant(page: any): NotionApplicant | null {
     phone,
     dateOfBirth,
     position,
+    membershipSection,
     consent,
     rawData,
   };
@@ -268,10 +279,11 @@ export function isNotionSnapshotCurrent(stored: Date | null, incoming: Date): bo
 type MemberProfile = {
   dateOfBirth: string | null;
   position: string | null;
+  currentMembershipSection?: string;
 };
 
 export type NotionMemberConflict = {
-  field: "email" | "dateOfBirth" | "position";
+  field: "email" | "dateOfBirth" | "position" | "membershipSection";
   kind: "identity" | "profile";
   existingValue: string | null;
   submittedValue: string | null;
@@ -282,7 +294,7 @@ function normalizedValue(value: string | null | undefined): string | null {
 }
 
 export function getNotionMemberConflicts(
-  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position">,
+  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position" | "membershipSection">,
   current: MemberProfile & { email: string | null },
 ): NotionMemberConflict[] {
   if (!applicant.consent) return [];
@@ -311,11 +323,24 @@ export function getNotionMemberConflicts(
       });
     }
   }
+  const submittedSection = applicant.membershipSection ?? null;
+  if (
+    submittedSection &&
+    (current.currentMembershipSection ?? "not_set") !== "not_set" &&
+    current.currentMembershipSection !== submittedSection
+  ) {
+    conflicts.push({
+      field: "membershipSection",
+      kind: "profile",
+      existingValue: current.currentMembershipSection ?? "not_set",
+      submittedValue: submittedSection,
+    });
+  }
   return conflicts;
 }
 
 export function resolveNotionMemberProfile(
-  applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position">,
+  applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position" | "membershipSection">,
   current: MemberProfile,
   notionCreated: boolean,
 ): { updates: Partial<MemberProfile>; conflict: boolean } {
@@ -331,6 +356,15 @@ export function resolveNotionMemberProfile(
     } else if (incoming && !existing) {
       updates[field] = incoming;
     } else if (incoming && existing !== incoming) {
+      conflict = true;
+    }
+  }
+  if (applicant.membershipSection) {
+    if (notionCreated || (current.currentMembershipSection ?? "not_set") === "not_set") {
+      if (applicant.membershipSection !== (current.currentMembershipSection ?? "not_set")) {
+        updates.currentMembershipSection = applicant.membershipSection;
+      }
+    } else if (applicant.membershipSection !== current.currentMembershipSection) {
       conflict = true;
     }
   }
@@ -354,7 +388,7 @@ export function hasNotionIdentityConflict(
 }
 
 export function resolveNotionMemberSyncProfile(
-  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position">,
+  applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position" | "membershipSection">,
   current: MemberProfile & { email: string | null },
   notionCreated: boolean,
 ): { updates: Partial<MemberProfile>; conflict: boolean } {
@@ -378,11 +412,13 @@ async function syncNotionMemberProfile(
   tx: any,
   applicant: NotionApplicant,
   playerId: number,
+  currentSeasonId: number,
 ): Promise<{ updated: boolean; conflict: boolean }> {
   const [player] = await tx.select({
     email: playersTable.email,
     dateOfBirth: playersTable.dateOfBirth,
     position: playersTable.position,
+    currentMembershipSection: playersTable.currentMembershipSection,
   }).from(playersTable).where(eq(playersTable.id, playerId)).limit(1);
   if (!player) return { updated: false, conflict: true };
 
@@ -401,6 +437,15 @@ async function syncNotionMemberProfile(
   const updated = Object.keys(resolution.updates).length > 0;
   if (updated) {
     await tx.update(playersTable).set(resolution.updates).where(eq(playersTable.id, playerId));
+    if (resolution.updates.currentMembershipSection) {
+      await tx.update(playerParticipationsTable).set({
+        membershipSection: resolution.updates.currentMembershipSection,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(playerParticipationsTable.playerId, playerId),
+        eq(playerParticipationsTable.seasonId, currentSeasonId),
+      ));
+    }
   }
   return {
     updated,
@@ -449,6 +494,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               tx,
               applicant,
               existingSubmission.matchedPlayerId,
+              currentSeasonId,
             );
             const nextStatus = resolveProfileSubmissionStatus(
               existingSubmission.matchStatus,
@@ -529,6 +575,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               position: applicant.position,
               memberStatus: "active",
               currentMembershipTier: "awaiting_selection",
+              currentMembershipSection: applicant.membershipSection ?? "not_set",
               membershipTierUpdatedAt: new Date(),
               notes: "Joined via the Notion membership form.",
             }).returning();
@@ -540,6 +587,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               teamId: holdingTeamId,
               participationStatus: "active",
               membershipTier: "awaiting_selection",
+              membershipSection: applicant.membershipSection ?? "not_set",
               source: SOURCE,
             });
             counts.created++;
@@ -549,7 +597,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
         }
 
         if (valid && matchedPlayerId && matchStatus === "matched") {
-          const profile = await syncNotionMemberProfile(tx, applicant, matchedPlayerId);
+          const profile = await syncNotionMemberProfile(tx, applicant, matchedPlayerId, currentSeasonId);
           if (profile.conflict) {
             matchStatus = "conflict";
             counts.needsReview++;
@@ -563,6 +611,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           submittedEmail: storedApplicant.submittedEmail,
           submittedPhone: storedApplicant.submittedPhone,
           membershipTier: "awaiting_selection",
+          membershipSection: applicant.membershipSection ?? "not_set",
           matchedPlayerId,
           matchStatus,
           rawData: storedApplicant.rawData,
