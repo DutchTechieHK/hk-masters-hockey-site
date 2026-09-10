@@ -272,7 +272,9 @@ router.post("/correct-september-hkt-import", requireAdminAccess, async (req, res
       matches: SEPTEMBER_HKT_IMPORT.map(({ id }) => serialize(rowsById.get(id)!, undefined, undefined, true)),
     };
   }).catch((error: unknown) => {
-    req.log.warn({ error: error instanceof Error ? error.message : String(error) }, "September HKT match correction rejected");
+    console.warn("[matches] September HKT match correction rejected", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return null;
   });
 
@@ -280,12 +282,12 @@ router.post("/correct-september-hkt-import", requireAdminAccess, async (req, res
     res.status(409).json({ error: "The affected matches no longer match the known September 2026 import batch. No records were changed." });
     return;
   }
-  req.log.info({
+  console.info("[matches] September match and trial event correction applied", {
     correctedCount: result.correctedCount,
     alreadyCorrectCount: result.alreadyCorrectCount,
     classifiedEventCount: result.classifiedEventCount,
     alreadyClassifiedEventCount: result.alreadyClassifiedEventCount,
-  }, "September match and trial event correction applied");
+  });
   res.json(CorrectSeptemberHktImportResponse.parse(result));
 });
 
