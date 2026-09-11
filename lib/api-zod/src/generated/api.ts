@@ -15,6 +15,63 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
+ * @summary Get a privacy-safe, read-only historical summary of the 2026 World Cup campaign
+ */
+export const GetWorldCup2026ShowcaseResponse = zod.object({
+  historical: zod.boolean(),
+  tournament: zod.object({
+    name: zod.string(),
+    location: zod.string(),
+    seasonSlug: zod.string(),
+  }),
+  overview: zod.object({
+    playerCount: zod.number(),
+    teamCount: zod.number(),
+    completedFixtures: zod.number(),
+    scheduledItems: zod.number(),
+  }),
+  teams: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      category: zod.string(),
+      playerCount: zod.number(),
+      paidPlayers: zod.number(),
+    }),
+  ),
+  schedule: zod.array(
+    zod.object({
+      id: zod.number(),
+      type: zod.enum(["fixture", "event"]),
+      title: zod.string(),
+      startsAt: zod.string(),
+      location: zod.string(),
+      score: zod.string().nullish(),
+    }),
+  ),
+  travel: zod.object({
+    arrivalConfirmed: zod.number(),
+    departureConfirmed: zod.number(),
+    accommodationConfirmed: zod.number(),
+    totalPlayers: zod.number(),
+  }),
+  fees: zod.object({
+    due: zod.number(),
+    paid: zod.number(),
+    outstanding: zod.number(),
+    paidPlayers: zod.number(),
+    totalPlayers: zod.number(),
+  }),
+  readiness: zod.array(
+    zod.object({
+      label: zod.string(),
+      complete: zod.number(),
+      total: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary List announcements visible to the current admin or active player
  */
 export const ListAnnouncementsQueryParams = zod.object({

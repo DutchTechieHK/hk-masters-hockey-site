@@ -27,6 +27,8 @@ tags:
     description: Match schedule operations
   - name: announcements
     description: In-app announcement operations
+  - name: showcase
+    description: Read-only historical World Cup showcase operations
 
 paths:
   /healthz:
@@ -41,6 +43,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /showcase/world-cup-2026:
+    get:
+      operationId: getWorldCup2026Showcase
+      tags: [showcase]
+      summary: Get a privacy-safe, read-only historical summary of the 2026 World Cup campaign
+      responses:
+        "200":
+          description: Historical showcase data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorldCup2026Showcase"
 
   /announcements:
     get:
@@ -1349,6 +1364,125 @@ components:
           type: string
       required:
         - status
+
+    WorldCup2026Showcase:
+      type: object
+      required:
+        - historical
+        - tournament
+        - overview
+        - teams
+        - schedule
+        - travel
+        - fees
+        - readiness
+      properties:
+        historical:
+          type: boolean
+        tournament:
+          type: object
+          required: [name, location, seasonSlug]
+          properties:
+            name:
+              type: string
+            location:
+              type: string
+            seasonSlug:
+              type: string
+        overview:
+          type: object
+          required: [playerCount, teamCount, completedFixtures, scheduledItems]
+          properties:
+            playerCount:
+              type: integer
+            teamCount:
+              type: integer
+            completedFixtures:
+              type: integer
+            scheduledItems:
+              type: integer
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorldCupShowcaseTeam"
+        schedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorldCupShowcaseScheduleItem"
+        travel:
+          type: object
+          required: [arrivalConfirmed, departureConfirmed, accommodationConfirmed, totalPlayers]
+          properties:
+            arrivalConfirmed:
+              type: integer
+            departureConfirmed:
+              type: integer
+            accommodationConfirmed:
+              type: integer
+            totalPlayers:
+              type: integer
+        fees:
+          type: object
+          required: [due, paid, outstanding, paidPlayers, totalPlayers]
+          properties:
+            due:
+              type: number
+            paid:
+              type: number
+            outstanding:
+              type: number
+            paidPlayers:
+              type: integer
+            totalPlayers:
+              type: integer
+        readiness:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorldCupShowcaseReadiness"
+
+    WorldCupShowcaseTeam:
+      type: object
+      required: [id, name, category, playerCount, paidPlayers]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        playerCount:
+          type: integer
+        paidPlayers:
+          type: integer
+
+    WorldCupShowcaseScheduleItem:
+      type: object
+      required: [id, type, title, startsAt, location]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [fixture, event]
+        title:
+          type: string
+        startsAt:
+          type: string
+        location:
+          type: string
+        score:
+          type: [string, "null"]
+
+    WorldCupShowcaseReadiness:
+      type: object
+      required: [label, complete, total]
+      properties:
+        label:
+          type: string
+        complete:
+          type: integer
+        total:
+          type: integer
 
     TravelReminderRequest:
       type: object

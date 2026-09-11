@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/world-cup-2026-showcase/"
+title = "World Cup 2026 Showcase"
+description = "A private, read-only historical demonstration of the HK Masters Hockey Rotterdam 2026 World Cup player portal and management system for club presentations."
+version = "1.0.0"
+id = "artifacts/world-cup-2026-showcase"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/world-cup-2026-showcase/" ]
+localPort = 19388
+
+[services.development]
+run = "pnpm --filter @workspace/world-cup-2026-showcase run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/world-cup-2026-showcase", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/world-cup-2026-showcase/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19388"
+BASE_PATH = "/world-cup-2026-showcase/"

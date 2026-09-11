@@ -26,6 +26,7 @@ import funRunRouter from "./fun-run";
 import pollsRouter from "./polls";
 import payoutsRouter from "./payouts";
 import siteContentRouter from "./site-content";
+import worldCupShowcaseRouter from "./world-cup-showcase";
 import { retiredArchiveReadOnly } from "../middleware/retiredArchive";
 
 const router: IRouter = Router();
@@ -59,5 +60,6 @@ router.use("/fun-run", retiredArchiveReadOnly, funRunRouter);
 router.use("/polls", pollsRouter);
 router.use("/payouts", retiredArchiveReadOnly, payoutsRouter);
 router.use("/site-content", siteContentRouter);
+router.use("/showcase", worldCupShowcaseRouter);
 
 export default router;

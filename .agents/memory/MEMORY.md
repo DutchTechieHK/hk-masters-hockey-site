@@ -24,3 +24,4 @@
 - [Read-path repair concurrency](read-path-repair-concurrency.md) — any repair reachable from reads must serialize first-run provisioning and skip writes for already-correct rows.
 - [Membership section semantics](membership-section-semantics.md) — Men/Women is an operational section, independent of identity, fee category, and squad; never infer existing members.
 - [World Cup archive snapshots](world-cup-archive-snapshots.md) — mutable member fields need immutable snapshots; archive writes are blocked server-side, not only hidden in the UI.
+- [Private historical showcase](private-historical-showcase.md) — protect archive pages and aggregate endpoints with the existing admin session; a private preview/noindex never replaces server access control.

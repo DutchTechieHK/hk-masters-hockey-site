@@ -78,6 +78,77 @@ export interface HealthStatus {
   status: string;
 }
 
+export type WorldCup2026ShowcaseTournament = {
+  name: string;
+  location: string;
+  seasonSlug: string;
+};
+
+export type WorldCup2026ShowcaseOverview = {
+  playerCount: number;
+  teamCount: number;
+  completedFixtures: number;
+  scheduledItems: number;
+};
+
+export type WorldCup2026ShowcaseTravel = {
+  arrivalConfirmed: number;
+  departureConfirmed: number;
+  accommodationConfirmed: number;
+  totalPlayers: number;
+};
+
+export type WorldCup2026ShowcaseFees = {
+  due: number;
+  paid: number;
+  outstanding: number;
+  paidPlayers: number;
+  totalPlayers: number;
+};
+
+export interface WorldCupShowcaseTeam {
+  id: number;
+  name: string;
+  category: string;
+  playerCount: number;
+  paidPlayers: number;
+}
+
+export type WorldCupShowcaseScheduleItemType =
+  (typeof WorldCupShowcaseScheduleItemType)[keyof typeof WorldCupShowcaseScheduleItemType];
+
+export const WorldCupShowcaseScheduleItemType = {
+  fixture: "fixture",
+  event: "event",
+} as const;
+
+export interface WorldCupShowcaseScheduleItem {
+  id: number;
+  type: WorldCupShowcaseScheduleItemType;
+  title: string;
+  startsAt: string;
+  location: string;
+  /** @nullable */
+  score?: string | null;
+}
+
+export interface WorldCupShowcaseReadiness {
+  label: string;
+  complete: number;
+  total: number;
+}
+
+export interface WorldCup2026Showcase {
+  historical: boolean;
+  tournament: WorldCup2026ShowcaseTournament;
+  overview: WorldCup2026ShowcaseOverview;
+  teams: WorldCupShowcaseTeam[];
+  schedule: WorldCupShowcaseScheduleItem[];
+  travel: WorldCup2026ShowcaseTravel;
+  fees: WorldCup2026ShowcaseFees;
+  readiness: WorldCupShowcaseReadiness[];
+}
+
 export interface TravelReminderRequest {
   /** Specific player IDs to email. If omitted, emails all players missing flight info. */
   playerIds?: number[];

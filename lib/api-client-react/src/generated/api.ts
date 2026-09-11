@@ -70,6 +70,7 @@ import type {
   TravelReminderResult,
   UpdateSelfPlayer,
   UpsertKitDistribution,
+  WorldCup2026Showcase,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -148,6 +149,82 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a privacy-safe, read-only historical summary of the 2026 World Cup campaign
+ */
+export const getGetWorldCup2026ShowcaseUrl = () => {
+  return `/api/showcase/world-cup-2026`;
+};
+
+export const getWorldCup2026Showcase = async (
+  options?: RequestInit,
+): Promise<WorldCup2026Showcase> => {
+  return customFetch<WorldCup2026Showcase>(getGetWorldCup2026ShowcaseUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetWorldCup2026ShowcaseQueryKey = () => {
+  return [`/api/showcase/world-cup-2026`] as const;
+};
+
+export const getGetWorldCup2026ShowcaseQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWorldCup2026Showcase>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWorldCup2026Showcase>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetWorldCup2026ShowcaseQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getWorldCup2026Showcase>>
+  > = ({ signal }) => getWorldCup2026Showcase({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWorldCup2026Showcase>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWorldCup2026ShowcaseQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWorldCup2026Showcase>>
+>;
+export type GetWorldCup2026ShowcaseQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get a privacy-safe, read-only historical summary of the 2026 World Cup campaign
+ */
+
+export function useGetWorldCup2026Showcase<
+  TData = Awaited<ReturnType<typeof getWorldCup2026Showcase>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getWorldCup2026Showcase>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWorldCup2026ShowcaseQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
