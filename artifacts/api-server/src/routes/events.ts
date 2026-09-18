@@ -671,7 +671,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     const noResponse = eligible.filter(({ participation }) => !respondedIds.has(participation.playerId)).map(({ participation }) => ({ ...byId.get(participation.playerId)!, playerId: participation.playerId }));
     const counts = emptyCounts();
     for (const response of responses) if (response.status === "yes" || response.status === "no" || response.status === "maybe") counts[response.status]++;
-    res.json({ event: serialize(event, null, { rsvpCounts: counts }), counts: { ...counts, noResponse: noResponse.length, invited: eligible.length }, responses, noResponse });
+    res.json({ event: serialize(event, null, { rsvpCounts: counts }), counts: { ...counts, noResponse: noResponse.length, invited: eligible.length }, responses, noResponse, excludedResponses: [] });
     return;
   }
 
@@ -710,6 +710,20 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
       respondedAt: r.respondedAt.toISOString(),
     }));
 
+  const excludedResponses = rows
+    .filter((r) => !invitedById.has(r.playerId))
+    .map((r) => ({
+      playerId: r.playerId,
+      playerName: r.playerName,
+      shirtNumber: r.shirtNumber,
+      teamId: r.teamId,
+      teamName: r.teamName ?? null,
+      status: r.status,
+      note: r.note ?? null,
+      respondedAt: r.respondedAt.toISOString(),
+      exclusionReason: "Player is no longer in this event's current audience",
+    }));
+
   const respondedIds = new Set(responses.map((r) => r.playerId));
   const noResponse = invited
     .filter((p) => !respondedIds.has(p.id))
@@ -731,6 +745,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     counts: { ...counts, noResponse: noResponse.length, invited: invited.length },
     responses,
     noResponse,
+    excludedResponses,
   });
 }) as (req: Request, res: Response) => Promise<void>);
 

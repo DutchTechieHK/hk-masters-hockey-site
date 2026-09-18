@@ -40,11 +40,16 @@ type RsvpResponse = {
   respondedAt: string
 }
 
+type ExcludedRsvpResponse = RsvpResponse & {
+  exclusionReason: string
+}
+
 type RsvpRoster = {
   event: EventRow
   counts: { yes: number; no: number; maybe: number; noResponse: number; invited: number }
   responses: RsvpResponse[]
   noResponse: Array<{ playerId: number; playerName: string; shirtNumber: number | null; teamId: number | null; teamName: string | null }>
+  excludedResponses: ExcludedRsvpResponse[]
 }
 
 type FormState = {
@@ -1128,6 +1133,35 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
                     </div>
                   )
                 })()}
+              </div>
+            )}
+
+            {roster.excludedResponses.length > 0 && (
+              <div className="border-t border-border pt-5">
+                <div className="mb-2">
+                  <h4 className="text-sm font-semibold">Excluded historical responses ({roster.excludedResponses.length})</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Stored for audit only. These responses do not affect attendance totals.
+                  </p>
+                </div>
+                <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden bg-muted/20">
+                  {roster.excludedResponses.map((r) => (
+                    <li key={r.playerId} className="px-3 py-2.5 text-sm">
+                      <div className="flex justify-between items-start gap-3">
+                        <div>
+                          <div>
+                            {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
+                            <span className="font-medium">{r.playerName}</span>
+                            <Badge variant="outline" className="ml-2 capitalize">{r.status === "yes" ? "Going" : r.status === "no" ? "Not going" : "Maybe"}</Badge>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{r.exclusionReason}</p>
+                          {r.note && <p className="mt-1 text-xs text-muted-foreground">Note: {r.note}</p>}
+                        </div>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

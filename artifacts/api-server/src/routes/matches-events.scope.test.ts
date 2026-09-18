@@ -192,7 +192,14 @@ describe("classified match/event API boundaries", () => {
     expect(squadAdminView.body.responses).not.toContainEqual(expect.objectContaining({
       playerId: ineligiblePlayerId,
     }));
+    expect(squadAdminView.body.excludedResponses).toContainEqual(expect.objectContaining({
+      playerId: ineligiblePlayerId,
+      status: "yes",
+      exclusionReason: "Player is no longer in this event's current audience",
+    }));
     expect(squadAdminView.body.counts.yes).toBe(1);
+    expect(squadAdminView.body.counts.invited).toBe(1);
+    expect(squadAdminView.body.counts.noResponse).toBe(0);
 
     const adminEvents = await request(app).get("/api/events");
     expect(adminEvents.status, JSON.stringify(adminEvents.body)).toBe(200);
@@ -204,6 +211,7 @@ describe("classified match/event API boundaries", () => {
       playerId: ineligiblePlayerId,
       status: "yes",
     }));
+    expect(allSquadAdminView.body.excludedResponses).toEqual([]);
     expect(allSquadAdminView.body.counts.yes).toBe(1);
   });
 });
