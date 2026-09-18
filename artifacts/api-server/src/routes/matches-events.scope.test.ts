@@ -2,7 +2,15 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { db } from "@workspace/db";
-import { matchesTable, eventsTable, teamsTable, playersTable } from "@workspace/db/schema";
+import {
+  eventRsvpsTable,
+  eventsTable,
+  matchesTable,
+  playerParticipationsTable,
+  playersTable,
+  seasonsTable,
+  teamsTable,
+} from "@workspace/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 vi.mock("../middleware/adminAuth", () => ({
@@ -22,6 +30,9 @@ const tag = `scope-${Date.now()}`;
 let matchIds: number[] = [];
 let eventIds: number[] = [];
 let teamId: number;
+let squadEventId: number;
+let squadPlayerId: number;
+let legacyTeamId: number;
 
 beforeAll(async () => {
   const [team] = await db.select({ id: teamsTable.id }).from(teamsTable).limit(1);
@@ -34,8 +45,48 @@ beforeAll(async () => {
   eventIds = [archivedEvent.id, localEvent.id];
   const [unclassifiedEvent] = await db.insert(eventsTable).values({ kind: "test", title: `${tag}-unclassified`, startsAt: new Date("2026-08-01T10:00:00Z") }).returning({ id: eventsTable.id });
   eventIds.push(unclassifiedEvent.id);
+
+  const [[squadTeam], [legacyTeam], [currentSeason]] = await Promise.all([
+    db.select().from(teamsTable).where(eq(teamsTable.name, "Masters Div. 1")),
+    db.select().from(teamsTable).where(eq(teamsTable.name, "Awaiting Selection")),
+    db.select().from(seasonsTable).where(eq(seasonsTable.slug, "membership-2026-27")),
+  ]);
+  if (!squadTeam || !legacyTeam || !currentSeason) {
+    throw new Error("Current squad test fixtures are required");
+  }
+  legacyTeamId = legacyTeam.id;
+  const [squadPlayer] = await db.insert(playersTable).values({
+    teamId: legacyTeam.id,
+    name: `${tag}-selected-player`,
+    email: `${tag}@example.com`,
+    memberStatus: "active",
+    currentMembershipSection: squadTeam.membershipSection,
+  }).returning({ id: playersTable.id });
+  squadPlayerId = squadPlayer.id;
+  await db.insert(playerParticipationsTable).values({
+    playerId: squadPlayerId,
+    seasonId: currentSeason.id,
+    teamId: squadTeam.id,
+    participationStatus: "active",
+    membershipSection: squadTeam.membershipSection,
+    source: "event_visibility_test",
+  });
+  const [squadEvent] = await db.insert(eventsTable).values({
+    kind: "training",
+    title: `${tag}-squad-trial`,
+    startsAt: new Date("2026-09-21T10:00:00Z"),
+    operationalScope: "local_2026_27",
+    teamId: squadTeam.id,
+  }).returning({ id: eventsTable.id });
+  squadEventId = squadEvent.id;
+  eventIds.push(squadEventId);
 });
 afterAll(async () => {
+  if (squadPlayerId) {
+    await db.delete(eventRsvpsTable).where(eq(eventRsvpsTable.playerId, squadPlayerId));
+    await db.delete(playerParticipationsTable).where(eq(playerParticipationsTable.playerId, squadPlayerId));
+    await db.delete(playersTable).where(eq(playersTable.id, squadPlayerId));
+  }
   await db.delete(matchesTable).where(inArray(matchesTable.id, matchIds));
   await db.delete(eventsTable).where(inArray(eventsTable.id, eventIds));
 });
@@ -76,5 +127,29 @@ describe("classified match/event API boundaries", () => {
     await playerRsvpHandler({ params: { id: String(eventIds[2]) }, body: { status: "yes" }, player } as any, unclassifiedResponse);
     expect(unclassifiedResponse.status).toHaveBeenCalledWith(409);
     expect((await request(app).post(`/api/events/${eventIds[0]}/rsvps/remind`)).status).toBe(409);
+  });
+
+  it("uses current league-squad selection for event visibility and RSVP", async () => {
+    const listed = await listEventsForPlayer(legacyTeamId, squadPlayerId);
+    expect(listed.map((event) => event.id)).toContain(squadEventId);
+
+    const response = { status: vi.fn().mockReturnThis(), json: vi.fn() } as any;
+    await playerRsvpHandler({
+      params: { id: String(squadEventId) },
+      body: { status: "yes" },
+      player: { id: squadPlayerId, teamId: legacyTeamId },
+    } as any, response);
+    expect(response.status).not.toHaveBeenCalledWith(403);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({
+      eventId: squadEventId,
+      status: "yes",
+    }));
+
+    const adminView = await request(app).get(`/api/events/${squadEventId}/rsvps`);
+    expect(adminView.status, JSON.stringify(adminView.body)).toBe(200);
+    expect(adminView.body.responses).toContainEqual(expect.objectContaining({
+      playerId: squadPlayerId,
+      status: "yes",
+    }));
   });
 });

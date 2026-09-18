@@ -13,6 +13,7 @@ import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { formatEventDateTime } from "../utils/eventTime";
 
 const router: IRouter = Router();
+const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -84,6 +85,99 @@ function serialize(
     myRsvp: extras?.myRsvp ?? null,
     myNote: extras?.myNote ?? null,
   };
+}
+
+type LocalEventInvitee = {
+  id: number;
+  name: string;
+  email: string | null;
+  shirtNumber: number | null;
+  teamId: number | null;
+  teamName: string | null;
+};
+
+async function getCurrentLeagueSquadTeamId(
+  playerId: number,
+): Promise<number | null | undefined> {
+  const [participation] = await db
+    .select({ teamId: playerParticipationsTable.teamId })
+    .from(playerParticipationsTable)
+    .innerJoin(
+      seasonsTable,
+      eq(playerParticipationsTable.seasonId, seasonsTable.id),
+    )
+    .where(
+      and(
+        eq(playerParticipationsTable.playerId, playerId),
+        eq(playerParticipationsTable.participationStatus, "active"),
+        eq(seasonsTable.slug, CURRENT_MEMBERSHIP_SEASON_SLUG),
+      ),
+    )
+    .limit(1);
+
+  return participation?.teamId;
+}
+
+async function getEffectiveEventTeamId(
+  playerId: number,
+  legacyTeamId: number | null,
+): Promise<number | null> {
+  return (await getCurrentLeagueSquadTeamId(playerId)) ?? legacyTeamId;
+}
+
+async function listLocalEventInvitees(
+  eventTeamId: number | null,
+): Promise<LocalEventInvitee[]> {
+  const [players, participations] = await Promise.all([
+    db
+      .select({
+        id: playersTable.id,
+        name: playersTable.name,
+        email: playersTable.email,
+        shirtNumber: playersTable.shirtNumber,
+        teamId: playersTable.teamId,
+        teamName: teamsTable.name,
+      })
+      .from(playersTable)
+      .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
+      .orderBy(asc(playersTable.name)),
+    db
+      .select({
+        playerId: playerParticipationsTable.playerId,
+        teamId: playerParticipationsTable.teamId,
+        teamName: teamsTable.name,
+      })
+      .from(playerParticipationsTable)
+      .innerJoin(
+        seasonsTable,
+        eq(playerParticipationsTable.seasonId, seasonsTable.id),
+      )
+      .leftJoin(teamsTable, eq(teamsTable.id, playerParticipationsTable.teamId))
+      .where(
+        and(
+          eq(playerParticipationsTable.participationStatus, "active"),
+          eq(seasonsTable.slug, CURRENT_MEMBERSHIP_SEASON_SLUG),
+        ),
+      ),
+  ]);
+
+  const currentByPlayer = new Map(
+    participations.map((participation) => [
+      participation.playerId,
+      { teamId: participation.teamId, teamName: participation.teamName },
+    ]),
+  );
+
+  return players
+    .map((player) => {
+      const current = currentByPlayer.get(player.id);
+      return {
+        ...player,
+        teamId: current?.teamId ?? player.teamId,
+        teamName: current?.teamName ?? player.teamName ?? null,
+      };
+    })
+    .filter((player) => eventTeamId == null || player.teamId === eventTeamId);
 }
 
 function parseBody(body: unknown): {
@@ -483,25 +577,17 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     .where(eq(eventRsvpsTable.eventId, id))
     .orderBy(asc(playersTable.name));
 
-  // Players invited to this event = team-scoped players (or all if event is all-squads).
-  const invitedQuery = event.teamId == null
-    ? db.select({ id: playersTable.id, name: playersTable.name, teamId: playersTable.teamId, teamName: teamsTable.name, shirtNumber: playersTable.shirtNumber })
-        .from(playersTable)
-        .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
-        .orderBy(asc(playersTable.name))
-    : db.select({ id: playersTable.id, name: playersTable.name, teamId: playersTable.teamId, teamName: teamsTable.name, shirtNumber: playersTable.shirtNumber })
-        .from(playersTable)
-        .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
-        .where(eq(playersTable.teamId, event.teamId))
-        .orderBy(asc(playersTable.name));
-  const invited = await invitedQuery;
+  // Current-season squad selection is authoritative for local event audiences.
+  // The legacy player team remains a fallback for members without a squad assignment.
+  const invited = await listLocalEventInvitees(event.teamId);
+  const invitedById = new Map(invited.map((player) => [player.id, player]));
 
   const responses = rows.map((r) => ({
     playerId: r.playerId,
     playerName: r.playerName,
     shirtNumber: r.shirtNumber,
-    teamId: r.teamId,
-    teamName: r.teamName ?? null,
+    teamId: invitedById.get(r.playerId)?.teamId ?? r.teamId,
+    teamName: invitedById.get(r.playerId)?.teamName ?? r.teamName ?? null,
     status: r.status,
     note: r.note ?? null,
     respondedAt: r.respondedAt.toISOString(),
@@ -541,16 +627,8 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
   if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
 
-  // Determine invited players.
-  const invitedQuery = event.teamId == null
-    ? db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
-        .from(playersTable)
-        .orderBy(asc(playersTable.name))
-    : db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
-        .from(playersTable)
-        .where(eq(playersTable.teamId, event.teamId))
-        .orderBy(asc(playersTable.name));
-  const invited = await invitedQuery;
+  // Use the same current-squad audience as listing and RSVP authorization.
+  const invited = await listLocalEventInvitees(event.teamId);
 
   // Find who has already responded.
   const responded = await db
@@ -610,7 +688,8 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
   if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
   if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
-  if (event.teamId != null && event.teamId !== player.teamId) {
+  const effectiveTeamId = await getEffectiveEventTeamId(player.id, player.teamId);
+  if (event.teamId != null && event.teamId !== effectiveTeamId) {
     res.status(403).json({ error: "Event not available to your team" }); return;
   }
 
@@ -628,6 +707,9 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
 export const playerRsvpHandler = upsertOwnRsvp;
 
 export async function listEventsForPlayer(playerTeamId: number | null, playerId: number | null, base?: string) {
+  const effectiveTeamId = playerId == null
+    ? playerTeamId
+    : await getEffectiveEventTeamId(playerId, playerTeamId);
   const rows = await db
     .select({ event: eventsTable, teamName: teamsTable.name })
     .from(eventsTable)
@@ -635,9 +717,9 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
     .where(
       and(
         eq(eventsTable.operationalScope, "local_2026_27"),
-        playerTeamId == null
+        effectiveTeamId == null
           ? isNull(eventsTable.teamId)
-          : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, playerTeamId)),
+          : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, effectiveTeamId)),
       ),
     )
     .orderBy(asc(eventsTable.startsAt));
