@@ -3006,7 +3006,7 @@ components:
           type: string
         audienceType:
           type: string
-          enum: [all, men, women, teams, individuals, onboarding, insurance-reminder, pledge-digest]
+          enum: [all, men, women, teams, individuals, onboarding, insurance-reminder, pledge-digest, event-rsvp-reminder]
         teamIds:
           type: string
           nullable: true

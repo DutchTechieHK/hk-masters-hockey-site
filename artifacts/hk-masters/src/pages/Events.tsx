@@ -405,14 +405,20 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
         headers: authHeaders(),
       })
       if (!res.ok) throw new Error("Failed to send reminders")
-      const data = await res.json() as { sent: number; total: number; skippedNoEmail: number; failed?: number }
+      const data = await res.json() as { sent: number; total: number; skippedNoEmail: number; failed?: number; historyRecorded?: boolean }
       const failed = data.failed ?? 0
       setRemindResult({ sent: data.sent, skippedNoEmail: data.skippedNoEmail, failed })
       const skippedMsg = data.skippedNoEmail > 0 ? ` (${data.skippedNoEmail} skipped — no email on file)` : ""
       const failedMsg = failed > 0 ? ` — ${failed} failed to send` : ""
+      const historyFailed = data.historyRecorded === false
       toast({
-        title: `Reminder${data.sent !== 1 ? "s" : ""} sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${skippedMsg}${failedMsg}`,
-        variant: failed > 0 ? "destructive" : undefined,
+        title: historyFailed
+          ? `Reminder emails sent, but Email History could not be updated`
+          : `Reminder${data.sent !== 1 ? "s" : ""} sent to ${data.sent} player${data.sent !== 1 ? "s" : ""}${skippedMsg}${failedMsg}`,
+        description: historyFailed
+          ? `${data.sent} sent${failedMsg}${skippedMsg}. Do not resend solely to create a history entry.`
+          : undefined,
+        variant: failed > 0 || historyFailed ? "destructive" : undefined,
       })
     } catch (err) {
       toast({ title: (err as Error).message, variant: "destructive" })

@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
-import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db";
+import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db";
 import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
@@ -626,6 +626,7 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
   if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
   if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
+  const operationalScope = event.operationalScope;
 
   // Use the same current-squad audience as listing and RSVP authorization.
   const invited = await listLocalEventInvitees(event.teamId);
@@ -649,6 +650,12 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   const { eventDate, eventTime } = formatEventDateTime(startsAt);
 
   let sent = 0;
+  const recipientResults: Array<{
+    playerId: number;
+    playerName: string;
+    playerEmail: string;
+    sent: boolean;
+  }> = [];
   for (let i = 0; i < nonResponders.length; i++) {
     const player = nonResponders[i];
     const ok = await sendRsvpReminderEmail({
@@ -660,6 +667,12 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
       scheduleUrl,
     });
     if (ok) sent++;
+    recipientResults.push({
+      playerId: player.id,
+      playerName: player.name,
+      playerEmail: player.email!,
+      sent: ok,
+    });
     // Throttle to stay under the email provider's rate limit (~2/sec).
     // Without this, a burst of sends gets rate-limited (429) and silently fails.
     if (i < nonResponders.length - 1) {
@@ -668,8 +681,51 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   }
 
   const failed = nonResponders.length - sent;
-  console.log(`[events] Sent ${sent} RSVP reminders for event #${id} (${nonResponders.length} eligible, ${skippedNoEmail} skipped no-email, ${failed} failed)`);
-  res.json({ sent, total: allNonResponders.length, skippedNoEmail, failed });
+  let historyRecorded = false;
+  try {
+    await db.transaction(async (tx) => {
+      const [blast] = await tx.insert(emailBlastsTable).values({
+        subject: `Quick reply needed: ${event.title}`,
+        body: [
+          "Event RSVP reminder",
+          "",
+          `Event: ${event.title}`,
+          `Date: ${eventDate}`,
+          `Time: ${eventTime}`,
+          event.location ? `Location: ${event.location}` : null,
+          "",
+          `${sent} sent, ${failed} failed, ${skippedNoEmail} skipped because no email was on file.`,
+        ].filter((line): line is string => line !== null).join("\n"),
+        audienceType: "event-rsvp-reminder",
+        teamIds: event.teamId == null ? null : JSON.stringify([event.teamId]),
+        playerIds: JSON.stringify(nonResponders.map((player) => player.id)),
+        recipientCount: nonResponders.length,
+        sentCount: sent,
+        failedCount: failed,
+        sentByEmail: null,
+        operationalScope,
+      }).returning({ id: emailBlastsTable.id });
+
+      if (recipientResults.length > 0) {
+        await tx.insert(emailBlastRecipientsTable).values(
+          recipientResults.map((result) => ({
+            blastId: blast.id,
+            playerId: result.playerId,
+            playerName: result.playerName,
+            playerEmail: result.playerEmail,
+            sent: result.sent,
+            errorMessage: result.sent ? null : "send_failed",
+          })),
+        );
+      }
+    });
+    historyRecorded = true;
+  } catch (error) {
+    console.error(`[events] RSVP reminders were sent for event #${id}, but Email History could not be recorded`, error);
+  }
+
+  console.log(`[events] Sent ${sent} RSVP reminders for event #${id} (${nonResponders.length} eligible, ${skippedNoEmail} skipped no-email, ${failed} failed, historyRecorded=${historyRecorded})`);
+  res.json({ sent, total: allNonResponders.length, skippedNoEmail, failed, historyRecorded });
 }) as (req: Request, res: Response) => Promise<void>);
 
 // Player upserts their own RSVP for an event.

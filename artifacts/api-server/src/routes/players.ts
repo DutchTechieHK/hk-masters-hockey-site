@@ -2020,7 +2020,11 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     .orderBy(desc(emailBlastsTable.sentAt));
 
   const individualBlastIds = rows
-    .filter((r) => r.audienceType === "individuals" || r.audienceType === "pledge-digest")
+    .filter((r) =>
+      r.audienceType === "individuals" ||
+      r.audienceType === "pledge-digest" ||
+      r.audienceType === "event-rsvp-reminder"
+    )
     .map((r) => r.id);
 
   const recipientNamesByBlastId = new Map<number, string[]>();

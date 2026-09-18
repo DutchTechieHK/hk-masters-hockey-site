@@ -37,6 +37,13 @@ function audienceLabel(blast: EmailBlastHistoryItem): string {
     if (names.length === 2) return `${names[0]}, ${names[1]} — pledge digest`
     return `${names[0]} + ${names.length - 1} more — pledge digest`
   }
+  if (blast.audienceType === "event-rsvp-reminder") {
+    const names = blast.recipientNames ?? []
+    if (names.length === 0) return `${blast.recipientCount} players reminded`
+    if (names.length === 1) return `${names[0]} — event reminder`
+    if (names.length === 2) return `${names[0]}, ${names[1]} — event reminder`
+    return `${names[0]} + ${names.length - 1} more — event reminder`
+  }
   if (blast.audienceType === "all") return "All players"
   if (blast.audienceType === "teams") {
     const names = blast.teamNames ?? []
@@ -66,6 +73,7 @@ function AudienceIcon({ audienceType }: { audienceType: string }) {
   if (audienceType === "onboarding") return <Send className="w-3.5 h-3.5" />
   if (audienceType === "insurance-reminder") return <ShieldCheck className="w-3.5 h-3.5" />
   if (audienceType === "pledge-digest") return <HandCoins className="w-3.5 h-3.5" />
+  if (audienceType === "event-rsvp-reminder") return <Mail className="w-3.5 h-3.5" />
   if (audienceType === "all") return <Users className="w-3.5 h-3.5" />
   if (audienceType === "teams") return <Users className="w-3.5 h-3.5" />
   return <User className="w-3.5 h-3.5" />
@@ -181,7 +189,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
   return (
     <PageLayout
       title="Email History"
-      description="A log of every bulk email and onboarding invite sent to players."
+      description="A log of every bulk email, onboarding invite, and event reminder sent to players."
     >
       {isError ? (
         <div className="bg-white rounded-2xl border border-rose-200 p-16 text-center">
@@ -213,7 +221,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
             <Mail className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
             <p className="font-semibold text-foreground">No bulk emails sent yet</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Emails sent from the Announcements page and onboarding invites will appear here.
+              Emails sent from Announcements, onboarding invites, and event reminders will appear here.
             </p>
           </div>
           <OnboardingLogSection items={inviteLog} />
@@ -246,6 +254,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
               const allSent = blast.failedCount === 0 && blast.sentCount > 0
               const isOnboarding = blast.audienceType === "onboarding"
               const isInsuranceReminder = blast.audienceType === "insurance-reminder"
+              const isEventReminder = blast.audienceType === "event-rsvp-reminder"
 
               return (
                 <div
@@ -279,6 +288,11 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                         {isInsuranceReminder && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
                             <ShieldCheck className="w-2.5 h-2.5" /> Insurance Reminder
+                          </span>
+                        )}
+                        {isEventReminder && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
+                            <Mail className="w-2.5 h-2.5" /> Event Reminder
                           </span>
                         )}
                       </div>
@@ -322,7 +336,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                     <div className="px-5 pb-5 pt-0">
                       <div className="border-t border-border pt-4">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                          {isOnboarding || isInsuranceReminder ? "Delivery summary" : "Message body"}
+                          {isOnboarding || isInsuranceReminder || isEventReminder ? "Delivery summary" : "Message body"}
                         </p>
                         <div className="bg-muted/30 rounded-xl border border-border px-4 py-3 text-sm text-foreground whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto">
                           {blast.body}

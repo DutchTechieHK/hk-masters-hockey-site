@@ -18,4 +18,5 @@ export const EmailBlastRecordAudienceType = {
   onboarding: "onboarding",
   "insurance-reminder": "insurance-reminder",
   "pledge-digest": "pledge-digest",
+  "event-rsvp-reminder": "event-rsvp-reminder",
 } as const;
