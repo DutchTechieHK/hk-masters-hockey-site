@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db";
-import { eq, asc, sql, or, isNull, and, inArray } from "drizzle-orm";
+import { eq, asc, or, isNull, and, inArray } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
 import { sendPushToAll, sendPushToTeam } from "../utils/push";
@@ -240,24 +240,52 @@ function parseBody(body: unknown): {
   };
 }
 
-// Aggregate RSVP counts grouped by event id for the supplied set of events.
-async function loadRsvpCounts(eventIds: number[]): Promise<Map<number, RsvpCounts>> {
+type EventAudience = {
+  id: number;
+  teamId: number | null;
+};
+
+// Aggregate RSVP counts grouped by event id. Local event views can additionally
+// restrict stored responses to each event's current invited squad.
+async function loadRsvpCounts(
+  events: EventAudience[],
+  restrictToCurrentLocalAudience = false,
+): Promise<Map<number, RsvpCounts>> {
   const map = new Map<number, RsvpCounts>();
+  const eventIds = events.map((event) => event.id);
   if (eventIds.length === 0) return map;
   const rows = await db
     .select({
       eventId: eventRsvpsTable.eventId,
+      playerId: eventRsvpsTable.playerId,
       status: eventRsvpsTable.status,
-      count: sql<number>`count(*)::int`,
     })
     .from(eventRsvpsTable)
-    .where(inArray(eventRsvpsTable.eventId, eventIds))
-    .groupBy(eventRsvpsTable.eventId, eventRsvpsTable.status);
+    .where(inArray(eventRsvpsTable.eventId, eventIds));
+
+  let eligiblePlayerIdsByEvent: Map<number, Set<number>> | null = null;
+  if (restrictToCurrentLocalAudience) {
+    const allInvitees = await listLocalEventInvitees(null);
+    eligiblePlayerIdsByEvent = new Map(
+      events.map((event) => [
+        event.id,
+        new Set(
+          allInvitees
+            .filter((player) => event.teamId == null || player.teamId === event.teamId)
+            .map((player) => player.id),
+        ),
+      ]),
+    );
+  }
+
   for (const r of rows) {
+    if (eligiblePlayerIdsByEvent && !eligiblePlayerIdsByEvent.get(r.eventId)?.has(r.playerId)) {
+      continue;
+    }
     const bucket = map.get(r.eventId) ?? emptyCounts();
     const s = r.status as RsvpStatus;
     if (s === "yes" || s === "no" || s === "maybe") {
-      bucket[s] = Number(r.count);
+      bucket[s]++;
     }
     map.set(r.eventId, bucket);
   }
@@ -316,7 +344,10 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
       .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
       .where(eq(eventsTable.operationalScope, scope))
       .orderBy(asc(eventsTable.startsAt));
-    const counts = await loadRsvpCounts(rows.map((r) => r.event.id));
+    const counts = await loadRsvpCounts(
+      rows.map(({ event }) => ({ id: event.id, teamId: event.teamId })),
+      scope === "local_2026_27",
+    );
     const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map(({ event }) => event.teamId).filter((id): id is number => id != null)) : new Map();
     res.json(rows.map(({ event, teamName }) =>
       serialize(event, snapshots.get(event.teamId ?? -1)?.name ?? teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() }, base)));
@@ -582,16 +613,18 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
   const invited = await listLocalEventInvitees(event.teamId);
   const invitedById = new Map(invited.map((player) => [player.id, player]));
 
-  const responses = rows.map((r) => ({
-    playerId: r.playerId,
-    playerName: r.playerName,
-    shirtNumber: r.shirtNumber,
-    teamId: invitedById.get(r.playerId)?.teamId ?? r.teamId,
-    teamName: invitedById.get(r.playerId)?.teamName ?? r.teamName ?? null,
-    status: r.status,
-    note: r.note ?? null,
-    respondedAt: r.respondedAt.toISOString(),
-  }));
+  const responses = rows
+    .filter((r) => invitedById.has(r.playerId))
+    .map((r) => ({
+      playerId: r.playerId,
+      playerName: r.playerName,
+      shirtNumber: r.shirtNumber,
+      teamId: invitedById.get(r.playerId)!.teamId,
+      teamName: invitedById.get(r.playerId)!.teamName ?? null,
+      status: r.status,
+      note: r.note ?? null,
+      respondedAt: r.respondedAt.toISOString(),
+    }));
 
   const respondedIds = new Set(responses.map((r) => r.playerId));
   const noResponse = invited
@@ -781,7 +814,10 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
     .orderBy(asc(eventsTable.startsAt));
 
   const ids = rows.map((r) => r.event.id);
-  const counts = await loadRsvpCounts(ids);
+  const counts = await loadRsvpCounts(
+    rows.map(({ event }) => ({ id: event.id, teamId: event.teamId })),
+    true,
+  );
   const mine = playerId != null ? await loadMyRsvps(playerId, ids) : new Map<number, { status: RsvpStatus; note: string | null }>();
 
   return rows.map(({ event, teamName }) =>

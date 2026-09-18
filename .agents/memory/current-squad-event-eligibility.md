@@ -8,6 +8,10 @@ authoritative for event visibility, RSVP authorization, admin response lists,
 and reminder recipients. Use the legacy primary team only when the current
 participation has no squad assignment.
 
+Stored RSVPs that no longer match a team-scoped event's current audience remain
+in the database for audit purposes, but must not appear in current response
+lists or attendance totals. All-squad events continue to accept those responses.
+
 **Why:** Admin squad selection intentionally preserves historical primary-team
 and Rotterdam data. Using the legacy team for current events made selected squad
 members appear correctly in Teams while hiding that squad's events from them.

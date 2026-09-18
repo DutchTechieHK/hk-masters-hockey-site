@@ -32,6 +32,7 @@ let eventIds: number[] = [];
 let teamId: number;
 let squadEventId: number;
 let squadPlayerId: number;
+let ineligiblePlayerId: number;
 let legacyTeamId: number;
 
 beforeAll(async () => {
@@ -80,12 +81,44 @@ beforeAll(async () => {
   }).returning({ id: eventsTable.id });
   squadEventId = squadEvent.id;
   eventIds.push(squadEventId);
+
+  const [ineligiblePlayer] = await db.insert(playersTable).values({
+    teamId: legacyTeam.id,
+    name: `${tag}-ineligible-woman`,
+    email: `${tag}-ineligible@example.com`,
+    memberStatus: "active",
+    currentMembershipSection: "women",
+  }).returning({ id: playersTable.id });
+  ineligiblePlayerId = ineligiblePlayer.id;
+  await db.insert(playerParticipationsTable).values({
+    playerId: ineligiblePlayerId,
+    seasonId: currentSeason.id,
+    teamId: legacyTeam.id,
+    participationStatus: "active",
+    membershipSection: "women",
+    source: "event_visibility_test",
+  });
+  await db.insert(eventRsvpsTable).values([
+    {
+      eventId: squadEventId,
+      playerId: ineligiblePlayerId,
+      status: "yes",
+      respondedAt: new Date("2026-09-17T16:03:08Z"),
+    },
+    {
+      eventId: eventIds[1],
+      playerId: ineligiblePlayerId,
+      status: "yes",
+      respondedAt: new Date("2026-09-17T16:04:08Z"),
+    },
+  ]);
 });
 afterAll(async () => {
-  if (squadPlayerId) {
-    await db.delete(eventRsvpsTable).where(eq(eventRsvpsTable.playerId, squadPlayerId));
-    await db.delete(playerParticipationsTable).where(eq(playerParticipationsTable.playerId, squadPlayerId));
-    await db.delete(playersTable).where(eq(playersTable.id, squadPlayerId));
+  const testPlayerIds = [squadPlayerId, ineligiblePlayerId].filter((id): id is number => !!id);
+  if (testPlayerIds.length > 0) {
+    await db.delete(eventRsvpsTable).where(inArray(eventRsvpsTable.playerId, testPlayerIds));
+    await db.delete(playerParticipationsTable).where(inArray(playerParticipationsTable.playerId, testPlayerIds));
+    await db.delete(playersTable).where(inArray(playersTable.id, testPlayerIds));
   }
   await db.delete(matchesTable).where(inArray(matchesTable.id, matchIds));
   await db.delete(eventsTable).where(inArray(eventsTable.id, eventIds));
@@ -151,5 +184,26 @@ describe("classified match/event API boundaries", () => {
       playerId: squadPlayerId,
       status: "yes",
     }));
+  });
+
+  it("excludes stale ineligible responses from team event attendance but keeps all-squad responses", async () => {
+    const squadAdminView = await request(app).get(`/api/events/${squadEventId}/rsvps`);
+    expect(squadAdminView.status, JSON.stringify(squadAdminView.body)).toBe(200);
+    expect(squadAdminView.body.responses).not.toContainEqual(expect.objectContaining({
+      playerId: ineligiblePlayerId,
+    }));
+    expect(squadAdminView.body.counts.yes).toBe(1);
+
+    const adminEvents = await request(app).get("/api/events");
+    expect(adminEvents.status, JSON.stringify(adminEvents.body)).toBe(200);
+    expect(adminEvents.body.find((event: any) => event.id === squadEventId)?.rsvpCounts.yes).toBe(1);
+
+    const allSquadAdminView = await request(app).get(`/api/events/${eventIds[1]}/rsvps`);
+    expect(allSquadAdminView.status, JSON.stringify(allSquadAdminView.body)).toBe(200);
+    expect(allSquadAdminView.body.responses).toContainEqual(expect.objectContaining({
+      playerId: ineligiblePlayerId,
+      status: "yes",
+    }));
+    expect(allSquadAdminView.body.counts.yes).toBe(1);
   });
 });
