@@ -23,6 +23,7 @@ psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f lib/db/migrations/add_operational_sco
 psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f lib/db/migrations/add_match_event_operational_scopes.sql
 psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f lib/db/migrations/add_world_cup_player_snapshots.sql
 psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f lib/db/migrations/add_world_cup_team_snapshots.sql
+psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f lib/db/migrations/backfill_verified_trial_reminder_history.sql
 psql -v ON_ERROR_STOP=1 "$DATABASE_URL" <<'SQL'
 DO $$
 DECLARE
