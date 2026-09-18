@@ -180,6 +180,43 @@ async function listLocalEventInvitees(
     .filter((player) => eventTeamId == null || player.teamId === eventTeamId);
 }
 
+async function getEventAudienceChangeImpact(
+  eventId: number,
+  currentTeamId: number | null,
+  newTeamId: number | null,
+) {
+  const responses = await db
+    .select({ playerId: eventRsvpsTable.playerId })
+    .from(eventRsvpsTable)
+    .where(eq(eventRsvpsTable.eventId, eventId));
+  const invitees = await listLocalEventInvitees(null);
+  const teamByPlayer = new Map(invitees.map((player) => [player.id, player.teamId]));
+
+  let currentlyCounted = 0;
+  let newlyCounted = 0;
+  let becomeIneligible = 0;
+  let becomeEligible = 0;
+
+  for (const response of responses) {
+    const playerTeamId = teamByPlayer.get(response.playerId);
+    const isCurrentlyEligible = currentTeamId == null || playerTeamId === currentTeamId;
+    const willBeEligible = newTeamId == null || playerTeamId === newTeamId;
+
+    if (isCurrentlyEligible) currentlyCounted++;
+    if (willBeEligible) newlyCounted++;
+    if (isCurrentlyEligible && !willBeEligible) becomeIneligible++;
+    if (!isCurrentlyEligible && willBeEligible) becomeEligible++;
+  }
+
+  return {
+    totalResponses: responses.length,
+    currentlyCounted,
+    newlyCounted,
+    becomeIneligible,
+    becomeEligible,
+  };
+}
+
 function parseBody(body: unknown): {
   kind: EventKind;
   title: string;
@@ -440,6 +477,53 @@ router.post("/", requireAdminAccess, async (req, res) => {
     })();
   }
   return;
+});
+
+router.get("/:id/audience-change-impact", requireAdminAccess, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+
+  const rawTeamId = req.query.teamId;
+  let newTeamId: number | null = null;
+  if (rawTeamId !== undefined && rawTeamId !== "") {
+    const parsedTeamId = Number(rawTeamId);
+    if (!Number.isInteger(parsedTeamId) || parsedTeamId <= 0) {
+      res.status(400).json({ error: "Invalid teamId" });
+      return;
+    }
+    newTeamId = parsedTeamId;
+  }
+
+  const [event] = await db
+    .select({
+      teamId: eventsTable.teamId,
+      operationalScope: eventsTable.operationalScope,
+    })
+    .from(eventsTable)
+    .where(eq(eventsTable.id, id))
+    .limit(1);
+  if (!event) {
+    res.status(404).json({ error: "Event not found" });
+    return;
+  }
+  if (event.operationalScope !== "local_2026_27") {
+    res.status(409).json({ error: "Audience impact is only available for current local events" });
+    return;
+  }
+
+  const impact = event.teamId === newTeamId
+    ? {
+        totalResponses: 0,
+        currentlyCounted: 0,
+        newlyCounted: 0,
+        becomeIneligible: 0,
+        becomeEligible: 0,
+      }
+    : await getEventAudienceChangeImpact(id, event.teamId, newTeamId);
+  res.json(impact);
 });
 
 router.patch("/:id", requireAdminAccess, async (req, res) => {

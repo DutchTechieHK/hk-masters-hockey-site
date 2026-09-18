@@ -60,6 +60,14 @@ type FormState = {
   photoUrl: string  // empty string = no photo
 }
 
+type AudienceChangeImpact = {
+  totalResponses: number
+  currentlyCounted: number
+  newlyCounted: number
+  becomeIneligible: number
+  becomeEligible: number
+}
+
 const EMPTY_FORM: FormState = {
   kind: "training",
   title: "",
@@ -589,6 +597,34 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
     }
     setSaving(true)
     try {
+      const newTeamId = form.teamId ? Number(form.teamId) : null
+      if (editing && editing.teamId !== newTeamId) {
+        const query = newTeamId == null ? "" : `?teamId=${newTeamId}`
+        const impactRes = await fetch(
+          `/api/events/${editing.id}/audience-change-impact${query}`,
+          { headers: authHeaders() },
+        )
+        if (!impactRes.ok) {
+          const data = await impactRes.json().catch(() => ({}))
+          throw new Error((data as { error?: string }).error ?? "Could not check attendance impact")
+        }
+        const impact = await impactRes.json() as AudienceChangeImpact
+        if (impact.becomeIneligible > 0 || impact.becomeEligible > 0) {
+          const changes = [
+            impact.becomeIneligible > 0
+              ? `${impact.becomeIneligible} existing response${impact.becomeIneligible === 1 ? "" : "s"} will stop counting`
+              : null,
+            impact.becomeEligible > 0
+              ? `${impact.becomeEligible} preserved response${impact.becomeEligible === 1 ? "" : "s"} will start counting again`
+              : null,
+          ].filter(Boolean).join(", and ")
+          const confirmed = confirm(
+            `Change this event's squad?\n\n${changes}. Current attendance responses counted will change from ${impact.currentlyCounted} to ${impact.newlyCounted}.\n\nAll historical RSVP responses will remain stored; only the current attendance totals and attendee list will change.`,
+          )
+          if (!confirmed) return
+        }
+      }
+
       const tz = formTz(form.startsAt)
       const payload: Record<string, unknown> = {
         kind: form.kind,
@@ -597,7 +633,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
         endsAt: form.endsAt ? zoneInputToIso(form.endsAt, tz) : null,
         location: form.location.trim() || null,
         description: form.description.trim() || null,
-        teamId: form.teamId ? Number(form.teamId) : null,
+        teamId: newTeamId,
         isPublic: form.isPublic,
         // Always send photoUrl so the server knows whether to set or clear it.
         photoUrl: form.photoUrl || null,
