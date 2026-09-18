@@ -186,6 +186,40 @@ describe("classified match/event API boundaries", () => {
     }));
   });
 
+  it("requires a reason for maybe and no responses", async () => {
+    for (const status of ["maybe", "no"]) {
+      const missingReasonResponse = { status: vi.fn().mockReturnThis(), json: vi.fn() } as any;
+      await playerRsvpHandler({
+        params: { id: String(squadEventId) },
+        body: { status, note: "   " },
+        player: { id: squadPlayerId, teamId: legacyTeamId },
+      } as any, missingReasonResponse);
+      expect(missingReasonResponse.status).toHaveBeenCalledWith(400);
+      expect(missingReasonResponse.json).toHaveBeenCalledWith({
+        error: `A reason is required when responding ${status}`,
+      });
+    }
+
+    const acceptedResponse = { status: vi.fn().mockReturnThis(), json: vi.fn() } as any;
+    await playerRsvpHandler({
+      params: { id: String(squadEventId) },
+      body: { status: "no", note: "Working late" },
+      player: { id: squadPlayerId, teamId: legacyTeamId },
+    } as any, acceptedResponse);
+    expect(acceptedResponse.status).not.toHaveBeenCalledWith(400);
+    expect(acceptedResponse.json).toHaveBeenCalledWith(expect.objectContaining({
+      status: "no",
+      note: "Working late",
+    }));
+
+    const restoreResponse = { status: vi.fn().mockReturnThis(), json: vi.fn() } as any;
+    await playerRsvpHandler({
+      params: { id: String(squadEventId) },
+      body: { status: "yes" },
+      player: { id: squadPlayerId, teamId: legacyTeamId },
+    } as any, restoreResponse);
+  });
+
   it("excludes stale ineligible responses from team event attendance but keeps all-squad responses", async () => {
     const squadAdminView = await request(app).get(`/api/events/${squadEventId}/rsvps`);
     expect(squadAdminView.status, JSON.stringify(squadAdminView.body)).toBe(200);

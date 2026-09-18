@@ -870,6 +870,9 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
   }
   const rawNote = (req.body as { note?: unknown })?.note;
   const note: string | null = typeof rawNote === "string" ? (rawNote.trim() || null) : null;
+  if ((status === "maybe" || status === "no") && !note) {
+    res.status(400).json({ error: `A reason is required when responding ${status}` }); return;
+  }
   const player = req.player!;
 
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);

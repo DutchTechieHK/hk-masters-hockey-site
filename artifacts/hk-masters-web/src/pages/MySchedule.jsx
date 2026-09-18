@@ -244,7 +244,7 @@ function EventCard({ ev, rsvpSaving, submitRsvp }) {
   const dateStr = formatDateTime(ev.startsAt);
   const timeRange = ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
 
-  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [reasonStatus, setReasonStatus] = useState(null);
   const [noteText, setNoteText] = useState(ev.myNote ?? "");
 
   // The API serializes photoUrl as absolute. Defensive fallback: if an older
@@ -254,18 +254,20 @@ function EventCard({ ev, rsvpSaving, submitRsvp }) {
     : null;
 
   const handleOption = (key) => {
-    if (key === "maybe") {
-      setNoteText(ev.myNote ?? "");
-      setShowNoteForm(true);
+    if (key === "maybe" || key === "no") {
+      setNoteText(ev.myRsvp === key ? (ev.myNote ?? "") : "");
+      setReasonStatus(key);
     } else {
-      setShowNoteForm(false);
+      setReasonStatus(null);
       submitRsvp(ev.id, key, null);
     }
   };
 
-  const confirmMaybe = () => {
-    submitRsvp(ev.id, "maybe", noteText.trim() || null);
-    setShowNoteForm(false);
+  const confirmReason = () => {
+    const reason = noteText.trim();
+    if (!reason || !reasonStatus) return;
+    submitRsvp(ev.id, reasonStatus, reason);
+    setReasonStatus(null);
   };
 
   return (
@@ -330,36 +332,50 @@ function EventCard({ ev, rsvpSaving, submitRsvp }) {
           </div>
         </div>
 
-        {showNoteForm && (
+        {reasonStatus && (
           <div className="mt-3">
+            <label className={`block text-xs font-semibold mb-1 ${reasonStatus === "no" ? "text-rose-800" : "text-amber-800"}`}>
+              Reason required
+            </label>
             <textarea
               value={noteText}
               onChange={(e) => setNoteText(e.target.value)}
-              placeholder="What's your situation? (optional)"
+              placeholder={reasonStatus === "no" ? "Please tell us why you can't attend" : "Please tell us why you are unsure"}
               rows={2}
               autoFocus
-              className="w-full text-sm border border-amber-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 bg-amber-50"
+              required
+              className={`w-full text-sm border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 ${
+                reasonStatus === "no"
+                  ? "border-rose-200 focus:ring-rose-300 bg-rose-50"
+                  : "border-amber-200 focus:ring-amber-300 bg-amber-50"
+              }`}
             />
             <div className="flex items-center gap-3 mt-2">
               <button
                 type="button"
-                onClick={confirmMaybe}
-                disabled={!!rsvpSaving[ev.id]}
-                className="text-xs font-medium px-3 py-1.5 rounded-full bg-amber-500 text-white hover:bg-amber-600 transition disabled:opacity-50"
+                onClick={confirmReason}
+                disabled={!!rsvpSaving[ev.id] || !noteText.trim()}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full text-white transition disabled:opacity-50 ${
+                  reasonStatus === "no" ? "bg-rose-600 hover:bg-rose-700" : "bg-amber-500 hover:bg-amber-600"
+                }`}
               >
-                🤔 Confirm Maybe
+                {reasonStatus === "no" ? "❌ Confirm Not going" : "🤔 Confirm Maybe"}
               </button>
-              <button type="button" onClick={() => setShowNoteForm(false)} className="text-xs text-gray-500 hover:text-gray-700">
+              <button type="button" onClick={() => setReasonStatus(null)} className="text-xs text-gray-500 hover:text-gray-700">
                 Cancel
               </button>
             </div>
           </div>
         )}
 
-        {!showNoteForm && ev.myRsvp === "maybe" && ev.myNote && (
-          <div className="mt-2 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-            <span className="flex-1">🤔 {ev.myNote}</span>
-            <button type="button" onClick={() => { setNoteText(ev.myNote ?? ""); setShowNoteForm(true); }} className="underline shrink-0">Edit</button>
+        {!reasonStatus && (ev.myRsvp === "maybe" || ev.myRsvp === "no") && ev.myNote && (
+          <div className={`mt-2 flex items-start gap-2 text-xs border rounded-lg px-3 py-2 ${
+            ev.myRsvp === "no"
+              ? "text-rose-800 bg-rose-50 border-rose-100"
+              : "text-amber-800 bg-amber-50 border-amber-100"
+          }`}>
+            <span className="flex-1">{ev.myRsvp === "no" ? "❌" : "🤔"} {ev.myNote}</span>
+            <button type="button" onClick={() => { setNoteText(ev.myNote ?? ""); setReasonStatus(ev.myRsvp); }} className="underline shrink-0">Edit</button>
           </div>
         )}
       </div>

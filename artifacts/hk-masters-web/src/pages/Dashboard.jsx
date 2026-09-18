@@ -102,8 +102,8 @@ export default function Dashboard() {
   const [rsvpCounts, setRsvpCounts] = useState({ yes: 0, no: 0, maybe: 0 });
   const [rsvpSaving, setRsvpSaving] = useState(false);
   const [rsvpError, setRsvpError] = useState(false);
-  const [showMaybeNote, setShowMaybeNote] = useState(false);
-  const [maybeNoteText, setMaybeNoteText] = useState("");
+  const [rsvpReasonStatus, setRsvpReasonStatus] = useState(null);
+  const [rsvpReasonText, setRsvpReasonText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState(null);
 
@@ -371,8 +371,13 @@ export default function Dashboard() {
                         type="button"
                         disabled={rsvpSaving}
                         onClick={() => {
-                          if (opt.key === "maybe") { setMaybeNoteText(""); setShowMaybeNote(true); }
-                          else { setShowMaybeNote(false); submitRsvp(opt.key); }
+                           if (opt.key === "maybe" || opt.key === "no") {
+                             setRsvpReasonText(myRsvp === opt.key ? (nextSession.myNote ?? "") : "");
+                             setRsvpReasonStatus(opt.key);
+                           } else {
+                             setRsvpReasonStatus(null);
+                             submitRsvp(opt.key);
+                           }
                         }}
                         className={`text-xs font-medium px-3 py-1.5 rounded-full border transition disabled:opacity-50 ${selected ? opt.on : opt.off}`}
                       >
@@ -387,26 +392,39 @@ export default function Dashboard() {
                   </span>
                 )}
               </div>
-              {showMaybeNote && (
+              {rsvpReasonStatus && (
                 <div className="mt-2">
+                  <label className={`block text-xs font-semibold mb-1 ${rsvpReasonStatus === "no" ? "text-rose-200" : "text-amber-200"}`}>
+                    Reason required
+                  </label>
                   <textarea
-                    value={maybeNoteText}
-                    onChange={(e) => setMaybeNoteText(e.target.value)}
-                    placeholder="What's your situation? (optional)"
+                    value={rsvpReasonText}
+                    onChange={(e) => setRsvpReasonText(e.target.value)}
+                    placeholder={rsvpReasonStatus === "no" ? "Please tell us why you can't attend" : "Please tell us why you are unsure"}
                     rows={2}
                     autoFocus
-                    className="w-full text-xs text-gray-900 border border-amber-300 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white/90"
+                    required
+                    className={`w-full text-xs text-gray-900 border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 bg-white/90 ${
+                      rsvpReasonStatus === "no"
+                        ? "border-rose-300 focus:ring-rose-300"
+                        : "border-amber-300 focus:ring-amber-300"
+                    }`}
                   />
                   <div className="flex items-center gap-3 mt-1.5">
                     <button
                       type="button"
-                      disabled={rsvpSaving}
-                      onClick={() => { submitRsvp("maybe", maybeNoteText.trim() || null); setShowMaybeNote(false); }}
-                      className="text-xs font-medium px-3 py-1.5 rounded-full bg-amber-400 text-white hover:bg-amber-500 transition disabled:opacity-50"
+                      disabled={rsvpSaving || !rsvpReasonText.trim()}
+                      onClick={() => {
+                        submitRsvp(rsvpReasonStatus, rsvpReasonText.trim());
+                        setRsvpReasonStatus(null);
+                      }}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-full text-white transition disabled:opacity-50 ${
+                        rsvpReasonStatus === "no" ? "bg-rose-500 hover:bg-rose-600" : "bg-amber-400 hover:bg-amber-500"
+                      }`}
                     >
-                      🤔 Confirm Maybe
+                      {rsvpReasonStatus === "no" ? "❌ Confirm Not going" : "🤔 Confirm Maybe"}
                     </button>
-                    <button type="button" onClick={() => setShowMaybeNote(false)} className="text-xs text-blue-200 hover:text-white">Cancel</button>
+                    <button type="button" onClick={() => setRsvpReasonStatus(null)} className="text-xs text-blue-200 hover:text-white">Cancel</button>
                   </div>
                 </div>
               )}
