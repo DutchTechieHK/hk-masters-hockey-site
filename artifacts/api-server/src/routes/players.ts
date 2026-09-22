@@ -1737,19 +1737,35 @@ const EMAIL_ADDRESS_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 async function getTrialsInviteRecipients() {
   const activePlayers = await db.select().from(playersTable).where(eq(playersTable.memberStatus, "active"));
+  const successfullyInvited = await db.selectDistinct({
+    playerId: emailBlastRecipientsTable.playerId,
+  })
+    .from(emailBlastRecipientsTable)
+    .innerJoin(emailBlastsTable, eq(emailBlastRecipientsTable.blastId, emailBlastsTable.id))
+    .where(and(
+      eq(emailBlastsTable.audienceType, "trials_invite"),
+      eq(emailBlastsTable.operationalScope, "local_2026_27"),
+      eq(emailBlastRecipientsTable.sent, true),
+      isNotNull(emailBlastRecipientsTable.playerId),
+    ));
+  const successfullyInvitedPlayerIds = new Set(
+    successfullyInvited.flatMap(({ playerId }) => playerId == null ? [] : [playerId]),
+  );
   const activeEmailCounts = new Map<string, number>();
   for (const player of activePlayers) {
     const normalizedEmail = player.email.trim().toLowerCase();
     activeEmailCounts.set(normalizedEmail, (activeEmailCounts.get(normalizedEmail) ?? 0) + 1);
   }
   const trials = activePlayers.filter((player) => player.currentMembershipTier === "trials");
+  const valid = trials.filter((player) => {
+    const normalizedEmail = player.email.trim().toLowerCase();
+    return EMAIL_ADDRESS_RE.test(normalizedEmail) && activeEmailCounts.get(normalizedEmail) === 1;
+  });
   return {
-    eligible: trials
-      .filter((player) => {
-        const normalizedEmail = player.email.trim().toLowerCase();
-        return EMAIL_ADDRESS_RE.test(normalizedEmail) && activeEmailCounts.get(normalizedEmail) === 1;
-      })
+    eligible: valid
+      .filter((player) => !successfullyInvitedPlayerIds.has(player.id))
       .map((player) => ({ ...player, email: player.email.trim().toLowerCase() })),
+    alreadyInvited: valid.filter((player) => successfullyInvitedPlayerIds.has(player.id)),
     skipped: trials.filter((player) => {
       const normalizedEmail = player.email.trim().toLowerCase();
       return !EMAIL_ADDRESS_RE.test(normalizedEmail) || activeEmailCounts.get(normalizedEmail) !== 1;
@@ -1758,12 +1774,17 @@ async function getTrialsInviteRecipients() {
 }
 
 router.get("/membership/trials-invites", requireAdminAccess, async (_req, res) => {
-  const { eligible, skipped } = await getTrialsInviteRecipients();
-  res.json({ eligible: eligible.length, skipped: skipped.length, total: eligible.length + skipped.length });
+  const { eligible, alreadyInvited, skipped } = await getTrialsInviteRecipients();
+  res.json({
+    eligible: eligible.length,
+    alreadyInvited: alreadyInvited.length,
+    skipped: skipped.length,
+    total: eligible.length + alreadyInvited.length + skipped.length,
+  });
 });
 
 router.post("/membership/trials-invites", requireAdminAccess, async (_req, res) => {
-  const { eligible, skipped: invalid } = await getTrialsInviteRecipients();
+  const { eligible, alreadyInvited, skipped: invalid } = await getTrialsInviteRecipients();
   let sent = 0;
   let failed = 0;
   const recipientResults: Array<{
@@ -1829,8 +1850,9 @@ router.post("/membership/trials-invites", requireAdminAccess, async (_req, res) 
   res.json({
     sent,
     failed,
+    alreadyInvited: alreadyInvited.length,
     skipped: invalid.length,
-    total: eligible.length + invalid.length,
+    total: eligible.length + alreadyInvited.length + invalid.length,
     blastId: blast.id,
   });
 });

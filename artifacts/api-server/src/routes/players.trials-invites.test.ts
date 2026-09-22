@@ -7,6 +7,7 @@ import { db } from "@workspace/db";
 import {
   emailBlastRecipientsTable,
   emailBlastsTable,
+  playerParticipationsTable,
   playersTable,
   teamsTable,
 } from "@workspace/db/schema";
@@ -90,6 +91,7 @@ afterAll(async () => {
     await db.delete(emailBlastRecipientsTable).where(inArray(emailBlastRecipientsTable.blastId, blastIds));
     await db.delete(emailBlastsTable).where(inArray(emailBlastsTable.id, blastIds));
   }
+  await db.delete(playerParticipationsTable).where(inArray(playerParticipationsTable.playerId, playerIds));
   await db.delete(playersTable).where(inArray(playersTable.id, playerIds));
 });
 
@@ -114,26 +116,58 @@ describe("Trials app invitations", () => {
     expect(sendTrialsAppInviteEmail).not.toHaveBeenCalledWith(expect.objectContaining({ playerEmail: invalidEmail }));
     expect(sendTrialsAppInviteEmail).not.toHaveBeenCalledWith(expect.objectContaining({ playerEmail: otherEmail }));
     expect(sendTrialsAppInviteEmail).not.toHaveBeenCalledWith(expect.objectContaining({ playerName: "Ambiguous Trials Invite" }));
+
+    sendTrialsAppInviteEmail.mockClear();
+    const repeatedResponse = await request(app).post("/api/players/membership/trials-invites");
+    expect(repeatedResponse.status, JSON.stringify(repeatedResponse.body)).toBe(200);
+    blastIds.push(repeatedResponse.body.blastId);
+    expect(repeatedResponse.body.alreadyInvited).toBeGreaterThanOrEqual(1);
+    expect(sendTrialsAppInviteEmail).not.toHaveBeenCalledWith(expect.objectContaining({
+      playerEmail: validEmail,
+    }));
   }, 60_000);
 
-  it("continues the batch and records a failed recipient when delivery throws", async () => {
+  it("records failed delivery and keeps that recipient eligible for retry", async () => {
+    const [team] = await db.select({ id: teamsTable.id }).from(teamsTable).limit(1);
+    if (!team) throw new Error("A team is required for Trials invitation tests");
+    const retryEmail = `trials-invite-retry-${runId}@example.com`;
+    const [retryPlayer] = await db.insert(playersTable).values({
+      teamId: team.id,
+      name: "Retry Trials Invite",
+      email: retryEmail,
+      memberStatus: "active",
+      currentMembershipTier: "trials",
+      accessToken: crypto.randomUUID(),
+    }).returning({ id: playersTable.id });
+    playerIds.push(retryPlayer.id);
+
     sendTrialsAppInviteEmail.mockImplementation(async ({ playerEmail }) => {
-      if (playerEmail === validEmail) throw new Error("temporary transport error");
+      if (playerEmail === retryEmail) throw new Error("temporary transport error");
       return true;
     });
     const response = await request(app).post("/api/players/membership/trials-invites");
     expect(response.status, JSON.stringify(response.body)).toBe(200);
     blastIds.push(response.body.blastId);
     expect(response.body.failed).toBe(1);
-    expect(response.body.sent).toBeGreaterThan(0);
+    expect(response.body.sent).toBe(0);
     const [failure] = await db.select().from(emailBlastRecipientsTable).where(and(
       eq(emailBlastRecipientsTable.blastId, response.body.blastId),
-      eq(emailBlastRecipientsTable.playerId, playerIds[0]),
+      eq(emailBlastRecipientsTable.playerId, retryPlayer.id),
     ));
     expect(failure).toMatchObject({
       blastId: response.body.blastId,
       sent: false,
       errorMessage: "temporary transport error",
+    });
+
+    sendTrialsAppInviteEmail.mockResolvedValue(true);
+    sendTrialsAppInviteEmail.mockClear();
+    const retryResponse = await request(app).post("/api/players/membership/trials-invites");
+    expect(retryResponse.status, JSON.stringify(retryResponse.body)).toBe(200);
+    blastIds.push(retryResponse.body.blastId);
+    expect(sendTrialsAppInviteEmail).toHaveBeenCalledWith({
+      playerName: "Retry Trials Invite",
+      playerEmail: retryEmail,
     });
   }, 60_000);
 });

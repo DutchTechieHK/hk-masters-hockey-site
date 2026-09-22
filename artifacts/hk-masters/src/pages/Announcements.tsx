@@ -183,7 +183,7 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
   const [expandedBlastId, setExpandedBlastId] = useState<number | null>(null)
   const [blastRecipients, setBlastRecipients] = useState<Record<number, BlastRecipient[]>>({})
   const [blastRecipientsLoading, setBlastRecipientsLoading] = useState<number | null>(null)
-  const [trialsInvitePreview, setTrialsInvitePreview] = useState<{ eligible: number, skipped: number, total: number } | null>(null)
+  const [trialsInvitePreview, setTrialsInvitePreview] = useState<{ eligible: number, alreadyInvited: number, skipped: number, total: number } | null>(null)
   const [trialsInviteLoading, setTrialsInviteLoading] = useState(false)
   const [showTrialsInviteConfirm, setShowTrialsInviteConfirm] = useState(false)
 
@@ -597,11 +597,13 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       if (!response.ok) throw new Error(result?.error || "Could not send Trials invitations")
       toast({
         title: `Trials invitations sent to ${result.sent} player${result.sent !== 1 ? "s" : ""}`,
-        description: `${result.failed} failed and ${result.skipped} skipped without a valid email.`,
+        description: `${result.failed} failed, ${result.alreadyInvited} previously invited, and ${result.skipped} skipped without a valid email.`,
         variant: result.failed > 0 ? "destructive" : "default",
       })
       setShowTrialsInviteConfirm(false)
-      setTrialsInvitePreview({ eligible: result.sent + result.failed, skipped: result.skipped, total: result.total })
+      const previewResponse = await fetch("/api/players/membership/trials-invites", { headers: authHeaders() })
+      const preview = await previewResponse.json().catch(() => ({}))
+      if (previewResponse.ok) setTrialsInvitePreview(preview)
       refreshBlasts()
     } catch (error) {
       toast({ title: (error as Error).message, variant: "destructive" })
@@ -750,11 +752,11 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
             <div>
               <h2 className="text-base font-semibold text-blue-950">Invite Trials members to the app</h2>
               <p className="text-sm text-blue-800 mt-1">
-                Sends a secure sign-in link that takes each player directly to Events to mark trial attendance.
+                Sends a secure sign-in link only to Trials members who have not successfully received one before.
               </p>
               <p className="text-xs text-blue-700 mt-2">
                 {trialsInvitePreview
-                  ? `${trialsInvitePreview.eligible} eligible recipient${trialsInvitePreview.eligible !== 1 ? "s" : ""}${trialsInvitePreview.skipped ? ` · ${trialsInvitePreview.skipped} without a valid email` : ""}`
+                  ? `${trialsInvitePreview.eligible} new recipient${trialsInvitePreview.eligible !== 1 ? "s" : ""}${trialsInvitePreview.alreadyInvited ? ` · ${trialsInvitePreview.alreadyInvited} already invited` : ""}${trialsInvitePreview.skipped ? ` · ${trialsInvitePreview.skipped} without a valid email` : ""}`
                   : "Loading recipient count…"}
               </p>
             </div>
@@ -1305,7 +1307,7 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       >
         <div className="space-y-4">
           <p className="text-sm text-foreground">
-            Send an app invitation to <strong>{trialsInvitePreview?.eligible ?? 0} active Trials member{trialsInvitePreview?.eligible === 1 ? "" : "s"}</strong>?
+            Send an app invitation to <strong>{trialsInvitePreview?.eligible ?? 0} Trials member{trialsInvitePreview?.eligible === 1 ? "" : "s"} who ha{trialsInvitePreview?.eligible === 1 ? "s" : "ve"} not received one before</strong>?
           </p>
           <p className="text-sm text-muted-foreground">
             Each email will use the member's registered address and link directly to sign-in. After entering their six-digit code, they will arrive on Events to answer Going, Maybe, or Not going.
@@ -1313,6 +1315,11 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
           {(trialsInvitePreview?.skipped ?? 0) > 0 && (
             <p className="text-xs text-amber-700">
               {trialsInvitePreview?.skipped} Trials member{trialsInvitePreview?.skipped === 1 ? "" : "s"} will be skipped because no valid email is available.
+            </p>
+          )}
+          {(trialsInvitePreview?.alreadyInvited ?? 0) > 0 && (
+            <p className="text-xs text-green-700">
+              {trialsInvitePreview?.alreadyInvited} previously invited member{trialsInvitePreview?.alreadyInvited === 1 ? "" : "s"} will not be emailed again.
             </p>
           )}
           <div className="flex justify-end gap-2">
