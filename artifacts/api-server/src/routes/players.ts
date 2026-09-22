@@ -1743,7 +1743,7 @@ async function getTrialsInviteRecipients() {
     .from(emailBlastRecipientsTable)
     .innerJoin(emailBlastsTable, eq(emailBlastRecipientsTable.blastId, emailBlastsTable.id))
     .where(and(
-      eq(emailBlastsTable.audienceType, "trials_invite"),
+      inArray(emailBlastsTable.audienceType, ["trials_invite", "trials_invite_manual"]),
       eq(emailBlastsTable.operationalScope, "local_2026_27"),
       eq(emailBlastRecipientsTable.sent, true),
       isNotNull(emailBlastRecipientsTable.playerId),
@@ -1866,6 +1866,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     subject: req.body.subject,
     body: req.body.body,
   };
+  const isTrialsAppInvitation = req.body.emailPurpose === "trials_app_invitation";
   const parseResult = SendBulkEmailBody.safeParse(rawBody);
   if (!parseResult.success) {
     res.status(400).json({ error: "Invalid request", details: parseResult.error.flatten() });
@@ -1933,7 +1934,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
   const [blast] = await db.insert(emailBlastsTable).values({
     subject,
     body,
-    audienceType,
+    audienceType: isTrialsAppInvitation ? "trials_invite_manual" : audienceType,
     teamIds: teamIds ? JSON.stringify(teamIds) : null,
     playerIds: playerIds ? JSON.stringify(playerIds) : null,
     recipientCount,

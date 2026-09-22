@@ -13,6 +13,7 @@ import {
 } from "@workspace/db/schema";
 
 const sendTrialsAppInviteEmail = vi.hoisted(() => vi.fn().mockResolvedValue(true));
+const sendBulkAnnouncementEmail = vi.hoisted(() => vi.fn().mockResolvedValue(true));
 
 vi.mock("../middleware/adminAuth", () => ({
   requireAdminAccess: (_req: any, _res: any, next: any) => next(),
@@ -21,6 +22,7 @@ vi.mock("../middleware/adminAuth", () => ({
 vi.mock("../utils/email", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../utils/email")>()),
   sendTrialsAppInviteEmail,
+  sendBulkAnnouncementEmail,
 }));
 
 const { default: playersRouter } = await import("./players");
@@ -169,5 +171,38 @@ describe("Trials app invitations", () => {
       playerName: "Retry Trials Invite",
       playerEmail: retryEmail,
     });
+  }, 60_000);
+
+  it("treats successful manually composed app invitations as already invited", async () => {
+    const [team] = await db.select({ id: teamsTable.id }).from(teamsTable).limit(1);
+    if (!team) throw new Error("A team is required for Trials invitation tests");
+    const manualEmail = `trials-invite-manual-${runId}@example.com`;
+    const [manualPlayer] = await db.insert(playersTable).values({
+      teamId: team.id,
+      name: "Manual Trials Invite",
+      email: manualEmail,
+      memberStatus: "active",
+      currentMembershipTier: "trials",
+      accessToken: crypto.randomUUID(),
+    }).returning({ id: playersTable.id });
+    playerIds.push(manualPlayer.id);
+
+    const manualResponse = await request(app)
+      .post("/api/players/send-bulk-email")
+      .field("audienceType", "individuals")
+      .field("playerIds", JSON.stringify([manualPlayer.id]))
+      .field("subject", "Respond to your HK Masters trial invitation")
+      .field("body", "Open the app and respond.")
+      .field("emailPurpose", "trials_app_invitation");
+    expect(manualResponse.status, JSON.stringify(manualResponse.body)).toBe(200);
+    blastIds.push(manualResponse.body.blastId);
+
+    sendTrialsAppInviteEmail.mockClear();
+    const automaticResponse = await request(app).post("/api/players/membership/trials-invites");
+    expect(automaticResponse.status, JSON.stringify(automaticResponse.body)).toBe(200);
+    blastIds.push(automaticResponse.body.blastId);
+    expect(sendTrialsAppInviteEmail).not.toHaveBeenCalledWith(expect.objectContaining({
+      playerEmail: manualEmail,
+    }));
   }, 60_000);
 });
