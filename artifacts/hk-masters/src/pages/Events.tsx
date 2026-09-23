@@ -7,12 +7,11 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, LayoutList, CalendarRange, Zap, Trophy, X, Image as ImageIcon } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, Zap, Trophy, X, Image as ImageIcon } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 import EventsCsvImport from "@/components/ui/EventsCsvImport"
-import ProgrammeDayPlanner from "@/components/ui/ProgrammeDayPlanner"
 
 type EventRow = {
   id: number
@@ -327,7 +326,6 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkWorking, setBulkWorking] = useState(false)
   const [showPast, setShowPast] = useState(false)
-  const [view, setView] = useState<"list" | "programme">("list")
   const [photoUploading, setPhotoUploading] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
@@ -460,22 +458,6 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
   const openAddModal = () => {
     setEditing(null)
     setForm(EMPTY_FORM)
-    setFormError(null)
-    setIsModalOpen(true)
-  }
-
-  const openAddModalPrefilled = (prefillDate?: string, prefillTeamId?: number | null) => {
-    setEditing(null)
-    // Explicitly pass +08:00 so "09:00" is always Hong Kong local,
-    // regardless of the admin's browser timezone.
-    const startsAt = prefillDate
-      ? toZoneInputValue(new Date(`${prefillDate}T09:00:00+08:00`).toISOString(), HK_TZ)
-      : ""
-    setForm({
-      ...EMPTY_FORM,
-      startsAt,
-      teamId: prefillTeamId != null ? String(prefillTeamId) : "",
-    })
     setFormError(null)
     setIsModalOpen(true)
   }
@@ -692,20 +674,6 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
       description="Training sessions, team meetings, and social events. Visible to logged-in players."
       action={
         <div className="flex items-center gap-2">
-          <div className="flex items-center rounded-lg border border-border overflow-hidden">
-            <button
-              onClick={() => setView("list")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === "list" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted/50"}`}
-            >
-              <LayoutList className="w-3.5 h-3.5" /> List
-            </button>
-            <button
-              onClick={() => setView("programme")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium transition-colors ${view === "programme" ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted/50"}`}
-            >
-              <CalendarRange className="w-3.5 h-3.5" /> Programme
-            </button>
-          </div>
           {!readOnly && (
             <>
               <Button variant="outline" onClick={() => setShowCsvImport(true)}>
@@ -719,31 +687,14 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
         </div>
       }
     >
-      {view === "programme" && (
-        <div>
-          <div className="rounded-xl bg-[#1E3A6E]/5 border border-[#1E3A6E]/15 px-4 py-3 mb-4 flex items-center gap-3">
-            <CalendarRange className="w-4 h-4 text-[#1E3A6E] shrink-0" />
-            <p className="text-sm text-[#1E3A6E]">
-              <strong>Tournament Programme</strong> — day-by-day view for 22 Jul – 1 Aug 2026. Shows all events + matches per team. Click any item to edit, or "+ Add" to create a prefilled event for that date.
-            </p>
-          </div>
-          <ProgrammeDayPlanner
-            events={events as Parameters<typeof ProgrammeDayPlanner>[0]["events"]}
-            teams={teams as Parameters<typeof ProgrammeDayPlanner>[0]["teams"]}
-            onEdit={(ev) => openEditModal(ev as EventRow)}
-            onAdd={(date, teamId) => openAddModalPrefilled(date, teamId)}
-          />
-        </div>
-      )}
-
-      {view === "list" && loading ? (
+      {loading ? (
         <div className="text-center py-12 text-muted-foreground">Loading events…</div>
-      ) : view === "list" && events.length === 0 ? (
+      ) : events.length === 0 ? (
         <div className="bg-white rounded-2xl border border-border shadow-sm p-12 text-center">
           <CalendarDays className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
           <p className="text-muted-foreground">No events yet. Add the first training, meeting or social.</p>
         </div>
-      ) : view === "list" ? (
+      ) : (
         <div className="space-y-8">
           {/* ── Upcoming events ── */}
           {upcomingEvents.length === 0 && (
@@ -809,7 +760,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
             </div>
           )}
         </div>
-      ) : null}
+      )}
 
       {!readOnly && someSelected && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white rounded-2xl shadow-2xl px-5 py-3">
