@@ -1229,6 +1229,79 @@ paths:
         "204":
           description: Deleted
 
+  /matches/{id}/rsvps:
+    get:
+      operationId: getMatchAttendance
+      tags: [matches]
+      summary: Admin-only current-squad attendance roster for a local match
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Attendance and nonresponders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchAttendanceRoster"
+        "401":
+          description: Admin access required
+
+  /player-auth/matches/rsvps:
+    get:
+      operationId: listMyMatchAttendance
+      tags: [matches]
+      summary: Current player's eligible future matches and saved replies
+      responses:
+        "200":
+          description: Eligible match responses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/MyMatchAttendance"
+                required: [matches]
+        "401":
+          description: Player session required
+
+  /player-auth/matches/{id}/rsvp:
+    post:
+      operationId: saveMyMatchAttendance
+      tags: [matches]
+      summary: Save or change the current player's match reply
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MatchAttendanceInput"
+      responses:
+        "200":
+          description: Reply saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchAttendanceSaved"
+        "401":
+          description: Player session required
+        "403":
+          description: Not in this match's current squad
+        "409":
+          description: Match no longer open for replies
+
   /sponsors:
     get:
       operationId: listSponsors
@@ -2907,6 +2980,76 @@ components:
         - name
         - tier
         - active
+
+    MatchAttendanceCounts:
+      type: object
+      properties:
+        yes: { type: integer }
+        maybe: { type: integer }
+        no: { type: integer }
+      required: [yes, maybe, no]
+
+    MatchAttendancePerson:
+      type: object
+      properties:
+        playerId: { type: integer }
+        playerName: { type: string }
+        shirtNumber: { type: [integer, "null"] }
+      required: [playerId, playerName, shirtNumber]
+
+    MatchAttendanceReply:
+      allOf:
+        - $ref: "#/components/schemas/MatchAttendancePerson"
+        - type: object
+          properties:
+            status: { type: string, enum: [yes, maybe, no] }
+            note: { type: [string, "null"] }
+            respondedAt: { type: string, format: date-time }
+          required: [status, note, respondedAt]
+
+    MatchAttendanceRoster:
+      type: object
+      properties:
+        counts:
+          allOf:
+            - $ref: "#/components/schemas/MatchAttendanceCounts"
+            - type: object
+              properties:
+                invited: { type: integer }
+                noResponse: { type: integer }
+              required: [invited, noResponse]
+        responses:
+          type: array
+          items: { $ref: "#/components/schemas/MatchAttendanceReply" }
+        noResponse:
+          type: array
+          items: { $ref: "#/components/schemas/MatchAttendancePerson" }
+      required: [counts, responses, noResponse]
+
+    MyMatchAttendance:
+      type: object
+      properties:
+        matchId: { type: integer }
+        myRsvp: { type: [string, "null"], enum: [yes, maybe, no, null] }
+        myNote: { type: [string, "null"] }
+        rsvpCounts: { $ref: "#/components/schemas/MatchAttendanceCounts" }
+      required: [matchId, myRsvp, myNote, rsvpCounts]
+
+    MatchAttendanceInput:
+      type: object
+      properties:
+        status: { type: string, enum: [yes, maybe, no] }
+        note: { type: [string, "null"] }
+      required: [status]
+
+    MatchAttendanceSaved:
+      type: object
+      properties:
+        matchId: { type: integer }
+        status: { type: string, enum: [yes, maybe, no] }
+        note: { type: [string, "null"] }
+        respondedAt: { type: string, format: date-time }
+      required: [matchId, status, note, respondedAt]
 
     Match:
       type: object

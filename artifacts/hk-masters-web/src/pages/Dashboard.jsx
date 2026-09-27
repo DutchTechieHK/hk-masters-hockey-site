@@ -16,7 +16,7 @@ const MEMBERSHIP_TIER_LABELS = {
 
 function formatMatchDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
-    weekday: "short", day: "numeric", month: "short",
+    weekday: "short", day: "numeric", month: "long", year: "numeric",
     timeZone: HONG_KONG_TZ,
   });
 }
@@ -475,13 +475,13 @@ export default function Dashboard() {
                           {countdown}
                         </span>
                       )}
-                      <span className="ml-auto text-xs text-gray-500 tabular-nums">
-                        {formatMatchDate(match.kickoffAt)} · {formatMatchTime(match.kickoffAt)} <span className="text-[10px] text-gray-400">HKT</span>
-                      </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-bold text-gray-900 truncate">vs {match.opponent}</p>
+                        <p className="font-bold text-gray-900">HK Masters vs {match.opponent}</p>
+                        <p className="text-sm font-semibold text-gray-700 mt-1 tabular-nums">
+                          {formatMatchDate(match.kickoffAt)} · {formatMatchTime(match.kickoffAt)} HKT
+                        </p>
                         {match.venue && (
                           <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
                             <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

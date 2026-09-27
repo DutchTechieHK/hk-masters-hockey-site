@@ -5,6 +5,7 @@ import { matchesForPlayer } from "../utils/playerMatches";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
+import MatchAttendanceControls from "../components/MatchAttendanceControls";
 
 const KIND_META = {
   training:    { label: "Training",    emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
@@ -125,7 +126,7 @@ function downloadIcs(events, filename, calendarName) {
 }
 
 // Match fixture card ---------------------------------------------------------
-function MatchFixtureCard({ match }) {
+function MatchFixtureCard({ match, attendance, saving, error, onSubmit }) {
   const isPast    = match.status === "final" || match.status === "cancelled";
   const isLive    = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
@@ -147,7 +148,7 @@ function MatchFixtureCard({ match }) {
         <div className="flex items-center justify-between gap-2 mb-3 flex-wrap relative">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="bg-white/20 backdrop-blur text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full">
-              {match.teamCategory || "HK"}
+              {match.teamCategory || "HK Masters"}
             </span>
             {isLive && (
               <span className="inline-flex items-center gap-1 bg-emerald-400 text-emerald-950 text-[10px] font-extrabold px-2 py-0.5 rounded-full animate-pulse">
@@ -167,15 +168,12 @@ function MatchFixtureCard({ match }) {
               </span>
             )}
           </div>
-          <span className="text-[11px] font-bold text-white/90 tabular-nums whitespace-nowrap">
-            {formatTimeHkt(match.kickoffAt)} <span className="text-white/60">HKT</span>
-          </span>
         </div>
 
         <div className="flex items-center justify-center gap-3 relative">
-          <div className="flex flex-col items-center gap-1 w-16">
-            <img src={HK_FLAG_IMAGE_URL} alt="Hong Kong" className="w-6 h-6 rounded-full object-cover shadow" />
-            <span className="text-[9px] font-bold uppercase tracking-wide">HK</span>
+          <div className="flex flex-col items-center gap-1 w-24">
+            <img src={HK_FLAG_IMAGE_URL} alt="" className="w-6 h-6 rounded-full object-cover shadow" />
+            <span className="text-[10px] font-bold uppercase tracking-wide text-center">HK Masters</span>
           </div>
 
           {(isPast || isLive) && match.ourScore !== null && match.theirScore !== null ? (
@@ -205,7 +203,11 @@ function MatchFixtureCard({ match }) {
       </div>
 
       <div className="bg-white px-4 pt-2 pb-3 -mt-5 relative rounded-t-2xl">
-        <p className="font-bold text-gray-900 text-sm text-center truncate">vs {match.opponent}</p>
+        <p className="font-bold text-gray-900 text-sm text-center">HK Masters vs {match.opponent}</p>
+        <p className="text-sm font-semibold text-gray-800 text-center mt-1 tabular-nums">
+          {new Date(match.kickoffAt).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "long", year: "numeric", timeZone: HONG_KONG_TZ })}
+          {" · "}{formatTimeHkt(match.kickoffAt)} HKT
+        </p>
         {match.venue && (
           <a
             href={`https://maps.google.com/?q=${encodeURIComponent(match.venue)}`}
@@ -233,6 +235,14 @@ function MatchFixtureCard({ match }) {
               Add to calendar
             </a>
           </div>
+        )}
+        {attendance && match.status === "scheduled" && new Date(match.kickoffAt).getTime() > Date.now() && (
+          <MatchAttendanceControls
+            attendance={attendance}
+            saving={saving}
+            error={error}
+            onSubmit={(status, note) => onSubmit(match.id, status, note)}
+          />
         )}
       </div>
     </div>
@@ -395,6 +405,44 @@ export default function MySchedule() {
   const [showPast, setShowPast] = useState(false);
   const [rsvpSaving, setRsvpSaving] = useState({});
   const [rsvpError, setRsvpError] = useState("");
+  const [matchAttendance, setMatchAttendance] = useState({});
+  const [matchSaving, setMatchSaving] = useState({});
+  const [matchErrors, setMatchErrors] = useState({});
+  const [attendanceLoadError, setAttendanceLoadError] = useState("");
+
+  const submitMatchRsvp = async (matchId, status, note) => {
+    const token = getPlayerToken();
+    if (!token) { setLocation("/login"); return false; }
+    setMatchSaving((prev) => ({ ...prev, [matchId]: true }));
+    setMatchErrors((prev) => ({ ...prev, [matchId]: "" }));
+    try {
+      const res = await fetch(`${API_BASE}/api/player-auth/matches/${matchId}/rsvp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status, note }),
+      });
+      if (res.status === 401) { setLocation("/login"); return false; }
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Could not save your match response");
+      }
+      const saved = await res.json();
+      setMatchAttendance((prev) => {
+        const previous = prev[matchId];
+        if (!previous) return prev;
+        const counts = { ...previous.rsvpCounts };
+        if (previous.myRsvp && counts[previous.myRsvp] > 0) counts[previous.myRsvp]--;
+        counts[saved.status] = (counts[saved.status] ?? 0) + 1;
+        return { ...prev, [matchId]: { ...previous, myRsvp: saved.status, myNote: saved.note, rsvpCounts: counts } };
+      });
+      return true;
+    } catch (err) {
+      setMatchErrors((prev) => ({ ...prev, [matchId]: err.message || "Could not save your match response" }));
+      return false;
+    } finally {
+      setMatchSaving((prev) => ({ ...prev, [matchId]: false }));
+    }
+  };
 
   const submitRsvp = async (eventId, status, note = null) => {
     const token = getPlayerToken();
@@ -441,16 +489,26 @@ export default function MySchedule() {
     let cancelled = false;
     (async () => {
       try {
-        const [me, scheduleRes, matchesRes] = await Promise.all([
+        const [me, scheduleRes, matchesRes, attendanceRes] = await Promise.all([
           fetchMe(),
           fetch(`${API_BASE}/api/player-auth/my-schedule`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${API_BASE}/api/matches`),
+          fetch(`${API_BASE}/api/player-auth/matches/rsvps`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
         if (cancelled) return;
         if (!me) { setLocation("/login"); return; }
         setPlayer(me);
+        if (attendanceRes.status === 401) { setLocation("/login"); return; }
+        if (attendanceRes.ok) {
+          const attendanceData = await attendanceRes.json();
+          setMatchAttendance(Object.fromEntries((attendanceData.matches || []).map((item) => [item.matchId, item])));
+        } else {
+          setAttendanceLoadError("Match attendance is temporarily unavailable. Please try again later.");
+        }
         if (scheduleRes.status === 401) { setLocation("/login"); return; }
         if (!scheduleRes.ok) throw new Error("Could not load your schedule");
         const data = await scheduleRes.json();
@@ -540,6 +598,7 @@ export default function MySchedule() {
             {rsvpError}
           </div>
         )}
+        {attendanceLoadError && <p role="alert" className="mb-4 text-sm text-rose-700">{attendanceLoadError}</p>}
 
         {/* Empty state */}
         {upcoming.length === 0 && matches.length === 0 && (
@@ -574,7 +633,13 @@ export default function MySchedule() {
               <span className="bg-[#1E3A6E] text-white text-xs font-bold px-2 py-0.5 rounded-full">{upcomingMatches.length}</span>
             </div>
             <div className="space-y-3">
-              {upcomingMatches.map((match) => <MatchFixtureCard key={match.id} match={match} />)}
+              {upcomingMatches.map((match) => (
+                <MatchFixtureCard key={match.id} match={match}
+                  attendance={matchAttendance[match.id]}
+                  saving={!!matchSaving[match.id]}
+                  error={matchErrors[match.id]}
+                  onSubmit={submitMatchRsvp} />
+              ))}
             </div>
           </div>
         )}

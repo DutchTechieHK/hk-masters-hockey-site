@@ -1785,6 +1785,94 @@ export const DeleteMatchParams = zod.object({
 });
 
 /**
+ * @summary Admin-only current-squad attendance roster for a local match
+ */
+export const GetMatchAttendanceParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetMatchAttendanceResponse = zod.object({
+  counts: zod
+    .object({
+      yes: zod.number(),
+      maybe: zod.number(),
+      no: zod.number(),
+    })
+    .and(
+      zod.object({
+        invited: zod.number(),
+        noResponse: zod.number(),
+      }),
+    ),
+  responses: zod.array(
+    zod
+      .object({
+        playerId: zod.number(),
+        playerName: zod.string(),
+        shirtNumber: zod.number().nullable(),
+      })
+      .and(
+        zod.object({
+          status: zod.enum(["yes", "maybe", "no"]),
+          note: zod.string().nullable(),
+          respondedAt: zod.date(),
+        }),
+      ),
+  ),
+  noResponse: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      playerName: zod.string(),
+      shirtNumber: zod.number().nullable(),
+    }),
+  ),
+});
+
+/**
+ * @summary Current player's eligible future matches and saved replies
+ */
+export const ListMyMatchAttendanceResponse = zod.object({
+  matches: zod.array(
+    zod.object({
+      matchId: zod.number(),
+      myRsvp: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("maybe"),
+          zod.literal("no"),
+          zod.literal(null),
+        ])
+        .nullable(),
+      myNote: zod.string().nullable(),
+      rsvpCounts: zod.object({
+        yes: zod.number(),
+        maybe: zod.number(),
+        no: zod.number(),
+      }),
+    }),
+  ),
+});
+
+/**
+ * @summary Save or change the current player's match reply
+ */
+export const SaveMyMatchAttendanceParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SaveMyMatchAttendanceBody = zod.object({
+  status: zod.enum(["yes", "maybe", "no"]),
+  note: zod.string().nullish(),
+});
+
+export const SaveMyMatchAttendanceResponse = zod.object({
+  matchId: zod.number(),
+  status: zod.enum(["yes", "maybe", "no"]),
+  note: zod.string().nullable(),
+  respondedAt: zod.date(),
+});
+
+/**
  * @summary List all sponsors
  */
 export const ListSponsorsResponseItem = zod.object({

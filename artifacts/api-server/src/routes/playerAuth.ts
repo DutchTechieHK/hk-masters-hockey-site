@@ -8,6 +8,7 @@ import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
 import { ensureMembershipFoundation, mapPlayer } from "./players";
 import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
+import { playerMatchRsvps, submitMatchRsvp } from "./matchAttendance";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
 
 const router: IRouter = Router();
@@ -184,6 +185,8 @@ router.get("/my-schedule", requirePlayerSession, async (req, res) => {
 
 router.post("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
 router.patch("/events/:id/rsvp", requirePlayerSession, playerRsvpHandler);
+router.get("/matches/rsvps", requirePlayerSession, playerMatchRsvps);
+router.post("/matches/:id/rsvp", requirePlayerSession, submitMatchRsvp);
 
 router.get("/my-fees", requirePlayerSession, async (req, res) => {
   const player = req.player!;

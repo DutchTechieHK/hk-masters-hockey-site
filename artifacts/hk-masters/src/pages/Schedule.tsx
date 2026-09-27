@@ -19,6 +19,7 @@ import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban, Upload } from "lucide-react"
 import MatchesCsvImport from "@/components/ui/MatchesCsvImport"
+import MatchAttendanceModal from "@/components/MatchAttendanceModal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -163,6 +164,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editing, setEditing] = useState<Match | null>(null)
   const [showCsvImport, setShowCsvImport] = useState(false)
+  const [attendanceMatch, setAttendanceMatch] = useState<Match | null>(null)
 
   const createMutation = useCreateMatch()
   const updateMutation = useUpdateMatch()
@@ -411,6 +413,12 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
                                 : <span className="text-muted-foreground">—</span>}
                             </td>
                             <td className="px-6 py-4 text-right">
+                              {!scope && (
+                                <button type="button" onClick={() => setAttendanceMatch(m)}
+                                  className="px-2 py-1 mr-2 text-xs font-semibold text-[#006B3C] border border-emerald-200 rounded hover:bg-emerald-50">
+                                  Attendance
+                                </button>
+                              )}
                               {!readOnly && (
                                 <div className="flex justify-end items-center gap-1 flex-wrap">
                                   {m.status === "scheduled" && (
@@ -475,6 +483,10 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
             queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
           }}
         />
+      )}
+      {attendanceMatch && sessionToken && (
+        <MatchAttendanceModal key={attendanceMatch.id} match={attendanceMatch}
+          token={sessionToken} onClose={() => setAttendanceMatch(null)} />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Match" : "Add Match"}>

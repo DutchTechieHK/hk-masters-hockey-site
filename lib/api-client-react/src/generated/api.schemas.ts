@@ -1142,6 +1142,100 @@ export interface CreateSponsor {
   contributionAmount?: number | null;
 }
 
+export interface MatchAttendanceCounts {
+  yes: number;
+  maybe: number;
+  no: number;
+}
+
+export interface MatchAttendancePerson {
+  playerId: number;
+  playerName: string;
+  /** @nullable */
+  shirtNumber: number | null;
+}
+
+export type MatchAttendanceReplyStatus =
+  (typeof MatchAttendanceReplyStatus)[keyof typeof MatchAttendanceReplyStatus];
+
+export const MatchAttendanceReplyStatus = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export type MatchAttendanceReply = MatchAttendancePerson & {
+  status: MatchAttendanceReplyStatus;
+  /** @nullable */
+  note: string | null;
+  respondedAt: string;
+};
+
+export type MatchAttendanceRosterCounts = MatchAttendanceCounts & {
+  invited: number;
+  noResponse: number;
+};
+
+export interface MatchAttendanceRoster {
+  counts: MatchAttendanceRosterCounts;
+  responses: MatchAttendanceReply[];
+  noResponse: MatchAttendancePerson[];
+}
+
+/**
+ * @nullable
+ */
+export type MyMatchAttendanceMyRsvp =
+  | (typeof MyMatchAttendanceMyRsvp)[keyof typeof MyMatchAttendanceMyRsvp]
+  | null;
+
+export const MyMatchAttendanceMyRsvp = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export interface MyMatchAttendance {
+  matchId: number;
+  /** @nullable */
+  myRsvp: MyMatchAttendanceMyRsvp;
+  /** @nullable */
+  myNote: string | null;
+  rsvpCounts: MatchAttendanceCounts;
+}
+
+export type MatchAttendanceInputStatus =
+  (typeof MatchAttendanceInputStatus)[keyof typeof MatchAttendanceInputStatus];
+
+export const MatchAttendanceInputStatus = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export interface MatchAttendanceInput {
+  status: MatchAttendanceInputStatus;
+  /** @nullable */
+  note?: string | null;
+}
+
+export type MatchAttendanceSavedStatus =
+  (typeof MatchAttendanceSavedStatus)[keyof typeof MatchAttendanceSavedStatus];
+
+export const MatchAttendanceSavedStatus = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export interface MatchAttendanceSaved {
+  matchId: number;
+  status: MatchAttendanceSavedStatus;
+  /** @nullable */
+  note: string | null;
+  respondedAt: string;
+}
+
 export type MatchStatus = (typeof MatchStatus)[keyof typeof MatchStatus];
 
 export const MatchStatus = {
@@ -1380,3 +1474,7 @@ export const ListMatchesScope = {
   local_2026_27: "local_2026_27",
   world_cup_2026: "world_cup_2026",
 } as const;
+
+export type ListMyMatchAttendance200 = {
+  matches: MyMatchAttendance[];
+};

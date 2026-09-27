@@ -42,10 +42,14 @@ import type {
   ListKitsParams,
   ListLogisticsParams,
   ListMatchesParams,
+  ListMyMatchAttendance200,
   ListPlayersParams,
   ListTeamsParams,
   LogisticsTask,
   Match,
+  MatchAttendanceInput,
+  MatchAttendanceRoster,
+  MatchAttendanceSaved,
   MatchImportCorrectionResult,
   MembershipInitializationResult,
   MembershipInterestImport,
@@ -5224,6 +5228,255 @@ export const useDeleteMatch = <
   TContext
 > => {
   return useMutation(getDeleteMatchMutationOptions(options));
+};
+
+/**
+ * @summary Admin-only current-squad attendance roster for a local match
+ */
+export const getGetMatchAttendanceUrl = (id: number) => {
+  return `/api/matches/${id}/rsvps`;
+};
+
+export const getMatchAttendance = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MatchAttendanceRoster> => {
+  return customFetch<MatchAttendanceRoster>(getGetMatchAttendanceUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMatchAttendanceQueryKey = (id: number) => {
+  return [`/api/matches/${id}/rsvps`] as const;
+};
+
+export const getGetMatchAttendanceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMatchAttendance>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMatchAttendance>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMatchAttendanceQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMatchAttendance>>
+  > = ({ signal }) => getMatchAttendance(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMatchAttendance>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMatchAttendanceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMatchAttendance>>
+>;
+export type GetMatchAttendanceQueryError = ErrorType<void>;
+
+/**
+ * @summary Admin-only current-squad attendance roster for a local match
+ */
+
+export function useGetMatchAttendance<
+  TData = Awaited<ReturnType<typeof getMatchAttendance>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMatchAttendance>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMatchAttendanceQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Current player's eligible future matches and saved replies
+ */
+export const getListMyMatchAttendanceUrl = () => {
+  return `/api/player-auth/matches/rsvps`;
+};
+
+export const listMyMatchAttendance = async (
+  options?: RequestInit,
+): Promise<ListMyMatchAttendance200> => {
+  return customFetch<ListMyMatchAttendance200>(getListMyMatchAttendanceUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyMatchAttendanceQueryKey = () => {
+  return [`/api/player-auth/matches/rsvps`] as const;
+};
+
+export const getListMyMatchAttendanceQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyMatchAttendance>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyMatchAttendance>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyMatchAttendanceQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyMatchAttendance>>
+  > = ({ signal }) => listMyMatchAttendance({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyMatchAttendance>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyMatchAttendanceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyMatchAttendance>>
+>;
+export type ListMyMatchAttendanceQueryError = ErrorType<void>;
+
+/**
+ * @summary Current player's eligible future matches and saved replies
+ */
+
+export function useListMyMatchAttendance<
+  TData = Awaited<ReturnType<typeof listMyMatchAttendance>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyMatchAttendance>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyMatchAttendanceQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Save or change the current player's match reply
+ */
+export const getSaveMyMatchAttendanceUrl = (id: number) => {
+  return `/api/player-auth/matches/${id}/rsvp`;
+};
+
+export const saveMyMatchAttendance = async (
+  id: number,
+  matchAttendanceInput: MatchAttendanceInput,
+  options?: RequestInit,
+): Promise<MatchAttendanceSaved> => {
+  return customFetch<MatchAttendanceSaved>(getSaveMyMatchAttendanceUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(matchAttendanceInput),
+  });
+};
+
+export const getSaveMyMatchAttendanceMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMyMatchAttendance>>,
+    TError,
+    { id: number; data: BodyType<MatchAttendanceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveMyMatchAttendance>>,
+  TError,
+  { id: number; data: BodyType<MatchAttendanceInput> },
+  TContext
+> => {
+  const mutationKey = ["saveMyMatchAttendance"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveMyMatchAttendance>>,
+    { id: number; data: BodyType<MatchAttendanceInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return saveMyMatchAttendance(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveMyMatchAttendanceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveMyMatchAttendance>>
+>;
+export type SaveMyMatchAttendanceMutationBody = BodyType<MatchAttendanceInput>;
+export type SaveMyMatchAttendanceMutationError = ErrorType<void>;
+
+/**
+ * @summary Save or change the current player's match reply
+ */
+export const useSaveMyMatchAttendance = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMyMatchAttendance>>,
+    TError,
+    { id: number; data: BodyType<MatchAttendanceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveMyMatchAttendance>>,
+  TError,
+  { id: number; data: BodyType<MatchAttendanceInput> },
+  TContext
+> => {
+  return useMutation(getSaveMyMatchAttendanceMutationOptions(options));
 };
 
 /**
