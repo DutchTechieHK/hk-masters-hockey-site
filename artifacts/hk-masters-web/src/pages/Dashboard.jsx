@@ -107,6 +107,7 @@ export default function Dashboard() {
   const [rsvpReasonText, setRsvpReasonText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState(null);
+  const [matchAttendance, setMatchAttendance] = useState(null);
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -187,6 +188,23 @@ export default function Dashboard() {
     };
 
     fetchMatches();
+
+    const token = getPlayerToken();
+    if (token) {
+      fetch(`${API_BASE}/api/player-auth/matches/rsvps`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Could not load match attendance");
+          return res.json();
+        })
+        .then((data) => {
+          if (!cancelled) setMatchAttendance(Object.fromEntries(
+            (data.matches || []).map((item) => [item.matchId, item])
+          ));
+        })
+        .catch(() => { if (!cancelled) setMatchAttendance(null); });
+    }
 
     const handleFocus = () => { if (!cancelled) fetchMatches(); };
     const handleVisibility = () => { if (!document.hidden && !cancelled) fetchMatches(); };
@@ -450,6 +468,12 @@ export default function Dashboard() {
               {upcomingMatches.slice(0, 2).map((match) => {
                 const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
                 const isLive = match.status === "in_progress";
+                const attendance = matchAttendance?.[match.id];
+                const choice = {
+                  yes: { label: "Going", style: "bg-emerald-50 text-emerald-800" },
+                  maybe: { label: "Maybe", style: "bg-amber-50 text-amber-800" },
+                  no: { label: "Not going", style: "bg-rose-50 text-rose-800" },
+                }[attendance?.myRsvp];
                 return (
                   <div
                     key={match.id}
@@ -510,6 +534,16 @@ export default function Dashboard() {
                         </div>
                       )}
                     </div>
+                    {attendance && match.status === "scheduled" && new Date(match.kickoffAt).getTime() > Date.now() && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap text-xs">
+                        <span className={`font-semibold px-2 py-1 rounded-full ${choice?.style || "bg-gray-100 text-gray-700"}`}>
+                          {choice ? `Your reply: ${choice.label}` : "You haven't replied yet"}
+                        </span>
+                        <Link href={`/schedule#match-${match.id}`} className="font-semibold text-green-700 hover:text-green-900 underline">
+                          {choice ? "Change reply →" : "Respond on My Schedule →"}
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 );
               })}

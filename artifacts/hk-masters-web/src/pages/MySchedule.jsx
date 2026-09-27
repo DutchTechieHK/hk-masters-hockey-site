@@ -139,7 +139,7 @@ function MatchFixtureCard({ match, attendance, saving, error, onSubmit }) {
     match.ourScore < match.theirScore ? "text-rose-300" : "text-white/80";
 
   return (
-    <div className={`rounded-2xl overflow-hidden shadow-sm ${
+    <div id={`match-${match.id}`} className={`rounded-2xl overflow-hidden shadow-sm scroll-mt-28 ${
       isLive ? "ring-2 ring-emerald-300" : `ring-1 ${theme.ring}`
     }`}>
       <div className={`bg-gradient-to-br ${theme.gradient} px-4 pt-3 pb-9 text-white relative overflow-hidden`}>
@@ -545,6 +545,17 @@ export default function MySchedule() {
     const p = matches.filter((m) => !u.includes(m)).reverse();
     return { upcomingMatches: u, pastMatches: p };
   }, [matches]);
+
+  useEffect(() => {
+    if (loading) return;
+    const target = /^#match-(\d+)$/.exec(window.location.hash);
+    if (!target || !upcomingMatches.some((match) => String(match.id) === target[1])) return;
+    // App's initial hash scroll runs shortly after navigation; wait until both it and our async fixtures have rendered.
+    const timer = setTimeout(() => {
+      document.getElementById(`match-${target[1]}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [loading, upcomingMatches]);
 
   // Current events grouped by month
   const groupedEvents = useMemo(() => {
