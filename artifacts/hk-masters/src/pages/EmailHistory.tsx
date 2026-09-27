@@ -37,6 +37,10 @@ function audienceLabel(blast: EmailBlastHistoryItem): string {
     if (names.length === 2) return `${names[0]}, ${names[1]} — pledge digest`
     return `${names[0]} + ${names.length - 1} more — pledge digest`
   }
+  if (blast.audienceType.startsWith("match-rsvp-reminder:")) {
+    const names = blast.recipientNames ?? []
+    return names.length ? `${names.join(", ")} — match reminder` : `${blast.recipientCount} players — match reminder`
+  }
   if (blast.audienceType === "event-rsvp-reminder") {
     const names = blast.recipientNames ?? []
     if (names.length === 0) return `${blast.recipientCount} players reminded`
@@ -73,7 +77,7 @@ function AudienceIcon({ audienceType }: { audienceType: string }) {
   if (audienceType === "onboarding") return <Send className="w-3.5 h-3.5" />
   if (audienceType === "insurance-reminder") return <ShieldCheck className="w-3.5 h-3.5" />
   if (audienceType === "pledge-digest") return <HandCoins className="w-3.5 h-3.5" />
-  if (audienceType === "event-rsvp-reminder") return <Mail className="w-3.5 h-3.5" />
+  if (audienceType === "event-rsvp-reminder" || audienceType.startsWith("match-rsvp-reminder:")) return <Mail className="w-3.5 h-3.5" />
   if (audienceType === "all") return <Users className="w-3.5 h-3.5" />
   if (audienceType === "teams") return <Users className="w-3.5 h-3.5" />
   return <User className="w-3.5 h-3.5" />
@@ -254,7 +258,8 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
               const allSent = blast.failedCount === 0 && blast.sentCount > 0
               const isOnboarding = blast.audienceType === "onboarding"
               const isInsuranceReminder = blast.audienceType === "insurance-reminder"
-              const isEventReminder = blast.audienceType === "event-rsvp-reminder"
+              const isMatchReminder = blast.audienceType.startsWith("match-rsvp-reminder:")
+              const isEventReminder = blast.audienceType === "event-rsvp-reminder" || isMatchReminder
 
               return (
                 <div
@@ -292,7 +297,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                         )}
                         {isEventReminder && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                            <Mail className="w-2.5 h-2.5" /> Event Reminder
+                            <Mail className="w-2.5 h-2.5" /> {isMatchReminder ? "Match Reminder" : "Event Reminder"}
                           </span>
                         )}
                       </div>

@@ -83,6 +83,7 @@ export * from "./matchAttendanceRosterCounts";
 export * from "./matchAttendanceSaved";
 export * from "./matchAttendanceSavedStatus";
 export * from "./matchImportCorrectionResult";
+export * from "./matchReminderResult";
 export * from "./matchStatus";
 export * from "./membershipInitializationResult";
 export * from "./membershipInterestConflictDetail";

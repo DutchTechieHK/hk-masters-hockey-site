@@ -1182,6 +1182,17 @@ export interface MatchAttendanceRoster {
   noResponse: MatchAttendancePerson[];
 }
 
+export interface MatchReminderResult {
+  sent: number;
+  total: number;
+  skippedNoEmail: number;
+  skippedAlreadySent: number;
+  skippedUncertain: number;
+  skippedChanged: number;
+  failed: number;
+  historyRecorded: boolean;
+}
+
 /**
  * @nullable
  */

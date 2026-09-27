@@ -51,6 +51,7 @@ import type {
   MatchAttendanceRoster,
   MatchAttendanceSaved,
   MatchImportCorrectionResult,
+  MatchReminderResult,
   MembershipInitializationResult,
   MembershipInterestImport,
   MembershipInterestImportResult,
@@ -5316,6 +5317,90 @@ export function useGetMatchAttendance<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Remind eligible nonresponders for a future scheduled local match
+ */
+export const getRemindMatchNonrespondersUrl = (id: number) => {
+  return `/api/matches/${id}/rsvps/remind`;
+};
+
+export const remindMatchNonresponders = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MatchReminderResult> => {
+  return customFetch<MatchReminderResult>(getRemindMatchNonrespondersUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRemindMatchNonrespondersMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof remindMatchNonresponders>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof remindMatchNonresponders>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["remindMatchNonresponders"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof remindMatchNonresponders>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return remindMatchNonresponders(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemindMatchNonrespondersMutationResult = NonNullable<
+  Awaited<ReturnType<typeof remindMatchNonresponders>>
+>;
+
+export type RemindMatchNonrespondersMutationError = ErrorType<void>;
+
+/**
+ * @summary Remind eligible nonresponders for a future scheduled local match
+ */
+export const useRemindMatchNonresponders = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof remindMatchNonresponders>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof remindMatchNonresponders>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getRemindMatchNonrespondersMutationOptions(options));
+};
 
 /**
  * @summary Current player's eligible future matches and saved replies

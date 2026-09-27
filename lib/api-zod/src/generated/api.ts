@@ -1829,6 +1829,24 @@ export const GetMatchAttendanceResponse = zod.object({
 });
 
 /**
+ * @summary Remind eligible nonresponders for a future scheduled local match
+ */
+export const RemindMatchNonrespondersParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const RemindMatchNonrespondersResponse = zod.object({
+  sent: zod.number(),
+  total: zod.number(),
+  skippedNoEmail: zod.number(),
+  skippedAlreadySent: zod.number(),
+  skippedUncertain: zod.number(),
+  skippedChanged: zod.number(),
+  failed: zod.number(),
+  historyRecorded: zod.boolean(),
+});
+
+/**
  * @summary Current player's eligible future matches and saved replies
  */
 export const ListMyMatchAttendanceResponse = zod.object({

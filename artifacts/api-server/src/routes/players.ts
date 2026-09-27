@@ -2048,7 +2048,8 @@ router.get("/email-blasts", requireAdminAccess, async (req, res) => {
     .filter((r) =>
       r.audienceType === "individuals" ||
       r.audienceType === "pledge-digest" ||
-      r.audienceType === "event-rsvp-reminder"
+      r.audienceType === "event-rsvp-reminder" ||
+      r.audienceType.startsWith("match-rsvp-reminder:")
     )
     .map((r) => r.id);
 

@@ -1472,6 +1472,38 @@ The HK Masters Hockey Team`;
   });
 }
 
+export async function sendMatchReminderEmail(opts: {
+  playerName: string;
+  playerEmail: string;
+  opponent: string;
+  date: string;
+  time: string;
+  venue: string | null;
+  matchUrl: string;
+}): Promise<boolean> {
+  const title = `HK Masters vs ${opts.opponent}`;
+  const html = emailShell("#1E3A6E", "Match attendance reminder",
+    `<p>Hi ${escapeHtml(opts.playerName)},</p>
+    <p>We haven't received your attendance reply for the match below. Please let the coaches know whether you can play.</p>
+    <p><strong>${escapeHtml(title)}</strong><br>${escapeHtml(opts.date)} at ${escapeHtml(opts.time)} HKT
+    ${opts.venue ? `<br>${escapeHtml(opts.venue)}` : ""}</p>
+    <p><a href="${escapeHtml(opts.matchUrl)}" style="display:inline-block;background:#1E3A6E;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;">Reply to this match</a></p>
+    <p>Questions? Email <a href="mailto:${ADMIN_EMAIL}">${ADMIN_EMAIL}</a>.</p>`);
+  const text = `Hi ${opts.playerName},
+
+We haven't received your attendance reply for the match below. Please let the coaches know whether you can play.
+
+${title}
+${opts.date} at ${opts.time} HKT${opts.venue ? `\n${opts.venue}` : ""}
+
+Reply to this match: ${opts.matchUrl}
+
+Questions? Email ${ADMIN_EMAIL}.
+
+The HK Masters Hockey Team`;
+  return sendEmail({ to: opts.playerEmail, subject: `Quick reply needed: ${title}`, html, text });
+}
+
 export async function sendRsvpReminderEmail(opts: {
   playerName: string;
   playerEmail: string;

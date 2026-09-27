@@ -1250,6 +1250,29 @@ paths:
         "401":
           description: Admin access required
 
+  /matches/{id}/rsvps/remind:
+    post:
+      operationId: remindMatchNonresponders
+      tags: [matches]
+      summary: Remind eligible nonresponders for a future scheduled local match
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Delivery and history results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchReminderResult"
+        "401":
+          description: Admin access required
+        "409":
+          description: Match cannot receive reminders or a batch is already in progress
+
   /player-auth/matches/rsvps:
     get:
       operationId: listMyMatchAttendance
@@ -3025,6 +3048,19 @@ components:
           type: array
           items: { $ref: "#/components/schemas/MatchAttendancePerson" }
       required: [counts, responses, noResponse]
+
+    MatchReminderResult:
+      type: object
+      properties:
+        sent: { type: integer }
+        total: { type: integer }
+        skippedNoEmail: { type: integer }
+        skippedAlreadySent: { type: integer }
+        skippedUncertain: { type: integer }
+        skippedChanged: { type: integer }
+        failed: { type: integer }
+        historyRecorded: { type: boolean }
+      required: [sent, total, skippedNoEmail, skippedAlreadySent, skippedUncertain, skippedChanged, failed, historyRecorded]
 
     MyMatchAttendance:
       type: object

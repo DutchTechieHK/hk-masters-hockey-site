@@ -14,10 +14,11 @@ import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { buildIcsCalendar, icsFilename } from "../utils/ics";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
-import { adminMatchRsvps } from "./matchAttendance";
+import { adminMatchRsvps, remindMatchNonresponders } from "./matchAttendance";
 
 const router = Router();
 router.get("/:id/rsvps", requireAdminAccess, adminMatchRsvps);
+router.post("/:id/rsvps/remind", requireAdminAccess, remindMatchNonresponders);
 
 type MatchRow = typeof matchesTable.$inferSelect;
 

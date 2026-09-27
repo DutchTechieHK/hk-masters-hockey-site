@@ -1,19 +1,26 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { and, eq, inArray } from "drizzle-orm";
 import {
   db, matchesTable, matchRsvpsTable, playerParticipationsTable,
   playerSessionsTable, playersTable, seasonsTable, teamsTable,
+  emailBlastsTable, emailBlastRecipientsTable,
 } from "@workspace/db";
+import { sendMatchReminderEmail } from "../utils/email";
 import { createPlayerSession, requirePlayerSession } from "../middleware/playerSession";
-import { adminMatchRsvps, playerMatchRsvps, submitMatchRsvp } from "./matchAttendance";
+import { adminMatchRsvps, playerMatchRsvps, submitMatchRsvp, remindMatchNonresponders } from "./matchAttendance";
+
+vi.mock("../utils/email", () => ({
+  sendMatchReminderEmail: vi.fn(async () => true),
+}));
 
 const app = express();
 app.use(express.json());
 app.get("/player/matches/rsvps", requirePlayerSession, playerMatchRsvps);
 app.post("/player/matches/:id/rsvp", requirePlayerSession, submitMatchRsvp);
 app.get("/matches/:id/rsvps", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), adminMatchRsvps);
+app.post("/matches/:id/rsvps/remind", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), remindMatchNonresponders);
 app.use((err: Error, _req: unknown, res: express.Response, _next: unknown) => res.status(500).json({ error: err.message }));
 
 const tag = `match-attendance-${Date.now()}`;
@@ -70,6 +77,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  const blasts = await db.select({ id: emailBlastsTable.id }).from(emailBlastsTable)
+    .where(eq(emailBlastsTable.audienceType, `match-rsvp-reminder:${futureId}`));
+  if (blasts.length) {
+    await db.delete(emailBlastRecipientsTable).where(inArray(emailBlastRecipientsTable.blastId, blasts.map((b) => b.id)));
+    await db.delete(emailBlastsTable).where(inArray(emailBlastsTable.id, blasts.map((b) => b.id)));
+  }
   if (ids.length) await db.delete(matchesTable).where(inArray(matchesTable.id, ids));
   if (playerIds.length) {
     await db.delete(playerSessionsTable).where(inArray(playerSessionsTable.playerId, playerIds));
@@ -117,6 +130,71 @@ describe("match attendance", () => {
     expect((await request(app).post(`/player/matches/${futureId}/rsvp`).set(auth()).send({ status: "yes" })).status).toBe(403);
     await db.update(playerParticipationsTable).set({ teamId: teamIds[0] })
       .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));
+  });
+
+  it("records uncertain outcomes before delivery and never retries them automatically", async () => {
+    vi.mocked(sendMatchReminderEmail).mockClear().mockResolvedValueOnce(false).mockResolvedValue(true);
+    expect((await request(app).post(`/matches/${futureId}/rsvps/remind`)).status).toBe(401);
+    for (const id of [pastId, cancelledId, archivedId]) {
+      expect((await request(app).post(`/matches/${id}/rsvps/remind`).set("x-session-token", "admin-test")).status).toBe(409);
+    }
+    await db.insert(matchRsvpsTable).values({
+      matchId: futureId, playerId: playerIds[0], status: "yes", respondedAt: new Date(),
+    }).onConflictDoNothing();
+    const endpoint = `/matches/${futureId}/rsvps/remind`;
+    const first = await request(app).post(endpoint).set("x-session-token", "admin-test");
+    expect(first.body).toMatchObject({ total: 1, sent: 0, failed: 1, historyRecorded: true });
+    expect(sendMatchReminderEmail).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(sendMatchReminderEmail).mock.calls[0][0]).toMatchObject({
+      playerEmail: `${tag}-player-1@example.com`, matchUrl: expect.stringContaining(`/schedule#match-${futureId}`),
+    });
+    const retry = await request(app).post(endpoint).set("x-session-token", "admin-test");
+    expect(retry.body).toMatchObject({ sent: 0, skippedUncertain: 1, failed: 0, historyRecorded: true });
+    expect(sendMatchReminderEmail).toHaveBeenCalledTimes(1);
+    const [firstBlast] = await db.select().from(emailBlastsTable)
+      .where(eq(emailBlastsTable.audienceType, `match-rsvp-reminder:${futureId}`));
+    const [uncertain] = await db.select().from(emailBlastRecipientsTable)
+      .where(eq(emailBlastRecipientsTable.blastId, firstBlast.id));
+    expect(uncertain).toMatchObject({ sent: false, errorMessage: "delivery_uncertain" });
+
+    // Only a separately verified non-delivery may be made retryable.
+    await db.update(emailBlastRecipientsTable).set({ errorMessage: "confirmed_not_delivered" })
+      .where(eq(emailBlastRecipientsTable.id, uncertain.id));
+    const confirmedRetry = await request(app).post(endpoint).set("x-session-token", "admin-test");
+    expect(confirmedRetry.body).toMatchObject({ sent: 1, failed: 0, historyRecorded: true });
+    const again = await request(app).post(endpoint).set("x-session-token", "admin-test");
+    expect(again.body).toMatchObject({ sent: 0, skippedAlreadySent: 1, failed: 0 });
+    expect(sendMatchReminderEmail).toHaveBeenCalledTimes(2);
+    const batches = await db.select().from(emailBlastsTable)
+      .where(eq(emailBlastsTable.audienceType, `match-rsvp-reminder:${futureId}`));
+    expect(batches).toHaveLength(2);
+    expect(batches.map((b) => [b.sentCount, b.failedCount]).sort((a, b) => a[0] - b[0]))
+      .toEqual([[0, 1], [1, 0]]);
+    const recipients = await db.select().from(emailBlastRecipientsTable)
+      .where(inArray(emailBlastRecipientsTable.blastId, batches.map((b) => b.id)));
+    expect(recipients.map((r) => r.sent).sort()).toEqual([false, true]);
+  });
+
+  it("does not resend if delivery succeeded but recording the result failed", async () => {
+    await db.delete(matchRsvpsTable).where(and(
+      eq(matchRsvpsTable.matchId, futureId), eq(matchRsvpsTable.playerId, playerIds[0])));
+    vi.mocked(sendMatchReminderEmail).mockClear().mockResolvedValue(true);
+    const historyFailure = vi.spyOn(db, "transaction").mockRejectedValueOnce(new Error("history unavailable"));
+    const endpoint = `/matches/${futureId}/rsvps/remind`;
+    try {
+      const first = await request(app).post(endpoint).set("x-session-token", "admin-test");
+      expect(first.body).toMatchObject({ sent: 1, historyRecorded: false });
+    } finally {
+      historyFailure.mockRestore();
+    }
+    const second = await request(app).post(endpoint).set("x-session-token", "admin-test");
+    expect(second.body).toMatchObject({ sent: 0, skippedUncertain: 1, skippedAlreadySent: 1 });
+    expect(sendMatchReminderEmail).toHaveBeenCalledTimes(1);
+    const rows = await db.select().from(emailBlastRecipientsTable)
+      .innerJoin(emailBlastsTable, eq(emailBlastsTable.id, emailBlastRecipientsTable.blastId))
+      .where(eq(emailBlastsTable.audienceType, `match-rsvp-reminder:${futureId}`));
+    expect(rows.some((row) => row.email_blast_recipients.playerId === playerIds[0] &&
+      row.email_blast_recipients.errorMessage === "delivery_pending")).toBe(true);
   });
 
   it("rejects old, cancelled, final, and archived matches", async () => {
