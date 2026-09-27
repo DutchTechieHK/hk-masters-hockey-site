@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const SendBulkEmailBody = z.object({
   audienceType: z.enum(["all", "men", "women", "trials", "teams", "individuals"]),
+  fromEmail: z.enum(["play@hkmastershockey.com", "mens@hkmastershockey.com"]).default("play@hkmastershockey.com"),
   teamIds: z.array(z.number().int().positive()).optional(),
   playerIds: z.array(z.number().int().positive()).optional(),
   subject: z.string().min(1, "Subject is required").max(300),

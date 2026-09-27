@@ -206,3 +206,46 @@ describe("Trials app invitations", () => {
     }));
   }, 60_000);
 });
+
+describe("Announcement email sender selection", () => {
+  const sendAs = (fromEmail?: string) => {
+    const form = request(app)
+      .post("/api/players/send-bulk-email")
+      .field("audienceType", "individuals")
+      .field("playerIds", JSON.stringify([playerIds[0]]))
+      .field("subject", "Sender choice test")
+      .field("body", "Hello");
+    return fromEmail === undefined ? form : form.field("fromEmail", fromEmail);
+  };
+
+  it.each(["play@hkmastershockey.com", "mens@hkmastershockey.com"])(
+    "passes %s to delivery and persists it in history",
+    async (fromEmail) => {
+      sendBulkAnnouncementEmail.mockClear();
+      const response = await sendAs(fromEmail);
+      expect(response.status, JSON.stringify(response.body)).toBe(200);
+      blastIds.push(response.body.blastId);
+      expect(sendBulkAnnouncementEmail).toHaveBeenCalledWith(expect.objectContaining({ fromEmail }));
+      const history = await request(app).get("/api/players/email-blasts");
+      expect(history.status).toBe(200);
+      expect(history.body.find((blast: { id: number }) => blast.id === response.body.blastId)?.sentByEmail).toBe(fromEmail);
+    },
+  );
+
+  it("defaults old callers to PLAY", async () => {
+    sendBulkAnnouncementEmail.mockClear();
+    const response = await sendAs();
+    expect(response.status, JSON.stringify(response.body)).toBe(200);
+    blastIds.push(response.body.blastId);
+    expect(sendBulkAnnouncementEmail).toHaveBeenCalledWith(expect.objectContaining({
+      fromEmail: "play@hkmastershockey.com",
+    }));
+  });
+
+  it("rejects a sender outside the allowlist without sending", async () => {
+    sendBulkAnnouncementEmail.mockClear();
+    const response = await sendAs("other@hkmastershockey.com");
+    expect(response.status).toBe(400);
+    expect(sendBulkAnnouncementEmail).not.toHaveBeenCalled();
+  });
+});

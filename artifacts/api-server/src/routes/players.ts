@@ -1861,6 +1861,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
   // Fields arrive as strings from multipart/form-data
   const rawBody = {
     audienceType: req.body.audienceType,
+    fromEmail: req.body.fromEmail,
     teamIds: req.body.teamIds ? JSON.parse(req.body.teamIds) : undefined,
     playerIds: req.body.playerIds ? JSON.parse(req.body.playerIds) : undefined,
     subject: req.body.subject,
@@ -1872,7 +1873,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     res.status(400).json({ error: "Invalid request", details: parseResult.error.flatten() });
     return;
   }
-  const { audienceType, teamIds, playerIds, subject, body } = parseResult.data;
+  const { audienceType, fromEmail, teamIds, playerIds, subject, body } = parseResult.data;
 
   const files = req.files as Express.Multer.File[] | undefined;
   const attachments = (files ?? []).map((f) => ({ filename: f.originalname, content: f.buffer }));
@@ -1921,6 +1922,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     const ok = await sendBulkAnnouncementEmail({
       playerName: player.name,
       playerEmail: player.email,
+      fromEmail,
       subject,
       body,
       attachments: attachments.length > 0 ? attachments : undefined,
@@ -1940,7 +1942,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     recipientCount,
     sentCount: sent,
     failedCount: failed,
-    sentByEmail: null,
+    sentByEmail: fromEmail,
     operationalScope: "local_2026_27",
   }).returning();
 
@@ -1953,7 +1955,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
         playerName: r.playerName,
         playerEmail: r.playerEmail,
         sent: r.sent,
-        errorMessage: r.sent ? null : "rate_limit_exceeded",
+        errorMessage: r.sent ? null : "delivery_failed",
       }))
     );
   }

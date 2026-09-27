@@ -56,9 +56,11 @@ type BlastRecipient = {
 }
 
 type AudienceType = "all" | "men" | "women" | "trials" | "teams" | "individuals"
+type AnnouncementSender = "play@hkmastershockey.com" | "mens@hkmastershockey.com"
 
 type EmailFormState = {
   audienceType: AudienceType
+  fromEmail: AnnouncementSender
   teamIds: number[]
   playerIds: number[]
   subject: string
@@ -69,6 +71,7 @@ type EmailFormState = {
 
 const EMPTY_EMAIL_FORM: EmailFormState = {
   audienceType: "all",
+  fromEmail: "play@hkmastershockey.com",
   teamIds: [],
   playerIds: [],
   subject: "",
@@ -565,6 +568,7 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       const token = getStoredAdminToken()
       const formData = new FormData()
       formData.append("audienceType", emailForm.audienceType)
+      formData.append("fromEmail", emailForm.fromEmail)
       formData.append("subject", emailForm.subject.trim())
       formData.append("body", emailForm.body.trim())
       if (emailForm.emailPurpose) formData.append("emailPurpose", emailForm.emailPurpose)
@@ -822,6 +826,25 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
               <Send className="w-4 h-4 text-primary" /> Compose email
             </h2>
 
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-semibold">Send from</legend>
+              <div className="flex flex-wrap gap-4">
+                {(["play@hkmastershockey.com", "mens@hkmastershockey.com"] as AnnouncementSender[]).map((address) => (
+                  <label key={address} className="inline-flex items-center gap-2 text-sm cursor-pointer">
+                    <input
+                      type="radio"
+                      name="announcement-sender"
+                      value={address}
+                      checked={emailForm.fromEmail === address}
+                      onChange={() => setEmailForm((f) => ({ ...f, fromEmail: address }))}
+                      className="accent-primary"
+                    />
+                    {address}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
             {/* Audience */}
             <div className="space-y-3">
               <label className="text-sm font-semibold">Audience</label>
@@ -1071,7 +1094,10 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
                           <div className="text-muted-foreground whitespace-nowrap text-xs">
                             {format(new Date(b.sentAt), "d MMM yyyy HH:mm")}
                           </div>
-                          <div className="font-medium truncate">{b.subject}</div>
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{b.subject}</div>
+                            {b.sentByEmail && <div className="text-xs text-muted-foreground truncate">From: {b.sentByEmail}</div>}
+                          </div>
                           <div className="text-muted-foreground text-xs whitespace-nowrap">{audienceLabel(b.audienceType)}</div>
                           <div className="text-right whitespace-nowrap">
                             <span className={b.failedCount > 0 ? "text-amber-700" : "text-green-700"}>
@@ -1324,6 +1350,7 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
           <p className="text-sm text-foreground">
             You're about to send <strong>"{emailForm.subject}"</strong> to <strong>{recipients.length} player{recipients.length !== 1 ? "s" : ""}</strong>. This cannot be undone.
           </p>
+          <p className="text-sm text-foreground">From: <strong>{emailForm.fromEmail}</strong></p>
           <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-muted/20 p-3 space-y-1">
             {recipients.map((p) => (
               <div key={p.id} className="flex items-center gap-2 text-xs">

@@ -305,6 +305,9 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                           <AudienceIcon audienceType={blast.audienceType} />
                           {audienceLabel(blast)}
                         </span>
+                        {blast.sentByEmail && (
+                          <span className="text-xs text-muted-foreground">From: {blast.sentByEmail}</span>
+                        )}
                       </div>
                     </div>
 

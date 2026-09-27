@@ -41,6 +41,7 @@ async function sendEmail(opts: {
   html: string;
   text: string;
   attachments?: Array<{ filename: string; content: Buffer }>;
+  fromEmail?: "play@hkmastershockey.com" | "mens@hkmastershockey.com";
 }): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -62,7 +63,8 @@ async function sendEmail(opts: {
   }));
 
   let { error } = await resend.emails.send({
-    from: VERIFIED_FROM,
+    from: opts.fromEmail ? `HK Masters Hockey <${opts.fromEmail}>` : VERIFIED_FROM,
+    ...(opts.fromEmail ? { replyTo: opts.fromEmail } : {}),
     to: actualTo,
     subject: opts.subject,
     html: opts.html,
@@ -70,7 +72,7 @@ async function sendEmail(opts: {
     ...(attachments && attachments.length > 0 ? { attachments } : {}),
   });
 
-  if (error && (error as { statusCode?: number }).statusCode === 403) {
+  if (error && !opts.fromEmail && (error as { statusCode?: number }).statusCode === 403) {
     console.warn("[email] Custom domain not yet verified — retrying with fallback sender");
     ({ error } = await resend.emails.send({
       from: FALLBACK_FROM,
@@ -1632,6 +1634,7 @@ function inlineRichTextStyles(html: string): string {
 export async function sendBulkAnnouncementEmail(opts: {
   playerName: string;
   playerEmail: string;
+  fromEmail: "play@hkmastershockey.com" | "mens@hkmastershockey.com";
   subject: string;
   body: string;
   attachments?: Array<{ filename: string; content: Buffer }>;
@@ -1647,7 +1650,7 @@ export async function sendBulkAnnouncementEmail(opts: {
     <div style="margin:0 0 24px 0;font-size:15px;color:#374151;line-height:1.8;">${styledBody}</div>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
     <p style="margin:0;font-size:13px;color:#9ca3af;line-height:1.6;">
-      Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
+      Questions? Email us at <a href="mailto:${opts.fromEmail}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${opts.fromEmail}</a>.
     </p>`
   );
 
@@ -1656,12 +1659,13 @@ export async function sendBulkAnnouncementEmail(opts: {
 ${plainBody}
 
 ---
-Questions? Email us at ${ADMIN_EMAIL}.
+Questions? Email us at ${opts.fromEmail}.
 
 The HK Masters Hockey Team`;
 
   return sendEmail({
     to: opts.playerEmail,
+    fromEmail: opts.fromEmail,
     subject: opts.subject,
     html,
     text,
