@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 import { API_BASE } from "../utils/api";
+import { matchesForPlayer } from "../utils/playerMatches";
 import { themeFor } from "../utils/teamTheme";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
@@ -177,10 +178,8 @@ export default function Dashboard() {
         .then((allMatches) => {
           if (cancelled || !Array.isArray(allMatches)) return;
           const now = Date.now() - 3 * 60 * 60 * 1000;
-          const filtered = (player.teamId
-            ? allMatches.filter((m) => m.teamId === player.teamId)
-            : allMatches
-          ).filter((m) => m.status !== "cancelled" && new Date(m.kickoffAt).getTime() >= now)
+          const filtered = matchesForPlayer(allMatches, player)
+            .filter((m) => m.status !== "cancelled" && new Date(m.kickoffAt).getTime() >= now)
             .sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime());
           setUpcomingMatches(filtered);
         })

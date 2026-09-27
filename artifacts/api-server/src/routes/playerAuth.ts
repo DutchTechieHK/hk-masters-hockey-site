@@ -160,13 +160,21 @@ router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
 router.get("/me", requirePlayerSession, async (req, res) => {
   const player = req.player!;
   const foundation = await ensureMembershipFoundation();
-  const [participation] = await db.select({ amountDue: playerParticipationsTable.amountDue }).from(playerParticipationsTable)
+  const [participation] = await db.select({
+    amountDue: playerParticipationsTable.amountDue,
+    teamId: playerParticipationsTable.teamId,
+    participationStatus: playerParticipationsTable.participationStatus,
+  }).from(playerParticipationsTable)
     .where(and(eq(playerParticipationsTable.playerId, player.id), eq(playerParticipationsTable.seasonId, foundation.currentSeasonId)));
   const payments = await db.select().from(playerPaymentsTable).where(and(
     eq(playerPaymentsTable.playerId, player.id), eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
   ));
   const account = buildSeasonFeeAccount(foundation.currentSeasonId, participation?.amountDue == null ? null : parseFloat(participation.amountDue), payments);
-  res.json({ ...mapPlayer(player, null, undefined, account), accessToken: player.accessToken });
+  res.json({
+    ...mapPlayer(player, null, undefined, account),
+    currentSquadTeamId: (participation?.participationStatus === "active" ? participation.teamId : null) ?? player.teamId,
+    accessToken: player.accessToken,
+  });
 });
 
 router.get("/my-schedule", requirePlayerSession, async (req, res) => {

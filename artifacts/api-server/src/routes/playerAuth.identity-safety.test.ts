@@ -9,6 +9,7 @@ import {
   playerParticipationsTable,
   playerSessionsTable,
   playersTable,
+  seasonsTable,
   teamsTable,
 } from "@workspace/db/schema";
 
@@ -126,6 +127,45 @@ afterAll(async () => {
 });
 
 describe("player login identity safety", () => {
+  it("returns the current active squad separately from the historical team, with a legacy fallback", async () => {
+    const teams = await db.select({ id: teamsTable.id }).from(teamsTable).limit(10);
+    const [player] = await db.select({ teamId: playersTable.teamId }).from(playersTable)
+      .where(eq(playersTable.id, activePlayerId));
+    const currentTeam = teams.find((team) => team.id !== player.teamId);
+    if (!currentTeam) throw new Error("Two teams are required for current squad tests");
+
+    const token = crypto.randomBytes(32).toString("hex");
+    await db.insert(playerSessionsTable).values({
+      token, playerId: activePlayerId, expiresAt: new Date(Date.now() + 60_000),
+    });
+    const me = () => request(app).get("/api/player-auth/me").set("authorization", `Bearer ${token}`);
+    const before = await me();
+    expect(before.status).toBe(200);
+    expect(before.body.teamId).toBe(player.teamId);
+
+    const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable)
+      .where(eq(seasonsTable.isCurrent, true)).limit(1);
+    if (!season) throw new Error("Current membership season is required");
+    await db.insert(playerParticipationsTable).values({
+      playerId: activePlayerId,
+      seasonId: season.id,
+      teamId: currentTeam.id,
+      participationStatus: "active",
+    }).onConflictDoUpdate({
+      target: [playerParticipationsTable.playerId, playerParticipationsTable.seasonId],
+      set: { teamId: currentTeam.id, participationStatus: "active" },
+    });
+    const assigned = await me();
+    expect(assigned.status).toBe(200);
+    expect(assigned.body).toMatchObject({ teamId: player.teamId, currentSquadTeamId: currentTeam.id });
+
+    await db.update(playerParticipationsTable).set({ participationStatus: "inactive" })
+      .where(and(eq(playerParticipationsTable.playerId, activePlayerId), eq(playerParticipationsTable.seasonId, season.id)));
+    const unassigned = await me();
+    expect(unassigned.status).toBe(200);
+    expect(unassigned.body.currentSquadTeamId).toBe(player.teamId);
+  });
+
   it("returns the current category fee in the member portal response", async () => {
     const response = await request(app).get(`/api/players/self/${activeAccessToken}`);
     expect(response.status).toBe(200);

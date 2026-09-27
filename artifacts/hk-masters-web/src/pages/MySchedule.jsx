@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
+import { matchesForPlayer } from "../utils/playerMatches";
 import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
@@ -456,11 +457,7 @@ export default function MySchedule() {
         setEvents(data.events || []);
         if (matchesRes.ok) {
           const allMatches = await matchesRes.json();
-          const filtered = Array.isArray(allMatches)
-            ? (me.teamId
-                ? allMatches.filter((m) => m.teamId === me.teamId)
-                : allMatches)
-            : [];
+          const filtered = Array.isArray(allMatches) ? matchesForPlayer(allMatches, me) : [];
           setMatches(filtered.sort((a, b) => new Date(a.kickoffAt).getTime() - new Date(b.kickoffAt).getTime()));
         }
       } catch (err) {
