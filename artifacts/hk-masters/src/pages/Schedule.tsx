@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Edit2, Lock, CalendarDays, MapPin, Clock, Radio, Flag, Ban, Upload } from "lucide-react"
 import MatchesCsvImport from "@/components/ui/MatchesCsvImport"
 import MatchAttendanceModal from "@/components/MatchAttendanceModal"
+import MatchChangeNoticeModal from "@/components/MatchChangeNoticeModal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { Match, ListMatchAttendanceSummaries200 } from "@workspace/api-client-react"
@@ -217,6 +218,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
   const [editing, setEditing] = useState<Match | null>(null)
   const [showCsvImport, setShowCsvImport] = useState(false)
   const [attendanceMatch, setAttendanceMatch] = useState<Match | null>(null)
+  const [noticeMatch, setNoticeMatch] = useState<Match | null>(null)
 
   const createMutation = useCreateMatch()
   const updateMutation = useUpdateMatch()
@@ -263,7 +265,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
 
   const quickStatus = async (m: Match, status: Match["status"]) => {
     try {
-      await updateMutation.mutateAsync({
+      const updated = await updateMutation.mutateAsync({
         id: m.id,
         data: {
           teamId: m.teamId,
@@ -280,6 +282,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
       refreshAttendanceSummaries()
       const label = status === "in_progress" ? "Match marked live" : status === "cancelled" ? "Match cancelled" : "Match updated"
       toast({ title: label })
+      if (status === "cancelled" && m.status !== "cancelled") setNoticeMatch(updated)
     } catch (error) {
       toast({ title: "Failed to update match", description: error instanceof Error ? error.message : undefined, variant: "destructive" })
     }
@@ -306,7 +309,20 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
         return
       }
       if (editing) {
-        await updateMutation.mutateAsync({ id: editing.id, data: payload })
+        const updated = await updateMutation.mutateAsync({ id: editing.id, data: payload })
+        if ((payload.status === "cancelled" && editing.status !== "cancelled") ||
+          (payload.status === "scheduled" && payload.kickoffAt !== editing.kickoffAt)) {
+          setNoticeMatch(updated)
+        } else if ((payload.status === "cancelled" || payload.status === "scheduled") &&
+          (payload.teamId !== editing.teamId || payload.opponent !== editing.opponent ||
+            (payload.venue || "") !== (editing.venue || ""))) {
+          // Only a fixture with an existing change notice gets a replacement
+          // revision. Ordinary scheduled-fixture edits have nothing to preview.
+          const notice = await fetch(`/api/matches/${editing.id}/change-notice`, {
+            headers: { "x-session-token": sessionToken! },
+          }).catch(() => null)
+          if (notice?.ok && (await notice.json() as { current: boolean }).current) setNoticeMatch(updated)
+        }
         toast({ title: "Match updated" })
       } else {
         await createMutation.mutateAsync({ data: payload })
@@ -517,6 +533,12 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
                                       </button>
                                     </>
                                   )}
+                                  {(m.status === "cancelled" || m.status === "scheduled") && (
+                                    <button type="button" onClick={() => setNoticeMatch(m)}
+                                      className="px-2 py-1 text-xs font-semibold text-blue-700 border border-blue-200 rounded hover:bg-blue-50">
+                                      Change notice
+                                    </button>
+                                  )}
                                   <button onClick={() => openEditModal(m)} title="Edit" className="p-1.5 text-muted-foreground hover:text-blue-600 rounded border border-transparent hover:border-blue-200 transition-all">
                                     <Edit2 className="w-4 h-4" />
                                   </button>
@@ -556,6 +578,10 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
             setAttendanceMatch(null)
             refreshAttendanceSummaries()
           }} />
+      )}
+      {noticeMatch && sessionToken && (
+        <MatchChangeNoticeModal match={noticeMatch} token={sessionToken}
+          onClose={() => setNoticeMatch(null)} />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Match" : "Add Match"}>

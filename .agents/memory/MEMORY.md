@@ -13,6 +13,7 @@
 - [hk-masters admin auth testing](hk-masters-admin-auth-testing.md) — no dev bypass for the team-password gate; insert an admin_sessions row + temp-patch AdminAuthGate to e2e-test admin pages, then fully revert.
 - [Email send throttle & failure visibility](email-send-throttle.md) — bulk email loops must pace ~500ms (Resend ~2/sec) and report a `failed` count; unthrottled loops 429 silently and drop sends.
 - [Reminder delivery uncertainty](reminder-uncertain-delivery.md) — persist a pending recipient before provider contact; ambiguous outcomes require manual reconciliation, never automatic resend.
+- [Change notice revisions](change-notice-revisions.md) — correct a pending notice by creating a new revision when message details change; retain old delivery history.
 - [Hosting topology](hosting-topology.md) — public site is still served by Netlify (builds from repo); Replit publish covers app.hkmastershockey.com; old Netlify CMS may not be fully dead.
 - [Admin app URL & custom domain](admin-app-url.md) — admin portal is at app.hkmastershockey.com/admin/ in prod; ADMIN_APP_URL must be split dev/prod env vars, never shared.
 - [Shared object storage dev/prod](shared-object-storage.md) — one bucket for both; workspace scripts can fix prod objects in place instantly, but dev deletions also hit prod.

@@ -1504,6 +1504,18 @@ The HK Masters Hockey Team`;
   return sendEmail({ to: opts.playerEmail, subject: `Quick reply needed: ${title}`, html, text });
 }
 
+export async function sendMatchChangeEmail(opts: {
+  playerName: string; playerEmail: string; subject: string; message: string; matchUrl: string;
+}): Promise<boolean> {
+  const html = emailShell("#1E3A6E", "Fixture update",
+    `<p>Hi ${escapeHtml(opts.playerName)},</p><p>${escapeHtml(opts.message).replace(/\n/g, "<br>")}</p>
+    <p><a href="${escapeHtml(opts.matchUrl)}">View the match schedule</a></p>`);
+  return sendEmail({
+    to: opts.playerEmail, subject: opts.subject, html,
+    text: `Hi ${opts.playerName},\n\n${opts.message}\n\nView the match schedule: ${opts.matchUrl}\n\nThe HK Masters Hockey Team`,
+  });
+}
+
 export async function sendRsvpReminderEmail(opts: {
   playerName: string;
   playerEmail: string;

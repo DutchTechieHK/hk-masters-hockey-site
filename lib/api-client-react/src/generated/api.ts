@@ -51,6 +51,9 @@ import type {
   MatchAttendanceInput,
   MatchAttendanceRoster,
   MatchAttendanceSaved,
+  MatchChangeConfirmation,
+  MatchChangePreview,
+  MatchChangeResult,
   MatchImportCorrectionResult,
   MatchReminderResult,
   MembershipInitializationResult,
@@ -5481,6 +5484,183 @@ export const useRemindMatchNonresponders = <
   TContext
 > => {
   return useMutation(getRemindMatchNonrespondersMutationOptions(options));
+};
+
+/**
+ * @summary Preview the latest fixture change and its current eligible squad delivery history
+ */
+export const getPreviewMatchChangeNoticeUrl = (id: number) => {
+  return `/api/matches/${id}/change-notice`;
+};
+
+export const previewMatchChangeNotice = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MatchChangePreview> => {
+  return customFetch<MatchChangePreview>(getPreviewMatchChangeNoticeUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getPreviewMatchChangeNoticeQueryKey = (id: number) => {
+  return [`/api/matches/${id}/change-notice`] as const;
+};
+
+export const getPreviewMatchChangeNoticeQueryOptions = <
+  TData = Awaited<ReturnType<typeof previewMatchChangeNotice>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewMatchChangeNotice>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getPreviewMatchChangeNoticeQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof previewMatchChangeNotice>>
+  > = ({ signal }) =>
+    previewMatchChangeNotice(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof previewMatchChangeNotice>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type PreviewMatchChangeNoticeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof previewMatchChangeNotice>>
+>;
+export type PreviewMatchChangeNoticeQueryError = ErrorType<void>;
+
+/**
+ * @summary Preview the latest fixture change and its current eligible squad delivery history
+ */
+
+export function usePreviewMatchChangeNotice<
+  TData = Awaited<ReturnType<typeof previewMatchChangeNotice>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof previewMatchChangeNotice>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getPreviewMatchChangeNoticeQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Confirm delivery of the previewed fixture revision to current eligible squad members
+ */
+export const getSendMatchChangeNoticeUrl = (id: number) => {
+  return `/api/matches/${id}/change-notice`;
+};
+
+export const sendMatchChangeNotice = async (
+  id: number,
+  matchChangeConfirmation: MatchChangeConfirmation,
+  options?: RequestInit,
+): Promise<MatchChangeResult> => {
+  return customFetch<MatchChangeResult>(getSendMatchChangeNoticeUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(matchChangeConfirmation),
+  });
+};
+
+export const getSendMatchChangeNoticeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendMatchChangeNotice>>,
+    TError,
+    { id: number; data: BodyType<MatchChangeConfirmation> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendMatchChangeNotice>>,
+  TError,
+  { id: number; data: BodyType<MatchChangeConfirmation> },
+  TContext
+> => {
+  const mutationKey = ["sendMatchChangeNotice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendMatchChangeNotice>>,
+    { id: number; data: BodyType<MatchChangeConfirmation> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return sendMatchChangeNotice(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendMatchChangeNoticeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendMatchChangeNotice>>
+>;
+export type SendMatchChangeNoticeMutationBody =
+  BodyType<MatchChangeConfirmation>;
+export type SendMatchChangeNoticeMutationError = ErrorType<void>;
+
+/**
+ * @summary Confirm delivery of the previewed fixture revision to current eligible squad members
+ */
+export const useSendMatchChangeNotice = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendMatchChangeNotice>>,
+    TError,
+    { id: number; data: BodyType<MatchChangeConfirmation> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendMatchChangeNotice>>,
+  TError,
+  { id: number; data: BodyType<MatchChangeConfirmation> },
+  TContext
+> => {
+  return useMutation(getSendMatchChangeNoticeMutationOptions(options));
 };
 
 /**

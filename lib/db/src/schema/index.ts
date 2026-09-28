@@ -10,6 +10,7 @@ export * from "./contributions";
 export * from "./sponsors";
 export * from "./matches";
 export * from "./match-rsvps";
+export * from "./match-change-notices";
 export * from "./player-auth";
 export * from "./events";
 export * from "./event-rsvps";

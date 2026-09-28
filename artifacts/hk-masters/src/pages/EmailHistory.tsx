@@ -41,6 +41,9 @@ function audienceLabel(blast: EmailBlastHistoryItem): string {
     const names = blast.recipientNames ?? []
     return names.length ? `${names.join(", ")} — match reminder` : `${blast.recipientCount} players — match reminder`
   }
+  if (blast.audienceType.startsWith("match-change:")) {
+    return `${blast.recipientCount} current squad player${blast.recipientCount === 1 ? "" : "s"} — fixture change`
+  }
   if (blast.audienceType === "event-rsvp-reminder") {
     const names = blast.recipientNames ?? []
     if (names.length === 0) return `${blast.recipientCount} players reminded`
@@ -77,7 +80,7 @@ function AudienceIcon({ audienceType }: { audienceType: string }) {
   if (audienceType === "onboarding") return <Send className="w-3.5 h-3.5" />
   if (audienceType === "insurance-reminder") return <ShieldCheck className="w-3.5 h-3.5" />
   if (audienceType === "pledge-digest") return <HandCoins className="w-3.5 h-3.5" />
-  if (audienceType === "event-rsvp-reminder" || audienceType.startsWith("match-rsvp-reminder:")) return <Mail className="w-3.5 h-3.5" />
+  if (audienceType === "event-rsvp-reminder" || audienceType.startsWith("match-rsvp-reminder:") || audienceType.startsWith("match-change:")) return <Mail className="w-3.5 h-3.5" />
   if (audienceType === "all") return <Users className="w-3.5 h-3.5" />
   if (audienceType === "teams") return <Users className="w-3.5 h-3.5" />
   return <User className="w-3.5 h-3.5" />
@@ -247,7 +250,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
               {blasts.some((b) => b.failedCount > 0) && (
                 <p className="text-sm text-rose-600 flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  <span className="font-semibold">{blasts.reduce((s, b) => s + b.failedCount, 0)}</span> failed
+                  <span className="font-semibold">{blasts.reduce((s, b) => s + b.failedCount, 0)}</span> failed or uncertain
                 </p>
               )}
             </div>
@@ -259,7 +262,8 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
               const isOnboarding = blast.audienceType === "onboarding"
               const isInsuranceReminder = blast.audienceType === "insurance-reminder"
               const isMatchReminder = blast.audienceType.startsWith("match-rsvp-reminder:")
-              const isEventReminder = blast.audienceType === "event-rsvp-reminder" || isMatchReminder
+              const isMatchChange = blast.audienceType.startsWith("match-change:")
+              const isEventReminder = blast.audienceType === "event-rsvp-reminder" || isMatchReminder || isMatchChange
 
               return (
                 <div
@@ -297,7 +301,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                         )}
                         {isEventReminder && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 whitespace-nowrap">
-                            <Mail className="w-2.5 h-2.5" /> {isMatchReminder ? "Match Reminder" : "Event Reminder"}
+                            <Mail className="w-2.5 h-2.5" /> {isMatchChange ? "Fixture Change" : isMatchReminder ? "Match Reminder" : "Event Reminder"}
                           </span>
                         )}
                       </div>
@@ -329,7 +333,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                       </span>
                       {hasFailed && (
                         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                          {blast.failedCount} failed
+                          {blast.failedCount} {isMatchChange ? "uncertain / pending" : "failed"}
                         </span>
                       )}
                       {isExpanded

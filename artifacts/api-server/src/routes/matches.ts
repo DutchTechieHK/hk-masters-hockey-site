@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { eventsTable, matchesTable, teamsTable } from "@workspace/db/schema";
-import { eq, asc, and, inArray, isNull } from "drizzle-orm";
+import { eventsTable, matchesTable, matchChangeNoticesTable, teamsTable } from "@workspace/db/schema";
+import { eq, asc, and, desc, inArray, isNull, sql } from "drizzle-orm";
 import {
   CreateMatchBody,
   CorrectSeptemberHktImportResponse,
@@ -15,11 +15,14 @@ import { buildIcsCalendar, icsFilename } from "../utils/ics";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { adminMatchRsvps, adminMatchRsvpSummaries, remindMatchNonresponders } from "./matchAttendance";
+import { previewMatchChange, sendMatchChange } from "./matchChanges";
 
 const router = Router();
 router.get("/rsvps/summary", requireAdminAccess, adminMatchRsvpSummaries);
 router.get("/:id/rsvps", requireAdminAccess, adminMatchRsvps);
 router.post("/:id/rsvps/remind", requireAdminAccess, remindMatchNonresponders);
+router.get("/:id/change-notice", requireAdminAccess, previewMatchChange);
+router.post("/:id/change-notice", requireAdminAccess, sendMatchChange);
 
 type MatchRow = typeof matchesTable.$inferSelect;
 
@@ -312,10 +315,16 @@ router.post("/correct-september-hkt-import", requireAdminAccess, async (req, res
 
 async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {
   const { id } = UpdateMatchParams.parse(req.params);
-  const [existing] = await db.select({ operationalScope: matchesTable.operationalScope }).from(matchesTable).where(eq(matchesTable.id, id));
-  if (!existing) return res.status(404).json({ error: "Match not found" });
-  if (existing.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
-  if (existing.operationalScope == null) return res.status(409).json({ error: "Unclassified records must be classified before editing" });
+  // Preserve the archived/unclassified boundary even for legacy callers whose
+  // update payload does not satisfy the current form schema.
+  const [existingScope] = await db.select({ operationalScope: matchesTable.operationalScope })
+    .from(matchesTable).where(eq(matchesTable.id, id));
+  if (!existingScope) { res.status(404).json({ error: "Match not found" }); return; }
+  if (existingScope.operationalScope !== "local_2026_27") {
+    res.status(409).json({ error: existingScope.operationalScope === "world_cup_2026"
+      ? "Archived content is read-only" : "Unclassified records must be classified before editing" });
+    return;
+  }
   const body = UpdateMatchBody.parse(req.body);
   if (await isArchivedRotterdamTeam(body.teamId)) {
     return res.status(409).json({ error: "Archived content is read-only" });
@@ -327,20 +336,41 @@ async function handleUpdateMatch(req: import("express").Request, res: import("ex
   }
   const invalidStatus = statusError(body.status, kickoffDate, body.ourScore, body.theirScore);
   if (invalidStatus) return res.status(409).json({ error: invalidStatus });
-  const [match] = await db.update(matchesTable).set({
-    teamId: body.teamId,
-    opponent: body.opponent,
-    kickoffAt: kickoffDate,
-    venue: body.venue || null,
-    ourScore: body.ourScore ?? null,
-    theirScore: body.theirScore ?? null,
-    status: body.status,
-    notes: body.notes || null,
-  }).where(eq(matchesTable.id, id)).returning();
-  if (!match) {
-    res.status(404).json({ error: "Match not found" });
-    return;
-  }
+  const result = await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT id FROM matches WHERE id = ${id} FOR UPDATE`);
+    const [existing] = await tx.select().from(matchesTable).where(eq(matchesTable.id, id));
+    if (!existing) return { error: "Match not found", status: 404 } as const;
+    if (existing.operationalScope !== "local_2026_27")
+      return { error: existing.operationalScope === "world_cup_2026" ? "Archived content is read-only" : "Unclassified records must be classified before editing", status: 409 } as const;
+    const [match] = await tx.update(matchesTable).set({
+      teamId: body.teamId, opponent: body.opponent, kickoffAt: kickoffDate,
+      venue: body.venue || null, ourScore: body.ourScore ?? null,
+      theirScore: body.theirScore ?? null, status: body.status, notes: body.notes || null,
+    }).where(eq(matchesTable.id, id)).returning();
+    const [lastNotice] = await tx.select().from(matchChangeNoticesTable)
+      .where(eq(matchChangeNoticesTable.matchId, id))
+      .orderBy(desc(matchChangeNoticesTable.id)).limit(1);
+    const kickoffMoved = existing.kickoffAt.getTime() !== kickoffDate.getTime();
+    const newCancellation = body.status === "cancelled" && existing.status !== "cancelled";
+    const newReschedule = body.status === "scheduled" && kickoffMoved;
+    const kind = body.status === "cancelled" ? "cancelled" : "rescheduled";
+    const contentCorrected = lastNotice && lastNotice.kind === kind &&
+      existing.status === body.status &&
+      (lastNotice.teamId !== match.teamId || lastNotice.opponent !== match.opponent ||
+        lastNotice.venue !== match.venue || lastNotice.kickoffAt.getTime() !== match.kickoffAt.getTime());
+    if (newCancellation || newReschedule || contentCorrected) {
+      await tx.insert(matchChangeNoticesTable).values({
+        matchId: id, kind,
+        teamId: match.teamId, opponent: match.opponent,
+        previousKickoffAt: newCancellation || newReschedule
+          ? existing.kickoffAt : (lastNotice?.previousKickoffAt ?? existing.kickoffAt),
+        kickoffAt: match.kickoffAt, venue: match.venue,
+      });
+    }
+    return { match };
+  });
+  if (result.error) { res.status(result.status!).json({ error: result.error }); return; }
+  const { match } = result;
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
   res.json(serialize(match, team?.name, team?.category, true));
   return;

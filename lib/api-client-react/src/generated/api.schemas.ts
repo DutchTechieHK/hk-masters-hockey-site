@@ -1203,6 +1203,55 @@ export interface MatchReminderResult {
   historyRecorded: boolean;
 }
 
+export interface MatchChangeConfirmation {
+  revisionId: number;
+}
+
+export type MatchChangePreviewKind =
+  (typeof MatchChangePreviewKind)[keyof typeof MatchChangePreviewKind];
+
+export const MatchChangePreviewKind = {
+  cancelled: "cancelled",
+  rescheduled: "rescheduled",
+} as const;
+
+export type MatchChangeDeliveryStatus =
+  (typeof MatchChangeDeliveryStatus)[keyof typeof MatchChangeDeliveryStatus];
+
+export const MatchChangeDeliveryStatus = {
+  sent: "sent",
+  confirmed_failed: "confirmed_failed",
+  uncertain: "uncertain",
+} as const;
+
+export interface MatchChangeDelivery {
+  playerName: string;
+  status: MatchChangeDeliveryStatus;
+}
+
+export interface MatchChangePreview {
+  revisionId: number;
+  kind: MatchChangePreviewKind;
+  current: boolean;
+  subject: string;
+  message: string;
+  changedAt: string;
+  total: number;
+  ready: number;
+  noEmail: number;
+  sent: number;
+  uncertain: number;
+  deliveries: MatchChangeDelivery[];
+}
+
+export interface MatchChangeResult {
+  sent: number;
+  uncertain: number;
+  skippedChanged: number;
+  historyRecorded: boolean;
+  preview: MatchChangePreview;
+}
+
 /**
  * @nullable
  */

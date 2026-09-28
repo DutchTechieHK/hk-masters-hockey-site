@@ -1293,6 +1293,47 @@ paths:
         "409":
           description: Match cannot receive reminders or a batch is already in progress
 
+  /matches/{id}/change-notice:
+    get:
+      operationId: previewMatchChangeNotice
+      tags: [matches]
+      summary: Preview the latest fixture change and its current eligible squad delivery history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Preview and delivery summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchChangePreview" }
+        "401": { description: Admin access required }
+        "404": { description: No change recorded }
+    post:
+      operationId: sendMatchChangeNotice
+      tags: [matches]
+      summary: Confirm delivery of the previewed fixture revision to current eligible squad members
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatchChangeConfirmation" }
+      responses:
+        "200":
+          description: Delivery outcome and refreshed preview
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MatchChangeResult" }
+        "401": { description: Admin access required }
+        "409": { description: Preview stale or batch in progress }
+
   /player-auth/matches/rsvps:
     get:
       operationId: listMyMatchAttendance
@@ -3095,6 +3136,48 @@ components:
         failed: { type: integer }
         historyRecorded: { type: boolean }
       required: [sent, total, skippedNoEmail, skippedAlreadySent, skippedUncertain, skippedChanged, failed, historyRecorded]
+
+    MatchChangeConfirmation:
+      type: object
+      properties:
+        revisionId: { type: integer }
+      required: [revisionId]
+
+    MatchChangePreview:
+      type: object
+      properties:
+        revisionId: { type: integer }
+        kind: { type: string, enum: [cancelled, rescheduled] }
+        current: { type: boolean }
+        subject: { type: string }
+        message: { type: string }
+        changedAt: { type: string, format: date-time }
+        total: { type: integer }
+        ready: { type: integer }
+        noEmail: { type: integer }
+        sent: { type: integer }
+        uncertain: { type: integer }
+        deliveries:
+          type: array
+          items: { $ref: "#/components/schemas/MatchChangeDelivery" }
+      required: [revisionId, kind, current, subject, message, changedAt, total, ready, noEmail, sent, uncertain, deliveries]
+
+    MatchChangeDelivery:
+      type: object
+      properties:
+        playerName: { type: string }
+        status: { type: string, enum: [sent, confirmed_failed, uncertain] }
+      required: [playerName, status]
+
+    MatchChangeResult:
+      type: object
+      properties:
+        sent: { type: integer }
+        uncertain: { type: integer }
+        skippedChanged: { type: integer }
+        historyRecorded: { type: boolean }
+        preview: { $ref: "#/components/schemas/MatchChangePreview" }
+      required: [sent, uncertain, skippedChanged, historyRecorded, preview]
 
     MyMatchAttendance:
       type: object

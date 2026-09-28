@@ -1870,6 +1870,70 @@ export const RemindMatchNonrespondersResponse = zod.object({
 });
 
 /**
+ * @summary Preview the latest fixture change and its current eligible squad delivery history
+ */
+export const PreviewMatchChangeNoticeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PreviewMatchChangeNoticeResponse = zod.object({
+  revisionId: zod.number(),
+  kind: zod.enum(["cancelled", "rescheduled"]),
+  current: zod.boolean(),
+  subject: zod.string(),
+  message: zod.string(),
+  changedAt: zod.date(),
+  total: zod.number(),
+  ready: zod.number(),
+  noEmail: zod.number(),
+  sent: zod.number(),
+  uncertain: zod.number(),
+  deliveries: zod.array(
+    zod.object({
+      playerName: zod.string(),
+      status: zod.enum(["sent", "confirmed_failed", "uncertain"]),
+    }),
+  ),
+});
+
+/**
+ * @summary Confirm delivery of the previewed fixture revision to current eligible squad members
+ */
+export const SendMatchChangeNoticeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendMatchChangeNoticeBody = zod.object({
+  revisionId: zod.number(),
+});
+
+export const SendMatchChangeNoticeResponse = zod.object({
+  sent: zod.number(),
+  uncertain: zod.number(),
+  skippedChanged: zod.number(),
+  historyRecorded: zod.boolean(),
+  preview: zod.object({
+    revisionId: zod.number(),
+    kind: zod.enum(["cancelled", "rescheduled"]),
+    current: zod.boolean(),
+    subject: zod.string(),
+    message: zod.string(),
+    changedAt: zod.date(),
+    total: zod.number(),
+    ready: zod.number(),
+    noEmail: zod.number(),
+    sent: zod.number(),
+    uncertain: zod.number(),
+    deliveries: zod.array(
+      zod.object({
+        playerName: zod.string(),
+        status: zod.enum(["sent", "confirmed_failed", "uncertain"]),
+      }),
+    ),
+  }),
+});
+
+/**
  * @summary Current player's eligible future matches and saved replies
  */
 export const ListMyMatchAttendanceResponse = zod.object({
