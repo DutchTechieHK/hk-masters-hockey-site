@@ -9,7 +9,7 @@ import {
 } from "@workspace/db";
 import { sendMatchReminderEmail } from "../utils/email";
 import { createPlayerSession, requirePlayerSession } from "../middleware/playerSession";
-import { adminMatchRsvps, playerMatchRsvps, submitMatchRsvp, remindMatchNonresponders } from "./matchAttendance";
+import { adminMatchRsvps, adminMatchRsvpSummaries, playerMatchRsvps, submitMatchRsvp, remindMatchNonresponders } from "./matchAttendance";
 
 vi.mock("../utils/email", () => ({
   sendMatchReminderEmail: vi.fn(async () => true),
@@ -19,6 +19,7 @@ const app = express();
 app.use(express.json());
 app.get("/player/matches/rsvps", requirePlayerSession, playerMatchRsvps);
 app.post("/player/matches/:id/rsvp", requirePlayerSession, submitMatchRsvp);
+app.get("/matches/rsvps/summary", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), adminMatchRsvpSummaries);
 app.get("/matches/:id/rsvps", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), adminMatchRsvps);
 app.post("/matches/:id/rsvps/remind", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), remindMatchNonresponders);
 app.use((err: Error, _req: unknown, res: express.Response, _next: unknown) => res.status(500).json({ error: err.message }));
@@ -30,6 +31,7 @@ const teamIds: number[] = [];
 let token: string;
 let otherToken: string;
 let futureId: number;
+let otherFutureId: number;
 let pastId: number;
 let cancelledId: number;
 let archivedId: number;
@@ -74,6 +76,12 @@ beforeAll(async () => {
     ids.push(match.id);
   }
   [futureId, pastId, cancelledId, archivedId] = ids;
+  const [otherFuture] = await db.insert(matchesTable).values({
+    teamId: teamIds[1], opponent: `${tag}-other`, kickoffAt: new Date("2030-10-11T10:00:00.000Z"),
+    status: "scheduled", operationalScope: "local_2026_27",
+  }).returning({ id: matchesTable.id });
+  otherFutureId = otherFuture.id;
+  ids.push(otherFutureId);
 });
 
 afterAll(async () => {
@@ -100,6 +108,7 @@ describe("match attendance", () => {
     expect((await request(app).post(`/player/matches/${futureId}/rsvp`)
       .set("Authorization", `Bearer ${otherToken}`).send({ status: "yes" })).status).toBe(403);
     expect((await request(app).get(`/matches/${futureId}/rsvps`)).status).toBe(401);
+    expect((await request(app).get("/matches/rsvps/summary")).status).toBe(401);
     const listing = await request(app).get("/player/matches/rsvps").set(auth());
     expect(listing.status).toBe(200);
     expect(listing.body.matches.map((m: { matchId: number }) => m.matchId)).toEqual([futureId]);
@@ -115,6 +124,21 @@ describe("match attendance", () => {
     expect(listing.body.matches[0]).toMatchObject({ myRsvp: "maybe", myNote: "May be late", rsvpCounts: { yes: 0, maybe: 1, no: 0 } });
     const roster = await request(app).get(`/matches/${futureId}/rsvps`).set("x-session-token", "admin-test");
     expect(roster.body.counts).toMatchObject({ invited: 2, maybe: 1, noResponse: 1 });
+    const summaries = await request(app).get("/matches/rsvps/summary").set("x-session-token", "admin-test");
+    expect(summaries.status).toBe(200);
+    const summary = summaries.body.matches.find((item: { matchId: number }) => item.matchId === futureId);
+    expect(summary.counts).toEqual(roster.body.counts);
+    const otherReply = await request(app).post(`/player/matches/${otherFutureId}/rsvp`)
+      .set("Authorization", `Bearer ${otherToken}`).send({ status: "yes" });
+    expect(otherReply.status).toBe(200);
+    const crossSquadSummaries = await request(app).get("/matches/rsvps/summary").set("x-session-token", "admin-test");
+    const otherRoster = await request(app).get(`/matches/${otherFutureId}/rsvps`).set("x-session-token", "admin-test");
+    expect(crossSquadSummaries.body.matches.find((item: { matchId: number }) => item.matchId === otherFutureId).counts)
+      .toEqual(otherRoster.body.counts);
+    expect(otherRoster.body.counts).toMatchObject({ invited: 1, yes: 1, noResponse: 0 });
+    expect(crossSquadSummaries.body.matches.find((item: { matchId: number }) => item.matchId === futureId).counts)
+      .toEqual(roster.body.counts);
+    expect(summaries.body.matches.some((item: { matchId: number }) => [pastId, cancelledId, archivedId].includes(item.matchId))).toBe(false);
     expect(roster.body.responses[0]).toMatchObject({ playerId: playerIds[0], note: "May be late" });
     expect(roster.body.noResponse[0].playerId).toBe(playerIds[1]);
     const last = await request(app).post(`/player/matches/${futureId}/rsvp`).set(auth()).send({ status: "yes" });
@@ -127,6 +151,9 @@ describe("match attendance", () => {
       .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));
     const movedRoster = await request(app).get(`/matches/${futureId}/rsvps`).set("x-session-token", "admin-test");
     expect(movedRoster.body.counts).toMatchObject({ yes: 0, noResponse: 1, invited: 1 });
+    const movedSummaries = await request(app).get("/matches/rsvps/summary").set("x-session-token", "admin-test");
+    expect(movedSummaries.body.matches.find((item: { matchId: number }) => item.matchId === futureId).counts)
+      .toEqual(movedRoster.body.counts);
     expect((await request(app).post(`/player/matches/${futureId}/rsvp`).set(auth()).send({ status: "yes" })).status).toBe(403);
     await db.update(playerParticipationsTable).set({ teamId: teamIds[0] })
       .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));

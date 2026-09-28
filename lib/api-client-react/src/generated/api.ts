@@ -41,6 +41,7 @@ import type {
   ListAnnouncementsParams,
   ListKitsParams,
   ListLogisticsParams,
+  ListMatchAttendanceSummaries200,
   ListMatchesParams,
   ListMyMatchAttendance200,
   ListPlayersParams,
@@ -5230,6 +5231,86 @@ export const useDeleteMatch = <
 > => {
   return useMutation(getDeleteMatchMutationOptions(options));
 };
+
+/**
+ * @summary Admin-only attendance counts for upcoming local matches
+ */
+export const getListMatchAttendanceSummariesUrl = () => {
+  return `/api/matches/rsvps/summary`;
+};
+
+export const listMatchAttendanceSummaries = async (
+  options?: RequestInit,
+): Promise<ListMatchAttendanceSummaries200> => {
+  return customFetch<ListMatchAttendanceSummaries200>(
+    getListMatchAttendanceSummariesUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListMatchAttendanceSummariesQueryKey = () => {
+  return [`/api/matches/rsvps/summary`] as const;
+};
+
+export const getListMatchAttendanceSummariesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMatchAttendanceSummaries>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMatchAttendanceSummaries>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMatchAttendanceSummariesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMatchAttendanceSummaries>>
+  > = ({ signal }) =>
+    listMatchAttendanceSummaries({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMatchAttendanceSummaries>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMatchAttendanceSummariesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMatchAttendanceSummaries>>
+>;
+export type ListMatchAttendanceSummariesQueryError = ErrorType<void>;
+
+/**
+ * @summary Admin-only attendance counts for upcoming local matches
+ */
+
+export function useListMatchAttendanceSummaries<
+  TData = Awaited<ReturnType<typeof listMatchAttendanceSummaries>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMatchAttendanceSummaries>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMatchAttendanceSummariesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Admin-only current-squad attendance roster for a local match

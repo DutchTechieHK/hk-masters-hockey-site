@@ -1785,6 +1785,29 @@ export const DeleteMatchParams = zod.object({
 });
 
 /**
+ * @summary Admin-only attendance counts for upcoming local matches
+ */
+export const ListMatchAttendanceSummariesResponse = zod.object({
+  matches: zod.array(
+    zod.object({
+      matchId: zod.number(),
+      counts: zod
+        .object({
+          yes: zod.number(),
+          maybe: zod.number(),
+          no: zod.number(),
+        })
+        .and(
+          zod.object({
+            invited: zod.number(),
+            noResponse: zod.number(),
+          }),
+        ),
+    }),
+  ),
+});
+
+/**
  * @summary Admin-only current-squad attendance roster for a local match
  */
 export const GetMatchAttendanceParams = zod.object({

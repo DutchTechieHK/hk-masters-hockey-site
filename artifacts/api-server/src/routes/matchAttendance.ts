@@ -16,8 +16,10 @@ function matchId(req: Request): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-async function eligiblePlayers(teamId: number) {
+async function eligiblePlayersForTeams(teamIds: number[]) {
+  if (!teamIds.length) return [];
   return db.select({
+    teamId: playerParticipationsTable.teamId,
     id: playersTable.id, name: playersTable.name, shirtNumber: playersTable.shirtNumber,
     email: playersTable.email,
   }).from(playerParticipationsTable)
@@ -26,9 +28,49 @@ async function eligiblePlayers(teamId: number) {
     .where(and(
       eq(seasonsTable.slug, CURRENT_SEASON),
       eq(playerParticipationsTable.participationStatus, "active"),
-      eq(playerParticipationsTable.teamId, teamId),
+       inArray(playerParticipationsTable.teamId, teamIds),
       eq(playersTable.memberStatus, "active"),
     )).orderBy(asc(playersTable.name));
+}
+
+async function eligiblePlayers(teamId: number) {
+  return eligiblePlayersForTeams([teamId]);
+}
+
+export async function adminMatchRsvpSummaries(_req: Request, res: Response): Promise<void> {
+  const fixtures = await db.select({ id: matchesTable.id, teamId: matchesTable.teamId })
+    .from(matchesTable)
+    .where(and(eq(matchesTable.operationalScope, "local_2026_27"),
+      eq(matchesTable.status, "scheduled"), gt(matchesTable.kickoffAt, new Date())));
+  if (!fixtures.length) { res.json({ matches: [] }); return; }
+
+  const teams = [...new Set(fixtures.map((match) => match.teamId))];
+  const players = await eligiblePlayersForTeams(teams);
+  const playerIdsByTeam = new Map<number, Set<number>>();
+  for (const player of players) {
+    if (player.teamId == null) continue;
+    if (!playerIdsByTeam.has(player.teamId)) playerIdsByTeam.set(player.teamId, new Set());
+    playerIdsByTeam.get(player.teamId)!.add(player.id);
+  }
+  const replies = players.length
+    ? await db.select({ matchId: matchRsvpsTable.matchId, playerId: matchRsvpsTable.playerId, status: matchRsvpsTable.status })
+      .from(matchRsvpsTable)
+      .where(and(inArray(matchRsvpsTable.matchId, fixtures.map((match) => match.id)),
+        inArray(matchRsvpsTable.playerId, players.map((player) => player.id))))
+    : [];
+  const countsByMatch = new Map(fixtures.map((match) => [match.id, {
+    yes: 0, maybe: 0, no: 0, invited: playerIdsByTeam.get(match.teamId)?.size ?? 0,
+    noResponse: playerIdsByTeam.get(match.teamId)?.size ?? 0,
+  }]));
+  const teamByMatch = new Map(fixtures.map((match) => [match.id, match.teamId]));
+  for (const reply of replies) {
+    const teamId = teamByMatch.get(reply.matchId);
+    if (teamId == null || !playerIdsByTeam.get(teamId)?.has(reply.playerId)) continue;
+    const counts = countsByMatch.get(reply.matchId)!;
+    if (STATUSES.includes(reply.status as Status)) counts[reply.status as Status]++;
+    counts.noResponse--;
+  }
+  res.json({ matches: fixtures.map((match) => ({ matchId: match.id, counts: countsByMatch.get(match.id) })) });
 }
 
 export async function remindMatchNonresponders(req: Request, res: Response): Promise<void> {

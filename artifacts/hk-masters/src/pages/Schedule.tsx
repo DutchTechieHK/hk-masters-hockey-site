@@ -24,7 +24,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { format } from "date-fns"
-import type { Match } from "@workspace/api-client-react"
+import type { Match, ListMatchAttendanceSummaries200 } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getCountryFlagImageUrl } from "@workspace/country-flags"
 
@@ -85,6 +85,39 @@ const STATUS_COLORS: Record<string, string> = {
 
 import { getScopeTimezone, getScopeTimezoneLabel, toZoneInputValue, zoneInputToIso, formatZoneTime } from "@/lib/timezone"
 
+type AttendanceCounts = ListMatchAttendanceSummaries200["matches"][number]["counts"]
+
+function AttendanceSummaryCell({ match, counts, loading, error, onOpen }: {
+  match: Match
+  counts?: AttendanceCounts
+  loading: boolean
+  error: boolean
+  onOpen: () => void
+}) {
+  if (match.status !== "scheduled" || new Date(match.kickoffAt).getTime() <= Date.now()) {
+    return <span className="text-xs text-muted-foreground">Replies closed</span>
+  }
+  if (error) return <span role="status" className="text-xs text-rose-700">Counts unavailable</span>
+  if (loading) return <span className="text-xs text-muted-foreground">Loading counts…</span>
+  if (!counts) return <span role="status" className="text-xs text-rose-700">Counts unavailable</span>
+
+  return (
+    <button type="button" onClick={onOpen}
+      aria-label={`Attendance for ${match.opponent}: ${counts.yes} of ${counts.invited} going, ${counts.maybe} maybe, ${counts.no} not going, ${counts.noResponse} no reply. View roster`}
+      className="text-left rounded px-1 -mx-1 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600">
+      <span className="block text-sm font-semibold text-[#006B3C]">
+        {counts.yes} of {counts.invited} going
+      </span>
+      <span className="block text-xs text-muted-foreground whitespace-nowrap">
+        {counts.maybe} maybe · {counts.no} not going
+      </span>
+      <span className="block text-xs text-muted-foreground">
+        {counts.noResponse} no reply
+      </span>
+    </button>
+  )
+}
+
 export default function Schedule({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const tz = getScopeTimezone(scope);
   const queryClient = useQueryClient()
@@ -140,6 +173,28 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
 
   const matches = scope ? archiveMatches : defaultMatches
   const isLoading = scope ? archiveLoading : defaultLoading
+  const { data: attendanceSummaries, isPending: attendanceLoading, isError: attendanceError } = useQuery({
+    queryKey: ["admin-match-attendance-summaries", sessionToken],
+    queryFn: async ({ signal }): Promise<ListMatchAttendanceSummaries200> => {
+      if (!sessionToken) throw new Error("Admin session required")
+      const response = await fetch("/api/matches/rsvps/summary", {
+        headers: { "x-session-token": sessionToken },
+        signal,
+      })
+      if (!response.ok) throw new Error("Could not load match attendance")
+      return response.json() as Promise<ListMatchAttendanceSummaries200>
+    },
+    enabled: !!sessionToken && !scope,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchInterval: 60_000,
+    retry: false,
+  })
+  const summaryByMatch = new Map(attendanceSummaries?.matches.map((item) => [item.matchId, item.counts]) ?? [])
+  const refreshAttendanceSummaries = () => {
+    void queryClient.invalidateQueries({ queryKey: ["admin-match-attendance-summaries", sessionToken] })
+  }
 
   const { data: defaultTeams = [] } = useListTeams(
     { query: { queryKey: getListTeamsQueryKey(), enabled: !!sessionToken && !scope } } as any,
@@ -224,6 +279,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
         },
       })
       queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
+      refreshAttendanceSummaries()
       const label = status === "in_progress" ? "Match marked live" : status === "cancelled" ? "Match cancelled" : "Match updated"
       toast({ title: label })
     } catch {
@@ -236,6 +292,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
     try {
       await deleteMutation.mutateAsync({ id })
       queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
+      refreshAttendanceSummaries()
       toast({ title: "Match deleted" })
     } catch {
       toast({ title: "Failed to delete match", variant: "destructive" })
@@ -262,6 +319,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
         toast({ title: "Match added" })
       }
       queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
+      refreshAttendanceSummaries()
       setIsModalOpen(false)
     } catch {
       toast({ title: "An error occurred", variant: "destructive" })
@@ -366,6 +424,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
                           <th className="px-6 py-3 font-semibold">Opponent</th>
                           <th className="px-6 py-3 font-semibold">Venue</th>
                           <th className="px-6 py-3 font-semibold">Status</th>
+                          {!scope && <th className="px-4 py-3 font-semibold">Attendance</th>}
                           <th className="px-6 py-3 font-semibold">Score</th>
                           <th className="px-6 py-3 font-semibold text-right">Actions</th>
                         </tr>
@@ -407,6 +466,13 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
                                 {STATUS_LABELS[m.status] ?? m.status}
                               </Badge>
                             </td>
+                            {!scope && (
+                              <td className="px-4 py-4 min-w-44">
+                                <AttendanceSummaryCell match={m} counts={summaryByMatch.get(m.id)}
+                                  loading={attendanceLoading} error={attendanceError}
+                                  onOpen={() => setAttendanceMatch(m)} />
+                              </td>
+                            )}
                             <td className="px-6 py-4 font-mono text-foreground">
                               {m.ourScore !== null && m.theirScore !== null
                                 ? `${m.ourScore} – ${m.theirScore}`
@@ -481,12 +547,16 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
           onImported={() => {
             setShowCsvImport(false)
             queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
+            refreshAttendanceSummaries()
           }}
         />
       )}
       {attendanceMatch && sessionToken && (
         <MatchAttendanceModal key={attendanceMatch.id} match={attendanceMatch}
-          token={sessionToken} onClose={() => setAttendanceMatch(null)} />
+          token={sessionToken} onClose={() => {
+            setAttendanceMatch(null)
+            refreshAttendanceSummaries()
+          }} />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editing ? "Edit Match" : "Add Match"}>

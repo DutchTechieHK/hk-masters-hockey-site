@@ -1229,6 +1229,26 @@ paths:
         "204":
           description: Deleted
 
+  /matches/rsvps/summary:
+    get:
+      operationId: listMatchAttendanceSummaries
+      tags: [matches]
+      summary: Admin-only attendance counts for upcoming local matches
+      responses:
+        "200":
+          description: Per-match counts for current eligible squads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches:
+                    type: array
+                    items: { $ref: "#/components/schemas/MatchAttendanceSummary" }
+                required: [matches]
+        "401":
+          description: Admin access required
+
   /matches/{id}/rsvps:
     get:
       operationId: getMatchAttendance
@@ -3048,6 +3068,20 @@ components:
           type: array
           items: { $ref: "#/components/schemas/MatchAttendancePerson" }
       required: [counts, responses, noResponse]
+
+    MatchAttendanceSummary:
+      type: object
+      properties:
+        matchId: { type: integer }
+        counts:
+          allOf:
+            - $ref: "#/components/schemas/MatchAttendanceCounts"
+            - type: object
+              properties:
+                invited: { type: integer }
+                noResponse: { type: integer }
+              required: [invited, noResponse]
+      required: [matchId, counts]
 
     MatchReminderResult:
       type: object

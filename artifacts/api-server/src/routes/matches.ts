@@ -14,9 +14,10 @@ import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { buildIcsCalendar, icsFilename } from "../utils/ics";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
-import { adminMatchRsvps, remindMatchNonresponders } from "./matchAttendance";
+import { adminMatchRsvps, adminMatchRsvpSummaries, remindMatchNonresponders } from "./matchAttendance";
 
 const router = Router();
+router.get("/rsvps/summary", requireAdminAccess, adminMatchRsvpSummaries);
 router.get("/:id/rsvps", requireAdminAccess, adminMatchRsvps);
 router.post("/:id/rsvps/remind", requireAdminAccess, remindMatchNonresponders);
 

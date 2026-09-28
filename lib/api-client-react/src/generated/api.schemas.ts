@@ -1182,6 +1182,16 @@ export interface MatchAttendanceRoster {
   noResponse: MatchAttendancePerson[];
 }
 
+export type MatchAttendanceSummaryCounts = MatchAttendanceCounts & {
+  invited: number;
+  noResponse: number;
+};
+
+export interface MatchAttendanceSummary {
+  matchId: number;
+  counts: MatchAttendanceSummaryCounts;
+}
+
 export interface MatchReminderResult {
   sent: number;
   total: number;
@@ -1485,6 +1495,10 @@ export const ListMatchesScope = {
   local_2026_27: "local_2026_27",
   world_cup_2026: "world_cup_2026",
 } as const;
+
+export type ListMatchAttendanceSummaries200 = {
+  matches: MatchAttendanceSummary[];
+};
 
 export type ListMyMatchAttendance200 = {
   matches: MyMatchAttendance[];
