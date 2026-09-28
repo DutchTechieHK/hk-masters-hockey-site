@@ -106,6 +106,12 @@ function validateRows(raw: string[][], teams: Team[], tz: string): ParsedRow[] {
     if (!ALLOWED_STATUSES.includes(statusTrim)) {
       errors.push(`status must be scheduled, in_progress, final or cancelled`)
     }
+    if (statusTrim === "in_progress" && kickoffAtIso && new Date(kickoffAtIso) > new Date()) {
+      errors.push("Live is only available after kick-off — import this match as scheduled")
+    }
+    if (statusTrim === "final") {
+      errors.push("Final requires both scores — import as scheduled, then use Edit after kick-off")
+    }
 
     return {
       rowNum,

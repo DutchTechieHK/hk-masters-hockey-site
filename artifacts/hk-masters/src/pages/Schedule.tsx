@@ -22,11 +22,11 @@ import MatchesCsvImport from "@/components/ui/MatchesCsvImport"
 import MatchAttendanceModal from "@/components/MatchAttendanceModal"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { format } from "date-fns"
 import type { Match, ListMatchAttendanceSummaries200 } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { getCountryFlagImageUrl } from "@workspace/country-flags"
+import { matchSchema, buildMatchPayload, getMatchStatusError } from "@/lib/matchForm"
+import type { MatchFormValues } from "@/lib/matchForm"
 
 const CURRENT_MATCH_EXCLUDED_TEAM_CATEGORIES = new Set(["MO40", "MO50", "Awaiting Selection"])
 
@@ -56,18 +56,15 @@ async function apiCheckSession(token: string): Promise<boolean> {
   return data.authenticated
 }
 
-const matchSchema = z.object({
-  teamId: z.coerce.number().int().min(1, "Team is required"),
-  opponent: z.string().min(1, "Opponent is required"),
-  kickoffAt: z.string().min(1, "Date and time required"),
-  venue: z.string().optional(),
-  status: z.enum(["scheduled", "in_progress", "final", "cancelled"]),
-  ourScore: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
-  theirScore: z.union([z.coerce.number().int().min(0), z.literal("")]).optional(),
-  notes: z.string().optional(),
-})
-
-type MatchFormValues = z.infer<typeof matchSchema>
+function kickoffReached(localDateTime: string | undefined, tz: string): boolean {
+  if (!localDateTime) return false
+  try {
+    const time = new Date(zoneInputToIso(localDateTime, tz)).getTime()
+    return Number.isFinite(time) && time <= Date.now()
+  } catch {
+    return false
+  }
+}
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: "Scheduled",
@@ -231,6 +228,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
   })
 
   const watchStatus = watch("status")
+  const canStartMatch = kickoffReached(watch("kickoffAt"), tz)
   const showScores = watchStatus === "in_progress" || watchStatus === "final"
 
   const openAddModal = () => {
@@ -282,8 +280,8 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
       refreshAttendanceSummaries()
       const label = status === "in_progress" ? "Match marked live" : status === "cancelled" ? "Match cancelled" : "Match updated"
       toast({ title: label })
-    } catch {
-      toast({ title: "Failed to update match", variant: "destructive" })
+    } catch (error) {
+      toast({ title: "Failed to update match", description: error instanceof Error ? error.message : undefined, variant: "destructive" })
     }
   }
 
@@ -301,15 +299,11 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
 
   const onSubmit = async (data: MatchFormValues) => {
     try {
-      const payload = {
-        teamId: data.teamId,
-        opponent: data.opponent,
-        kickoffAt: zoneInputToIso(data.kickoffAt, tz),
-        venue: data.venue || undefined,
-        status: data.status,
-        ourScore: data.ourScore === "" || data.ourScore === undefined ? null : Number(data.ourScore),
-        theirScore: data.theirScore === "" || data.theirScore === undefined ? null : Number(data.theirScore),
-        notes: data.notes || undefined,
+      const payload = buildMatchPayload(data, tz)
+      const statusError = getMatchStatusError(payload)
+      if (statusError) {
+        toast({ title: "Cannot save match status", description: statusError, variant: "destructive" })
+        return
       }
       if (editing) {
         await updateMutation.mutateAsync({ id: editing.id, data: payload })
@@ -321,8 +315,8 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
       queryClient.invalidateQueries({ queryKey: getListMatchesQueryKey() })
       refreshAttendanceSummaries()
       setIsModalOpen(false)
-    } catch {
-      toast({ title: "An error occurred", variant: "destructive" })
+    } catch (error) {
+      toast({ title: "Could not save match", description: error instanceof Error ? error.message : undefined, variant: "destructive" })
     }
   }
 
@@ -487,27 +481,32 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
                               )}
                               {!readOnly && (
                                 <div className="flex justify-end items-center gap-1 flex-wrap">
-                                  {m.status === "scheduled" && (
+                                  {m.status === "scheduled" && new Date(m.kickoffAt).getTime() <= Date.now() && (
                                     <button
-                                      onClick={() => quickStatus(m, "in_progress")}
-                                      title="Mark as live (in progress)"
+                                      onClick={() => openEditModal({ ...m, status: "in_progress" })}
+                                      title="Review and mark match Live"
                                       className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 rounded border border-emerald-200 transition-colors"
                                     >
                                       <Radio className="w-3 h-3" /> Live
                                     </button>
                                   )}
+                                  {m.status === "scheduled" && new Date(m.kickoffAt).getTime() > Date.now() && (
+                                    <span className="text-xs text-muted-foreground" title="Match status changes become available after kick-off">Live / Final after kick-off</span>
+                                  )}
                                   {(m.status === "scheduled" || m.status === "in_progress") && (
                                     <>
-                                      <button
-                                        onClick={() => openEditModal({ ...m, status: "final" })}
-                                        title="Enter final score"
-                                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
-                                      >
-                                        <Flag className="w-3 h-3" /> Final
-                                      </button>
+                                      {new Date(m.kickoffAt).getTime() <= Date.now() && (
+                                        <button
+                                          onClick={() => openEditModal({ ...m, status: "final" })}
+                                          title="Enter both scores and confirm the final result"
+                                          className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
+                                        >
+                                          <Flag className="w-3 h-3" /> Final
+                                        </button>
+                                      )}
                                       <button
                                         onClick={() => {
-                                          if (confirm(`Cancel ${m.opponent} on ${format(new Date(m.kickoffAt), "EEE d MMM")}?`)) {
+                                          if (confirm(`Cancel the match against ${m.opponent} on ${new Date(m.kickoffAt).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: tz })}? This will close attendance replies and show the fixture as cancelled.`)) {
                                             quickStatus(m, "cancelled")
                                           }
                                         }}
@@ -597,10 +596,19 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
             <label className="text-sm font-semibold">Status</label>
             <Select {...register("status")}>
               <option value="scheduled">Scheduled</option>
-              <option value="in_progress">Live (in progress)</option>
-              <option value="final">Final</option>
+              <option value="in_progress" disabled={!canStartMatch}>Live (in progress)</option>
+              <option value="final" disabled={!canStartMatch}>Final</option>
               <option value="cancelled">Cancelled</option>
             </Select>
+            {!canStartMatch && (
+              <p className="text-xs text-muted-foreground">Live and Final are available only after kick-off. If this match was marked Live by mistake, choose Scheduled to reopen attendance replies.</p>
+            )}
+            {watchStatus === "in_progress" && canStartMatch && (
+              <p className="text-xs text-amber-800">Saving as Live closes player attendance replies and shows a Live badge to visitors.</p>
+            )}
+            {watchStatus === "final" && (
+              <p className="text-xs text-amber-800">Enter both scores below before saving the final result.</p>
+            )}
           </div>
 
           {showScores && (

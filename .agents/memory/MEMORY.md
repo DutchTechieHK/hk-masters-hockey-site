@@ -28,3 +28,4 @@
 - [Private historical showcase](private-historical-showcase.md) — protect archive pages and aggregate endpoints with the existing admin session; a private preview/noindex never replaces server access control.
 - [Current squad event eligibility](current-squad-event-eligibility.md) — local event audiences use active current-season participation teams; players.teamId is only a fallback for unassigned/legacy members.
 - [Historical audience backfills](historical-audience-backfills.md) — use immutable verified snapshots; development and current production audiences cannot reconstruct past sends reliably.
+- [Vite restart port conflict](vite-restart-port-conflict.md) — a workflow restart can leave an old Vite process on the assigned port; clear the stale process before restarting again.

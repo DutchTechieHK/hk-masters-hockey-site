@@ -23,6 +23,16 @@ router.post("/:id/rsvps/remind", requireAdminAccess, remindMatchNonresponders);
 
 type MatchRow = typeof matchesTable.$inferSelect;
 
+function statusError(status: string, kickoffAt: Date, ourScore: number | null | undefined, theirScore: number | null | undefined): string | null {
+  if ((status === "in_progress" || status === "final") && kickoffAt > new Date()) {
+    return "A match cannot be marked Live or Final before kick-off. Leave it Scheduled until the match begins.";
+  }
+  if (status === "final" && (ourScore == null || theirScore == null)) {
+    return "Enter both scores before marking a match Final.";
+  }
+  return null;
+}
+
 const SEPTEMBER_HKT_IMPORT = [
   { id: 11, teamId: 5, opponent: "KCC B", importedKickoff: "2026-10-09T12:30:00.000Z", correctedKickoff: "2026-10-09T06:30:00.000Z" },
   { id: 12, teamId: 5, opponent: "Dutch A", importedKickoff: "2026-10-16T12:30:00.000Z", correctedKickoff: "2026-10-16T06:30:00.000Z" },
@@ -174,6 +184,11 @@ router.post("/", requireAdminAccess, async (req, res) => {
     res.status(400).json({ error: "Invalid kickoffAt date" });
     return;
   }
+  const invalidStatus = statusError(body.status, kickoffDate, body.ourScore, body.theirScore);
+  if (invalidStatus) {
+    res.status(409).json({ error: invalidStatus });
+    return;
+  }
   const [match] = await db.insert(matchesTable).values({
     teamId: body.teamId,
     opponent: body.opponent,
@@ -310,6 +325,8 @@ async function handleUpdateMatch(req: import("express").Request, res: import("ex
     res.status(400).json({ error: "Invalid kickoffAt date" });
     return;
   }
+  const invalidStatus = statusError(body.status, kickoffDate, body.ourScore, body.theirScore);
+  if (invalidStatus) return res.status(409).json({ error: invalidStatus });
   const [match] = await db.update(matchesTable).set({
     teamId: body.teamId,
     opponent: body.opponent,
