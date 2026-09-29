@@ -31,7 +31,7 @@ const columns: Record<Kind, Column[]> = {
   payments: [
     { key: "playerName", label: "Member" }, { key: "teamName", label: "Team" },
     { key: "method", label: "Method" }, { key: "amount", label: "Amount (HKD)" },
-    { key: "paymentDate", label: "Paid on (HKT)" },
+    { key: "paymentDate", label: "Paid on (HKT)" }, { key: "notes", label: "Notes" },
   ],
   training: [
     { key: "session", label: "Session" }, { key: "date", label: "Date (HKT)" },
@@ -89,6 +89,7 @@ function buildRows(data: CurrentReportsData, kind: Kind): DetailedRow[] {
   if (kind === "payments") return data.payments.map(payment => ({
     playerName: payment.playerName, teamName: payment.teamName || "Unassigned",
     method: payment.method?.trim() ? readable(payment.method) : "Unspecified", amount: money(payment.amount), paymentDate: hktDate(payment.paymentDate),
+    notes: payment.notes || "—",
     _team: teamKey(payment.teamId, payment.teamName), _section: "", _status: "",
     _method: payment.method?.trim() || "", _date: hktISODate(payment.paymentDate),
   }));
@@ -334,7 +335,7 @@ export default function CurrentReports() {
               {isAttendance && <div className="flex gap-3 rounded-xl border border-[#d5e1e4] bg-[#edf4f4] p-4 text-xs leading-relaxed text-[#526d75]"><Info size={17} className="mt-0.5 shrink-0 text-[#4f7d86]" /><p><strong className="text-[#2c5861]">RSVP is not physical attendance.</strong> These are invitation responses, not a record of who actually attended. “No response” means no RSVP was recorded.</p></div>}
               <div className={`flex gap-3 rounded-xl border border-[#d5e1e4] bg-[#edf4f4] p-4 text-xs leading-relaxed text-[#526d75] ${!isAttendance ? "sm:col-span-2" : ""}`}><Info size={17} className="mt-0.5 shrink-0 text-[#4f7d86]" /><p><strong className="text-[#2c5861]">Roster context.</strong> This report uses the current-season audience and current team assignments. Historical invitations and past rosters may differ from today’s membership.</p></div>
             </div>
-            <div className="flex gap-3 rounded-xl border border-[#ead6c3] bg-[#faf4ec] p-4 text-xs leading-relaxed text-[#805c42]"><LockKeyhole size={17} className="mt-0.5 shrink-0 text-[#a56843]" /><p><strong className="text-[#75482f]">Private export.</strong> CSV and PDF may contain member names, email addresses and payment information. Download only when needed, store securely and share only with authorised committee staff.</p></div>
+            <div className="flex gap-3 rounded-xl border border-[#ead6c3] bg-[#faf4ec] p-4 text-xs leading-relaxed text-[#805c42]"><LockKeyhole size={17} className="mt-0.5 shrink-0 text-[#a56843]" /><p><strong className="text-[#75482f]">Private export.</strong> CSV and PDF may contain member names, email addresses, payment notes and payment information. Download only when needed, store securely and share only with authorised committee staff.</p></div>
           </div>
         </div>
       </>}

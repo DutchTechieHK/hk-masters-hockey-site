@@ -8,7 +8,7 @@ export type CurrentMember = {
 };
 export type CurrentPayment = {
   id: number; playerId: number; playerName: string; teamId: number | null;
-  teamName: string | null; method: string; amount: number; paymentDate: string;
+  teamName: string | null; method: string; notes: string; amount: number; paymentDate: string;
 };
 export type CurrentSession = {
   id: number; title: string; date: string; teamId: number | null; teamName: string | null;

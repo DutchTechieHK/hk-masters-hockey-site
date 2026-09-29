@@ -134,7 +134,7 @@ beforeAll(async () => {
   ]);
 
   await db.insert(playerPaymentsTable).values([
-    { playerId: memberId, seasonId: currentSeasonId, amount: "80.00", paymentDate: "2026-08-01", method: "bank" },
+    { playerId: memberId, seasonId: currentSeasonId, amount: "80.00", paymentDate: "2026-08-01", method: "bank", notes: "First instalment" },
     { playerId: memberId, seasonId: currentSeasonId, amount: "25.00", paymentDate: "2026-08-15", method: "" },
     { playerId: memberId, seasonId: rotterdamSeasonId, amount: "999.00", paymentDate: "2026-01-01", method: "cash" },
     { playerId: noDuePaidId, seasonId: currentSeasonId, amount: "10.00", paymentDate: "2026-08-10", method: "cash" },
@@ -229,6 +229,7 @@ describe("GET /api/reports/current", () => {
     const memberPayments = response.body.payments.filter((row: { playerId: number }) => row.playerId === memberId);
     expect(memberPayments.map((row: { method: string; amount: number }) => [row.method, row.amount]))
       .toEqual([["", 25], ["bank", 80]]);
+    expect(memberPayments.map((row: { notes: string }) => row.notes)).toEqual(["", "First instalment"]);
 
     expect(response.body.members.find((row: { id: number }) => row.id === zeroDueId)).toMatchObject({
       due: 0,

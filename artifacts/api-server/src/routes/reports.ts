@@ -78,6 +78,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
         teamId: playerParticipationsTable.teamId,
         teamName: teamsTable.name,
         method: playerPaymentsTable.method,
+        notes: playerPaymentsTable.notes,
         amount: playerPaymentsTable.amount,
         paymentDate: playerPaymentsTable.paymentDate,
       })
@@ -196,6 +197,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
     teamId: payment.teamId,
     teamName: payment.teamName ?? null,
     method: payment.method ?? "",
+    notes: payment.notes ?? "",
     amount: Number(payment.amount),
     paymentDate: payment.paymentDate,
   }));

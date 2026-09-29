@@ -101,13 +101,13 @@ function AttendanceSummaryCell({ match, counts, loading, error, onOpen }: {
 
   return (
     <button type="button" onClick={onOpen}
-      aria-label={`Attendance for ${match.opponent}: ${counts.yes} of ${counts.invited} going, ${counts.maybe} maybe, ${counts.no} not going, ${counts.noResponse} no reply. View roster`}
+      aria-label={`Attendance for ${match.opponent}: ${counts.yes} of ${counts.invited} available, ${counts.maybe} maybe, ${counts.no} not available, ${counts.noResponse} no reply. View roster`}
       className="text-left rounded px-1 -mx-1 hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600">
       <span className="block text-sm font-semibold text-[#006B3C]">
-        {counts.yes} of {counts.invited} going
+        {counts.yes} of {counts.invited} available
       </span>
       <span className="block text-xs text-muted-foreground whitespace-nowrap">
-        {counts.maybe} maybe · {counts.no} not going
+        {counts.maybe} maybe · {counts.no} not available
       </span>
       <span className="block text-xs text-muted-foreground">
         {counts.noResponse} no reply

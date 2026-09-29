@@ -24,9 +24,9 @@ type ReminderResult = {
 }
 
 const statuses = [
-  { key: "yes", label: "Going" },
+  { key: "yes", label: "Available" },
   { key: "maybe", label: "Maybe" },
-  { key: "no", label: "Not going" },
+  { key: "no", label: "Not available" },
 ] as const
 
 export default function MatchAttendanceModal({ match, token, onClose, onChanged }: {
@@ -57,7 +57,7 @@ export default function MatchAttendanceModal({ match, token, onClose, onChanged 
   const saveEdit = async () => {
     if (!editing || saving) return
     if (editStatus !== "yes" && editStatus !== "clear" && !editNote.trim()) {
-      setEditError("A reason is required for Maybe or Not going.")
+      setEditError("A reason is required for Maybe or Not available.")
       return
     }
     if (editing.original && !confirmEdit) { setConfirmEdit(true); return }
@@ -158,8 +158,8 @@ export default function MatchAttendanceModal({ match, token, onClose, onChanged 
           <>
             {match.status === "cancelled" && <p className="text-sm text-muted-foreground">Cancelled match replies are read-only.</p>}
             <p className="text-sm font-medium">
-              {attendance.counts.invited} squad members · {attendance.counts.yes} going ·{" "}
-              {attendance.counts.maybe} maybe · {attendance.counts.no} not going ·{" "}
+              {attendance.counts.invited} squad members · {attendance.counts.yes} available ·{" "}
+              {attendance.counts.maybe} maybe · {attendance.counts.no} not available ·{" "}
               {attendance.counts.noResponse} no reply
             </p>
             {statuses.map(({ key, label }) => {
