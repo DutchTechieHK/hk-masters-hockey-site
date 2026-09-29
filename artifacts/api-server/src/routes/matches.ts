@@ -14,12 +14,13 @@ import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { buildIcsCalendar, icsFilename } from "../utils/ics";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
-import { adminMatchRsvps, adminMatchRsvpSummaries, remindMatchNonresponders } from "./matchAttendance";
+import { adminMatchRsvps, adminCorrectMatchRsvp, adminMatchRsvpSummaries, remindMatchNonresponders } from "./matchAttendance";
 import { previewMatchChange, sendMatchChange } from "./matchChanges";
 
 const router = Router();
 router.get("/rsvps/summary", requireAdminAccess, adminMatchRsvpSummaries);
 router.get("/:id/rsvps", requireAdminAccess, adminMatchRsvps);
+router.put("/:id/rsvps/:playerId", requireAdminAccess, adminCorrectMatchRsvp);
 router.post("/:id/rsvps/remind", requireAdminAccess, remindMatchNonresponders);
 router.get("/:id/change-notice", requireAdminAccess, previewMatchChange);
 router.post("/:id/change-notice", requireAdminAccess, sendMatchChange);

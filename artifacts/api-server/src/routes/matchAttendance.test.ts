@@ -3,13 +3,13 @@ import express from "express";
 import request from "supertest";
 import { and, eq, inArray } from "drizzle-orm";
 import {
-  db, matchesTable, matchRsvpsTable, playerParticipationsTable,
+  db, matchesTable, matchRsvpsTable, matchRsvpAdminChangesTable, playerParticipationsTable,
   playerSessionsTable, playersTable, seasonsTable, teamsTable,
   emailBlastsTable, emailBlastRecipientsTable,
 } from "@workspace/db";
 import { sendMatchReminderEmail } from "../utils/email";
 import { createPlayerSession, requirePlayerSession } from "../middleware/playerSession";
-import { adminMatchRsvps, adminMatchRsvpSummaries, playerMatchRsvps, submitMatchRsvp, remindMatchNonresponders } from "./matchAttendance";
+import { adminMatchRsvps, adminCorrectMatchRsvp, adminMatchRsvpSummaries, playerMatchRsvps, submitMatchRsvp, remindMatchNonresponders } from "./matchAttendance";
 
 vi.mock("../utils/email", () => ({
   sendMatchReminderEmail: vi.fn(async () => true),
@@ -21,6 +21,7 @@ app.get("/player/matches/rsvps", requirePlayerSession, playerMatchRsvps);
 app.post("/player/matches/:id/rsvp", requirePlayerSession, submitMatchRsvp);
 app.get("/matches/rsvps/summary", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), adminMatchRsvpSummaries);
 app.get("/matches/:id/rsvps", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), adminMatchRsvps);
+app.put("/matches/:id/rsvps/:playerId", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), adminCorrectMatchRsvp);
 app.post("/matches/:id/rsvps/remind", (req, res, next) => req.headers["x-session-token"] === "admin-test" ? next() : res.status(401).end(), remindMatchNonresponders);
 app.use((err: Error, _req: unknown, res: express.Response, _next: unknown) => res.status(500).json({ error: err.message }));
 
@@ -157,6 +158,58 @@ describe("match attendance", () => {
     expect((await request(app).post(`/player/matches/${futureId}/rsvp`).set(auth()).send({ status: "yes" })).status).toBe(403);
     await db.update(playerParticipationsTable).set({ teamId: teamIds[0] })
       .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));
+  });
+
+  it("allows audited admin creation and correction before and after kickoff without overwriting newer player replies", async () => {
+    const endpoint = (id: number, playerId = playerIds[1]) => `/matches/${id}/rsvps/${playerId}`;
+    const admin = (url: string, body: object) => request(app).put(url).set("x-session-token", "admin-test").send(body);
+    const initial = { status: "no", note: "Away", expected: null };
+    expect((await request(app).put(endpoint(futureId)).send(initial)).status).toBe(401);
+    expect((await admin(endpoint(futureId, playerIds[2]), initial)).status).toBe(403);
+    expect((await admin(endpoint(archivedId), initial)).status).toBe(409);
+    expect((await admin(endpoint(cancelledId), initial)).status).toBe(409);
+    expect((await admin(endpoint(futureId), { status: "maybe", expected: null })).status).toBe(400);
+    expect((await admin(endpoint(futureId), initial)).status).toBe(200);
+    let roster = await request(app).get(`/matches/${futureId}/rsvps`).set("x-session-token", "admin-test");
+    expect(roster.body.counts).toMatchObject({ no: 1, yes: 1, noResponse: 0 });
+    let reply = roster.body.responses.find((r: { playerId: number }) => r.playerId === playerIds[1]);
+    expect(reply).toMatchObject({ status: "no", note: "Away", source: "admin", revision: 1 });
+    expect((await admin(endpoint(futureId), initial)).status).toBe(409);
+    expect((await admin(endpoint(futureId), {
+      status: "maybe", note: "Late", expected: { id: reply.id, revision: reply.revision },
+    })).status).toBe(200);
+    roster = await request(app).get(`/matches/${futureId}/rsvps`).set("x-session-token", "admin-test");
+    reply = roster.body.responses.find((r: { playerId: number }) => r.playerId === playerIds[1]);
+    expect(reply).toMatchObject({ status: "maybe", note: "Late", revision: 2 });
+    expect(roster.body.history.filter((h: { playerId: number }) => h.playerId === playerIds[1])).toHaveLength(2);
+    const beforePlayerUpdate = { id: reply.id, revision: reply.revision };
+    // The player still owns their self-service reply; it increments the version seen by admins.
+    expect((await request(app).post(`/player/matches/${futureId}/rsvp`)
+      .set("Authorization", `Bearer ${await createPlayerSession(playerIds[1])}`).send({ status: "yes" })).status).toBe(200);
+    expect((await admin(endpoint(futureId), { status: "no", note: "Old form", expected: beforePlayerUpdate })).status).toBe(409);
+    roster = await request(app).get(`/matches/${futureId}/rsvps`).set("x-session-token", "admin-test");
+    reply = roster.body.responses.find((r: { playerId: number }) => r.playerId === playerIds[1]);
+    expect(reply).toMatchObject({ status: "yes", source: "player", revision: 3 });
+    expect((await admin(endpoint(futureId), { status: null, expected: { id: reply.id, revision: reply.revision } })).status).toBe(200);
+    expect((await admin(endpoint(pastId), { status: "yes", expected: null })).status).toBe(200);
+    await db.update(matchesTable).set({ status: "final" }).where(eq(matchesTable.id, pastId));
+    const past = await request(app).get(`/matches/${pastId}/rsvps`).set("x-session-token", "admin-test");
+    const pastReply = past.body.responses.find((r: { playerId: number }) => r.playerId === playerIds[1]);
+    expect((await admin(endpoint(pastId), {
+      status: "no", note: "Post-match correction", expected: { id: pastReply.id, revision: pastReply.revision },
+    })).status).toBe(200);
+    await db.update(matchesTable).set({ status: "in_progress" }).where(eq(matchesTable.id, pastId));
+    const live = await request(app).get(`/matches/${pastId}/rsvps`).set("x-session-token", "admin-test");
+    const liveReply = live.body.responses.find((r: { playerId: number }) => r.playerId === playerIds[1]);
+    expect((await admin(endpoint(pastId), {
+      status: "yes", expected: { id: liveReply.id, revision: liveReply.revision },
+    })).status).toBe(200);
+    const changes = await db.select().from(matchRsvpAdminChangesTable)
+      .where(and(eq(matchRsvpAdminChangesTable.matchId, futureId), eq(matchRsvpAdminChangesTable.playerId, playerIds[1])));
+    expect(changes.map((c) => [c.actor, c.previousStatus, c.newStatus])).toEqual([
+      ["Admin API key", null, "no"], ["Admin API key", "no", "maybe"], ["Admin API key", "yes", null],
+    ]);
+    await db.update(matchesTable).set({ status: "scheduled" }).where(eq(matchesTable.id, pastId));
   });
 
   it("records uncertain outcomes before delivery and never retries them automatically", async () => {

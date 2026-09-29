@@ -574,6 +574,7 @@ export default function Schedule({ scope, readOnly }: { scope?: string, readOnly
       )}
       {attendanceMatch && sessionToken && (
         <MatchAttendanceModal key={attendanceMatch.id} match={attendanceMatch}
+          onChanged={refreshAttendanceSummaries}
           token={sessionToken} onClose={() => {
             setAttendanceMatch(null)
             refreshAttendanceSummaries()

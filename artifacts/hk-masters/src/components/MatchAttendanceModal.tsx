@@ -5,11 +5,17 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 
 type Person = { playerId: number; playerName: string; shirtNumber: number | null }
-type Reply = Person & { status: string; note: string | null; respondedAt: string }
+type Reply = Person & { id: number; revision: number; source: string; status: string; note: string | null; respondedAt: string }
+type Change = {
+  playerId: number; actor: string; changedAt: string
+  previousStatus: string | null; previousNote: string | null
+  newStatus: string | null; newNote: string | null
+}
 type Attendance = {
   counts: { yes: number; maybe: number; no: number; noResponse: number; invited: number }
   responses: Reply[]
   noResponse: Person[]
+  history: Change[]
 }
 type ReminderResult = {
   sent: number; total: number; skippedNoEmail: number; skippedAlreadySent: number
@@ -23,8 +29,8 @@ const statuses = [
   { key: "no", label: "Not going" },
 ] as const
 
-export default function MatchAttendanceModal({ match, token, onClose }: {
-  match: Match; token: string; onClose: () => void
+export default function MatchAttendanceModal({ match, token, onClose, onChanged }: {
+  match: Match; token: string; onClose: () => void; onChanged: () => void
 }) {
   const [attendance, setAttendance] = useState<Attendance | null>(null)
   const [error, setError] = useState("")
@@ -32,6 +38,68 @@ export default function MatchAttendanceModal({ match, token, onClose }: {
   const [sending, setSending] = useState(false)
   const [reminderError, setReminderError] = useState("")
   const [result, setResult] = useState<ReminderResult | null>(null)
+  const [editing, setEditing] = useState<{ person: Person; original: Reply | null } | null>(null)
+  const [editStatus, setEditStatus] = useState<"yes" | "maybe" | "no" | "clear">("yes")
+  const [editNote, setEditNote] = useState("")
+  const [confirmEdit, setConfirmEdit] = useState(false)
+  const [editError, setEditError] = useState("")
+  const [saving, setSaving] = useState(false)
+  const canEdit = match.status !== "cancelled"
+
+  const startEdit = (person: Person, original: Reply | null) => {
+    setEditing({ person, original })
+    setEditStatus((original?.status as "yes" | "maybe" | "no") ?? "yes")
+    setEditNote(original?.note ?? "")
+    setConfirmEdit(false)
+    setEditError("")
+  }
+
+  const saveEdit = async () => {
+    if (!editing || saving) return
+    if (editStatus !== "yes" && editStatus !== "clear" && !editNote.trim()) {
+      setEditError("A reason is required for Maybe or Not going.")
+      return
+    }
+    if (editing.original && !confirmEdit) { setConfirmEdit(true); return }
+    setSaving(true)
+    setEditError("")
+    try {
+      const response = await fetch(`/api/matches/${match.id}/rsvps/${editing.person.playerId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-session-token": token },
+        body: JSON.stringify({
+          status: editStatus === "clear" ? null : editStatus,
+          note: editStatus === "yes" || editStatus === "clear" ? null : editNote.trim(),
+          expected: editing.original ? { id: editing.original.id, revision: editing.original.revision } : null,
+        }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string }
+        if (response.status === 409) {
+          const fresh = await fetch(`/api/matches/${match.id}/rsvps`, { headers: { "x-session-token": token } })
+          if (fresh.ok) setAttendance(await fresh.json() as Attendance)
+          setConfirmEdit(false)
+        }
+        throw new Error(data.error ?? "Could not save attendance")
+      }
+      onChanged()
+      const fresh = await fetch(`/api/matches/${match.id}/rsvps`, { headers: { "x-session-token": token } })
+      if (!fresh.ok) throw new Error("Saved, but could not refresh the roster. Close and reopen attendance.")
+      setAttendance(await fresh.json() as Attendance)
+      setEditing(null)
+    } catch (err) {
+      setEditError((err as Error).message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const editAction = (person: Person, original: Reply | null) => canEdit && (
+    <Button type="button" size="sm" variant="outline" onClick={() => startEdit(person, original)}
+      disabled={saving} aria-label={`${original ? "Edit" : "Record"} attendance for ${person.playerName}`}>
+      {original ? "Edit" : "Record reply"}
+    </Button>
+  )
 
   const remind = async () => {
     if (sending || !attendance?.noResponse.length) return
@@ -88,6 +156,7 @@ export default function MatchAttendanceModal({ match, token, onClose }: {
         {!attendance && !error && <p className="text-sm text-muted-foreground">Loading attendance…</p>}
         {attendance && (
           <>
+            {match.status === "cancelled" && <p className="text-sm text-muted-foreground">Cancelled match replies are read-only.</p>}
             <p className="text-sm font-medium">
               {attendance.counts.invited} squad members · {attendance.counts.yes} going ·{" "}
               {attendance.counts.maybe} maybe · {attendance.counts.no} not going ·{" "}
@@ -101,9 +170,15 @@ export default function MatchAttendanceModal({ match, token, onClose }: {
                   {replies.length ? (
                     <ul className="divide-y divide-border border border-border rounded-lg">
                       {replies.map((reply) => (
-                        <li key={reply.playerId} className="px-3 py-2 text-sm">
-                          <span className="font-medium">{reply.shirtNumber != null ? `#${reply.shirtNumber} · ` : ""}{reply.playerName}</span>
+                         <li key={reply.playerId} className="px-3 py-2 text-sm">
+                           <div className="flex items-center justify-between gap-3">
+                             <span className="font-medium">{reply.shirtNumber != null ? `#${reply.shirtNumber} · ` : ""}{reply.playerName}</span>
+                             {editAction(reply, reply)}
+                           </div>
                           {reply.note && <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{reply.note}</p>}
+                           {reply.source === "admin" && <p className="text-xs text-muted-foreground mt-1">
+                             Admin correction by {attendance.history.filter((h) => h.playerId === reply.playerId).at(-1)?.actor ?? "Admin"}
+                           </p>}
                         </li>
                       ))}
                     </ul>
@@ -143,13 +218,60 @@ export default function MatchAttendanceModal({ match, token, onClose }: {
               {attendance.noResponse.length ? (
                 <ul className="divide-y divide-border border border-border rounded-lg">
                   {attendance.noResponse.map((person) => (
-                    <li key={person.playerId} className="px-3 py-2 text-sm">
-                      {person.shirtNumber != null ? `#${person.shirtNumber} · ` : ""}{person.playerName}
+                     <li key={person.playerId} className="px-3 py-2 text-sm flex items-center justify-between gap-3">
+                       <span>{person.shirtNumber != null ? `#${person.shirtNumber} · ` : ""}{person.playerName}</span>
+                       {editAction(person, null)}
                     </li>
                   ))}
                 </ul>
               ) : <p className="text-xs text-muted-foreground">Everyone has replied.</p>}
             </section>
+            {editing && (
+              <section className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 space-y-3" aria-label={`Edit attendance for ${editing.person.playerName}`}>
+                <h3 className="font-semibold text-sm">{editing.original ? "Correct" : "Record"} reply · {editing.person.playerName}</h3>
+                {editing.original && <p className="text-xs text-muted-foreground">Current reply: {statuses.find((s) => s.key === editing.original?.status)?.label} {editing.original.note ? `· ${editing.original.note}` : ""}</p>}
+                <label className="block text-sm">Reply
+                  <select className="mt-1 block w-full rounded-md border border-border bg-white px-3 py-2"
+                    value={editStatus} onChange={(e) => { setEditStatus(e.target.value as typeof editStatus); setConfirmEdit(false) }} disabled={saving}>
+                    {statuses.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                    {editing.original && <option value="clear">Clear reply (no response)</option>}
+                  </select>
+                </label>
+                {(editStatus === "maybe" || editStatus === "no") && (
+                  <label className="block text-sm">Reason
+                    <textarea className="mt-1 block w-full rounded-md border border-border bg-white px-3 py-2"
+                      value={editNote} onChange={(e) => { setEditNote(e.target.value); setConfirmEdit(false) }}
+                      maxLength={2000} rows={2} disabled={saving} required />
+                  </label>
+                )}
+                {confirmEdit && <p className="text-sm text-amber-800" role="status">
+                  Confirm replacing {editing.person.playerName}'s existing reply{editStatus === "clear" ? " with no response" : ""}? This will be recorded as an admin correction.
+                </p>}
+                {editError && <p role="alert" className="text-sm text-destructive">{editError}</p>}
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" onClick={saveEdit} disabled={saving}>
+                    {saving ? "Saving…" : confirmEdit ? "Confirm change" : editing.original ? "Review change" : "Save reply"}
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" onClick={() => setEditing(null)} disabled={saving}>Cancel</Button>
+                </div>
+              </section>
+            )}
+            {attendance.history.length > 0 && (
+              <details className="text-xs border-t border-border pt-3">
+                <summary className="cursor-pointer font-medium">Admin correction history ({attendance.history.length})</summary>
+                <ul className="mt-2 space-y-2">
+                  {attendance.history.map((h, i) => (
+                    <li key={`${h.playerId}-${h.changedAt}-${i}`}>
+                      {new Date(h.changedAt).toLocaleString("en-GB", { timeZone: "Asia/Hong_Kong" })} HKT · {h.actor} ·{" "}
+                      {attendance.responses.find((r) => r.playerId === h.playerId)?.playerName ??
+                        attendance.noResponse.find((p) => p.playerId === h.playerId)?.playerName ?? `Player #${h.playerId}`}:{" "}
+                      {h.previousStatus ?? "No reply"}{h.previousNote ? ` (${h.previousNote})` : ""} → {h.newStatus ?? "No reply"}
+                      {h.newNote ? ` (${h.newNote})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </>
         )}
       </div>

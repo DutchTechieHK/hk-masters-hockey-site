@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import {
-  db, pool, matchesTable, matchRsvpsTable, playerParticipationsTable, playersTable, seasonsTable,
+  db, pool, matchesTable, matchRsvpsTable, matchRsvpAdminChangesTable, playerParticipationsTable, playersTable, seasonsTable,
   emailBlastsTable, emailBlastRecipientsTable,
 } from "@workspace/db";
 import { sendMatchReminderEmail } from "../utils/email";
@@ -284,7 +284,7 @@ export async function submitMatchRsvp(req: Request, res: Response): Promise<void
   await db.insert(matchRsvpsTable).values({ matchId: id, playerId: req.player!.id, status, note, respondedAt: now })
     .onConflictDoUpdate({
       target: [matchRsvpsTable.matchId, matchRsvpsTable.playerId],
-      set: { status, note, respondedAt: now },
+      set: { status, note, respondedAt: now, source: "player", revision: sql`${matchRsvpsTable.revision} + 1` },
     });
   res.json({ matchId: id, status, note, respondedAt: now.toISOString() });
 }
@@ -302,6 +302,9 @@ export async function adminMatchRsvps(req: Request, res: Response): Promise<void
     ? await db.select().from(matchRsvpsTable)
       .where(and(eq(matchRsvpsTable.matchId, id), inArray(matchRsvpsTable.playerId, players.map((p) => p.id))))
     : [];
+  const history = await db.select().from(matchRsvpAdminChangesTable)
+    .where(eq(matchRsvpAdminChangesTable.matchId, id))
+    .orderBy(asc(matchRsvpAdminChangesTable.changedAt), asc(matchRsvpAdminChangesTable.id));
   const byPlayer = new Map(rows.map((r) => [r.playerId, r]));
   const counts: Record<Status, number> & { noResponse: number; invited: number } =
     { yes: 0, maybe: 0, no: 0, noResponse: 0, invited: players.length };
@@ -310,10 +313,100 @@ export async function adminMatchRsvps(req: Request, res: Response): Promise<void
     if (!row) return [];
     if (STATUSES.includes(row.status as Status)) counts[row.status as Status]++;
     return [{ playerId: player.id, playerName: player.name, shirtNumber: player.shirtNumber,
+      id: row.id, revision: row.revision, source: row.source,
       status: row.status, note: row.note, respondedAt: row.respondedAt.toISOString() }];
   });
   const noResponse = players.filter((p) => !byPlayer.has(p.id))
     .map((p) => ({ playerId: p.id, playerName: p.name, shirtNumber: p.shirtNumber }));
   counts.noResponse = noResponse.length;
-  res.json({ counts, responses, noResponse });
+  res.json({ counts, responses, noResponse, history: history.map((h) => ({
+    playerId: h.playerId, actor: h.actor, changedAt: h.changedAt.toISOString(),
+    previousStatus: h.previousStatus, previousNote: h.previousNote,
+    newStatus: h.newStatus, newNote: h.newNote,
+  })) });
+}
+
+export async function adminCorrectMatchRsvp(req: Request, res: Response): Promise<void> {
+  const id = matchId(req);
+  const playerId = Number(req.params.playerId);
+  if (id == null || !Number.isSafeInteger(playerId) || playerId <= 0) {
+    res.status(400).json({ error: "Invalid match or player id" }); return;
+  }
+  const body = req.body as { status?: unknown; note?: unknown; expected?: unknown } | undefined;
+  const status = body?.status;
+  if (status !== null && (typeof status !== "string" || !STATUSES.includes(status as Status))) {
+    res.status(400).json({ error: "status must be yes, no, maybe or null to clear" }); return;
+  }
+  if (body?.note != null && typeof body.note !== "string") {
+    res.status(400).json({ error: "Invalid reason" }); return;
+  }
+  if (typeof body?.note === "string" && body.note.length > 2000) {
+    res.status(400).json({ error: "Reason is too long" }); return;
+  }
+  const note = status === "yes" || status === null ? null : (body?.note as string | undefined)?.trim() || null;
+  if (status !== "yes" && status !== null && !note) {
+    res.status(400).json({ error: "A reason is required for Maybe or Not going" }); return;
+  }
+  const expected = body?.expected;
+  if (expected !== null && (typeof expected !== "object" || Array.isArray(expected) || !expected ||
+    !Number.isSafeInteger((expected as { id?: unknown }).id) ||
+    !Number.isSafeInteger((expected as { revision?: unknown }).revision))) {
+    res.status(400).json({ error: "Expected reply version is required" }); return;
+  }
+  if (status === null && expected === null) {
+    res.status(400).json({ error: "Nothing to clear" }); return;
+  }
+  // Never store session tokens in history. API-key callers are labelled separately.
+  const token = req.headers["x-session-token"];
+  const actor = typeof token === "string" ? (await getSessionLabel(token) ?? "Admin API key") : "Admin API key";
+  const result = await db.transaction(async (tx) => {
+    // Serialize against fixture edits/deletes; the reply CAS below serializes against player updates.
+    await tx.execute(sql`SELECT id FROM matches WHERE id = ${id} FOR UPDATE`);
+    const [match] = await tx.select().from(matchesTable).where(eq(matchesTable.id, id));
+    if (!match) return { code: 404, error: "Match not found" } as const;
+    if (match.operationalScope !== "local_2026_27")
+      return { code: 409, error: "Archived or unclassified match attendance is read-only" } as const;
+    if (match.status === "cancelled")
+      return { code: 409, error: "Cancelled match attendance is read-only" } as const;
+    const eligible = await tx.select({ id: playersTable.id }).from(playerParticipationsTable)
+      .innerJoin(seasonsTable, eq(seasonsTable.id, playerParticipationsTable.seasonId))
+      .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
+      .where(and(eq(seasonsTable.slug, CURRENT_SEASON),
+        eq(playerParticipationsTable.participationStatus, "active"),
+        eq(playerParticipationsTable.teamId, match.teamId),
+        eq(playersTable.memberStatus, "active"), eq(playersTable.id, playerId))).limit(1);
+    if (!eligible.length) return { code: 403, error: "Player is not in this match's current squad" } as const;
+    const [current] = await tx.select().from(matchRsvpsTable)
+      .where(and(eq(matchRsvpsTable.matchId, id), eq(matchRsvpsTable.playerId, playerId))).limit(1);
+    if ((expected === null && current) || (expected !== null &&
+      (!current || current.id !== (expected as { id: number }).id ||
+        current.revision !== (expected as { revision: number }).revision))) {
+      return { code: 409, error: "This reply changed since you opened it. Refresh the roster before editing." } as const;
+    }
+    const now = new Date();
+    if (status === null) {
+      const deleted = await tx.delete(matchRsvpsTable)
+        .where(and(eq(matchRsvpsTable.id, current!.id), eq(matchRsvpsTable.revision, current!.revision)))
+        .returning({ id: matchRsvpsTable.id });
+      if (!deleted.length) return { code: 409, error: "This reply changed. Refresh the roster." } as const;
+    } else if (current) {
+      const updated = await tx.update(matchRsvpsTable)
+        .set({ status: status as Status, note, respondedAt: now, source: "admin", revision: current.revision + 1 })
+        .where(and(eq(matchRsvpsTable.id, current.id), eq(matchRsvpsTable.revision, current.revision)))
+        .returning({ id: matchRsvpsTable.id });
+      if (!updated.length) return { code: 409, error: "This reply changed. Refresh the roster." } as const;
+    } else {
+      const inserted = await tx.insert(matchRsvpsTable)
+        .values({ matchId: id, playerId, status: status as Status, note, respondedAt: now, source: "admin" })
+        .onConflictDoNothing().returning({ id: matchRsvpsTable.id });
+      if (!inserted.length) return { code: 409, error: "This player has replied. Refresh the roster." } as const;
+    }
+    await tx.insert(matchRsvpAdminChangesTable).values({
+      matchId: id, playerId, actor, previousStatus: current?.status ?? null,
+      previousNote: current?.note ?? null, newStatus: status, newNote: note, changedAt: now,
+    });
+    return { code: 200, status, note } as const;
+  });
+  if ("error" in result) { res.status(result.code).json({ error: result.error }); return; }
+  res.json(result);
 }
