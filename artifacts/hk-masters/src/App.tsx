@@ -26,6 +26,7 @@ import FunRun from "@/pages/FunRun";
 import Polls from "@/pages/Polls";
 import Tutorials from "@/pages/Tutorials";
 import Reports from "@/pages/Reports";
+import CurrentReports from "@/pages/CurrentReports";
 import Payouts from "@/pages/Payouts";
 import FundraisingSearch from "@/pages/FundraisingSearch";
 import NewsAdmin from "@/pages/NewsAdmin";
@@ -77,7 +78,7 @@ function Router() {
       <Route path="/arrivals">{() => <Redirect to="/archive/world-cup-2026/transfers" />}</Route>
       <Route path="/journal">{() => <Redirect to="/archive/world-cup-2026/journal" />}</Route>
       <Route path="/documents">{() => <Redirect to="/archive/world-cup-2026/documents" />}</Route>
-      <Route path="/reports">{() => <Redirect to="/archive/world-cup-2026/reports" />}</Route>
+      <Route path="/reports" component={CurrentReports} />
       <Route path="/readiness">{() => <Redirect to="/archive/world-cup-2026/readiness" />}</Route>
 
       {/* World Cup 2026 Archive */}
