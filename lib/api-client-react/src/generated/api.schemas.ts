@@ -653,6 +653,8 @@ export interface MembershipInterestSubmission {
   externalId?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
+  /** @nullable */
+  sourceUpdatedAt?: string | null;
   conflictDetails: MembershipInterestConflictDetail[];
 }
 
@@ -749,11 +751,40 @@ export const MembershipInterestResolutionMembershipSection = {
   women: "women",
 } as const;
 
+export type MembershipInterestFieldChoiceField =
+  (typeof MembershipInterestFieldChoiceField)[keyof typeof MembershipInterestFieldChoiceField];
+
+export const MembershipInterestFieldChoiceField = {
+  email: "email",
+  dateOfBirth: "dateOfBirth",
+  position: "position",
+  membershipSection: "membershipSection",
+} as const;
+
+export type MembershipInterestFieldChoiceValueSource =
+  (typeof MembershipInterestFieldChoiceValueSource)[keyof typeof MembershipInterestFieldChoiceValueSource];
+
+export const MembershipInterestFieldChoiceValueSource = {
+  app: "app",
+  notion: "notion",
+} as const;
+
+export interface MembershipInterestFieldChoice {
+  field: MembershipInterestFieldChoiceField;
+  valueSource: MembershipInterestFieldChoiceValueSource;
+  /** @nullable */
+  expectedExistingValue: string | null;
+  /** @nullable */
+  expectedNotionValue: string | null;
+}
+
 export interface MembershipInterestResolution {
   playerId?: number | null;
   membershipTier: MembershipInterestResolutionMembershipTier;
   membershipSection?: MembershipInterestResolutionMembershipSection;
   dismiss?: boolean;
+  expectedSourceUpdatedAt?: string;
+  conflictChoices?: MembershipInterestFieldChoice[];
 }
 
 export type SelfPlayerMemberStatus =

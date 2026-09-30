@@ -2433,6 +2433,8 @@ components:
         reviewedAt:
           type: string
           nullable: true
+        sourceUpdatedAt:
+          type: ["string", "null"]
         conflictDetails:
           type: array
           items:
@@ -2557,7 +2559,28 @@ components:
           enum: [not_set, men, women]
         dismiss:
           type: boolean
+        expectedSourceUpdatedAt:
+          type: string
+        conflictChoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/MembershipInterestFieldChoice"
       required: [membershipTier]
+
+    MembershipInterestFieldChoice:
+      type: object
+      properties:
+        field:
+          type: string
+          enum: [email, dateOfBirth, position, membershipSection]
+        valueSource:
+          type: string
+          enum: [app, notion]
+        expectedExistingValue:
+          type: ["string", "null"]
+        expectedNotionValue:
+          type: ["string", "null"]
+      required: [field, valueSource, expectedExistingValue, expectedNotionValue]
 
     SelfPlayer:
       type: object

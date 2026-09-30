@@ -163,3 +163,51 @@ describe("GET /api/players/membership/interest-submissions conflict privacy", ()
     expect(rows.get(externalIds.dismissed)?.conflictDetails).toEqual([]);
   });
 });
+
+describe("Notion field choice resolution", () => {
+  it("applies selected Notion fields, keeps app fields and rejects stale choices", async () => {
+    const [submission] = await db.select().from(membershipInterestSubmissionsTable)
+      .where(eq(membershipInterestSubmissionsTable.externalId, externalIds.consented));
+    const sourceUpdatedAt = new Date("2026-09-15T12:00:00.000Z");
+    await db.update(membershipInterestSubmissionsTable).set({ sourceUpdatedAt })
+      .where(eq(membershipInterestSubmissionsTable.id, submission.id));
+
+    const list = await request(app).get("/api/players/membership/interest-submissions");
+    const row = list.body.find((item: { id: number }) => item.id === submission.id);
+    const choose = (details: Array<{ field: string; existingValue: string | null; submittedValue: string | null }>) =>
+      details.map((detail) => ({
+        field: detail.field,
+        valueSource: detail.field === "position" ? "notion" : "app",
+        expectedExistingValue: detail.existingValue,
+        expectedNotionValue: detail.submittedValue,
+      }));
+    const body = {
+      playerId,
+      membershipTier: "social_player",
+      expectedSourceUpdatedAt: row.sourceUpdatedAt,
+      conflictChoices: choose(row.conflictDetails),
+    };
+    await db.update(playersTable).set({ position: "Defender" }).where(eq(playersTable.id, playerId));
+    const stale = await request(app)
+      .patch(`/api/players/membership/interest-submissions/${submission.id}`).send(body);
+    expect(stale.status).toBe(409);
+    const [afterStale] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+    expect(afterStale.position).toBe("Defender");
+
+    const refreshed = await request(app).get("/api/players/membership/interest-submissions");
+    const current = refreshed.body.find((item: { id: number }) => item.id === submission.id);
+    const accepted = await request(app)
+      .patch(`/api/players/membership/interest-submissions/${submission.id}`)
+      .send({ ...body, conflictChoices: choose(current.conflictDetails) });
+    expect(accepted.status).toBe(200);
+    const [saved] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+    expect(saved.dateOfBirth).toBe("1985-07-13");
+    expect(saved.position).toBe("Forward");
+    expect(saved.email).toBe(`existing-${runId}@example.com`);
+    const [resolved] = await db.select().from(membershipInterestSubmissionsTable)
+      .where(eq(membershipInterestSubmissionsTable.id, submission.id));
+    expect(resolved.matchStatus).toBe("matched");
+    expect((resolved.rawData as Record<string, any>)._profileFieldSources)
+      .toEqual({ email: "app", dateOfBirth: "app", position: "notion" });
+  });
+});

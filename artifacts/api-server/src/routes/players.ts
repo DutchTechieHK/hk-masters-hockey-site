@@ -52,6 +52,8 @@ import {
   isNotionMemberSyncConfigured,
   markNotionProfileConflictResolved,
   NotionMemberSyncAlreadyRunningError,
+  saveNotionFieldSources,
+  type ProfileFieldSources,
   shouldApplyImportedTier,
   syncNotionMembers,
 } from "../lib/notionMemberSync";
@@ -581,6 +583,7 @@ function mapInterestSubmission(row: {
     externalId: row.submission.externalId,
     submittedAt: row.submission.submittedAt.toISOString(),
     reviewedAt: row.submission.reviewedAt?.toISOString() ?? null,
+    sourceUpdatedAt: row.submission.sourceUpdatedAt?.toISOString() ?? null,
     conflictDetails,
   };
 }
@@ -739,6 +742,94 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
     .where(eq(membershipInterestSubmissionsTable.id, id));
   if (!existing) {
     res.status(404).json({ error: "Interest submission not found" });
+    return;
+  }
+
+  if (existing.source === "notion_join" && existing.matchStatus === "conflict" && !body.dismiss) {
+    const playerId = body.playerId;
+    const conflictChoices = body.conflictChoices;
+    if (!playerId || playerId !== existing.matchedPlayerId ||
+        !conflictChoices?.length || !body.expectedSourceUpdatedAt) {
+      res.status(400).json({ error: "Choose the app or Notion value for every mismatch before saving." });
+      return;
+    }
+    const result = await db.transaction(async (tx) => {
+      // Serialize against the Notion sync and other reviewers before reading either value.
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('notion_join_members_sync'))`);
+      const [submission] = await tx.select().from(membershipInterestSubmissionsTable)
+        .where(eq(membershipInterestSubmissionsTable.id, id)).for("update");
+      if (!submission || submission.matchStatus !== "conflict" ||
+          submission.matchedPlayerId !== playerId ||
+          submission.sourceUpdatedAt?.toISOString() !== body.expectedSourceUpdatedAt) {
+        return { status: 409, error: "The Notion submission changed. Refresh and review it again." } as const;
+      }
+      const [player] = await tx.select().from(playersTable)
+        .where(eq(playersTable.id, playerId)).for("update");
+      if (!player || player.memberStatus === "archived") {
+        return { status: 409, error: "This member is no longer available. Refresh and try again." } as const;
+      }
+      const details = mapInterestSubmission({ submission, matchedPlayer: player }).conflictDetails;
+      const choices = new Map(conflictChoices.map((choice) => [choice.field, choice]));
+      if (!details.length || choices.size !== details.length ||
+          conflictChoices.length !== details.length ||
+          details.some((detail) => {
+            const choice = choices.get(detail.field);
+            return !choice || choice.expectedExistingValue !== detail.existingValue ||
+              choice.expectedNotionValue !== detail.submittedValue;
+          })) {
+        return { status: 409, error: "The member or Notion values changed. Refresh before saving." } as const;
+      }
+      const updates: Partial<typeof playersTable.$inferInsert> = {};
+      const fieldSources: ProfileFieldSources = {};
+      let section: "men" | "women" | null = null;
+      for (const detail of details) {
+        const choice = choices.get(detail.field)!;
+        fieldSources[detail.field] = choice.valueSource;
+        if (choice.valueSource !== "notion") continue;
+        const value = detail.submittedValue;
+        if (!value) return { status: 400, error: `Notion has no value for ${detail.field}.` } as const;
+        if (detail.field === "email") {
+          const [duplicate] = await tx.select({ id: playersTable.id }).from(playersTable)
+            .where(and(sql`lower(trim(${playersTable.email})) = ${value.trim().toLowerCase()}`,
+              sql`${playersTable.id} <> ${player.id}`)).limit(1);
+          if (duplicate) return { status: 409, error: "That Notion email is already used by another member." } as const;
+          updates.email = value;
+        } else if (detail.field === "dateOfBirth") {
+          updates.dateOfBirth = value;
+        } else if (detail.field === "position") {
+          updates.position = value;
+        } else if (value === "men" || value === "women") {
+          section = value;
+          updates.currentMembershipSection = value;
+        }
+      }
+      if (Object.keys(updates).length) {
+        await tx.update(playersTable).set(updates).where(eq(playersTable.id, player.id));
+      }
+      if (section) {
+        const foundation = await ensureMembershipFoundation(tx);
+        await tx.update(playerParticipationsTable).set({
+          membershipSection: section,
+          updatedAt: new Date(),
+        }).where(and(
+          eq(playerParticipationsTable.playerId, player.id),
+          eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+        ));
+      }
+      const [saved] = await tx.update(membershipInterestSubmissionsTable).set({
+        matchStatus: "matched",
+        reviewedAt: new Date(),
+        rawData: markNotionProfileConflictResolved(
+          saveNotionFieldSources(submission.rawData, fieldSources), submission.sourceUpdatedAt),
+      }).where(eq(membershipInterestSubmissionsTable.id, id)).returning();
+      const [updatedPlayer] = await tx.select().from(playersTable).where(eq(playersTable.id, player.id));
+      return { status: 200, submission: saved, player: updatedPlayer } as const;
+    });
+    if (result.status !== 200) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json(mapInterestSubmission({ submission: result.submission, matchedPlayer: result.player }));
     return;
   }
 

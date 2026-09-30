@@ -5,16 +5,34 @@ import {
   isNotionProfileConflictResolved,
   hasNotionIdentityConflict,
   getNotionMemberConflicts,
+  getNotionFieldSources,
   notionApplicantStorageData,
   markNotionProfileConflictResolved,
   pageToNotionApplicant,
   resolveNotionMemberProfile,
   resolveNotionMemberSyncProfile,
+  saveNotionFieldSources,
   resolveProfileSubmissionStatus,
   shouldSyncUnchangedNotionProfile,
   shouldApplyImportedTier,
   validateNotionMemberProperties,
 } from "./notionMemberSync";
+
+describe("reviewed Notion field sources", () => {
+  it("keeps chosen app fields authoritative and follows Notion for chosen Notion fields", () => {
+    const sources = getNotionFieldSources(saveNotionFieldSources(
+      { "Position(s)": ["Forward"] },
+      { email: "app", dateOfBirth: "app", position: "notion" },
+    ));
+    const result = resolveNotionMemberSyncProfile(
+      { consent: true, email: "new@example.com", dateOfBirth: "1984-07-01", position: "Forward" },
+      { email: "member@example.com", dateOfBirth: "1984-07-19", position: "Goalkeeper" },
+      true,
+      sources,
+    );
+    expect(result).toEqual({ updates: { position: "Forward" }, conflict: false });
+  });
+});
 
 function pageFixture(overrides: Record<string, unknown> = {}) {
   return {

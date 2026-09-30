@@ -31,3 +31,4 @@
 - [Historical audience backfills](historical-audience-backfills.md) — use immutable verified snapshots; development and current production audiences cannot reconstruct past sends reliably.
 - [Vite restart port conflict](vite-restart-port-conflict.md) — a workflow restart can leave an old Vite process on the assigned port; clear the stale process before restarting again.
 - [Passport review concurrency](passport-review-concurrency.md) — admin review/upload must compare the current copy before saving; a player can replace it from the portal mid-review.
+- [Notion conflict truth](notion-conflict-truth.md) — mismatched member profile fields need explicit per-field app/Notion choices that remain authoritative on later syncs.

@@ -130,6 +130,7 @@ export function MembershipInterestPanel({
   const { toast } = useToast()
   const [submissions, setSubmissions] = useState<MembershipInterestSubmission[]>([])
   const [selectedMembers, setSelectedMembers] = useState<Record<number, string>>({})
+  const [fieldChoices, setFieldChoices] = useState<Record<number, Record<string, "app" | "notion">>>({})
   const [busy, setBusy] = useState(false)
   const [duplicateEmails, setDuplicateEmails] = useState<string[]>([])
   const [notionSync, setNotionSync] = useState<NotionSyncStatus | null>(null)
@@ -214,8 +215,14 @@ export function MembershipInterestPanel({
 
   const resolve = async (submission: MembershipInterestSubmission, dismiss = false) => {
     const playerId = Number(selectedMembers[submission.id] || submission.matchedPlayerId || 0)
+    const resolvingConflict = !dismiss && submission.source === "notion_join" &&
+      submission.matchStatus === "conflict" && submission.conflictDetails.length > 0
     if (!dismiss && !playerId) {
       toast({ title: "Select a member first", variant: "destructive" })
+      return
+    }
+    if (resolvingConflict && submission.conflictDetails.some((detail) => !fieldChoices[submission.id]?.[detail.field])) {
+      toast({ title: "Choose an app or Notion value for every mismatch", variant: "destructive" })
       return
     }
     setBusy(true)
@@ -228,18 +235,47 @@ export function MembershipInterestPanel({
           membershipTier: submission.membershipTier,
           membershipSection: submission.membershipSection,
           dismiss,
+          ...(resolvingConflict ? {
+            expectedSourceUpdatedAt: submission.sourceUpdatedAt,
+            conflictChoices: submission.conflictDetails.map((detail) => ({
+              field: detail.field,
+              valueSource: fieldChoices[submission.id][detail.field],
+              expectedExistingValue: detail.existingValue,
+              expectedNotionValue: detail.submittedValue,
+            })),
+          } : {}),
         }),
       })
-      if (!response.ok) throw new Error("Could not resolve submission")
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        if (response.status === 409) {
+          await loadSubmissions()
+          setFieldChoices((current) => {
+            const next = { ...current }
+            delete next[submission.id]
+            return next
+          })
+        }
+        throw new Error(response.status === 409
+          ? `${result.error || "Values changed."} Review the refreshed values and choose again.`
+          : result.error || "Could not resolve submission")
+      }
       await loadSubmissions()
+      setFieldChoices((current) => {
+        const next = { ...current }
+        delete next[submission.id]
+        return next
+      })
       onMembersUpdated()
       toast({
-        title: dismiss ? "Submission ignored" : "Submission linked to member",
+        title: dismiss ? "Submission ignored" : resolvingConflict ? "Chosen values saved" : "Submission linked to member",
         description: dismiss
           ? submission.source === "notion_join"
             ? "No member was changed. If this entry changes in Notion, it may need review again."
             : "No member was linked or changed."
-          : "Existing profile details were kept. Membership details may have been updated.",
+          : resolvingConflict
+            ? "The selected app and Notion values are now applied to this member."
+            : "Existing profile details were kept. Membership details may have been updated.",
       })
     } catch (error) {
       toast({ title: (error as Error).message, variant: "destructive" })
@@ -348,26 +384,64 @@ export function MembershipInterestPanel({
                 </span>
               </div>
               {submission.conflictDetails && submission.conflictDetails.length > 0 && (
-                <div className="mb-3 overflow-hidden rounded-lg border bg-white">
-                  <div className="grid grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                <div className="mb-3 overflow-x-auto rounded-lg border bg-white">
+                  <div className="grid min-w-[680px] grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(11rem,1fr)] gap-2 border-b bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
                     <span>Field</span>
-                    <span>Existing member</span>
-                    <span>Notion submission</span>
+                    <span>App value</span>
+                    <span>Notion value</span>
+                    <span>Use for member</span>
                   </div>
                   {submission.conflictDetails.map((detail) => (
                     <div
                       key={detail.field}
-                      className={`grid grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 border-b px-3 py-2 text-sm last:border-b-0 ${
+                      className={`grid min-w-[680px] grid-cols-[minmax(7rem,0.8fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(11rem,1fr)] gap-2 border-b px-3 py-2 text-sm last:border-b-0 ${
                         detail.kind === "identity" ? "bg-red-50/50" : ""
                       }`}
                     >
                       <span className="font-medium">{CONFLICT_FIELD_LABELS[detail.field]}</span>
                       <span className="break-words">{displayConflictValue(detail.existingValue)}</span>
                       <span className="break-words">{displayConflictValue(detail.submittedValue)}</span>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1" role="group" aria-label={`Choose ${CONFLICT_FIELD_LABELS[detail.field]} value`}>
+                        {(["app", "notion"] as const).map((source) => (
+                          <label key={source} className="inline-flex cursor-pointer items-center gap-1 text-xs">
+                            <input
+                              type="radio"
+                              name={`choice-${submission.id}-${detail.field}`}
+                              checked={fieldChoices[submission.id]?.[detail.field] === source}
+                              onChange={() => setFieldChoices((current) => ({
+                                ...current,
+                                [submission.id]: { ...current[submission.id], [detail.field]: source },
+                              }))}
+                            />
+                            {source === "app" ? "Keep app" : "Use Notion"}
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+              {submission.source === "notion_join" && submission.matchStatus === "conflict" && submission.conflictDetails.length > 0 ? (
+                <>
+                  <p className="mb-2 text-xs text-slate-600">
+                    Choose the value to keep for each mismatch. App choices stay authoritative on later syncs; if the Notion email changes again, it will need review.
+                  </p>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm text-slate-700">Member: <strong>{submission.matchedPlayerName || "Unavailable"}</strong></span>
+                    <Button type="button" size="sm"
+                      disabled={busy || !submission.matchedPlayerId || submission.conflictDetails.some((detail) => !fieldChoices[submission.id]?.[detail.field])}
+                      onClick={() => void resolve(submission)}>
+                      Save chosen values
+                    </Button>
+                  </div>
+                </>
+              ) : submission.source === "notion_join" && submission.matchStatus === "conflict" ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-amber-800">Mismatch values are unavailable. Check the Notion entry and member record before deciding.</span>
+                  <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Ignore submission</Button>
+                </div>
+              ) : (
+              <>
               <div className="mb-3 space-y-1 text-xs text-slate-600">
                 <p><strong>Confirm match:</strong> Link this submission to a member. Their existing name, email, date of birth and position stay; membership details may update.</p>
                 <p><strong>Ignore:</strong> Close this submission without linking it or changing a member.{submission.source === "notion_join" ? " It may reappear if the Notion entry changes." : ""}</p>
@@ -386,6 +460,8 @@ export function MembershipInterestPanel({
                 </Button>
                 <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Ignore submission</Button>
               </div>
+              </>
+              )}
             </div>
           ))}
         </div>

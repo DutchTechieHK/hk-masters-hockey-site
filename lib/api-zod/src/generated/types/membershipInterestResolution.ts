@@ -5,6 +5,7 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+import type { MembershipInterestFieldChoice } from "./membershipInterestFieldChoice";
 import type { MembershipInterestResolutionMembershipSection } from "./membershipInterestResolutionMembershipSection";
 import type { MembershipInterestResolutionMembershipTier } from "./membershipInterestResolutionMembershipTier";
 
@@ -13,4 +14,6 @@ export interface MembershipInterestResolution {
   membershipTier: MembershipInterestResolutionMembershipTier;
   membershipSection?: MembershipInterestResolutionMembershipSection;
   dismiss?: boolean;
+  expectedSourceUpdatedAt?: string;
+  conflictChoices?: MembershipInterestFieldChoice[];
 }

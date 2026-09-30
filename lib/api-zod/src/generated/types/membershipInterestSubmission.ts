@@ -24,5 +24,7 @@ export interface MembershipInterestSubmission {
   externalId?: string | null;
   submittedAt: string;
   reviewedAt?: string | null;
+  /** @nullable */
+  sourceUpdatedAt?: string | null;
   conflictDetails: MembershipInterestConflictDetail[];
 }

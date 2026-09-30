@@ -661,6 +661,7 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   externalId: zod.string().nullish(),
   submittedAt: zod.string(),
   reviewedAt: zod.string().nullish(),
+  sourceUpdatedAt: zod.string().nullish(),
   conflictDetails: zod.array(
     zod.object({
       field: zod.enum([
@@ -766,6 +767,22 @@ export const ResolveMembershipInterestSubmissionBody = zod.object({
   ]),
   membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   dismiss: zod.boolean().optional(),
+  expectedSourceUpdatedAt: zod.string().optional(),
+  conflictChoices: zod
+    .array(
+      zod.object({
+        field: zod.enum([
+          "email",
+          "dateOfBirth",
+          "position",
+          "membershipSection",
+        ]),
+        valueSource: zod.enum(["app", "notion"]),
+        expectedExistingValue: zod.string().nullable(),
+        expectedNotionValue: zod.string().nullable(),
+      }),
+    )
+    .optional(),
 });
 
 export const ResolveMembershipInterestSubmissionResponse = zod.object({
@@ -795,6 +812,7 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   externalId: zod.string().nullish(),
   submittedAt: zod.string(),
   reviewedAt: zod.string().nullish(),
+  sourceUpdatedAt: zod.string().nullish(),
   conflictDetails: zod.array(
     zod.object({
       field: zod.enum([

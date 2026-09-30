@@ -15,6 +15,28 @@ const SOURCE = "notion_join";
 const HOLDING_TEAM_NAME = "Awaiting Selection";
 const NOTION_API_VERSION = "2025-09-03";
 const PROFILE_CONFLICT_RESOLVED_FOR_KEY = "_profileConflictResolvedForSourceUpdatedAt";
+const PROFILE_FIELD_SOURCES_KEY = "_profileFieldSources";
+export type ProfileField = "email" | "dateOfBirth" | "position" | "membershipSection";
+export type ProfileFieldSources = Partial<Record<ProfileField, "app" | "notion">>;
+
+export function getNotionFieldSources(rawData: unknown): ProfileFieldSources {
+  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) return {};
+  const stored = (rawData as Record<string, unknown>)[PROFILE_FIELD_SOURCES_KEY];
+  if (!stored || typeof stored !== "object" || Array.isArray(stored)) return {};
+  const sources: ProfileFieldSources = {};
+  for (const field of ["email", "dateOfBirth", "position", "membershipSection"] as const) {
+    const source = (stored as Record<string, unknown>)[field];
+    if (source === "app" || source === "notion") sources[field] = source;
+  }
+  return sources;
+}
+
+export function saveNotionFieldSources(rawData: unknown, sources: ProfileFieldSources): unknown {
+  const stored = rawData && typeof rawData === "object" && !Array.isArray(rawData)
+    ? rawData as Record<string, unknown>
+    : {};
+  return { ...stored, [PROFILE_FIELD_SOURCES_KEY]: { ...getNotionFieldSources(stored), ...sources } };
+}
 const REQUIRED_PROPERTIES: Record<string, string> = {
   "First Name": "title",
   "Last Name": "rich_text",
@@ -367,15 +389,17 @@ export function resolveNotionMemberProfile(
   applicant: Pick<NotionApplicant, "consent" | "dateOfBirth" | "position" | "membershipSection"> & Partial<Pick<NotionApplicant, "membershipTier">>,
   current: MemberProfile,
   notionCreated: boolean,
+  fieldSources: ProfileFieldSources = {},
 ): { updates: Partial<MemberProfile>; conflict: boolean } {
   if (!applicant.consent) return { updates: {}, conflict: false };
 
   const updates: Partial<MemberProfile> = {};
   let conflict = false;
   for (const field of ["dateOfBirth", "position"] as const) {
+    if (fieldSources[field] === "app") continue;
     const incoming = applicant[field];
     const existing = current[field]?.trim() || null;
-    if (notionCreated) {
+    if (notionCreated || fieldSources[field] === "notion") {
       if (incoming !== existing) updates[field] = incoming;
     } else if (incoming && !existing) {
       updates[field] = incoming;
@@ -384,7 +408,9 @@ export function resolveNotionMemberProfile(
     }
   }
   if (applicant.membershipSection) {
-    if (notionCreated || (current.currentMembershipSection ?? "not_set") === "not_set") {
+    if (fieldSources.membershipSection === "app") {
+      // A reviewed app value remains authoritative on later Notion syncs.
+    } else if (notionCreated || fieldSources.membershipSection === "notion" || (current.currentMembershipSection ?? "not_set") === "not_set") {
       if (applicant.membershipSection !== (current.currentMembershipSection ?? "not_set")) {
         updates.currentMembershipSection = applicant.membershipSection;
       }
@@ -422,11 +448,12 @@ export function resolveNotionMemberSyncProfile(
   applicant: Pick<NotionApplicant, "consent" | "email" | "dateOfBirth" | "position" | "membershipSection"> & Partial<Pick<NotionApplicant, "membershipTier">>,
   current: MemberProfile & { email: string | null },
   notionCreated: boolean,
+  fieldSources: ProfileFieldSources = {},
 ): { updates: Partial<MemberProfile>; conflict: boolean } {
-  const resolution = resolveNotionMemberProfile(applicant, current, notionCreated);
+  const resolution = resolveNotionMemberProfile(applicant, current, notionCreated, fieldSources);
   return {
     updates: resolution.updates,
-    conflict: resolution.conflict || hasNotionIdentityConflict(current.email, applicant.email),
+    conflict: resolution.conflict || (fieldSources.email !== "app" && hasNotionIdentityConflict(current.email, applicant.email)),
   };
 }
 
@@ -444,6 +471,7 @@ async function syncNotionMemberProfile(
   applicant: NotionApplicant,
   playerId: number,
   currentSeasonId: number,
+  fieldSources: ProfileFieldSources = {},
 ): Promise<{ updated: boolean; conflict: boolean }> {
   const [player] = await tx.select({
     email: playersTable.email,
@@ -465,6 +493,7 @@ async function syncNotionMemberProfile(
     applicant,
     player,
     Boolean(notionParticipation),
+    fieldSources,
   );
   const updated = Object.keys(resolution.updates).length > 0;
   if (updated) {
@@ -535,6 +564,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               applicant,
               existingSubmission.matchedPlayerId,
               currentSeasonId,
+              getNotionFieldSources(existingSubmission.rawData),
             );
             const nextStatus = resolveProfileSubmissionStatus(
               existingSubmission.matchStatus,
@@ -563,6 +593,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
         }
 
         let matchedPlayerId = existingSubmission?.matchedPlayerId ?? null;
+        const fieldSources = getNotionFieldSources(existingSubmission?.rawData);
         let matchStatus = "invalid";
         const valid = isValidNotionApplicant(applicant);
 
@@ -588,7 +619,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
         if (valid && matchedPlayerId) {
           const [linkedPlayer] = await tx.select().from(playersTable)
             .where(eq(playersTable.id, matchedPlayerId)).limit(1);
-          if (linkedPlayer && linkedPlayer.email.trim().toLowerCase() === applicant.email) {
+          if (linkedPlayer && (linkedPlayer.email.trim().toLowerCase() === applicant.email || fieldSources.email === "app")) {
             matchStatus = "matched";
           } else {
             matchStatus = "conflict";
@@ -637,7 +668,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
         }
 
         if (valid && matchedPlayerId && matchStatus === "matched") {
-          const profile = await syncNotionMemberProfile(tx, applicant, matchedPlayerId, currentSeasonId);
+          const profile = await syncNotionMemberProfile(tx, applicant, matchedPlayerId, currentSeasonId, fieldSources);
           if (profile.conflict) {
             matchStatus = "conflict";
             counts.needsReview++;
@@ -654,7 +685,9 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
           membershipSection: applicant.membershipSection ?? "not_set",
           matchedPlayerId,
           matchStatus,
-          rawData: storedApplicant.rawData,
+          rawData: valid && Object.keys(fieldSources).length
+            ? saveNotionFieldSources(storedApplicant.rawData, fieldSources)
+            : storedApplicant.rawData,
           source: SOURCE,
           externalId: applicant.externalId,
           sourceUpdatedAt: applicant.sourceUpdatedAt,
