@@ -442,6 +442,15 @@ export interface Player {
   createdAt?: string;
 }
 
+export interface MemberPassportCopyUpdate {
+  /** @nullable */
+  expectedCopyUrl: string | null;
+  expectedReviewed: boolean;
+  reviewed: boolean;
+  /** @minLength 1 */
+  copyUrl?: string;
+}
+
 export type CreatePlayerMemberStatus =
   (typeof CreatePlayerMemberStatus)[keyof typeof CreatePlayerMemberStatus];
 

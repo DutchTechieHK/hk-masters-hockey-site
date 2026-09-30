@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Dashboard from "@/pages/Dashboard";
 import Teams from "@/pages/Teams";
 import Players from "@/pages/Players";
+import PassportDocuments from "@/pages/PassportDocuments";
 import Kits from "@/pages/Kits";
 import Fundraising from "@/pages/Fundraising";
 import Fees from "@/pages/Fees";
@@ -53,6 +54,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/teams">{() => <Teams />}</Route>
       <Route path="/players">{() => <Players />}</Route>
+      <Route path="/passport-documents" component={PassportDocuments} />
       <Route path="/fees">{() => <Fees />}</Route>
       <Route path="/matches">{() => <Schedule />}</Route>
       <Route path="/schedule">{() => <Redirect to="/matches" />}</Route>

@@ -56,6 +56,7 @@ import type {
   MatchChangeResult,
   MatchImportCorrectionResult,
   MatchReminderResult,
+  MemberPassportCopyUpdate,
   MembershipInitializationResult,
   MembershipInterestImport,
   MembershipInterestImportResult,
@@ -3495,6 +3496,94 @@ export const useDeletePlayer = <
   TContext
 > => {
   return useMutation(getDeletePlayerMutationOptions(options));
+};
+
+/**
+ * @summary Conditionally update a current member's passport copy or review status
+ */
+export const getUpdateMemberPassportCopyUrl = (id: number) => {
+  return `/api/players/${id}/passport-copy`;
+};
+
+export const updateMemberPassportCopy = async (
+  id: number,
+  memberPassportCopyUpdate: MemberPassportCopyUpdate,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getUpdateMemberPassportCopyUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberPassportCopyUpdate),
+  });
+};
+
+export const getUpdateMemberPassportCopyMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMemberPassportCopy>>,
+    TError,
+    { id: number; data: BodyType<MemberPassportCopyUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMemberPassportCopy>>,
+  TError,
+  { id: number; data: BodyType<MemberPassportCopyUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateMemberPassportCopy"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMemberPassportCopy>>,
+    { id: number; data: BodyType<MemberPassportCopyUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateMemberPassportCopy(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMemberPassportCopyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMemberPassportCopy>>
+>;
+export type UpdateMemberPassportCopyMutationBody =
+  BodyType<MemberPassportCopyUpdate>;
+export type UpdateMemberPassportCopyMutationError = ErrorType<void>;
+
+/**
+ * @summary Conditionally update a current member's passport copy or review status
+ */
+export const useUpdateMemberPassportCopy = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMemberPassportCopy>>,
+    TError,
+    { id: number; data: BodyType<MemberPassportCopyUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMemberPassportCopy>>,
+  TError,
+  { id: number; data: BodyType<MemberPassportCopyUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateMemberPassportCopyMutationOptions(options));
 };
 
 /**

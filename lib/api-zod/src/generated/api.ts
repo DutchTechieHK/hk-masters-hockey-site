@@ -1301,6 +1301,20 @@ export const DeletePlayerParams = zod.object({
 });
 
 /**
+ * @summary Conditionally update a current member's passport copy or review status
+ */
+export const UpdateMemberPassportCopyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMemberPassportCopyBody = zod.object({
+  expectedCopyUrl: zod.string().nullable(),
+  expectedReviewed: zod.boolean(),
+  reviewed: zod.boolean(),
+  copyUrl: zod.string().min(1).optional(),
+});
+
+/**
  * @summary List all kit orders
  */
 export const ListKitsQueryParams = zod.object({

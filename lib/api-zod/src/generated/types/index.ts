@@ -94,6 +94,7 @@ export * from "./matchChangeResult";
 export * from "./matchImportCorrectionResult";
 export * from "./matchReminderResult";
 export * from "./matchStatus";
+export * from "./memberPassportCopyUpdate";
 export * from "./membershipInitializationResult";
 export * from "./membershipInterestConflictDetail";
 export * from "./membershipInterestConflictDetailField";

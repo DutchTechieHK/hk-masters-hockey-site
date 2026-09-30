@@ -845,6 +845,33 @@ paths:
         "204":
           description: Deleted
 
+  /players/{id}/passport-copy:
+    patch:
+      operationId: updateMemberPassportCopy
+      tags: [players]
+      summary: Conditionally update a current member's passport copy or review status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemberPassportCopyUpdate"
+      responses:
+        "204":
+          description: Updated
+        "400":
+          description: A passport copy is required before reviewing
+        "404":
+          description: Member not found
+        "409":
+          description: Member archived or passport copy changed since it was viewed
+
   /kits:
     get:
       operationId: listKits
@@ -2159,6 +2186,20 @@ components:
         - memberStatus
         - currentMembershipSection
         - currentMembershipTier
+
+    MemberPassportCopyUpdate:
+      type: object
+      required: [expectedCopyUrl, expectedReviewed, reviewed]
+      properties:
+        expectedCopyUrl:
+          type: ["string", "null"]
+        expectedReviewed:
+          type: boolean
+        reviewed:
+          type: boolean
+        copyUrl:
+          type: string
+          minLength: 1
 
     CreatePlayer:
       type: object

@@ -20,6 +20,8 @@ import {
   CreatePlayerBody,
   UpdatePlayerBody,
   UpdatePlayerParams,
+  UpdateMemberPassportCopyBody,
+  UpdateMemberPassportCopyParams,
   DeletePlayerParams,
   ListPlayersQueryParams,
   SendTravelRemindersBody,
@@ -1717,6 +1719,52 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   const membershipFees = await getMembershipFeeAccounts([id]);
   res.json(mapPlayer(player, team?.name, undefined, membershipFees.get(id)));
+});
+
+router.patch("/:id/passport-copy", requireAdminAccess, async (req, res) => {
+  const { id } = UpdateMemberPassportCopyParams.parse(req.params);
+  const body = UpdateMemberPassportCopyBody.parse(req.body);
+  if (!body.copyUrl && body.expectedCopyUrl === null) {
+    res.status(400).json({ error: "There is no passport copy to review" });
+    return;
+  }
+
+  const [member] = await db.select({
+    teamId: playersTable.teamId,
+    memberStatus: playersTable.memberStatus,
+  }).from(playersTable).where(eq(playersTable.id, id));
+  if (!member) {
+    res.status(404).json({ error: "Member not found" });
+    return;
+  }
+  if (member.memberStatus === "archived") {
+    res.status(409).json({ error: "Archived records are read-only" });
+    return;
+  }
+
+  const changes = body.copyUrl
+    ? {
+        passportCopyUrl: body.copyUrl,
+        passportCopyReviewed: true,
+        passportCopyUploadedAt: new Date(),
+        passportCopyUploadedIsUpdate: body.expectedCopyUrl !== null,
+      }
+    : { passportCopyReviewed: body.reviewed };
+  const [updated] = await db.update(playersTable)
+    .set(changes)
+    .where(and(
+      eq(playersTable.id, id),
+      eq(playersTable.teamId, member.teamId),
+      sql`${playersTable.memberStatus} <> 'archived'`,
+      sql`${playersTable.passportCopyUrl} IS NOT DISTINCT FROM ${body.expectedCopyUrl}`,
+      eq(playersTable.passportCopyReviewed, body.expectedReviewed),
+    ))
+    .returning({ id: playersTable.id });
+  if (!updated) {
+    res.status(409).json({ error: "Passport copy or member changed. Refresh and try again." });
+    return;
+  }
+  res.status(204).send();
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {

@@ -21,6 +21,7 @@ import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 import { passportStatus, PASSPORT_STATUS_LABEL } from "@/lib/reports"
 import { format, parseISO } from "date-fns"
 import { MembershipInterestPanel } from "@/components/MembershipInterestPanel"
+import { Link } from "wouter"
 
 function cloudinaryViewUrl(url: string): string {
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
@@ -70,21 +71,6 @@ function storeSession(token: string) {
 }
 function clearStoredSession() {
   try { localStorage.removeItem(SESSION_KEY) } catch { /* noop */ }
-}
-
-const PASSPORT_ACK_KEY = "hkm_passport_ack"
-function getPassportAck(): Record<number, number> {
-  try {
-    const raw = localStorage.getItem(PASSPORT_ACK_KEY)
-    return raw ? (JSON.parse(raw) as Record<number, number>) : {}
-  } catch { return {} }
-}
-function setPassportAck(playerId: number) {
-  try {
-    const ack = getPassportAck()
-    ack[playerId] = Date.now()
-    localStorage.setItem(PASSPORT_ACK_KEY, JSON.stringify(ack))
-  } catch { /* noop */ }
 }
 
 const HKID_ACK_KEY = "hkm_hkid_ack"
@@ -189,7 +175,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const [membershipTierFilter, setMembershipTierFilter] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc")
-  const [passportAck, setPassportAckState] = useState<Record<number, number>>(() => getPassportAck())
   const [hkidAck, setHkidAckState] = useState<Record<number, number>>(() => getHkidAck())
   const [sessionToken, setSessionToken] = useState<string | null>(() => getStoredSession())
   const [participations, setParticipations] = useState<PlayerParticipation[]>([])
@@ -198,22 +183,9 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const [bulkSection, setBulkSection] = useState<"not_set" | "men" | "women">("not_set")
   const [bulkSectionModalOpen, setBulkSectionModalOpen] = useState(false)
 
-  const acknowledgePassport = (playerId: number) => {
-    setPassportAck(playerId)
-    setPassportAckState(prev => ({ ...prev, [playerId]: Date.now() }))
-  }
-
   const acknowledgeHkid = (playerId: number) => {
     setHkidAck(playerId)
     setHkidAckState(prev => ({ ...prev, [playerId]: Date.now() }))
-  }
-
-  const getPassportBadge = (player: { id: number; passportCopyUploadedAt?: string | null; passportCopyUploadedIsUpdate?: boolean | null }): "new" | "updated" | null => {
-    if (!player.passportCopyUploadedAt) return null
-    const uploadedMs = new Date(player.passportCopyUploadedAt).getTime()
-    const ackedMs = passportAck[player.id] ?? 0
-    if (uploadedMs <= ackedMs) return null
-    return player.passportCopyUploadedIsUpdate ? "updated" : "new"
   }
 
   const getHkidBadge = (player: { id: number; hkidCopyUploadedAt?: string | null; hkidCopyUploadedIsUpdate?: boolean | null }): "new" | "updated" | null => {
@@ -225,7 +197,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   }
 
   useEffect(() => {
-    setPassportAckState(getPassportAck())
     setHkidAckState(getHkidAck())
   }, [])
 
@@ -364,7 +335,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       .then((rows: PlayerParticipation[]) => setParticipations(rows))
       .catch(() => setParticipations([]))
       .finally(() => setParticipationsLoading(false))
-    if (player.passportCopyUploadedAt) acknowledgePassport(player.id)
     if (player.hkidCopyUploadedAt) acknowledgeHkid(player.id)
     reset({
       teamId: player.teamId,
@@ -568,19 +538,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     )
   }
 
-  const handleToggleReviewed = async (player: Player) => {
-    try {
-      await updateMutation.mutateAsync({
-        id: player.id,
-        data: sanitizePlayerPayload({ name: player.name, teamId: player.teamId, email: player.email, passportCopyReviewed: !player.passportCopyReviewed }) as any,
-      })
-      queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      toast({ title: player.passportCopyReviewed ? "Marked as not reviewed" : "Marked as reviewed" })
-    } catch {
-      toast({ title: "Failed to update review status", variant: "destructive" })
-    }
-  }
-
   const handleToggleHkidReviewed = async (player: Player) => {
     try {
       await updateMutation.mutateAsync({
@@ -669,7 +626,12 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       title="Members"
       description="Manage member profiles, current categories, fees, and season participation."
       action={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {!readOnly && (
+            <Button variant="outline" asChild>
+              <Link href="/passport-documents"><Shield className="w-4 h-4 mr-2" /> Passport documents</Link>
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => refetch()}
@@ -859,13 +821,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
                           <div>
                             <div className="font-bold text-foreground flex items-center gap-2">
                               {player.name}
-                              {(() => {
-                                const badge = getPassportBadge(player)
-                                if (!badge) return null
-                                return badge === "updated"
-                                  ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700 border border-orange-200 leading-none">Passport Updated</span>
-                                  : <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-700 border border-blue-200 leading-none">Passport New</span>
-                              })()}
                               {(() => {
                                 const badge = getHkidBadge(player)
                                 if (!badge) return null
