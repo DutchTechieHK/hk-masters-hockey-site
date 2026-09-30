@@ -17,7 +17,6 @@ import type { Player, FundraisingEntry, PlayerParticipation } from "@workspace/a
 import { useToast } from "@/hooks/use-toast"
 import { sanitizePlayerPayload } from "@/lib/player-payload"
 import { getInitials, formatCurrency } from "@/lib/utils"
-import { GRID_CRITERIA, computeReadiness, isFullyReady } from "@/lib/readiness"
 import { passportStatus, PASSPORT_STATUS_LABEL } from "@/lib/reports"
 import { format, parseISO } from "date-fns"
 import { MembershipInterestPanel } from "@/components/MembershipInterestPanel"
@@ -960,46 +959,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
         title={editingPlayer ? "Edit Member" : "Add Member"}
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-1">
-
-          {/* ── Readiness summary strip (edit mode only) ── */}
-          {editingPlayer && (() => {
-            const ready = computeReadiness(editingPlayer)
-            const passCount = Object.values(ready).filter(Boolean).length
-            const total = GRID_CRITERIA.length
-            const allReady = isFullyReady(editingPlayer)
-            return (
-              <div className={`rounded-xl border px-4 py-3 mb-2 ${allReady ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`}>
-                <div className="flex items-center justify-between mb-2.5">
-                  <span className={`text-xs font-semibold uppercase tracking-wide ${allReady ? "text-green-700" : "text-amber-700"}`}>
-                    Tournament readiness
-                  </span>
-                  <span className={`text-xs font-bold tabular-nums ${allReady ? "text-green-700" : "text-amber-700"}`}>
-                    {passCount}/{total}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {GRID_CRITERIA.map((c) => {
-                    const pass = ready[c.key]
-                    return (
-                      <span
-                        key={c.key}
-                        title={c.label}
-                        className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border ${
-                          pass
-                            ? "bg-green-100 text-green-800 border-green-200"
-                            : c.severity === "red"
-                              ? "bg-red-100 text-red-800 border-red-200"
-                              : "bg-amber-100 text-amber-800 border-amber-200"
-                        }`}
-                      >
-                        {pass ? "✓" : "✗"} {c.short}
-                      </span>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })()}
 
           <SectionHeading>Basic Info</SectionHeading>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
