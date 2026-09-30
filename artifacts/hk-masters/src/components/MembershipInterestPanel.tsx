@@ -234,10 +234,12 @@ export function MembershipInterestPanel({
       await loadSubmissions()
       onMembersUpdated()
       toast({
-        title: dismiss ? "Submission dismissed" : "Conflict resolved",
+        title: dismiss ? "Submission ignored" : "Submission linked to member",
         description: dismiss
-          ? "This submission will stay dismissed unless the Notion entry changes."
-          : "The selected member and their existing profile values were kept.",
+          ? submission.source === "notion_join"
+            ? "No member was changed. If this entry changes in Notion, it may need review again."
+            : "No member was linked or changed."
+          : "Existing profile details were kept. Membership details may have been updated.",
       })
     } catch (error) {
       toast({ title: (error as Error).message, variant: "destructive" })
@@ -366,8 +368,13 @@ export function MembershipInterestPanel({
                   ))}
                 </div>
               )}
+              <div className="mb-3 space-y-1 text-xs text-slate-600">
+                <p><strong>Confirm match:</strong> Link this submission to a member. Their existing name, email, date of birth and position stay; membership details may update.</p>
+                <p><strong>Ignore:</strong> Close this submission without linking it or changing a member.{submission.source === "notion_join" ? " It may reappear if the Notion entry changes." : ""}</p>
+              </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Select
+                  aria-label="Member to link this submission to"
                   value={selectedMembers[submission.id] || (submission.matchedPlayerId ? String(submission.matchedPlayerId) : "")}
                   onChange={(event) => setSelectedMembers((current) => ({ ...current, [submission.id]: event.target.value }))}
                 >
@@ -375,9 +382,9 @@ export function MembershipInterestPanel({
                   {players.map((player) => <option key={player.id} value={player.id}>{player.name} — {player.email}</option>)}
                 </Select>
                 <Button type="button" size="sm" disabled={busy} onClick={() => void resolve(submission)}>
-                  {submission.matchStatus === "conflict" ? "Keep existing member values" : "Match selected member"}
+                  Confirm match
                 </Button>
-                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Dismiss submission</Button>
+                <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Ignore submission</Button>
               </div>
             </div>
           ))}
