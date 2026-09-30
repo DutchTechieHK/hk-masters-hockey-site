@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MaskedInput } from "@/components/MaskedInput"
 import { Select } from "@/components/ui/select"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
@@ -145,23 +144,8 @@ const playerSchema = z.object({
   dateOfBirth: z.string().optional(),
   nationality: z.string().optional(),
   hkidNumber: z.string().optional(),
-  passportNumber: z.string().optional(),
-  passportExpiry: z.string().optional(),
   emergencyContactName: z.string().optional(),
   emergencyContactPhone: z.string().optional(),
-  flightArrivalDateTime: z.string().optional(),
-  flightDepartureDateTime: z.string().optional(),
-  arrivalCity: z.string().optional(),
-  outboundFlightNumber: z.string().optional(),
-  outboundDepartureDateTime: z.string().optional(),
-  returnFlightNumber: z.string().optional(),
-  returnArrivalDateTime: z.string().optional(),
-  roomSharingPreference: z.string().optional(),
-  roomSharingWith: z.string().optional(),
-  accommodationName: z.string().optional(),
-  accommodationAddress: z.string().optional(),
-  accommodationPhone: z.string().optional(),
-  accommodationEmail: z.string().optional(),
   insuranceProvider: z.string().optional(),
   insurancePolicyNumber: z.string().optional(),
   insuranceEmergencyPhone: z.string().optional(),
@@ -174,8 +158,6 @@ const playerSchema = z.object({
   poloSize: z.string().optional(),
   trackTopSize: z.string().optional(),
   goalieSmockSize: z.string().optional(),
-  travelDates: z.string().optional(),
-  passportCopyReviewed: z.boolean().default(false),
   paymentAmountDue: z.union([z.coerce.number().min(0), z.literal("")]).optional(),
   dietaryRequirements: z.string().optional(),
   medicalNotes: z.string().optional(),
@@ -354,17 +336,11 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const blankForm = (): Partial<PlayerFormValues> => ({
     teamId: teams.find((team) => team.name === "Awaiting Selection")?.id ?? 0,
     name: "", shirtNumber: "", email: "", phone: "", position: "",
-    dateOfBirth: "", nationality: "", hkidNumber: "", passportNumber: "", passportExpiry: "",
+    dateOfBirth: "", nationality: "", hkidNumber: "",
     emergencyContactName: "", emergencyContactPhone: "",
-    flightArrivalDateTime: "", flightDepartureDateTime: "", arrivalCity: "",
-    outboundFlightNumber: "", outboundDepartureDateTime: "",
-    returnFlightNumber: "", returnArrivalDateTime: "",
-    roomSharingPreference: "shared", roomSharingWith: "",
-    accommodationName: "", accommodationAddress: "", accommodationPhone: "", accommodationEmail: "",
     insuranceProvider: "", insurancePolicyNumber: "", insuranceEmergencyPhone: "",
     insurancePolicyHolder: "", insuranceExpiry: "", insuranceEmail: "",
-    shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "", travelDates: "",
-    passportCopyReviewed: false,
+    shirtSize: "", shortsSize: "", jacketSize: "", poloSize: "", trackTopSize: "", goalieSmockSize: "",
     paymentAmountDue: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
     instagramHandle: "", facebookHandle: "",
@@ -400,23 +376,8 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       dateOfBirth: player.dateOfBirth || "",
       nationality: player.nationality || "",
       hkidNumber: player.hkidNumber || "",
-      passportNumber: player.passportNumber || "",
-      passportExpiry: player.passportExpiry || "",
       emergencyContactName: player.emergencyContactName || "",
       emergencyContactPhone: player.emergencyContactPhone || "",
-      flightArrivalDateTime: player.flightArrivalDateTime || "",
-      flightDepartureDateTime: player.flightDepartureDateTime || "",
-      arrivalCity: player.arrivalCity || "",
-      outboundFlightNumber: player.outboundFlightNumber || "",
-      outboundDepartureDateTime: player.outboundDepartureDateTime || "",
-      returnFlightNumber: player.returnFlightNumber || "",
-      returnArrivalDateTime: player.returnArrivalDateTime || "",
-      roomSharingPreference: player.roomSharingPreference || "shared",
-      roomSharingWith: player.roomSharingWith || "",
-      accommodationName: player.accommodationName || "",
-      accommodationAddress: player.accommodationAddress || "",
-      accommodationPhone: player.accommodationPhone || "",
-      accommodationEmail: player.accommodationEmail || "",
       insuranceProvider: player.insuranceProvider || "",
       insurancePolicyNumber: player.insurancePolicyNumber || "",
       insuranceEmergencyPhone: player.insuranceEmergencyPhone || "",
@@ -429,8 +390,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       poloSize: player.poloSize || "",
       trackTopSize: player.trackTopSize || "",
       goalieSmockSize: player.goalieSmockSize || "",
-      travelDates: player.travelDates || "",
-      passportCopyReviewed: player.passportCopyReviewed ?? false,
       paymentAmountDue: player.paymentAmountDue ?? "",
       dietaryRequirements: player.dietaryRequirements || "",
       medicalNotes: player.medicalNotes || "",
@@ -547,7 +506,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     }
   }
 
-  const [uploadingPassportFor, setUploadingPassportFor] = useState<number | null>(null)
   const [uploadingHkidFor, setUploadingHkidFor] = useState<number | null>(null)
 
   const handleAdminUploadHkid = (player: Player) => {
@@ -605,66 +563,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
           toast({ title: "File uploaded but could not be saved", variant: "destructive" })
         } finally {
           setUploadingHkidFor(null)
-        }
-      },
-    )
-  }
-
-  const handleAdminUploadPassport = (player: Player) => {
-    if (!window.cloudinary || typeof window.cloudinary.openUploadWidget !== "function") {
-      toast({ title: "Upload service not ready yet — try again in a moment", variant: "destructive" })
-      return
-    }
-    if (uploadingPassportFor !== null) return
-    setUploadingPassportFor(player.id)
-    window.cloudinary.openUploadWidget(
-      {
-        cloudName: CLOUDINARY_CLOUD_NAME,
-        uploadPreset: CLOUDINARY_UPLOAD_PRESET,
-        sources: ["local", "camera"],
-        multiple: false,
-        resourceType: "auto",
-        accessMode: "public",
-        clientAllowedFormats: ["jpg", "jpeg", "png", "pdf", "heic", "webp"],
-        maxFileSize: 10000000,
-        folder: "passport-copies",
-        cropping: false,
-        showAdvancedOptions: false,
-        showPoweredBy: false,
-      },
-      async (error, result) => {
-        if (error) {
-          setUploadingPassportFor(null)
-          toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" })
-          return
-        }
-        if (result.event === "close") {
-          setUploadingPassportFor(null)
-          return
-        }
-        if (result.event !== "success") return
-        const url = result.info?.secure_url
-        if (!url) {
-          setUploadingPassportFor(null)
-          toast({ title: "Upload failed", description: "No file URL returned.", variant: "destructive" })
-          return
-        }
-        try {
-          await updateMutation.mutateAsync({
-            id: player.id,
-            data: sanitizePlayerPayload({ name: player.name, teamId: player.teamId, email: player.email, passportCopyUrl: url, passportCopyReviewed: true }) as any,
-          })
-          queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-          acknowledgePassport(player.id)
-          if (editingPlayer && editingPlayer.id === player.id) {
-            setEditingPlayer({ ...editingPlayer, passportCopyUrl: url, passportCopyReviewed: true })
-            setValue("passportCopyReviewed", true, { shouldDirty: false })
-          }
-          toast({ title: `Passport uploaded for ${player.name}` })
-        } catch {
-          toast({ title: "File uploaded but could not be saved", variant: "destructive" })
-        } finally {
-          setUploadingPassportFor(null)
         }
       },
     )
@@ -1232,67 +1130,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             </>
           )}
 
-          <SectionHeading>Passport</SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Passport Number</label>
-              <MaskedInput {...register("passportNumber")} placeholder="A1234567" />
-            </div>
-            {editingPlayer && (
-              <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-semibold">Passport Copy</label>
-                <div className="flex items-center gap-3 bg-muted/50 rounded-lg px-3 py-2.5 border flex-wrap">
-                  <Shield className={`w-4 h-4 shrink-0 ${editingPlayer.passportCopyUrl ? "text-emerald-600" : "text-muted-foreground"}`} />
-                  <span className="text-sm text-muted-foreground flex-1 min-w-[8rem]">
-                    {editingPlayer.passportCopyUrl ? "Passport copy on file" : "No passport copy uploaded yet"}
-                  </span>
-                  {editingPlayer.passportCopyUrl && (
-                    <a
-                      href={cloudinaryViewUrl(editingPlayer.passportCopyUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1 shrink-0"
-                    >
-                      <LinkIcon className="w-3.5 h-3.5" />
-                      View
-                    </a>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => editingPlayer && handleAdminUploadPassport(editingPlayer)}
-                    disabled={uploadingPassportFor === editingPlayer.id}
-                    className="shrink-0"
-                  >
-                    <Upload className="w-3.5 h-3.5 mr-1.5" />
-                    {uploadingPassportFor === editingPlayer.id
-                      ? "Uploading…"
-                      : editingPlayer.passportCopyUrl
-                        ? "Replace on behalf of player"
-                        : "Upload on behalf of player"}
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Use this if a player emailed you their passport because the in-app upload didn't work for them. The file will be marked as reviewed automatically.
-                </p>
-                {editingPlayer.passportCopyUrl && (
-                  <div className="flex items-center space-x-3 p-3 bg-muted/30 rounded-xl border">
-                    <input
-                      type="checkbox"
-                      id="passportCopyReviewed"
-                      className="w-5 h-5 rounded border-2 text-primary focus:ring-primary accent-primary"
-                      {...register("passportCopyReviewed")}
-                    />
-                    <label htmlFor="passportCopyReviewed" className="font-semibold cursor-pointer text-sm">
-                      Passport copy reviewed and valid
-                    </label>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           <SectionHeading>HKID Card Copy</SectionHeading>
           <div className="grid grid-cols-1 gap-4">
             {editingPlayer && (
@@ -1372,75 +1209,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             <div className="space-y-2">
               <label className="text-sm font-semibold">Emergency Contact Phone</label>
               <Input {...register("emergencyContactPhone")} placeholder="+852 XXXX XXXX" />
-            </div>
-          </div>
-
-          <SectionHeading>Travel</SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold">Travel Dates (Summary)</label>
-              <Input {...register("travelDates")} placeholder="e.g. 10 Jul – 25 Jul" />
-            </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Outbound</p>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Flight Number</label>
-              <Input {...register("outboundFlightNumber")} placeholder="e.g. KL888" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Departs (local time)</label>
-              <Input type="datetime-local" {...register("outboundDepartureDateTime")} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrives (local time)</label>
-              <Input type="datetime-local" {...register("flightArrivalDateTime")} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrival City/Airport</label>
-              <Input {...register("arrivalCity")} placeholder="e.g. Amsterdam Schiphol (AMS)" />
-            </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide md:col-span-2 mt-2 mb-0">Return</p>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Flight Number</label>
-              <Input {...register("returnFlightNumber")} placeholder="e.g. KL887" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Departs (local time)</label>
-              <Input type="datetime-local" {...register("flightDepartureDateTime")} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Arrives (local time)</label>
-              <Input type="datetime-local" {...register("returnArrivalDateTime")} />
-            </div>
-          </div>
-
-          <SectionHeading>Accommodation</SectionHeading>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Room Sharing Preference</label>
-              <Select {...register("roomSharingPreference")}>
-                <option value="shared">Shared</option>
-                <option value="single">Single</option>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Room Sharing With</label>
-              <Input {...register("roomSharingWith")} placeholder="Preferred roommate" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold">Accommodation Name</label>
-              <Input {...register("accommodationName")} placeholder="e.g. Hotel Atlanta Rotterdam" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-semibold">Accommodation Address</label>
-              <Input {...register("accommodationAddress")} placeholder="Street, city, postcode" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Accommodation Phone</label>
-              <Input {...register("accommodationPhone")} placeholder="+31 10 000 0000" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Accommodation Email</label>
-              <Input {...register("accommodationEmail")} type="email" placeholder="hotel@example.com" />
             </div>
           </div>
 
