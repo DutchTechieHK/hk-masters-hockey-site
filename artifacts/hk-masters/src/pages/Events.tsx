@@ -7,7 +7,8 @@ import { Select } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, Dumbbell, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, Zap, Trophy, X, Image as ImageIcon } from "lucide-react"
+import { Plus, Trash2, Edit2, CalendarDays, MapPin, Clock, Users, Coffee, ClipboardList, Upload, Globe, EyeOff, RefreshCw, Download, Utensils, Activity, Sun, Zap, Trophy, X, Image as ImageIcon } from "lucide-react"
+import { FieldHockeyIcon } from "@/components/ui/field-hockey-icon"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
@@ -85,8 +86,8 @@ const EMPTY_FORM: FormState = {
   photoUrl: "",
 }
 
-const KIND_META: Record<string, { label: string; icon: typeof Dumbbell; colour: string }> = {
-  training:    { label: "Training",    icon: Dumbbell,  colour: "bg-emerald-100 text-emerald-800" },
+const KIND_META: Record<string, { label: string; icon: typeof Users | typeof FieldHockeyIcon; colour: string }> = {
+  training:    { label: "Training",    icon: FieldHockeyIcon, colour: "bg-emerald-100 text-emerald-800" },
   meeting:     { label: "Meeting",     icon: Users,     colour: "bg-blue-100 text-blue-800" },
   social:      { label: "Social",      icon: Coffee,    colour: "bg-amber-100 text-amber-800" },
   physio:      { label: "Physio",      icon: Activity,  colour: "bg-purple-100 text-purple-800" },
