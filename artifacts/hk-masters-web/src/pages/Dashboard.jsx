@@ -4,6 +4,8 @@ import { fetchMe, logout, getPlayerToken } from "../lib/playerAuth";
 import { API_BASE } from "../utils/api";
 import { matchesForPlayer } from "../utils/playerMatches";
 import { themeFor } from "../utils/teamTheme";
+import useMatchAttendance from "../hooks/useMatchAttendance";
+import MatchAttendanceSummary from "../components/MatchAttendanceSummary";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
 const MEMBERSHIP_TIER_LABELS = {
@@ -107,7 +109,7 @@ export default function Dashboard() {
   const [rsvpReasonText, setRsvpReasonText] = useState("");
   const [activePolls, setActivePolls] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState(null);
-  const [matchAttendance, setMatchAttendance] = useState(null);
+  const { matches: matchAttendance, loading: attendanceLoading, error: attendanceError, refresh: refreshAttendance } = useMatchAttendance();
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -188,23 +190,6 @@ export default function Dashboard() {
     };
 
     fetchMatches();
-
-    const token = getPlayerToken();
-    if (token) {
-      fetch(`${API_BASE}/api/player-auth/matches/rsvps`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Could not load match attendance");
-          return res.json();
-        })
-        .then((data) => {
-          if (!cancelled) setMatchAttendance(Object.fromEntries(
-            (data.matches || []).map((item) => [item.matchId, item])
-          ));
-        })
-        .catch(() => { if (!cancelled) setMatchAttendance(null); });
-    }
 
     const handleFocus = () => { if (!cancelled) fetchMatches(); };
     const handleVisibility = () => { if (!document.hidden && !cancelled) fetchMatches(); };
@@ -465,6 +450,8 @@ export default function Dashboard() {
               </button>
             </div>
             <div className="flex flex-col gap-2">
+              {attendanceLoading && !Object.keys(matchAttendance).length && <p role="status" className="text-xs text-gray-600">Loading match attendance…</p>}
+              {attendanceError && <p role="alert" className="text-xs text-rose-700">{attendanceError} <button type="button" className="min-h-10 font-semibold underline" onClick={() => void refreshAttendance()}>Retry</button></p>}
               {upcomingMatches.slice(0, 2).map((match) => {
                 const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
                 const isLive = match.status === "in_progress";
@@ -543,6 +530,9 @@ export default function Dashboard() {
                           {choice ? "Change reply →" : "Respond on My Schedule →"}
                         </Link>
                       </div>
+                    )}
+                    {attendance && match.status === "scheduled" && new Date(match.kickoffAt).getTime() > Date.now() && (
+                      <MatchAttendanceSummary attendance={attendance} loading={attendanceLoading} error={attendanceError} onRefresh={refreshAttendance} />
                     )}
                   </div>
                 );

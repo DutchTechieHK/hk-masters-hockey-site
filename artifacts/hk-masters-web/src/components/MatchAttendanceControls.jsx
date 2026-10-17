@@ -1,4 +1,5 @@
 import { useState } from "react";
+import MatchAttendanceSummary from "./MatchAttendanceSummary";
 
 const OPTIONS = [
   { key: "yes", label: "Going", emoji: "✅", on: "bg-emerald-600 text-white border-emerald-600", off: "text-emerald-700 border-emerald-300 hover:bg-emerald-50" },
@@ -6,7 +7,7 @@ const OPTIONS = [
   { key: "no", label: "Not going", emoji: "❌", on: "bg-rose-600 text-white border-rose-600", off: "text-rose-700 border-rose-300 hover:bg-rose-50" },
 ];
 
-export default function MatchAttendanceControls({ attendance, saving, error, onSubmit }) {
+export default function MatchAttendanceControls({ attendance, saving, error, onSubmit, attendanceLoading, attendanceError, onRefresh }) {
   const [reasonStatus, setReasonStatus] = useState(null);
   const [note, setNote] = useState("");
 
@@ -70,9 +71,7 @@ export default function MatchAttendanceControls({ attendance, saving, error, onS
           <button type="button" className="underline" onClick={() => { setNote(attendance.myNote); setReasonStatus(attendance.myRsvp); }}>Edit</button>
         </p>
       )}
-      <p className="mt-2 text-xs text-gray-500">
-        {attendance.rsvpCounts?.yes ?? 0} going · {attendance.rsvpCounts?.maybe ?? 0} maybe · {attendance.rsvpCounts?.no ?? 0} no
-      </p>
+      <MatchAttendanceSummary attendance={attendance} loading={attendanceLoading} error={attendanceError} onRefresh={onRefresh} />
       {error && <p role="alert" className="mt-2 text-xs text-rose-700">{error}</p>}
     </div>
   );

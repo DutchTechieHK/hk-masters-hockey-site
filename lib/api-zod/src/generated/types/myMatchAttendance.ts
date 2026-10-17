@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MatchAttendanceCounts } from "./matchAttendanceCounts";
+import type { MatchGoingPlayer } from "./matchGoingPlayer";
 import type { MyMatchAttendanceMyRsvp } from "./myMatchAttendanceMyRsvp";
 
 export interface MyMatchAttendance {
@@ -15,4 +16,6 @@ export interface MyMatchAttendance {
   /** @nullable */
   myNote: string | null;
   rsvpCounts: MatchAttendanceCounts;
+  /** Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad. */
+  goingPlayers: MatchGoingPlayer[];
 }

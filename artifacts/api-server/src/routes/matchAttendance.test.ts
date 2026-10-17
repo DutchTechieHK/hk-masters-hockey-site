@@ -277,6 +277,83 @@ describe("match attendance", () => {
       row.email_blast_recipients.errorMessage === "delivery_pending")).toBe(true);
   });
 
+  it("shares only eligible Going names with the current squad, without a sixteen-player limit", async () => {
+    const [fixture] = await db.insert(matchesTable).values({
+      teamId: teamIds[0], opponent: `${tag}-going-names`,
+      kickoffAt: new Date("2030-10-12T10:00:00.000Z"),
+      status: "scheduled", operationalScope: "local_2026_27",
+    }).returning({ id: matchesTable.id });
+    ids.push(fixture.id);
+    const rosterIds: number[] = [];
+    for (let n = 0; n < 23; n++) {
+      const [player] = await db.insert(playersTable).values({
+        teamId: teamIds[1], name: `Going Test ${String(22 - n).padStart(2, "0")}`,
+        email: `${tag}-going-${n}@example.com`,
+        memberStatus: n === 20 ? "inactive" : "active",
+      }).returning({ id: playersTable.id });
+      playerIds.push(player.id);
+      rosterIds.push(player.id);
+      await db.insert(playerParticipationsTable).values({
+        playerId: player.id, seasonId, teamId: teamIds[0],
+        participationStatus: n === 21 ? "inactive" : "active",
+        source: "match_attendance_test",
+      });
+      if (n !== 22) {
+        await db.insert(matchRsvpsTable).values({
+          matchId: fixture.id, playerId: player.id,
+          status: n === 18 ? "maybe" : n === 19 ? "no" : "yes",
+          source: n === 0 ? "admin" : "player",
+          note: n === 18 || n === 19 ? "Private absence reason" : null,
+        });
+      }
+    }
+    // A stale outsider reply must neither contribute a name nor inflate the count.
+    await db.insert(matchRsvpsTable).values({
+      matchId: fixture.id, playerId: playerIds[2], status: "yes",
+    });
+    expect((await request(app).post(`/player/matches/${fixture.id}/rsvp`).set(auth()).send({ status: "yes" })).status).toBe(200);
+    expect((await request(app).get("/player/matches/rsvps")).status).toBe(401);
+    const listing = await request(app).get("/player/matches/rsvps").set(auth());
+    expect(listing.status).toBe(200);
+    expect(listing.headers["cache-control"]).toBe("private, no-store");
+    const row = listing.body.matches.find((m: { matchId: number }) => m.matchId === fixture.id);
+    expect(row.rsvpCounts).toEqual({ yes: 19, maybe: 1, no: 1 });
+    expect(row.goingPlayers).toHaveLength(19);
+    expect(row.goingPlayers.map((p: { id: number }) => p.id)).toEqual(expect.arrayContaining([playerIds[0], rosterIds[0]]));
+    expect(row.goingPlayers.every((p: object) => Object.keys(p).sort().join(",") === "id,name")).toBe(true);
+    const names = row.goingPlayers.map((p: { name: string }) => p.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" })));
+    expect(JSON.stringify(row)).not.toContain("Private absence reason");
+    expect(JSON.stringify(row)).not.toContain("@example.com");
+    expect(row.goingPlayers.some((p: { id: number }) => [playerIds[2], ...rosterIds.slice(18)].includes(p.id))).toBe(false);
+    const outsider = await request(app).get(`/player/matches/rsvps?matchId=${fixture.id}&teamId=${teamIds[0]}`)
+      .set("Authorization", `Bearer ${otherToken}`);
+    expect(outsider.body.matches.some((m: { matchId: number }) => m.matchId === fixture.id)).toBe(false);
+    const inactive = await createPlayerSession(rosterIds[20]);
+    expect((await request(app).get("/player/matches/rsvps").set("Authorization", `Bearer ${inactive}`)).status).toBe(403);
+    const inactiveParticipation = await createPlayerSession(rosterIds[21]);
+    expect((await request(app).get("/player/matches/rsvps").set("Authorization", `Bearer ${inactiveParticipation}`)).body.matches).toEqual([]);
+
+    // A fresh read after a player reply changes must return the matching names and count.
+    await request(app).post(`/player/matches/${fixture.id}/rsvp`).set(auth()).send({ status: "no", note: "My private reason" });
+    const changed = await request(app).get("/player/matches/rsvps").set(auth());
+    const updated = changed.body.matches.find((m: { matchId: number }) => m.matchId === fixture.id);
+    expect(updated.rsvpCounts).toEqual({ yes: 18, maybe: 1, no: 2 });
+    expect(updated.goingPlayers).toHaveLength(18);
+    expect(updated.goingPlayers.some((p: { id: number }) => p.id === playerIds[0])).toBe(false);
+    expect(updated.myNote).toBe("My private reason");
+    // Current participation, not legacy team, controls viewing as well as responding.
+    await db.update(playerParticipationsTable).set({ teamId: teamIds[1] })
+      .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));
+    try {
+      const moved = await request(app).get("/player/matches/rsvps").set(auth());
+      expect(moved.body.matches.some((m: { matchId: number }) => m.matchId === fixture.id)).toBe(false);
+    } finally {
+      await db.update(playerParticipationsTable).set({ teamId: teamIds[0] })
+        .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));
+    }
+  });
+
   it("rejects old, cancelled, final, and archived matches", async () => {
     for (const id of [pastId, cancelledId, archivedId]) {
       expect((await request(app).post(`/player/matches/${id}/rsvp`).set(auth()).send({ status: "yes" })).status).toBe(409);

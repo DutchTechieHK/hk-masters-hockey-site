@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
 import { NavigationRoute, registerRoute, setCatchHandler } from "workbox-routing";
-import { NetworkFirst, CacheFirst } from "workbox-strategies";
+import { NetworkFirst, CacheFirst, NetworkOnly } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 
@@ -36,11 +36,23 @@ registerRoute(
   })
 );
 
-// NetworkFirst for all read-only portal and public API endpoints.
+const isMatchAttendance = (url: URL) => url.pathname.endsWith("/api/player-auth/matches/rsvps");
+
+// Squad-only attendee names must never be served from a shared/offline cache.
+registerRoute(({ url }) => isMatchAttendance(url), new NetworkOnly());
+self.addEventListener("activate", (event: ExtendableEvent) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open("portal-api-cache");
+    const keys = await cache.keys();
+    await Promise.all(keys.filter((key) => isMatchAttendance(new URL(key.url))).map((key) => cache.delete(key)));
+  })());
+});
+
+// NetworkFirst for other read-only portal and public API endpoints.
 // Workbox only caches GET responses, so POST/PUT/DELETE mutations are unaffected.
 registerRoute(
   ({ url }) =>
-    /\/api\/(announcements|contributions|documents|events|matches|player-auth|players|public|sponsors)/.test(
+    !isMatchAttendance(url) && /\/api\/(announcements|contributions|documents|events|matches|player-auth|players|public|sponsors)/.test(
       url.pathname
     ),
   new NetworkFirst({

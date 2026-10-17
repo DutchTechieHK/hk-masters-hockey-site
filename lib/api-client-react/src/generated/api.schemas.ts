@@ -1305,6 +1305,11 @@ export const MyMatchAttendanceMyRsvp = {
   no: "no",
 } as const;
 
+export interface MatchGoingPlayer {
+  id: number;
+  name: string;
+}
+
 export interface MyMatchAttendance {
   matchId: number;
   /** @nullable */
@@ -1312,6 +1317,8 @@ export interface MyMatchAttendance {
   /** @nullable */
   myNote: string | null;
   rsvpCounts: MatchAttendanceCounts;
+  /** Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad. */
+  goingPlayers: MatchGoingPlayer[];
 }
 
 export type MatchAttendanceInputStatus =

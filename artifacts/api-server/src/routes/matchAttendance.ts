@@ -227,6 +227,10 @@ export async function remindMatchNonresponders(req: Request, res: Response): Pro
 }
 
 export async function playerMatchRsvps(req: Request, res: Response): Promise<void> {
+  // This response contains squad-only names and must never enter shared or offline caches.
+  res.set("Cache-Control", "private, no-store");
+  res.vary("Authorization");
+  res.vary("x-player-session");
   const playerId = req.player!.id;
   const [squad] = await db.select({ teamId: playerParticipationsTable.teamId })
     .from(playerParticipationsTable)
@@ -242,6 +246,10 @@ export async function playerMatchRsvps(req: Request, res: Response): Promise<voi
   if (!fixtures.length) { res.json({ matches: [] }); return; }
   const ids = fixtures.map((m) => m.id);
   const players = await eligiblePlayers(squad.teamId);
+  if (!players.some((player) => player.id === playerId)) {
+    res.status(403).json({ error: "Match attendance is not available to your current membership" });
+    return;
+  }
   const playerIds = players.map((p) => p.id);
   const rows = playerIds.length
     ? await db.select().from(matchRsvpsTable)
@@ -251,7 +259,11 @@ export async function playerMatchRsvps(req: Request, res: Response): Promise<voi
     const counts: Record<Status, number> = { yes: 0, maybe: 0, no: 0 };
     for (const row of rows) if (row.matchId === id && STATUSES.includes(row.status as Status)) counts[row.status as Status]++;
     const mine = rows.find((row) => row.matchId === id && row.playerId === playerId);
-    return { matchId: id, myRsvp: mine?.status ?? null, myNote: mine?.note ?? null, rsvpCounts: counts };
+    const goingIds = new Set(rows.filter((row) => row.matchId === id && row.status === "yes").map((row) => row.playerId));
+    const goingPlayers = players.filter((player) => goingIds.has(player.id))
+      .map((player) => ({ id: player.id, name: player.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.id - b.id);
+    return { matchId: id, myRsvp: mine?.status ?? null, myNote: mine?.note ?? null, rsvpCounts: counts, goingPlayers };
   });
   res.json({ matches });
 }

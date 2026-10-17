@@ -6,6 +6,7 @@ import { getPlayerToken, fetchMe } from "../lib/playerAuth";
 import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
 import MatchAttendanceControls from "../components/MatchAttendanceControls";
+import useMatchAttendance from "../hooks/useMatchAttendance";
 
 const KIND_META = {
   training:    { label: "Training",    emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
@@ -126,7 +127,7 @@ function downloadIcs(events, filename, calendarName) {
 }
 
 // Match fixture card ---------------------------------------------------------
-function MatchFixtureCard({ match, attendance, saving, error, onSubmit }) {
+function MatchFixtureCard({ match, attendance, saving, error, onSubmit, attendanceLoading, attendanceError, onRefresh }) {
   const isPast    = match.status === "final" || match.status === "cancelled";
   const isLive    = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
@@ -242,6 +243,9 @@ function MatchFixtureCard({ match, attendance, saving, error, onSubmit }) {
             saving={saving}
             error={error}
             onSubmit={(status, note) => onSubmit(match.id, status, note)}
+            attendanceLoading={attendanceLoading}
+            attendanceError={attendanceError}
+            onRefresh={onRefresh}
           />
         )}
       </div>
@@ -405,10 +409,9 @@ export default function MySchedule() {
   const [showPast, setShowPast] = useState(false);
   const [rsvpSaving, setRsvpSaving] = useState({});
   const [rsvpError, setRsvpError] = useState("");
-  const [matchAttendance, setMatchAttendance] = useState({});
+  const { matches: matchAttendance, loading: attendanceLoading, error: attendanceLoadError, refresh: refreshAttendance, rememberReply } = useMatchAttendance();
   const [matchSaving, setMatchSaving] = useState({});
   const [matchErrors, setMatchErrors] = useState({});
-  const [attendanceLoadError, setAttendanceLoadError] = useState("");
 
   const submitMatchRsvp = async (matchId, status, note) => {
     const token = getPlayerToken();
@@ -427,14 +430,8 @@ export default function MySchedule() {
         throw new Error(data.error || "Could not save your match response");
       }
       const saved = await res.json();
-      setMatchAttendance((prev) => {
-        const previous = prev[matchId];
-        if (!previous) return prev;
-        const counts = { ...previous.rsvpCounts };
-        if (previous.myRsvp && counts[previous.myRsvp] > 0) counts[previous.myRsvp]--;
-        counts[saved.status] = (counts[saved.status] ?? 0) + 1;
-        return { ...prev, [matchId]: { ...previous, myRsvp: saved.status, myNote: saved.note, rsvpCounts: counts } };
-      });
+      rememberReply(matchId, saved);
+      await refreshAttendance();
       return true;
     } catch (err) {
       setMatchErrors((prev) => ({ ...prev, [matchId]: err.message || "Could not save your match response" }));
@@ -489,26 +486,16 @@ export default function MySchedule() {
     let cancelled = false;
     (async () => {
       try {
-        const [me, scheduleRes, matchesRes, attendanceRes] = await Promise.all([
+        const [me, scheduleRes, matchesRes] = await Promise.all([
           fetchMe(),
           fetch(`${API_BASE}/api/player-auth/my-schedule`, {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${API_BASE}/api/matches`),
-          fetch(`${API_BASE}/api/player-auth/matches/rsvps`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
         ]);
         if (cancelled) return;
         if (!me) { setLocation("/login"); return; }
         setPlayer(me);
-        if (attendanceRes.status === 401) { setLocation("/login"); return; }
-        if (attendanceRes.ok) {
-          const attendanceData = await attendanceRes.json();
-          setMatchAttendance(Object.fromEntries((attendanceData.matches || []).map((item) => [item.matchId, item])));
-        } else {
-          setAttendanceLoadError("Match attendance is temporarily unavailable. Please try again later.");
-        }
         if (scheduleRes.status === 401) { setLocation("/login"); return; }
         if (!scheduleRes.ok) throw new Error("Could not load your schedule");
         const data = await scheduleRes.json();
@@ -609,7 +596,8 @@ export default function MySchedule() {
             {rsvpError}
           </div>
         )}
-        {attendanceLoadError && <p role="alert" className="mb-4 text-sm text-rose-700">{attendanceLoadError}</p>}
+        {attendanceLoading && !Object.keys(matchAttendance).length && <p role="status" className="mb-4 text-sm text-gray-600">Loading match attendance…</p>}
+        {attendanceLoadError && <p role="alert" className="mb-4 text-sm text-rose-700">{attendanceLoadError} <button type="button" className="min-h-10 font-semibold underline" onClick={() => void refreshAttendance()}>Retry</button></p>}
 
         {/* Empty state */}
         {upcoming.length === 0 && matches.length === 0 && (
@@ -649,6 +637,9 @@ export default function MySchedule() {
                   attendance={matchAttendance[match.id]}
                   saving={!!matchSaving[match.id]}
                   error={matchErrors[match.id]}
+                  attendanceLoading={attendanceLoading}
+                  attendanceError={attendanceLoadError}
+                  onRefresh={refreshAttendance}
                   onSubmit={submitMatchRsvp} />
               ))}
             </div>

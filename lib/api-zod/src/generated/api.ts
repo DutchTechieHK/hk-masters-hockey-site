@@ -1986,6 +1986,16 @@ export const ListMyMatchAttendanceResponse = zod.object({
         maybe: zod.number(),
         no: zod.number(),
       }),
+      goingPlayers: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+          }),
+        )
+        .describe(
+          "Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad.",
+        ),
     }),
   ),
 });

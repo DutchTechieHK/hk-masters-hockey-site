@@ -91,6 +91,7 @@ export * from "./matchChangeDeliveryStatus";
 export * from "./matchChangePreview";
 export * from "./matchChangePreviewKind";
 export * from "./matchChangeResult";
+export * from "./matchGoingPlayer";
 export * from "./matchImportCorrectionResult";
 export * from "./matchReminderResult";
 export * from "./matchStatus";

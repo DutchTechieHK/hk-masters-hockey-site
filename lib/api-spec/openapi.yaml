@@ -3250,7 +3250,19 @@ components:
         myRsvp: { type: [string, "null"], enum: [yes, maybe, no, null] }
         myNote: { type: [string, "null"] }
         rsvpCounts: { $ref: "#/components/schemas/MatchAttendanceCounts" }
-      required: [matchId, myRsvp, myNote, rsvpCounts]
+        goingPlayers:
+          type: array
+          description: Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad.
+          items:
+            $ref: "#/components/schemas/MatchGoingPlayer"
+      required: [matchId, myRsvp, myNote, rsvpCounts, goingPlayers]
+
+    MatchGoingPlayer:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+      required: [id, name]
 
     MatchAttendanceInput:
       type: object

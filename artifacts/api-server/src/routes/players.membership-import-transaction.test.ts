@@ -61,6 +61,7 @@ beforeAll(async () => {
       teamId: team.id,
       name: "Membership Import Conflict",
       email: notionConflictEmail,
+      position: "Defender",
       currentMembershipTier: "awaiting_selection",
     },
   ]).returning({ id: playersTable.id });
@@ -182,6 +183,13 @@ describe("membership interest import transaction", () => {
       .send({
         playerId: notionPlayerId,
         membershipTier: "awaiting_selection",
+        expectedSourceUpdatedAt: "2026-09-02T10:00:00.000Z",
+        conflictChoices: [{
+          field: "position",
+          valueSource: "app",
+          expectedExistingValue: "Defender",
+          expectedNotionValue: "Forward",
+        }],
       });
 
     expect(response.status).toBe(200);
@@ -194,6 +202,10 @@ describe("membership interest import transaction", () => {
     });
     expect(submission.rawData).toMatchObject({
       _profileConflictResolvedForSourceUpdatedAt: "2026-09-02T10:00:00.000Z",
+      _profileFieldSources: { position: "app" },
     });
+    const [player] = await db.select().from(playersTable).where(eq(playersTable.id, notionPlayerId));
+    expect(player.position).toBe("Defender");
+    expect(player.currentMembershipTier).toBe("awaiting_selection");
   });
 });
