@@ -4,7 +4,7 @@ import { API_BASE } from "../utils/api";
 import { clearPlayerToken, getPlayerToken } from "../lib/playerAuth";
 
 // A single snapshot supplies both counts and names on each player page.
-export default function useMatchAttendance(kind = "match") {
+export default function useMatchAttendance(kind = "match", { optionalSession = false } = {}) {
   const training = kind === "training";
   const collection = training ? "events" : "matches";
   const idKey = training ? "eventId" : "matchId";
@@ -24,8 +24,9 @@ export default function useMatchAttendance(kind = "match") {
     const token = getPlayerToken();
     if (!token) {
       setMatches({});
+      setError("");
       setLoading(false);
-      setLocation("/login");
+      if (!optionalSession) setLocation("/login");
       return false;
     }
     setLoading(true);
@@ -40,7 +41,7 @@ export default function useMatchAttendance(kind = "match") {
       if (response.status === 401 || response.status === 403) {
         setMatches({});
         clearPlayerToken();
-        setLocation("/login");
+        if (!optionalSession) setLocation("/login");
         return false;
       }
       if (!response.ok) throw new Error(`Could not load ${kind} attendance. Please retry.`);
@@ -60,7 +61,7 @@ export default function useMatchAttendance(kind = "match") {
     } finally {
       if (version === request.current) setLoading(false);
     }
-  }, [setLocation, collection, idKey, path, kind]);
+  }, [setLocation, collection, idKey, path, kind, optionalSession]);
 
   const rememberReply = useCallback((matchId, saved) => {
     setMatches((previous) => previous[matchId] ? {

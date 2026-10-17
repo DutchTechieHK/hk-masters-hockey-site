@@ -1,7 +1,10 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
 import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-flags";
 import { themeFor } from "../utils/teamTheme";
+import useMatchAttendance from "../hooks/useMatchAttendance";
+import MatchAttendanceSummary from "../components/MatchAttendanceSummary";
+import { getPlayerToken } from "../lib/playerAuth";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
 
@@ -39,7 +42,7 @@ function getCountdown(iso) {
   return mins > 0 ? `In ${mins}m` : "Starting soon";
 }
 
-function MatchCard({ match }) {
+export function MatchCard({ match, attendance, attendanceLoading, attendanceError, onRefreshAttendance }) {
   const isPast    = match.status === "final" || match.status === "cancelled";
   const isLive    = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getCountdown(match.kickoffAt) : null;
@@ -128,6 +131,11 @@ function MatchCard({ match }) {
           </p>
         )}
 
+        {attendance && match.status === "scheduled" && new Date(match.kickoffAt).getTime() > Date.now() && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <MatchAttendanceSummary attendance={attendance} loading={attendanceLoading} error={attendanceError} onRefresh={onRefreshAttendance} />
+          </div>
+        )}
         {showCalendarButton && (
           <div className="mt-3 pt-3 border-t border-gray-100 text-center">
             <a
@@ -189,6 +197,10 @@ export default function Schedule() {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const {
+    matches: attendance, loading: attendanceLoading,
+    error: attendanceError, refresh: refreshAttendance,
+  } = useMatchAttendance("match", { optionalSession: true });
 
   useEffect(() => {
     fetch(`${API_BASE}/api/matches`)
@@ -276,6 +288,14 @@ export default function Schedule() {
                 <p className="text-sm text-gray-500 mb-6 -mt-3">
                   Subscribe once and your calendar updates automatically when fixtures change. Or use "Add to calendar" on any match below for a one-off download.
                 </p>
+                {getPlayerToken() && attendanceLoading && !Object.keys(attendance).length && (
+                  <p role="status" className="mb-4 text-sm text-gray-600">Loading your squad’s attendance…</p>
+                )}
+                {getPlayerToken() && attendanceError && (
+                  <p role="alert" className="mb-4 text-sm text-rose-700">
+                    {attendanceError} <button type="button" className="min-h-10 font-semibold underline" onClick={() => void refreshAttendance()}>Retry</button>
+                  </p>
+                )}
                 <div className="space-y-10">
                   {upcomingGroups.map((g) => (
                     <div key={g.date}>
@@ -292,7 +312,7 @@ export default function Schedule() {
                             </p>
                             <div className="space-y-3">
                               {teamGroup.items.map((m) => (
-                                <MatchCard key={m.id} match={m} />
+                                <MatchCard key={m.id} match={m} attendance={attendance[m.id]} attendanceLoading={attendanceLoading} attendanceError={attendanceError} onRefreshAttendance={refreshAttendance} />
                               ))}
                             </div>
                           </div>
