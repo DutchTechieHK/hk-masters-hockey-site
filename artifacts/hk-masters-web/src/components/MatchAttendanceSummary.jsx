@@ -1,16 +1,16 @@
 import React, { useId, useState } from "react";
 
-export function MatchGoingList({ attendance, loading, error, onRefresh }) {
+export function MatchGoingList({ attendance, loading, error, onRefresh, kind = "match" }) {
   return (
     <>
-      <p className="mb-2 text-xs text-gray-600">Players marked Going — not a confirmed lineup.</p>
+      <p className="mb-2 text-xs text-gray-600">{kind === "training" ? "Players marked Going to training — not a confirmed attendance register." : "Players marked Going — not a confirmed lineup."}</p>
       {loading ? <p role="status" className="text-sm text-gray-600">Loading who’s going…</p> : error ? (
         <div role="alert" className="text-sm text-rose-700">
           <p>{error}</p>
           <button type="button" className="mt-1 min-h-10 font-semibold underline" onClick={() => void onRefresh()}>Retry</button>
         </div>
       ) : attendance.goingPlayers.length ? (
-        <ul aria-label="Players going to this match" className="grid gap-1 sm:grid-cols-2">
+        <ul aria-label={`Players going to this ${kind}`} className="grid gap-1 sm:grid-cols-2">
           {attendance.goingPlayers.map((player) => (
             <li key={player.id} className="min-w-0 break-words rounded-lg bg-white px-3 py-2 text-sm text-gray-800">{player.name}</li>
           ))}
@@ -20,7 +20,7 @@ export function MatchGoingList({ attendance, loading, error, onRefresh }) {
   );
 }
 
-export default function MatchAttendanceSummary({ attendance, loading, error, onRefresh }) {
+export default function MatchAttendanceSummary({ attendance, loading, error, onRefresh, kind = "match" }) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const current = !loading && !error;
@@ -49,7 +49,7 @@ export default function MatchAttendanceSummary({ attendance, loading, error, onR
       </div>
       {open && (
         <div id={panelId} className="mt-2 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3" aria-busy={loading}>
-          <MatchGoingList attendance={attendance} loading={loading} error={error} onRefresh={onRefresh} />
+          <MatchGoingList attendance={attendance} loading={loading} error={error} onRefresh={onRefresh} kind={kind} />
         </div>
       )}
       {!open && error && (

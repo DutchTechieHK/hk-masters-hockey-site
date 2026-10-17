@@ -1256,6 +1256,24 @@ paths:
         "204":
           description: Deleted
 
+  /events/training-attendance:
+    get:
+      operationId: listMyTrainingAttendance
+      tags: [events]
+      summary: Private attendance for upcoming training sessions visible to the signed-in member
+      description: Uses current local event eligibility. Returns only eligible Going player IDs and names, with counts from the same replies. Never returns emails or absence reasons. Must not be cached.
+      responses:
+        "200":
+          description: Eligible upcoming local training attendance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyTrainingAttendanceList"
+        "401":
+          description: Player authentication required
+        "403":
+          description: Membership is not active
+
   /matches/rsvps/summary:
     get:
       operationId: listMatchAttendanceSummaries
@@ -3242,6 +3260,27 @@ components:
         historyRecorded: { type: boolean }
         preview: { $ref: "#/components/schemas/MatchChangePreview" }
       required: [sent, uncertain, skippedChanged, historyRecorded, preview]
+
+    MyTrainingAttendanceList:
+      type: object
+      properties:
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyTrainingAttendance"
+      required: [events]
+
+    MyTrainingAttendance:
+      type: object
+      properties:
+        eventId: { type: integer }
+        rsvpCounts: { $ref: "#/components/schemas/MatchAttendanceCounts" }
+        goingPlayers:
+          type: array
+          description: Eligible active members marked Going, alphabetized by display name.
+          items:
+            $ref: "#/components/schemas/MatchGoingPlayer"
+      required: [eventId, rsvpCounts, goingPlayers]
 
     MyMatchAttendance:
       type: object

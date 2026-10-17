@@ -4,7 +4,11 @@ import { API_BASE } from "../utils/api";
 import { clearPlayerToken, getPlayerToken } from "../lib/playerAuth";
 
 // A single snapshot supplies both counts and names on each player page.
-export default function useMatchAttendance() {
+export default function useMatchAttendance(kind = "match") {
+  const training = kind === "training";
+  const collection = training ? "events" : "matches";
+  const idKey = training ? "eventId" : "matchId";
+  const path = training ? "/api/events/training-attendance" : "/api/player-auth/matches/rsvps";
   const [, setLocation] = useLocation();
   const [matches, setMatches] = useState({});
   const [loading, setLoading] = useState(true);
@@ -27,7 +31,7 @@ export default function useMatchAttendance() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API_BASE}/api/player-auth/matches/rsvps`, {
+      const response = await fetch(`${API_BASE}${path}`, {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
         signal: abort.signal,
@@ -39,24 +43,24 @@ export default function useMatchAttendance() {
         setLocation("/login");
         return false;
       }
-      if (!response.ok) throw new Error("Could not load match attendance. Please retry.");
+      if (!response.ok) throw new Error(`Could not load ${kind} attendance. Please retry.`);
       const data = await response.json();
-      if (!Array.isArray(data.matches) || data.matches.some((match) =>
+      if (!Array.isArray(data[collection]) || data[collection].some((match) =>
         !Array.isArray(match.goingPlayers) || !match.rsvpCounts)) {
-        throw new Error("Match attendance could not be loaded. Please retry.");
+        throw new Error(`Could not load ${kind} attendance. Please retry.`);
       }
       if (version !== request.current || getPlayerToken() !== token) return false;
-      setMatches(Object.fromEntries(data.matches.map((match) => [match.matchId, match])));
+      setMatches(Object.fromEntries(data[collection].map((match) => [match[idKey], match])));
       return true;
     } catch (err) {
       if (version === request.current && getPlayerToken() === token && !abort.signal.aborted) {
-        setError(err.message || "Could not load match attendance. Please retry.");
+        setError(err.message || `Could not load ${kind} attendance. Please retry.`);
       }
       return false;
     } finally {
       if (version === request.current) setLoading(false);
     }
-  }, [setLocation]);
+  }, [setLocation, collection, idKey, path, kind]);
 
   const rememberReply = useCallback((matchId, saved) => {
     setMatches((previous) => previous[matchId] ? {

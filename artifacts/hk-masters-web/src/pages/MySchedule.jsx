@@ -7,6 +7,7 @@ import { getCountryFlagImageUrl, HK_FLAG_IMAGE_URL } from "@workspace/country-fl
 import { themeFor } from "../utils/teamTheme";
 import MatchAttendanceControls from "../components/MatchAttendanceControls";
 import useMatchAttendance from "../hooks/useMatchAttendance";
+import TrainingAttendanceSummary from "../components/TrainingAttendanceSummary";
 
 const KIND_META = {
   training:    { label: "Training",    emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
@@ -254,7 +255,8 @@ function MatchFixtureCard({ match, attendance, saving, error, onSubmit, attendan
 }
 
 // Shared event card ----------------------------------------------------------
-function EventCard({ ev, rsvpSaving, submitRsvp }) {
+function EventCard({ ev, rsvpSaving, submitRsvp, trainingAttendance, trainingLoading, trainingError, refreshTraining }) {
+  const upcomingTraining = ev.kind === "training" && new Date(ev.startsAt).getTime() > Date.now();
   const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
   const dateStr = formatDateTime(ev.startsAt);
   const timeRange = ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
@@ -342,10 +344,18 @@ function EventCard({ ev, rsvpSaving, submitRsvp }) {
               );
             })}
           </div>
-          <div className="text-xs text-gray-500 whitespace-nowrap">
+          {!upcomingTraining && <div className="text-xs text-gray-500 whitespace-nowrap">
             {ev.rsvpCounts?.yes ?? 0} going · {ev.rsvpCounts?.maybe ?? 0} maybe · {ev.rsvpCounts?.no ?? 0} no
-          </div>
+          </div>}
         </div>
+        {upcomingTraining && (
+          <TrainingAttendanceSummary
+            attendance={trainingAttendance}
+            loading={trainingLoading || !!rsvpSaving[ev.id]}
+            error={trainingError}
+            onRefresh={refreshTraining}
+          />
+        )}
 
         {reasonStatus && (
           <div className="mt-3">
@@ -410,6 +420,7 @@ export default function MySchedule() {
   const [rsvpSaving, setRsvpSaving] = useState({});
   const [rsvpError, setRsvpError] = useState("");
   const { matches: matchAttendance, loading: attendanceLoading, error: attendanceLoadError, refresh: refreshAttendance, rememberReply } = useMatchAttendance();
+  const { matches: trainingAttendance, loading: trainingLoading, error: trainingError, refresh: refreshTraining } = useMatchAttendance("training");
   const [matchSaving, setMatchSaving] = useState({});
   const [matchErrors, setMatchErrors] = useState({});
 
@@ -476,6 +487,7 @@ export default function MySchedule() {
         }
       } catch { /* ignore */ }
     } finally {
+      if (events.some((ev) => ev.id === eventId && ev.kind === "training")) await refreshTraining();
       setRsvpSaving((s) => { const n = { ...s }; delete n[eventId]; return n; });
     }
   };
@@ -617,7 +629,9 @@ export default function MySchedule() {
               <section key={month}>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#DE2910] mb-3">{month}</h3>
                 <ul className="space-y-3">
-                  {items.map((ev) => <EventCard key={ev.id} ev={ev} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp} />)}
+                  {items.map((ev) => <EventCard key={ev.id} ev={ev} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp}
+                    trainingAttendance={trainingAttendance[ev.id]} trainingLoading={trainingLoading}
+                    trainingError={trainingError} refreshTraining={refreshTraining} />)}
                 </ul>
               </section>
             ))}

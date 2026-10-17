@@ -36,15 +36,16 @@ registerRoute(
   })
 );
 
-const isMatchAttendance = (url: URL) => url.pathname.endsWith("/api/player-auth/matches/rsvps");
+const isPrivateAttendance = (url: URL) =>
+  /\/api\/(?:player-auth\/matches\/rsvps|events\/training-attendance)\/?$/.test(url.pathname);
 
 // Squad-only attendee names must never be served from a shared/offline cache.
-registerRoute(({ url }) => isMatchAttendance(url), new NetworkOnly());
+registerRoute(({ url }) => isPrivateAttendance(url), new NetworkOnly());
 self.addEventListener("activate", (event: ExtendableEvent) => {
   event.waitUntil((async () => {
     const cache = await caches.open("portal-api-cache");
     const keys = await cache.keys();
-    await Promise.all(keys.filter((key) => isMatchAttendance(new URL(key.url))).map((key) => cache.delete(key)));
+    await Promise.all(keys.filter((key) => isPrivateAttendance(new URL(key.url))).map((key) => cache.delete(key)));
   })());
 });
 
@@ -52,7 +53,7 @@ self.addEventListener("activate", (event: ExtendableEvent) => {
 // Workbox only caches GET responses, so POST/PUT/DELETE mutations are unaffected.
 registerRoute(
   ({ url }) =>
-    !isMatchAttendance(url) && /\/api\/(announcements|contributions|documents|events|matches|player-auth|players|public|sponsors)/.test(
+    !isPrivateAttendance(url) && /\/api\/(announcements|contributions|documents|events|matches|player-auth|players|public|sponsors)/.test(
       url.pathname
     ),
   new NetworkFirst({

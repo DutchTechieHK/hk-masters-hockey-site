@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import MatchAttendanceSummary, { MatchGoingList } from "./MatchAttendanceSummary";
+import TrainingAttendanceSummary from "./TrainingAttendanceSummary";
 
 const attendance = {
   matchId: 42,
@@ -13,6 +14,28 @@ const render = (component, props = {}) => renderToStaticMarkup(createElement(com
 }));
 
 describe("player match attendance display", () => {
+  it("reuses the disclosure for training without calling it a match or a lineup", () => {
+    const html = render(TrainingAttendanceSummary);
+    expect(html).toContain("Who’s going (20)");
+    expect(html).toContain('aria-expanded="false"');
+    const list = render(MatchGoingList, { kind: "training" });
+    expect(list).toContain('aria-label="Players going to this training"');
+    expect(list).toContain("Players marked Going to training");
+    expect(list).not.toContain("lineup");
+    expect(list.match(/<li /g)).toHaveLength(20);
+  });
+
+  it("does not invent zero counts when a training session is missing or refresh fails", () => {
+    const missing = render(TrainingAttendanceSummary, { attendance: undefined });
+    expect(missing).toContain("Attendance unavailable");
+    expect(missing).not.toContain("Who’s going (");
+    const pending = render(TrainingAttendanceSummary, { attendance: undefined, loading: true });
+    expect(pending).toContain("Updating attendance");
+    const failed = render(TrainingAttendanceSummary, { error: "Offline" });
+    expect(failed).toContain("Retry");
+    expect(failed).not.toContain("20 going");
+  });
+
   it("keeps names collapsed by default with an accessible disclosure and accurate count", () => {
     const html = render(MatchAttendanceSummary);
     expect(html).toContain("Who’s going (20)");

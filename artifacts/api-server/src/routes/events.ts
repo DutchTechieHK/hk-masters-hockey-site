@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db";
-import { eq, asc, or, isNull, and, inArray } from "drizzle-orm";
+import { eq, asc, or, isNull, and, inArray, gt } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
 import { sendPushToAll, sendPushToTeam } from "../utils/push";
@@ -127,6 +127,7 @@ async function getEffectiveEventTeamId(
 
 async function listLocalEventInvitees(
   eventTeamId: number | null,
+  activeMembersOnly = false,
 ): Promise<LocalEventInvitee[]> {
   const [players, participations] = await Promise.all([
     db
@@ -140,6 +141,7 @@ async function listLocalEventInvitees(
       })
       .from(playersTable)
       .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
+      .where(activeMembersOnly ? eq(playersTable.memberStatus, "active") : undefined)
       .orderBy(asc(playersTable.name)),
     db
       .select({
@@ -642,6 +644,57 @@ router.get("/serve-image/:objectId", async (req: Request, res: Response) => {
     console.error("[events] serve-image failed:", err);
     res.status(502).json({ error: "Could not retrieve image" });
   }
+});
+
+// A private player snapshot, deliberately separate from the admin response roster.
+// Counts and Going names come from the same eligible replies, including any
+// replies entered by an administrator in event_rsvps.
+router.get("/training-attendance", (_req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  res.vary("Authorization");
+  res.vary("X-Player-Session");
+  next();
+}, requirePlayerSession, async (req, res): Promise<void> => {
+  const player = req.player!;
+  const effectiveTeamId = await getEffectiveEventTeamId(player.id, player.teamId);
+  const events = await db.select({ id: eventsTable.id, teamId: eventsTable.teamId })
+    .from(eventsTable)
+    .where(and(
+      eq(eventsTable.operationalScope, "local_2026_27"),
+      eq(eventsTable.kind, "training"),
+      gt(eventsTable.startsAt, new Date()),
+      effectiveTeamId == null ? isNull(eventsTable.teamId)
+        : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, effectiveTeamId)),
+    )).orderBy(asc(eventsTable.startsAt));
+  if (!events.length) { res.json({ events: [] }); return; }
+
+  const invitees = await listLocalEventInvitees(null, true);
+  const byPlayer = new Map(invitees.map((invitee) => [invitee.id, invitee]));
+  const replies = await db.select({
+    eventId: eventRsvpsTable.eventId,
+    playerId: eventRsvpsTable.playerId,
+    status: eventRsvpsTable.status,
+  }).from(eventRsvpsTable).where(inArray(eventRsvpsTable.eventId, events.map((event) => event.id)));
+  const snapshots = new Map(events.map((event) => [event.id, {
+    eventId: event.id,
+    rsvpCounts: emptyCounts(),
+    goingPlayers: [] as Array<{ id: number; name: string }>,
+  }]));
+  const eventById = new Map(events.map((event) => [event.id, event]));
+  for (const reply of replies) {
+    const invitee = byPlayer.get(reply.playerId);
+    const event = eventById.get(reply.eventId)!;
+    if (!invitee || (event.teamId != null && invitee.teamId !== event.teamId)) continue;
+    const snapshot = snapshots.get(event.id)!;
+    if (reply.status === "yes" || reply.status === "maybe" || reply.status === "no") {
+      snapshot.rsvpCounts[reply.status]++;
+    }
+    if (reply.status === "yes") snapshot.goingPlayers.push({ id: invitee.id, name: invitee.name });
+  }
+  for (const snapshot of snapshots.values()) {
+    snapshot.goingPlayers.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+  }
+  res.json({ events: [...snapshots.values()] });
 });
 
 // Admin-only: roster of who RSVP'd what for a single event.

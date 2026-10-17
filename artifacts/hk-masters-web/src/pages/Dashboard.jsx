@@ -6,6 +6,7 @@ import { matchesForPlayer } from "../utils/playerMatches";
 import { themeFor } from "../utils/teamTheme";
 import useMatchAttendance from "../hooks/useMatchAttendance";
 import MatchAttendanceSummary from "../components/MatchAttendanceSummary";
+import TrainingAttendanceSummary from "../components/TrainingAttendanceSummary";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
 const MEMBERSHIP_TIER_LABELS = {
@@ -110,6 +111,7 @@ export default function Dashboard() {
   const [activePolls, setActivePolls] = useState([]);
   const [upcomingMatches, setUpcomingMatches] = useState(null);
   const { matches: matchAttendance, loading: attendanceLoading, error: attendanceError, refresh: refreshAttendance } = useMatchAttendance();
+  const { matches: trainingAttendance, loading: trainingLoading, error: trainingError, refresh: refreshTraining } = useMatchAttendance("training");
 
   useEffect(() => {
     const token = getPlayerToken();
@@ -248,6 +250,7 @@ export default function Dashboard() {
       setRsvpCounts(prevCounts);
       setRsvpError(true);
     } finally {
+      if (nextSession.kind === "training") await refreshTraining();
       setRsvpSaving(false);
     }
   };
@@ -388,12 +391,23 @@ export default function Dashboard() {
                     );
                   })}
                 </div>
-                {(rsvpCounts.yes > 0 || rsvpCounts.no > 0 || rsvpCounts.maybe > 0) && (
+                {nextSession.kind !== "training" && (rsvpCounts.yes > 0 || rsvpCounts.no > 0 || rsvpCounts.maybe > 0) && (
                   <span className="text-xs text-blue-200 whitespace-nowrap">
                     {rsvpCounts.yes} going · {rsvpCounts.maybe > 0 ? `${rsvpCounts.maybe} maybe · ` : ""}{rsvpCounts.no} not going
                   </span>
                 )}
               </div>
+              {nextSession.kind === "training" && new Date(nextSession.startsAt).getTime() > Date.now() && (
+                <div className="mt-2 rounded-xl bg-white p-3">
+                  <TrainingAttendanceSummary
+                    key={nextSession.id}
+                    attendance={trainingAttendance[nextSession.id]}
+                    loading={trainingLoading || rsvpSaving}
+                    error={trainingError}
+                    onRefresh={refreshTraining}
+                  />
+                </div>
+              )}
               {rsvpReasonStatus && (
                 <div className="mt-2">
                   <label className={`block text-xs font-semibold mb-1 ${rsvpReasonStatus === "no" ? "text-rose-200" : "text-amber-200"}`}>

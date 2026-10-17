@@ -64,6 +64,7 @@ import type {
   MembershipInterestSubmission,
   MembershipSectionAssignment,
   MembershipSectionAssignmentResult,
+  MyTrainingAttendanceList,
   NotionMembershipSyncResult,
   NotionMembershipSyncStatus,
   OnboardingInviteRequest,
@@ -5323,6 +5324,86 @@ export const useDeleteMatch = <
 > => {
   return useMutation(getDeleteMatchMutationOptions(options));
 };
+
+/**
+ * Uses current local event eligibility. Returns only eligible Going player IDs and names, with counts from the same replies. Never returns emails or absence reasons. Must not be cached.
+ * @summary Private attendance for upcoming training sessions visible to the signed-in member
+ */
+export const getListMyTrainingAttendanceUrl = () => {
+  return `/api/events/training-attendance`;
+};
+
+export const listMyTrainingAttendance = async (
+  options?: RequestInit,
+): Promise<MyTrainingAttendanceList> => {
+  return customFetch<MyTrainingAttendanceList>(
+    getListMyTrainingAttendanceUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListMyTrainingAttendanceQueryKey = () => {
+  return [`/api/events/training-attendance`] as const;
+};
+
+export const getListMyTrainingAttendanceQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyTrainingAttendance>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyTrainingAttendance>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMyTrainingAttendanceQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyTrainingAttendance>>
+  > = ({ signal }) => listMyTrainingAttendance({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyTrainingAttendance>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyTrainingAttendanceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyTrainingAttendance>>
+>;
+export type ListMyTrainingAttendanceQueryError = ErrorType<void>;
+
+/**
+ * @summary Private attendance for upcoming training sessions visible to the signed-in member
+ */
+
+export function useListMyTrainingAttendance<
+  TData = Awaited<ReturnType<typeof listMyTrainingAttendance>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyTrainingAttendance>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyTrainingAttendanceQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Admin-only attendance counts for upcoming local matches

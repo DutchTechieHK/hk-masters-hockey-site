@@ -121,6 +121,8 @@ export * from "./membershipSectionAssignmentMembershipSection";
 export * from "./membershipSectionAssignmentResult";
 export * from "./myMatchAttendance";
 export * from "./myMatchAttendanceMyRsvp";
+export * from "./myTrainingAttendance";
+export * from "./myTrainingAttendanceList";
 export * from "./notionMembershipSyncResult";
 export * from "./notionMembershipSyncRun";
 export * from "./notionMembershipSyncRunStatus";

@@ -1292,6 +1292,22 @@ export interface MatchChangeResult {
   preview: MatchChangePreview;
 }
 
+export interface MatchGoingPlayer {
+  id: number;
+  name: string;
+}
+
+export interface MyTrainingAttendance {
+  eventId: number;
+  rsvpCounts: MatchAttendanceCounts;
+  /** Eligible active members marked Going, alphabetized by display name. */
+  goingPlayers: MatchGoingPlayer[];
+}
+
+export interface MyTrainingAttendanceList {
+  events: MyTrainingAttendance[];
+}
+
 /**
  * @nullable
  */
@@ -1304,11 +1320,6 @@ export const MyMatchAttendanceMyRsvp = {
   maybe: "maybe",
   no: "no",
 } as const;
-
-export interface MatchGoingPlayer {
-  id: number;
-  name: string;
-}
 
 export interface MyMatchAttendance {
   matchId: number;
