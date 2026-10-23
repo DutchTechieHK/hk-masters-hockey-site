@@ -10,9 +10,8 @@ id = "artifacts/mockup-sandbox"
 router = "application"
 deploymentTarget = "autoscale"
 
-[deployment.postBuild]
-args = ["pnpm", "store", "prune"]
-env = { "CI" = "true" }
+# Keep optional package-store pruning out of the publishing critical path.
+# Artifact builds do not require it; preserve installed dependencies and outputs.
 
 [workflows]
 runButton = "Project"

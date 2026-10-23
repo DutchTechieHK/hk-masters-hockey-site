@@ -72,6 +72,12 @@ A `/admin → /admin/ 301` redirect in `netlify.toml` ensures the CMS works whet
 - **Anyone** can browse `hkmastershockey.com/` for public info.
 - **Content editors** (website content only — text, photos, events page, etc.) log in at `hkmastershockey.com/admin/` (Decap CMS, GitHub-backed).
 
+## Publishing cleanup
+
+Replit publishing intentionally has no optional package-store cleanup hook. An unbounded `pnpm store prune` paused after metadata cleanup during a failed publish, although the logs did not prove it caused the failure. Keep this housekeeping outside publishing; it is not needed to compile or serve the six production artifacts. Do not delete installed dependencies or build outputs as a substitute.
+
+Removing that hook is not proof that publishing has recovered. Verify recovery with a user-triggered publish and its newest attempt logs, not the health of the previously serving release.
+
 ## Two republishes for one change
 
 If you change anything in `artifacts/hk-masters-web/src/` you must **publish twice**:
