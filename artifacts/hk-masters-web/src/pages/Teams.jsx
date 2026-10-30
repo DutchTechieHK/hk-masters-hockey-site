@@ -42,11 +42,18 @@ export default function Teams() {
 
             <aside className="bg-white rounded-2xl border border-[#D9C9A8] shadow-sm p-6 sm:p-8 lg:mt-10">
               <div className="w-12 h-1 rounded-full bg-[#5B9FE0] mb-5" />
-              <h3 className="text-xl font-bold text-[#1E3A6E] mb-3">{t.trials_heading}</h3>
+              <h3 className="text-2xl font-extrabold text-[#1E3A6E] mb-3">{t.sidebar_join_heading}</h3>
               <p className="text-[#5A4F45] leading-relaxed">
-                <strong className="text-[#1E3A6E]">{t.trials_details}</strong>{" "}
-                {t.trials_text}
+                {t.sidebar_join_text}
               </p>
+              <a
+                href={t.join_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#DE2910] px-6 py-3 text-lg font-bold text-white hover:bg-red-700 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E3A6E]"
+              >
+                {t.sidebar_join_button_label}
+              </a>
             </aside>
           </div>
 
