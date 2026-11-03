@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter"
-import { Trophy, Users, UserRound, DollarSign, CalendarDays, CalendarClock, Megaphone, History, Globe, PlayCircle, LogOut, Menu, X, BarChart2, Newspaper, Archive, FileBarChart2 } from "lucide-react"
+import { Trophy, Users, UserRound, DollarSign, CalendarDays, CalendarClock, Megaphone, History, Globe, PlayCircle, LogOut, Menu, X, BarChart2, Newspaper, Archive, FileBarChart2, UsersRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: "/reports", label: "Reports", icon: FileBarChart2 },
   { href: "/matches", label: "Matches", icon: CalendarDays },
   { href: "/events", label: "Events", icon: CalendarClock },
+  { href: "/groups", label: "Invitee Groups", icon: UsersRound },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
   { href: "/news", label: "News", icon: Newspaper },
   { href: "/polls", label: "Polls", icon: BarChart2 },

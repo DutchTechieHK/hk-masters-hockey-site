@@ -179,6 +179,9 @@ router.get("/me", requirePlayerSession, async (req, res) => {
 });
 
 router.get("/my-schedule", requirePlayerSession, async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
+  res.vary("Authorization");
+  res.vary("X-Player-Session");
   const events = await listEventsForPlayer(req.player!.teamId ?? null, req.player!.id, requestBase(req));
   res.json({ events });
 });

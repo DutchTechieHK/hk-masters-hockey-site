@@ -5,6 +5,130 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+export interface MemberGroupInput {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  description?: string | null;
+  /** @maxItems 5000 */
+  memberIds: number[];
+}
+
+export type MemberGroupUpdate = MemberGroupInput & {
+  /** @minimum 1 */
+  version: number;
+};
+
+export interface MemberGroup {
+  id: number;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  version: number;
+  memberIds: number[];
+  eventCount: number;
+}
+
+export interface GroupCandidateMember {
+  id: number;
+  name: string;
+  /** @nullable */
+  memberStatus: string | null;
+  /** @nullable */
+  membershipSection: string | null;
+  /** @nullable */
+  teamName: string | null;
+}
+
+export type ClubEventInputKind =
+  (typeof ClubEventInputKind)[keyof typeof ClubEventInputKind];
+
+export const ClubEventInputKind = {
+  training: "training",
+  meeting: "meeting",
+  social: "social",
+  physio: "physio",
+  team_dinner: "team_dinner",
+  dinner: "dinner",
+  free_time: "free_time",
+  warmup: "warmup",
+  game: "game",
+} as const;
+
+export type ClubEventInputAudienceMode =
+  (typeof ClubEventInputAudienceMode)[keyof typeof ClubEventInputAudienceMode];
+
+export const ClubEventInputAudienceMode = {
+  squad: "squad",
+  groups: "groups",
+} as const;
+
+export interface ClubEventInput {
+  kind: ClubEventInputKind;
+  title: string;
+  startsAt: string;
+  /** @nullable */
+  endsAt?: string | null;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  teamId?: number | null;
+  audienceMode?: ClubEventInputAudienceMode;
+  /** Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience. */
+  groupIds?: number[];
+  isPublic?: boolean;
+  sendNotify?: boolean;
+  /** @nullable */
+  photoUrl?: string | null;
+}
+
+/**
+ * @nullable
+ */
+export type ClubEventMyRsvp =
+  | (typeof ClubEventMyRsvp)[keyof typeof ClubEventMyRsvp]
+  | null;
+
+export const ClubEventMyRsvp = {
+  yes: "yes",
+  no: "no",
+  maybe: "maybe",
+} as const;
+
+export interface MatchAttendanceCounts {
+  yes: number;
+  maybe: number;
+  no: number;
+}
+
+export type ClubEvent = ClubEventInput & {
+  id: number;
+  /** @nullable */
+  teamName?: string | null;
+  createdAt: string;
+  rsvpCounts?: MatchAttendanceCounts;
+  /** @nullable */
+  myRsvp?: ClubEventMyRsvp;
+  /** @nullable */
+  myNote?: string | null;
+};
+
+export interface EventAudienceImpact {
+  totalResponses: number;
+  currentlyCounted: number;
+  newlyCounted: number;
+  becomeIneligible: number;
+  becomeEligible: number;
+}
+
 export type AnnouncementOperationalScope =
   (typeof AnnouncementOperationalScope)[keyof typeof AnnouncementOperationalScope];
 
@@ -1182,12 +1306,6 @@ export interface CreateSponsor {
   contributionAmount?: number | null;
 }
 
-export interface MatchAttendanceCounts {
-  yes: number;
-  maybe: number;
-  no: number;
-}
-
 export interface MatchAttendancePerson {
   playerId: number;
   playerName: string;
@@ -1497,6 +1615,45 @@ export interface UpdateWhatsappTemplateVariables {
   id: number;
   body: WhatsappTemplateUpdateInput;
 }
+
+export type DeleteMemberGroupParams = {
+  /**
+   * @minimum 1
+   */
+  version: number;
+};
+
+export type ListClubEventsParams = {
+  scope?: ListClubEventsScope;
+};
+
+export type ListClubEventsScope =
+  (typeof ListClubEventsScope)[keyof typeof ListClubEventsScope];
+
+export const ListClubEventsScope = {
+  local_2026_27: "local_2026_27",
+  world_cup_2026: "world_cup_2026",
+} as const;
+
+export type GetEventAudienceChangeImpactParams = {
+  audienceMode?: GetEventAudienceChangeImpactAudienceMode;
+  /**
+   * @minimum 1
+   */
+  teamId?: number;
+  /**
+   * Comma-separated group IDs; union audience when mode is groups
+   */
+  groupIds?: string;
+};
+
+export type GetEventAudienceChangeImpactAudienceMode =
+  (typeof GetEventAudienceChangeImpactAudienceMode)[keyof typeof GetEventAudienceChangeImpactAudienceMode];
+
+export const GetEventAudienceChangeImpactAudienceMode = {
+  squad: "squad",
+  groups: "groups",
+} as const;
 
 export type ListAnnouncementsParams = {
   scope?: ListAnnouncementsScope;

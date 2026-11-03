@@ -17,6 +17,7 @@ import TravelOverview from "@/pages/TravelOverview";
 import Sponsors from "@/pages/Sponsors";
 import Schedule from "@/pages/Schedule";
 import Events from "@/pages/Events";
+import Groups from "@/pages/Groups";
 import Announcements from "@/pages/Announcements";
 import Readiness from "@/pages/Readiness";
 import EmailHistory from "@/pages/EmailHistory";
@@ -59,6 +60,7 @@ function Router() {
       <Route path="/matches">{() => <Schedule />}</Route>
       <Route path="/schedule">{() => <Redirect to="/matches" />}</Route>
       <Route path="/events">{() => <Events />}</Route>
+      <Route path="/groups">{() => <Groups />}</Route>
       <Route path="/announcements">{() => <Announcements />}</Route>
       <Route path="/email-history">{() => <EmailHistory />}</Route>
       <Route path="/polls">{() => <Polls />}</Route>

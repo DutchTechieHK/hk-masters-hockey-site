@@ -20,6 +20,7 @@ import {
 } from "@workspace/db";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
+import { loadEventGroups } from "../utils/eventGroups";
 
 const router: IRouter = Router();
 const CURRENT_SEASON_SLUG = "membership-2026-27";
@@ -100,6 +101,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
         title: eventsTable.title,
         date: eventsTable.startsAt,
         teamId: eventsTable.teamId,
+        audienceMode: eventsTable.audienceMode,
         teamName: teamsTable.name,
       })
       .from(eventsTable)
@@ -210,8 +212,10 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
     }))
     .filter((player) => eventTeamId == null || player.teamId === eventTeamId);
 
+  const groupAudiences = await loadEventGroups(trainingEvents);
   const training = await Promise.all(trainingEvents.map(async (event) => {
-    const invitees = inviteesForTraining(event.teamId);
+    const invitees = inviteesForTraining(event.teamId).filter((member) =>
+      groupAudiences.includes(event, { id: member.id, teamId: resolvedPlayerTeams.get(member.id)?.teamId ?? null }));
     const inviteeIds = invitees.map((player) => player.id);
     const rsvps = inviteeIds.length
       ? await db.select().from(eventRsvpsTable).where(and(

@@ -155,12 +155,13 @@ export default function Dashboard() {
     const token = getPlayerToken();
     if (!token) return;
     let cancelled = false;
-    fetch(`${API_BASE}/api/player-auth/my-schedule`, {
+    const refreshSchedule = () => fetch(`${API_BASE}/api/player-auth/my-schedule`, {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((r) => r.ok ? r.json() : { events: [] })
       .then(({ events }) => {
-        if (cancelled || !Array.isArray(events)) return;
+        if (cancelled || token !== getPlayerToken() || !Array.isArray(events)) return;
         const now = Date.now();
         const next = events.find((ev) => new Date(ev.startsAt).getTime() > now);
         setNextSession(next ?? null);
@@ -170,7 +171,17 @@ export default function Dashboard() {
         }
       })
       .catch(() => {});
-    return () => { cancelled = true; };
+    const onFocus = () => { if (!document.hidden) refreshSchedule(); };
+    refreshSchedule();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    const interval = setInterval(onFocus, 60_000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {

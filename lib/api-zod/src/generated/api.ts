@@ -8,6 +8,296 @@
 import * as zod from "zod";
 
 /**
+ * @summary Admin-only manually maintained member groups
+ */
+export const ListMemberGroupsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  version: zod.number(),
+  memberIds: zod.array(zod.number()),
+  eventCount: zod.number(),
+});
+export const ListMemberGroupsResponse = zod.array(ListMemberGroupsResponseItem);
+
+export const createMemberGroupBodyNameMax = 100;
+
+export const createMemberGroupBodyDescriptionMax = 2000;
+
+export const createMemberGroupBodyMemberIdsMax = 5000;
+
+export const CreateMemberGroupBody = zod.object({
+  name: zod.string().min(1).max(createMemberGroupBodyNameMax),
+  description: zod.string().max(createMemberGroupBodyDescriptionMax).nullish(),
+  memberIds: zod
+    .array(zod.number().min(1))
+    .max(createMemberGroupBodyMemberIdsMax),
+});
+
+/**
+ * @summary Admin-only full member directory, independent of World Cup participation
+ */
+export const ListGroupCandidateMembersResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  memberStatus: zod.string().nullable(),
+  membershipSection: zod.string().nullable(),
+  teamName: zod.string().nullable(),
+});
+export const ListGroupCandidateMembersResponse = zod.array(
+  ListGroupCandidateMembersResponseItem,
+);
+
+export const UpdateMemberGroupParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const updateMemberGroupBodyOneNameMax = 100;
+
+export const updateMemberGroupBodyOneDescriptionMax = 2000;
+
+export const updateMemberGroupBodyOneMemberIdsMax = 5000;
+
+export const UpdateMemberGroupBody = zod
+  .object({
+    name: zod.string().min(1).max(updateMemberGroupBodyOneNameMax),
+    description: zod
+      .string()
+      .max(updateMemberGroupBodyOneDescriptionMax)
+      .nullish(),
+    memberIds: zod
+      .array(zod.number().min(1))
+      .max(updateMemberGroupBodyOneMemberIdsMax),
+  })
+  .and(
+    zod.object({
+      version: zod.number().min(1),
+    }),
+  );
+
+export const UpdateMemberGroupResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullable(),
+  version: zod.number(),
+  memberIds: zod.array(zod.number()),
+  eventCount: zod.number(),
+});
+
+export const DeleteMemberGroupParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const DeleteMemberGroupQueryParams = zod.object({
+  version: zod.coerce.number().min(1),
+});
+
+/**
+ * @summary Admin or player events; player audience enforced server-side
+ */
+export const ListClubEventsQueryParams = zod.object({
+  scope: zod.enum(["local_2026_27", "world_cup_2026"]).optional(),
+});
+
+export const ListClubEventsResponseItem = zod
+  .object({
+    kind: zod.enum([
+      "training",
+      "meeting",
+      "social",
+      "physio",
+      "team_dinner",
+      "dinner",
+      "free_time",
+      "warmup",
+      "game",
+    ]),
+    title: zod.string(),
+    startsAt: zod.date(),
+    endsAt: zod.date().nullish(),
+    location: zod.string().nullish(),
+    description: zod.string().nullish(),
+    teamId: zod.number().nullish(),
+    audienceMode: zod.enum(["squad", "groups"]).optional(),
+    groupIds: zod
+      .array(zod.number().min(1))
+      .optional()
+      .describe(
+        "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+      ),
+    isPublic: zod.boolean().optional(),
+    sendNotify: zod.boolean().optional(),
+    photoUrl: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      id: zod.number(),
+      teamName: zod.string().nullish(),
+      createdAt: zod.date(),
+      rsvpCounts: zod
+        .object({
+          yes: zod.number(),
+          maybe: zod.number(),
+          no: zod.number(),
+        })
+        .optional(),
+      myRsvp: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("no"),
+          zod.literal("maybe"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      myNote: zod.string().nullish(),
+    }),
+  );
+export const ListClubEventsResponse = zod.array(ListClubEventsResponseItem);
+
+export const CreateClubEventBody = zod.object({
+  kind: zod.enum([
+    "training",
+    "meeting",
+    "social",
+    "physio",
+    "team_dinner",
+    "dinner",
+    "free_time",
+    "warmup",
+    "game",
+  ]),
+  title: zod.string(),
+  startsAt: zod.date(),
+  endsAt: zod.date().nullish(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  teamId: zod.number().nullish(),
+  audienceMode: zod.enum(["squad", "groups"]).optional(),
+  groupIds: zod
+    .array(zod.number().min(1))
+    .optional()
+    .describe(
+      "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+    ),
+  isPublic: zod.boolean().optional(),
+  sendNotify: zod.boolean().optional(),
+  photoUrl: zod.string().nullish(),
+});
+
+export const UpdateClubEventParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const UpdateClubEventBody = zod.object({
+  kind: zod.enum([
+    "training",
+    "meeting",
+    "social",
+    "physio",
+    "team_dinner",
+    "dinner",
+    "free_time",
+    "warmup",
+    "game",
+  ]),
+  title: zod.string(),
+  startsAt: zod.date(),
+  endsAt: zod.date().nullish(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  teamId: zod.number().nullish(),
+  audienceMode: zod.enum(["squad", "groups"]).optional(),
+  groupIds: zod
+    .array(zod.number().min(1))
+    .optional()
+    .describe(
+      "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+    ),
+  isPublic: zod.boolean().optional(),
+  sendNotify: zod.boolean().optional(),
+  photoUrl: zod.string().nullish(),
+});
+
+export const UpdateClubEventResponse = zod
+  .object({
+    kind: zod.enum([
+      "training",
+      "meeting",
+      "social",
+      "physio",
+      "team_dinner",
+      "dinner",
+      "free_time",
+      "warmup",
+      "game",
+    ]),
+    title: zod.string(),
+    startsAt: zod.date(),
+    endsAt: zod.date().nullish(),
+    location: zod.string().nullish(),
+    description: zod.string().nullish(),
+    teamId: zod.number().nullish(),
+    audienceMode: zod.enum(["squad", "groups"]).optional(),
+    groupIds: zod
+      .array(zod.number().min(1))
+      .optional()
+      .describe(
+        "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+      ),
+    isPublic: zod.boolean().optional(),
+    sendNotify: zod.boolean().optional(),
+    photoUrl: zod.string().nullish(),
+  })
+  .and(
+    zod.object({
+      id: zod.number(),
+      teamName: zod.string().nullish(),
+      createdAt: zod.date(),
+      rsvpCounts: zod
+        .object({
+          yes: zod.number(),
+          maybe: zod.number(),
+          no: zod.number(),
+        })
+        .optional(),
+      myRsvp: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("no"),
+          zod.literal("maybe"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      myNote: zod.string().nullish(),
+    }),
+  );
+
+export const GetEventAudienceChangeImpactParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const getEventAudienceChangeImpactQueryAudienceModeDefault = `squad`;
+
+export const GetEventAudienceChangeImpactQueryParams = zod.object({
+  audienceMode: zod
+    .enum(["squad", "groups"])
+    .default(getEventAudienceChangeImpactQueryAudienceModeDefault),
+  teamId: zod.coerce.number().min(1).optional(),
+  groupIds: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated group IDs; union audience when mode is groups"),
+});
+
+export const GetEventAudienceChangeImpactResponse = zod.object({
+  totalResponses: zod.number(),
+  currentlyCounted: zod.number(),
+  newlyCounted: zod.number(),
+  becomeIneligible: zod.number(),
+  becomeEligible: zod.number(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
+import { Link } from "wouter"
 import { useListTeams } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import { FieldHockeyIcon } from "@/components/ui/field-hockey-icon"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
+import { fetchGroups, type MemberGroup } from "@/lib/member-groups"
 import EventsCsvImport from "@/components/ui/EventsCsvImport"
 
 type EventRow = {
@@ -24,6 +26,8 @@ type EventRow = {
   description: string | null
   teamId: number | null
   teamName: string | null
+  audienceMode?: "squad" | "groups"
+  groupIds?: number[]
   isPublic: boolean
   photoUrl?: string | null
   rsvpCounts?: { yes: number; no: number; maybe: number }
@@ -60,6 +64,8 @@ type FormState = {
   location: string
   description: string
   teamId: string
+  audienceMode: "squad" | "groups"
+  groupIds: number[]
   isPublic: boolean
   sendNotify: boolean
   photoUrl: string  // empty string = no photo
@@ -81,6 +87,8 @@ const EMPTY_FORM: FormState = {
   location: "",
   description: "",
   teamId: "",
+  audienceMode: "squad",
+  groupIds: [],
   isPublic: false,
   sendNotify: true,
   photoUrl: "",
@@ -156,6 +164,18 @@ function zoneInputToIso(localDateTime: string, tz: string): string {
   return new Date(instant).toISOString()
 }
 
+function isGroupEvent(ev: EventRow): boolean {
+  return ev.audienceMode === "groups"
+}
+
+function audienceLabel(ev: EventRow, groupNames: Map<number, string>): string {
+  if (isGroupEvent(ev)) {
+    const names = (ev.groupIds ?? []).map((id) => groupNames.get(id) ?? `Group #${id}`)
+    return names.length ? `Groups: ${names.join(", ")}` : "Groups"
+  }
+  return ev.teamName || "All squads"
+}
+
 function authHeaders(): HeadersInit {
   const token = getStoredAdminToken()
   return token ? { "x-session-token": token } : {}
@@ -173,13 +193,14 @@ type EventMonthSectionProps = {
   openEditModal: (ev: EventRow) => void
   handleDelete: (id: number, title: string) => void
   readOnly?: boolean
+  groupNames: Map<number, string>
 }
 
 function EventMonthSection({
   month, items, past,
   selected, allSelected, toggleSelectAll, toggleSelect,
   openRoster, openEditModal, handleDelete,
-  readOnly,
+  readOnly, groupNames,
 }: EventMonthSectionProps) {
   return (
     <section className={past ? "opacity-60" : ""}>
@@ -261,7 +282,12 @@ function EventMonthSection({
                     <td className="px-6 py-4 text-muted-foreground">{ev.location || "—"}</td>
                     <td className="px-6 py-4 text-muted-foreground">
                       <div className="flex flex-col gap-1">
-                        <span>{ev.teamName || "All squads"}</span>
+                        <span>{audienceLabel(ev, groupNames)}</span>
+                        {isGroupEvent(ev) && (
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-800 text-[10px] font-bold uppercase tracking-wide">
+                            Private invite
+                          </span>
+                        )}
                         {ev.isPublic && (
                           <span className="inline-flex w-fit items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-[#006B3C] text-[10px] font-bold uppercase tracking-wide">
                             Public
@@ -329,6 +355,23 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
   const [showPast, setShowPast] = useState(false)
   const [photoUploading, setPhotoUploading] = useState(false)
   const photoInputRef = useRef<HTMLInputElement>(null)
+  const [groups, setGroups] = useState<MemberGroup[]>([])
+  const [groupsError, setGroupsError] = useState<string | null>(null)
+  const [groupsLoading, setGroupsLoading] = useState(false)
+
+  const loadGroups = useCallback(async () => {
+    setGroupsLoading(true)
+    try { setGroups(await fetchGroups()); setGroupsError(null) }
+    catch (err) { setGroupsError((err as Error).message) }
+    finally { setGroupsLoading(false) }
+  }, [])
+  useEffect(() => { loadGroups() }, [loadGroups])
+  useEffect(() => {
+    const onFocus = () => { loadGroups() }
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+  }, [loadGroups])
+  const groupNames = useMemo(() => new Map(groups.map((g) => [g.id, g.name])), [groups])
 
   const openRoster = async (id: number) => {
     setRosterEventId(id)
@@ -443,7 +486,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
     setLoading(true)
     try {
       const url = scope ? `/api/events?scope=${scope}` : "/api/events"
-      const res = await fetch(url, { headers: authHeaders() })
+      const res = await fetch(url, { headers: authHeaders(), cache: "no-store" })
       if (!res.ok) throw new Error("Failed to load events")
       const data = await res.json() as EventRow[]
       setEvents(data)
@@ -455,6 +498,12 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
   }, [toast, scope])
 
   useEffect(() => { refresh() }, [refresh])
+  useEffect(() => {
+    const onFocus = () => { if (!document.hidden) refresh() }
+    window.addEventListener("focus", onFocus)
+    const timer = window.setInterval(onFocus, 60_000)
+    return () => { window.removeEventListener("focus", onFocus); window.clearInterval(timer) }
+  }, [refresh])
 
   const openAddModal = () => {
     setEditing(null)
@@ -474,7 +523,9 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
       location: e.location ?? "",
       description: e.description ?? "",
       teamId: e.teamId ? String(e.teamId) : "",
-      isPublic: e.isPublic ?? false,
+      audienceMode: e.audienceMode === "groups" ? "groups" : "squad",
+      groupIds: e.groupIds ?? [],
+      isPublic: e.audienceMode === "groups" ? false : (e.isPublic ?? false),
       sendNotify: true,
       photoUrl: e.photoUrl ?? "",
     })
@@ -533,10 +584,15 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
 
   const handleBulkSetPublic = async (isPublic: boolean) => {
     setBulkWorking(true)
-    let ok = 0; let fail = 0
+    let ok = 0; let fail = 0; let skipped = 0
     for (const id of selected) {
       const ev = events.find(e => e.id === id)
       if (!ev) continue
+      // Group-audience events are private invitations: never publish them.
+      if (isGroupEvent(ev)) {
+        if (isPublic) { skipped++; continue }
+        if (!ev.isPublic) { skipped++; continue }
+      }
       try {
         // Note: photoUrl is intentionally omitted so the server preserves the
         // existing value (PATCH treats absent photoUrl as "unchanged").
@@ -550,8 +606,10 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
             endsAt: ev.endsAt,
             location: ev.location,
             description: ev.description,
-            teamId: ev.teamId,
-            isPublic,
+            teamId: isGroupEvent(ev) ? null : ev.teamId,
+            audienceMode: isGroupEvent(ev) ? "groups" : "squad",
+            ...(isGroupEvent(ev) ? { groupIds: ev.groupIds ?? [] } : {}),
+            isPublic: isGroupEvent(ev) ? false : isPublic,
           }),
         })
         res.ok ? ok++ : fail++
@@ -559,7 +617,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
     }
     setBulkWorking(false)
     setSelected(new Set())
-    toast({ title: `${ok} event${ok !== 1 ? "s" : ""} updated${fail ? ` (${fail} failed)` : ""}` })
+    toast({ title: `${ok} event${ok !== 1 ? "s" : ""} updated${fail ? ` (${fail} failed)` : ""}${skipped ? ` · ${skipped} invitee-group event${skipped !== 1 ? "s" : ""} skipped (always private)` : ""}` })
     refresh()
   }
 
@@ -583,11 +641,25 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
     if (form.endsAt && new Date(form.endsAt) <= new Date(form.startsAt)) {
       setFormError("End must be after start"); return
     }
+    const isGroups = form.audienceMode === "groups"
+    if (isGroups) {
+      if (groupsError) { setFormError("Invitee groups failed to load. Retry before saving."); return }
+      if (form.groupIds.length === 0) { setFormError("Choose at least one invitee group"); return }
+    }
     setSaving(true)
     try {
-      const newTeamId = form.teamId ? Number(form.teamId) : null
-      if (editing && editing.teamId !== newTeamId) {
-        const query = newTeamId == null ? "" : `?teamId=${newTeamId}`
+      const newTeamId = isGroups ? null : (form.teamId ? Number(form.teamId) : null)
+      const sortedNew = [...form.groupIds].sort((a, b) => a - b).join(",")
+      const oldMode = editing?.audienceMode === "groups" ? "groups" : "squad"
+      const sortedOld = [...(editing?.groupIds ?? [])].sort((a, b) => a - b).join(",")
+      const audienceChanged = !!editing && (
+        oldMode !== form.audienceMode ||
+        (isGroups ? sortedOld !== sortedNew : editing.teamId !== newTeamId)
+      )
+      if (editing && audienceChanged) {
+        const query = isGroups
+          ? `?audienceMode=groups&groupIds=${sortedNew}`
+          : `?audienceMode=squad${newTeamId == null ? "" : `&teamId=${newTeamId}`}`
         const impactRes = await fetch(
           `/api/events/${editing.id}/audience-change-impact${query}`,
           { headers: authHeaders() },
@@ -607,7 +679,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
               : null,
           ].filter(Boolean).join(", and ")
           const confirmed = confirm(
-            `Change this event's squad?\n\n${changes}. Current attendance responses counted will change from ${impact.currentlyCounted} to ${impact.newlyCounted}.\n\nAll historical RSVP responses will remain stored; only the current attendance totals and attendee list will change.`,
+            `Change this event's audience?\n\n${changes}. Current attendance responses counted will change from ${impact.currentlyCounted} to ${impact.newlyCounted}.\n\nAll historical RSVP responses will remain stored; only the current attendance totals and attendee list will change.`,
           )
           if (!confirmed) return
         }
@@ -622,7 +694,9 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
         location: form.location.trim() || null,
         description: form.description.trim() || null,
         teamId: newTeamId,
-        isPublic: form.isPublic,
+        audienceMode: form.audienceMode,
+        groupIds: isGroups ? form.groupIds : [],
+        isPublic: isGroups ? false : form.isPublic,
         // Always send photoUrl so the server knows whether to set or clear it.
         photoUrl: form.photoUrl || null,
       }
@@ -717,6 +791,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
               openEditModal={openEditModal}
               handleDelete={handleDelete}
               readOnly={readOnly}
+              groupNames={groupNames}
             />
           ))}
 
@@ -754,6 +829,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
                       openEditModal={openEditModal}
                       handleDelete={handleDelete}
                       readOnly={readOnly}
+                      groupNames={groupNames}
                     />
                   ))}
                 </div>
@@ -836,14 +912,72 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-semibold">Visibility</label>
-            <Select value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
-              <option value="">All squads</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
+            <label className="text-sm font-semibold">Who is invited</label>
+            <div className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-muted">
+              {(["squad", "groups"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  data-testid={`button-audience-${mode}`}
+                  onClick={() => setForm({ ...form, audienceMode: mode, ...(mode === "groups" ? { isPublic: false, teamId: "" } : {}) })}
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition ${form.audienceMode === mode ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >
+                  {mode === "squad" ? "Squad" : "Invitee groups"}
+                </button>
               ))}
-            </Select>
-            <p className="text-xs text-muted-foreground">Choose a single team or leave as "All squads" to show everyone.</p>
+            </div>
+            {form.audienceMode === "squad" ? (
+              <>
+                <Select value={form.teamId} onChange={(e) => setForm({ ...form, teamId: e.target.value })}>
+                  <option value="">All squads</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </Select>
+                <p className="text-xs text-muted-foreground">Choose a single team or leave as "All squads" to show everyone.</p>
+              </>
+            ) : (
+              <div className="space-y-2">
+                {groupsError ? (
+                  <div className="flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+                    <span>Groups failed to load: {groupsError}</span>
+                    <button type="button" onClick={loadGroups} className="font-semibold underline">Retry</button>
+                  </div>
+                ) : groupsLoading && groups.length === 0 ? (
+                  <div className="h-20 rounded-lg bg-muted animate-pulse" />
+                ) : groups.length === 0 ? (
+                  <p className="text-xs text-muted-foreground rounded-lg border border-dashed border-border p-3">
+                    No invitee groups yet. <Link href="/groups" className="underline font-medium text-foreground">Create one on Invitee Groups</Link>.
+                  </p>
+                ) : (
+                  <ul className="max-h-48 overflow-y-auto divide-y divide-border border border-border rounded-lg">
+                    {groups.map((g) => (
+                      <li key={g.id}>
+                        <label className="flex items-center gap-3 px-3 py-2 text-sm cursor-pointer hover:bg-muted/30">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 accent-[#1E3A6E]"
+                            checked={form.groupIds.includes(g.id)}
+                            onChange={(e) => setForm({
+                              ...form,
+                              groupIds: e.target.checked ? [...form.groupIds, g.id] : form.groupIds.filter((x) => x !== g.id),
+                            })}
+                          />
+                          <span className="flex-1 font-medium">{g.name}</span>
+                          <span className="text-xs text-muted-foreground">{g.memberIds.length} member{g.memberIds.length === 1 ? "" : "s"}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {form.groupIds.some((id) => !groupNames.has(id)) && !groupsError && (
+                  <p className="text-xs text-amber-700">Some previously chosen groups no longer exist; untick or re-save carefully.</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Anyone in at least one ticked group is invited (members in several groups count once). Squads are ignored. Manage lists on <Link href="/groups" className="underline">Invitee Groups</Link>.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -856,6 +990,7 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded border-border text-[#006B3C] focus:ring-[#006B3C]"
               checked={form.isPublic}
+              disabled={form.audienceMode === "groups"}
               onChange={(e) => {
                 // Visibility does not change the entered Hong Kong event time.
                 setForm({ ...form, isPublic: e.target.checked })
@@ -863,7 +998,11 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
             />
             <div className="text-sm">
               <div className="font-semibold">Show on public website</div>
-              <p className="text-xs text-muted-foreground mt-0.5">Tournament programme, ceremonies, social events. Leave off for internal team activities.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {form.audienceMode === "groups"
+                  ? "Unavailable for invitee-group events: they are private invitations and stay off the public website."
+                  : "Tournament programme, ceremonies, social events. Leave off for internal team activities."}
+              </p>
             </div>
           </label>
 

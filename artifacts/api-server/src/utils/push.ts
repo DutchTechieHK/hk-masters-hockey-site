@@ -57,6 +57,14 @@ export async function sendPushToAll(payload: PushPayload): Promise<void> {
   await deliverAndClean(subs, payload);
 }
 
+export async function sendPushToPlayers(playerIds: number[], payload: PushPayload): Promise<void> {
+  ensureConfigured();
+  if (!configured || !playerIds.length) return;
+  const subs = await db.select().from(pushSubscriptionsTable)
+    .where(inArray(pushSubscriptionsTable.playerId, [...new Set(playerIds)]));
+  await deliverAndClean(subs, payload);
+}
+
 export async function sendPushToTeam(teamId: number, payload: PushPayload): Promise<void> {
   ensureConfigured();
   if (!configured) return;

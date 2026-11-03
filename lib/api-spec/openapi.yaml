@@ -31,6 +31,155 @@ tags:
     description: Read-only historical World Cup showcase operations
 
 paths:
+  /groups:
+    get:
+      operationId: listMemberGroups
+      tags: [groups]
+      summary: Admin-only manually maintained member groups
+      responses:
+        "200":
+          description: Groups with memberships and linked event counts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MemberGroup" }
+    post:
+      operationId: createMemberGroup
+      tags: [groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberGroupInput" }
+      responses:
+        "201":
+          description: Created group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberGroup" }
+  /groups/members:
+    get:
+      operationId: listGroupCandidateMembers
+      tags: [groups]
+      summary: Admin-only full member directory, independent of World Cup participation
+      responses:
+        "200":
+          description: Minimal member selection directory
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/GroupCandidateMember" }
+  /groups/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    patch:
+      operationId: updateMemberGroup
+      tags: [groups]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberGroupUpdate" }
+      responses:
+        "200":
+          description: Updated group
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberGroup" }
+        "409":
+          description: Stale version; reload before saving
+    delete:
+      operationId: deleteMemberGroup
+      tags: [groups]
+      parameters:
+        - name: version
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        "204": { description: Deleted unused group }
+        "409": { description: Group is used by events or version is stale }
+  /events:
+    get:
+      operationId: listClubEvents
+      tags: [events]
+      summary: Admin or player events; player audience enforced server-side
+      parameters:
+        - name: scope
+          in: query
+          schema: { type: string, enum: [local_2026_27, world_cup_2026] }
+      responses:
+        "200":
+          description: Visible events
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ClubEvent" }
+    post:
+      operationId: createClubEvent
+      tags: [events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClubEventInput" }
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClubEvent" }
+  /events/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    patch:
+      operationId: updateClubEvent
+      tags: [events]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClubEventInput" }
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ClubEvent" }
+  /events/{id}/audience-change-impact:
+    get:
+      operationId: getEventAudienceChangeImpact
+      tags: [events]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+        - name: audienceMode
+          in: query
+          schema: { type: string, enum: [squad, groups], default: squad }
+        - name: teamId
+          in: query
+          schema: { type: integer, minimum: 1 }
+        - name: groupIds
+          in: query
+          description: Comma-separated group IDs; union audience when mode is groups
+          schema: { type: string }
+      responses:
+        "200":
+          description: Effect on preserved RSVP responses
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EventAudienceImpact" }
   /healthz:
     get:
       operationId: healthCheck
@@ -1503,6 +1652,86 @@ paths:
 
 components:
   schemas:
+    MemberGroupInput:
+      type: object
+      required: [name, memberIds]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: [string, "null"], maxLength: 2000 }
+        memberIds:
+          type: array
+          maxItems: 5000
+          items: { type: integer, minimum: 1 }
+    MemberGroupUpdate:
+      allOf:
+        - $ref: "#/components/schemas/MemberGroupInput"
+        - type: object
+          required: [version]
+          properties:
+            version: { type: integer, minimum: 1 }
+    MemberGroup:
+      type: object
+      required: [id, name, description, version, memberIds, eventCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: [string, "null"] }
+        version: { type: integer }
+        memberIds:
+          type: array
+          items: { type: integer }
+        eventCount: { type: integer }
+    GroupCandidateMember:
+      type: object
+      required: [id, name, memberStatus, membershipSection, teamName]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        memberStatus: { type: [string, "null"] }
+        membershipSection: { type: [string, "null"] }
+        teamName: { type: [string, "null"] }
+    ClubEventInput:
+      type: object
+      required: [kind, title, startsAt]
+      properties:
+        kind:
+          type: string
+          enum: [training, meeting, social, physio, team_dinner, dinner, free_time, warmup, game]
+        title: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: [string, "null"], format: date-time }
+        location: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        teamId: { type: [integer, "null"] }
+        audienceMode: { type: string, enum: [squad, groups] }
+        groupIds:
+          type: array
+          items: { type: integer, minimum: 1 }
+          description: Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.
+        isPublic: { type: boolean }
+        sendNotify: { type: boolean }
+        photoUrl: { type: [string, "null"] }
+    ClubEvent:
+      allOf:
+        - $ref: "#/components/schemas/ClubEventInput"
+        - type: object
+          required: [id, audienceMode, groupIds, createdAt]
+          properties:
+            id: { type: integer }
+            teamName: { type: [string, "null"] }
+            createdAt: { type: string, format: date-time }
+            rsvpCounts: { $ref: "#/components/schemas/MatchAttendanceCounts" }
+            myRsvp: { type: [string, "null"], enum: [yes, no, maybe, null] }
+            myNote: { type: [string, "null"] }
+    EventAudienceImpact:
+      type: object
+      required: [totalResponses, currentlyCounted, newlyCounted, becomeIneligible, becomeEligible]
+      properties:
+        totalResponses: { type: integer }
+        currentlyCounted: { type: integer }
+        newlyCounted: { type: integer }
+        becomeIneligible: { type: integer }
+        becomeEligible: { type: integer }
     Announcement:
       type: object
       properties:

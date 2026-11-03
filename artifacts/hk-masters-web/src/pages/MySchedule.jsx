@@ -501,6 +501,7 @@ export default function MySchedule() {
         const [me, scheduleRes, matchesRes] = await Promise.all([
           fetchMe(),
           fetch(`${API_BASE}/api/player-auth/my-schedule`, {
+            cache: "no-store",
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch(`${API_BASE}/api/matches`),
@@ -525,6 +526,36 @@ export default function MySchedule() {
     })();
     return () => { cancelled = true; };
   }, [setLocation]);
+
+  useEffect(() => {
+    if (!player) return;
+    const token = getPlayerToken();
+    let cancelled = false;
+    const refreshSchedule = async () => {
+      if (document.hidden || !token) return;
+      try {
+        const response = await fetch(`${API_BASE}/api/player-auth/my-schedule`, {
+          cache: "no-store", headers: { Authorization: `Bearer ${token}` },
+        });
+        if (cancelled || token !== getPlayerToken()) return;
+        if (response.status === 401 || response.status === 403) {
+          setEvents([]); setLocation("/login"); return;
+        }
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled && token === getPlayerToken()) setEvents(data.events || []);
+      } catch { /* Keep the existing schedule on a transient connection failure. */ }
+    };
+    window.addEventListener("focus", refreshSchedule);
+    document.addEventListener("visibilitychange", refreshSchedule);
+    const interval = setInterval(refreshSchedule, 60_000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refreshSchedule);
+      document.removeEventListener("visibilitychange", refreshSchedule);
+      clearInterval(interval);
+    };
+  }, [player, setLocation]);
 
   const { upcoming, past } = useMemo(() => {
     const now = Date.now();

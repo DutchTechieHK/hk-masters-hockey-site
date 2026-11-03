@@ -35,3 +35,4 @@
 - [Private API offline caching](private-api-offline-caching.md) — Workbox status-based caching ignores HTTP no-store; sensitive player responses need an explicit network-only route.
 - [Publish status interpretation](publish-status-interpretation.md) — a healthy serving release does not establish that the user's latest publishing attempt succeeded; compare attempt timestamps.
 - [Project config validation](project-config-validation.md) — .replit changes must go through verifyAndReplaceDotReplit with an absolute workspace temp-file path.
+- [Manual invitee groups](manual-invitee-groups.md) — user chose manually selected event groups that can mix teams and include non-World-Cup members; independent of Notion.

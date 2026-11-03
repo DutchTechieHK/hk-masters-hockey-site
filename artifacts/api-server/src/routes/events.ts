@@ -1,16 +1,17 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
-import { db, eventsTable, teamsTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db";
+import { db, eventsTable, teamsTable, eventGroupsTable, memberGroupMembersTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db";
 import { eq, asc, or, isNull, and, inArray, gt } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
-import { sendPushToAll, sendPushToTeam } from "../utils/push";
+import { sendPushToPlayers } from "../utils/push";
 import { requirePlayerSession } from "../middleware/playerSession";
 import { ObjectStorageService, ObjectNotFoundError, extractUploadObjectId } from "../lib/objectStorage";
 import { cleanupOrphanedUpload } from "../lib/uploadCleanup";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { formatEventDateTime } from "../utils/eventTime";
+import { loadEventGroups, lockEventGroups, InvalidEventGroups, type EventAudience } from "../utils/eventGroups";
 
 const router: IRouter = Router();
 const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
@@ -65,7 +66,7 @@ function emptyCounts(): RsvpCounts {
 function serialize(
   row: typeof eventsTable.$inferSelect,
   teamName?: string | null,
-  extras?: { rsvpCounts?: RsvpCounts; myRsvp?: RsvpStatus | null; myNote?: string | null },
+  extras?: { rsvpCounts?: RsvpCounts; myRsvp?: RsvpStatus | null; myNote?: string | null; groupIds?: number[] },
   base?: string,
 ) {
   return {
@@ -77,6 +78,8 @@ function serialize(
     location: row.location,
     description: row.description,
     teamId: row.teamId,
+    audienceMode: row.audienceMode,
+    groupIds: extras?.groupIds ?? [],
     teamName: teamName ?? null,
     isPublic: row.isPublic,
     photoUrl: base ? resolvePhotoUrl(base, row.photoUrl) : (row.photoUrl ?? null),
@@ -184,15 +187,19 @@ async function listLocalEventInvitees(
 
 async function getEventAudienceChangeImpact(
   eventId: number,
-  currentTeamId: number | null,
-  newTeamId: number | null,
+  current: EventAudience,
+  proposed: EventAudience,
+  newGroupIds: number[],
 ) {
   const responses = await db
     .select({ playerId: eventRsvpsTable.playerId })
     .from(eventRsvpsTable)
     .where(eq(eventRsvpsTable.eventId, eventId));
   const invitees = await listLocalEventInvitees(null);
-  const teamByPlayer = new Map(invitees.map((player) => [player.id, player.teamId]));
+  const currentGroups = await loadEventGroups([current]);
+  const newMembers = newGroupIds.length ? await db.select().from(memberGroupMembersTable).where(inArray(memberGroupMembersTable.groupId, newGroupIds)) : [];
+  const newMemberIds = new Set(newMembers.map((member) => member.playerId));
+  const byPlayer = new Map(invitees.map((player) => [player.id, player]));
 
   let currentlyCounted = 0;
   let newlyCounted = 0;
@@ -200,9 +207,10 @@ async function getEventAudienceChangeImpact(
   let becomeEligible = 0;
 
   for (const response of responses) {
-    const playerTeamId = teamByPlayer.get(response.playerId);
-    const isCurrentlyEligible = currentTeamId == null || playerTeamId === currentTeamId;
-    const willBeEligible = newTeamId == null || playerTeamId === newTeamId;
+    const player = byPlayer.get(response.playerId);
+    const isCurrentlyEligible = !!player && currentGroups.includes(current, player);
+    const willBeEligible = !!player && (proposed.audienceMode === "groups"
+      ? newMemberIds.has(player.id) : proposed.teamId == null || player.teamId === proposed.teamId);
 
     if (isCurrentlyEligible) currentlyCounted++;
     if (willBeEligible) newlyCounted++;
@@ -219,7 +227,7 @@ async function getEventAudienceChangeImpact(
   };
 }
 
-function parseBody(body: unknown): {
+function parseBody(body: unknown, existingMode = "squad"): {
   kind: EventKind;
   title: string;
   startsAt: Date;
@@ -227,6 +235,8 @@ function parseBody(body: unknown): {
   location: string | null;
   description: string | null;
   teamId: number | null;
+  audienceMode: "squad" | "groups";
+  groupIds: number[] | undefined;
   isPublic: boolean;
   sendNotify: boolean;
   // undefined = not provided by caller (PATCH: leave existing value unchanged)
@@ -259,6 +269,23 @@ function parseBody(body: unknown): {
     if (!Number.isInteger(n) || n <= 0) return { error: "Invalid teamId" };
     teamId = n;
   }
+  const audienceMode = b.audienceMode ?? existingMode;
+  if (audienceMode !== "squad" && audienceMode !== "groups") return { error: "Invalid audienceMode" };
+  let groupIds: number[] | undefined;
+  if ("groupIds" in b) {
+    if (!Array.isArray(b.groupIds) || b.groupIds.length > 500 ||
+        b.groupIds.some((id) => typeof id !== "number" || !Number.isSafeInteger(id) || id <= 0)) {
+      return { error: "groupIds must be a list of positive integer group IDs" };
+    }
+    groupIds = [...new Set(b.groupIds as number[])];
+  }
+  if (audienceMode === "groups") {
+    if (teamId !== null) return { error: "Select groups or a squad, not both" };
+    if (groupIds !== undefined && groupIds.length === 0) return { error: "Select at least one group" };
+    if (b.isPublic === true) return { error: "Group events are private. Turn off public website visibility." };
+  } else if (groupIds?.length) {
+    return { error: "Group selection requires the groups audience mode" };
+  }
   // photoUrl: absent key → undefined (PATCH preserves existing); null or "" → null (clear); string → store
   let photoUrl: string | null | undefined = undefined;
   if ("photoUrl" in b) {
@@ -273,16 +300,21 @@ function parseBody(body: unknown): {
     location: typeof b.location === "string" && b.location.trim() ? b.location.trim() : null,
     description: typeof b.description === "string" && b.description.trim() ? b.description.trim() : null,
     teamId,
+    audienceMode,
+    groupIds,
     isPublic: b.isPublic === true,
     sendNotify: b.sendNotify !== false && b.sendNotify !== "false",
     photoUrl,
   };
 }
 
-type EventAudience = {
-  id: number;
-  teamId: number | null;
-};
+async function listEventInvitees(event: EventAudience, activeMembersOnly = false) {
+  const [members, groups] = await Promise.all([
+    listLocalEventInvitees(null, activeMembersOnly),
+    loadEventGroups([event]),
+  ]);
+  return members.filter((member) => groups.includes(event, member));
+}
 
 // Aggregate RSVP counts grouped by event id. Local event views can additionally
 // restrict stored responses to each event's current invited squad.
@@ -304,13 +336,13 @@ async function loadRsvpCounts(
 
   let eligiblePlayerIdsByEvent: Map<number, Set<number>> | null = null;
   if (restrictToCurrentLocalAudience) {
-    const allInvitees = await listLocalEventInvitees(null);
+    const [allInvitees, groups] = await Promise.all([listLocalEventInvitees(null), loadEventGroups(events)]);
     eligiblePlayerIdsByEvent = new Map(
       events.map((event) => [
         event.id,
         new Set(
           allInvitees
-            .filter((player) => event.teamId == null || player.teamId === event.teamId)
+            .filter((player) => groups.includes(event, player))
             .map((player) => player.id),
         ),
       ]),
@@ -354,7 +386,7 @@ router.get("/public", (async (req, res) => {
     .select({ event: eventsTable, teamCategory: teamsTable.category })
     .from(eventsTable)
     .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
-    .where(and(eq(eventsTable.isPublic, true), eq(eventsTable.operationalScope, scope)))
+    .where(and(eq(eventsTable.isPublic, true), eq(eventsTable.audienceMode, "squad"), eq(eventsTable.operationalScope, scope)))
     .orderBy(asc(eventsTable.startsAt));
   const base = requestBase(req);
   const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map(({ event }) => event.teamId).filter((id): id is number => id != null)) : new Map();
@@ -377,6 +409,7 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
   const scope = isAdmin && req.query.scope === "world_cup_2026" ? "world_cup_2026" : "local_2026_27";
   const base = requestBase(req);
   if (isAdmin) {
+    res.set("Cache-Control", "private, no-store");
     const rows = await db
       .select({ event: eventsTable, teamName: teamsTable.name })
       .from(eventsTable)
@@ -384,14 +417,16 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
       .where(eq(eventsTable.operationalScope, scope))
       .orderBy(asc(eventsTable.startsAt));
     const counts = await loadRsvpCounts(
-      rows.map(({ event }) => ({ id: event.id, teamId: event.teamId })),
+      rows.map(({ event }) => event),
       scope === "local_2026_27",
     );
     const snapshots = scope === "world_cup_2026" ? await getWorldCupTeamSnapshots(rows.map(({ event }) => event.teamId).filter((id): id is number => id != null)) : new Map();
+    const groups = await loadEventGroups(rows.map(({ event }) => event));
     res.json(rows.map(({ event, teamName }) =>
-      serialize(event, snapshots.get(event.teamId ?? -1)?.name ?? teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts() }, base)));
+      serialize(event, snapshots.get(event.teamId ?? -1)?.name ?? teamName, { rsvpCounts: counts.get(event.id) ?? emptyCounts(), groupIds: groups.groupIdsByEvent.get(event.id) ?? [] }, base)));
     return;
   }
+  res.set("Cache-Control", "private, no-store");
   const filtered = await listEventsForPlayer(req.player?.teamId ?? null, req.player?.id ?? null, base);
   res.json(filtered);
 }) as (req: Request, res: Response) => Promise<void>);
@@ -404,13 +439,28 @@ router.post("/", requireAdminAccess, async (req, res) => {
     res.status(409).json({ error: "Archived content is read-only" });
     return;
   }
-  const { sendNotify, photoUrl, ...coreValues } = parsed;
+  const { sendNotify, photoUrl, groupIds: requestedGroupIds, ...coreValues } = parsed;
+  const groupIds = requestedGroupIds ?? [];
+  if (parsed.audienceMode === "groups" && !groupIds.length) {
+    res.status(400).json({ error: "Select at least one group" }); return;
+  }
   // For POST, undefined photoUrl means no photo (store null); explicit value stored as-is.
-  const [row] = await db.insert(eventsTable).values({ ...coreValues, photoUrl: photoUrl ?? null, operationalScope: "local_2026_27" }).returning();
+  let row: typeof eventsTable.$inferSelect;
+  try {
+    row = await db.transaction(async (tx) => {
+      await lockEventGroups(tx, groupIds);
+      const [created] = await tx.insert(eventsTable).values({ ...coreValues, photoUrl: photoUrl ?? null, operationalScope: "local_2026_27" }).returning();
+      if (groupIds.length) await tx.insert(eventGroupsTable).values(groupIds.map((groupId) => ({ eventId: created.id, groupId })));
+      return created;
+    });
+  } catch (error) {
+    if (error instanceof InvalidEventGroups) { res.status(400).json({ error: error.message }); return; }
+    throw error;
+  }
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
     : null;
-  res.status(201).json(serialize(row, team?.name));
+  res.status(201).json(serialize(row, team?.name, { groupIds }));
 
   if (sendNotify) {
     // Fire-and-forget notifications after responding to the admin.
@@ -436,26 +486,16 @@ router.post("/", requireAdminAccess, async (req, res) => {
 
     (async () => {
       try {
-        if (parsedTeamId != null) {
-          await sendPushToTeam(parsedTeamId, pushPayload);
-        } else {
-          await sendPushToAll(pushPayload);
-        }
+        const invitees = await listEventInvitees(row);
+        await sendPushToPlayers(invitees.map((member) => member.id), pushPayload);
       } catch (err) {
-        console.error("[events] Push notification error:", err);
+        console.error("[events] Push notification failed:", err);
       }
     })();
 
     (async () => {
       try {
-        const players = parsedTeamId != null
-          ? await db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
-              .from(playersTable)
-              .where(eq(playersTable.teamId, parsedTeamId))
-              .orderBy(asc(playersTable.name))
-          : await db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email })
-              .from(playersTable)
-              .orderBy(asc(playersTable.name));
+        const players = await listEventInvitees(row);
 
         const withEmail = players.filter((p) => !!p.email);
         let sent = 0;
@@ -471,10 +511,11 @@ router.post("/", requireAdminAccess, async (req, res) => {
             scheduleUrl,
           });
           if (ok) sent++;
+          if (player !== withEmail[withEmail.length - 1]) await new Promise((resolve) => setTimeout(resolve, 500));
         }
-        console.log(`[events] New-event emails: ${sent}/${withEmail.length} sent for event #${row.id} "${row.title}"`);
+        if (sent !== withEmail.length) console.error(`[events] New-event emails: ${withEmail.length - sent} failed for event #${row.id}`);
       } catch (err) {
-        console.error("[events] Email notification error:", err);
+        console.error("[events] Email notification failed:", err);
       }
     })();
   }
@@ -489,6 +530,16 @@ router.get("/:id/audience-change-impact", requireAdminAccess, async (req, res) =
   }
 
   const rawTeamId = req.query.teamId;
+  const audienceMode = req.query.audienceMode ?? "squad";
+  if (audienceMode !== "squad" && audienceMode !== "groups") {
+    res.status(400).json({ error: "Invalid audienceMode" }); return;
+  }
+  const groupIds = typeof req.query.groupIds === "string" && req.query.groupIds
+    ? [...new Set(req.query.groupIds.split(",").map(Number))] : [];
+  if (groupIds.length > 500 || groupIds.some((id) => !Number.isSafeInteger(id) || id <= 0) ||
+      (audienceMode === "groups" && !groupIds.length)) {
+    res.status(400).json({ error: "Select valid groups" }); return;
+  }
   let newTeamId: number | null = null;
   if (rawTeamId !== undefined && rawTeamId !== "") {
     const parsedTeamId = Number(rawTeamId);
@@ -501,7 +552,9 @@ router.get("/:id/audience-change-impact", requireAdminAccess, async (req, res) =
 
   const [event] = await db
     .select({
+      id: eventsTable.id,
       teamId: eventsTable.teamId,
+      audienceMode: eventsTable.audienceMode,
       operationalScope: eventsTable.operationalScope,
     })
     .from(eventsTable)
@@ -516,36 +569,42 @@ router.get("/:id/audience-change-impact", requireAdminAccess, async (req, res) =
     return;
   }
 
-  const impact = event.teamId === newTeamId
-    ? {
-        totalResponses: 0,
-        currentlyCounted: 0,
-        newlyCounted: 0,
-        becomeIneligible: 0,
-        becomeEligible: 0,
-      }
-    : await getEventAudienceChangeImpact(id, event.teamId, newTeamId);
+  const impact = await getEventAudienceChangeImpact(id, event, { id, teamId: newTeamId, audienceMode }, groupIds);
   res.json(impact);
 });
 
 router.patch("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
-  const [existingScope] = await db.select({ operationalScope: eventsTable.operationalScope }).from(eventsTable).where(eq(eventsTable.id, id));
+  const [existingScope] = await db.select().from(eventsTable).where(eq(eventsTable.id, id));
   if (!existingScope) return res.status(404).json({ error: "Event not found" });
   if (existingScope.operationalScope === "world_cup_2026") return res.status(409).json({ error: "Archived content is read-only" });
   if (existingScope.operationalScope == null) return res.status(409).json({ error: "Unclassified records must be classified before editing" });
-  const parsed = parseBody(req.body);
+  const parsed = parseBody(req.body, existingScope.audienceMode);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
   const updateTeamId = "teamId" in parsed ? parsed.teamId : null;
   if (updateTeamId != null && await isArchivedRotterdamTeam(updateTeamId)) {
     res.status(409).json({ error: "Archived content is read-only" });
     return;
   }
-  const { sendNotify: _sendNotify, photoUrl, ...coreValues } = parsed;
+  const { sendNotify: _sendNotify, photoUrl, groupIds: requestedGroupIds, ...coreValues } = parsed;
+  const existingGroups = await loadEventGroups([existingScope]);
+  const groupIds = parsed.audienceMode === "groups"
+    ? requestedGroupIds ?? existingGroups.groupIdsByEvent.get(id) ?? []
+    : [];
+  if (parsed.audienceMode === "groups" && !groupIds.length) {
+    res.status(400).json({ error: "Select at least one group" }); return;
+  }
   // Only update photoUrl in DB if the caller explicitly sent the key.
   // This makes bulk PATCH (e.g. toggle isPublic) safe — omitting photoUrl preserves the existing value.
   const updateValues: Record<string, unknown> = { ...coreValues };
+  const preserveAudience = !Object.hasOwn(req.body, "audienceMode") && !Object.hasOwn(req.body, "groupIds");
+  if (preserveAudience) {
+    // Older callers (including public/private bulk edits) do not own the
+    // audience. Do not replace group links from a pre-transaction read.
+    delete updateValues.audienceMode;
+    if (existingScope.audienceMode === "groups") delete updateValues.teamId;
+  }
 
   // Read the old row before mutating so we can clean up an orphaned photo.
   let oldPhotoUrl: string | null = null;
@@ -555,12 +614,29 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
     updateValues.photoUrl = photoUrl;
   }
 
-  const [row] = await db.update(eventsTable).set(updateValues).where(eq(eventsTable.id, id)).returning();
+  let row: typeof eventsTable.$inferSelect | undefined;
+  try {
+    row = await db.transaction(async (tx) => {
+      await lockEventGroups(tx, groupIds);
+      const [updated] = await tx.update(eventsTable).set(updateValues)
+        .where(and(eq(eventsTable.id, id), eq(eventsTable.operationalScope, "local_2026_27"))).returning();
+      if (!updated) return undefined;
+      if (!preserveAudience) {
+        await tx.delete(eventGroupsTable).where(eq(eventGroupsTable.eventId, id));
+        if (groupIds.length) await tx.insert(eventGroupsTable).values(groupIds.map((groupId) => ({ eventId: id, groupId })));
+      }
+      return updated;
+    });
+  } catch (error) {
+    if (error instanceof InvalidEventGroups) { res.status(400).json({ error: error.message }); return; }
+    throw error;
+  }
   if (!row) return res.status(404).json({ error: "Event not found" });
   const team = parsed.teamId
     ? (await db.select().from(teamsTable).where(eq(teamsTable.id, parsed.teamId)))[0]
     : null;
-  res.json(serialize(row, team?.name));
+  const savedGroups = await loadEventGroups([row]);
+  res.json(serialize(row, team?.name, { groupIds: savedGroups.groupIdsByEvent.get(id) ?? [] }));
 
   // Fire-and-forget: clean up the old photo if it changed (cross-entity ref check inside).
   const oldId = extractUploadObjectId(oldPhotoUrl);
@@ -657,15 +733,15 @@ router.get("/training-attendance", (_req, res, next) => {
 }, requirePlayerSession, async (req, res): Promise<void> => {
   const player = req.player!;
   const effectiveTeamId = await getEffectiveEventTeamId(player.id, player.teamId);
-  const events = await db.select({ id: eventsTable.id, teamId: eventsTable.teamId })
+  const candidateEvents = await db.select()
     .from(eventsTable)
     .where(and(
       eq(eventsTable.operationalScope, "local_2026_27"),
       eq(eventsTable.kind, "training"),
       gt(eventsTable.startsAt, new Date()),
-      effectiveTeamId == null ? isNull(eventsTable.teamId)
-        : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, effectiveTeamId)),
     )).orderBy(asc(eventsTable.startsAt));
+  const groups = await loadEventGroups(candidateEvents);
+  const events = candidateEvents.filter((event) => groups.includes(event, { id: player.id, teamId: effectiveTeamId }));
   if (!events.length) { res.json({ events: [] }); return; }
 
   const invitees = await listLocalEventInvitees(null, true);
@@ -684,7 +760,7 @@ router.get("/training-attendance", (_req, res, next) => {
   for (const reply of replies) {
     const invitee = byPlayer.get(reply.playerId);
     const event = eventById.get(reply.eventId)!;
-    if (!invitee || (event.teamId != null && invitee.teamId !== event.teamId)) continue;
+    if (!invitee || !groups.includes(event, invitee)) continue;
     const snapshot = snapshots.get(event.id)!;
     if (reply.status === "yes" || reply.status === "maybe" || reply.status === "no") {
       snapshot.rsvpCounts[reply.status]++;
@@ -747,7 +823,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
 
   // Current-season squad selection is authoritative for local event audiences.
   // The legacy player team remains a fallback for members without a squad assignment.
-  const invited = await listLocalEventInvitees(event.teamId);
+  const invited = await listEventInvitees(event);
   const invitedById = new Map(invited.map((player) => [player.id, player]));
 
   const responses = rows
@@ -794,7 +870,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
   }
 
   res.json({
-    event: serialize(event, null, { rsvpCounts: counts }),
+    event: serialize(event, null, { rsvpCounts: counts, groupIds: (await loadEventGroups([event])).groupIdsByEvent.get(id) ?? [] }),
     counts: { ...counts, noResponse: noResponse.length, invited: invited.length },
     responses,
     noResponse,
@@ -814,7 +890,7 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
   const operationalScope = event.operationalScope;
 
   // Use the same current-squad audience as listing and RSVP authorization.
-  const invited = await listLocalEventInvitees(event.teamId);
+  const invited = await listEventInvitees(event);
 
   // Find who has already responded.
   const responded = await db
@@ -933,8 +1009,9 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
   if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
   if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
   const effectiveTeamId = await getEffectiveEventTeamId(player.id, player.teamId);
-  if (event.teamId != null && event.teamId !== effectiveTeamId) {
-    res.status(403).json({ error: "Event not available to your team" }); return;
+  const groups = await loadEventGroups([event]);
+  if (!groups.includes(event, { id: player.id, teamId: effectiveTeamId })) {
+    res.status(403).json({ error: "You are not in this event's invited audience" }); return;
   }
 
   const now = new Date();
@@ -954,23 +1031,24 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
   const effectiveTeamId = playerId == null
     ? playerTeamId
     : await getEffectiveEventTeamId(playerId, playerTeamId);
-  const rows = await db
+  const candidates = await db
     .select({ event: eventsTable, teamName: teamsTable.name })
     .from(eventsTable)
     .leftJoin(teamsTable, eq(eventsTable.teamId, teamsTable.id))
     .where(
-      and(
-        eq(eventsTable.operationalScope, "local_2026_27"),
-        effectiveTeamId == null
-          ? isNull(eventsTable.teamId)
-          : or(isNull(eventsTable.teamId), eq(eventsTable.teamId, effectiveTeamId)),
-      ),
+      eq(eventsTable.operationalScope, "local_2026_27"),
     )
     .orderBy(asc(eventsTable.startsAt));
 
+  const groups = await loadEventGroups(candidates.map(({ event }) => event));
+  const rows = candidates.filter(({ event }) =>
+    // Anonymous callers never get group invitations, even if a legacy caller
+    // supplies a squad but not a verified member ID.
+    event.audienceMode === "groups" && playerId == null ? false
+      : groups.includes(event, { id: playerId ?? -1, teamId: effectiveTeamId }));
   const ids = rows.map((r) => r.event.id);
   const counts = await loadRsvpCounts(
-    rows.map(({ event }) => ({ id: event.id, teamId: event.teamId })),
+    rows.map(({ event }) => event),
     true,
   );
   const mine = playerId != null ? await loadMyRsvps(playerId, ids) : new Map<number, { status: RsvpStatus; note: string | null }>();
@@ -980,6 +1058,7 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
       rsvpCounts: counts.get(event.id) ?? emptyCounts(),
       myRsvp: mine.get(event.id)?.status ?? null,
       myNote: mine.get(event.id)?.note ?? null,
+      groupIds: groups.groupIdsByEvent.get(event.id) ?? [],
     }, base),
   );
 }

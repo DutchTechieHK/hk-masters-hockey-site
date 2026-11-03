@@ -13,6 +13,7 @@ export * from "./match-rsvps";
 export * from "./match-change-notices";
 export * from "./player-auth";
 export * from "./events";
+export * from "./member-groups";
 export * from "./event-rsvps";
 export * from "./announcements";
 export * from "./email-blasts";
