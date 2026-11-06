@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { withLeagueNumbers } from "../utils/shirtNumbers";
 import { Router, type Request, type Response } from "express";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
@@ -127,13 +128,14 @@ router.post("/access/grants/:grantId/revoke", requireAdminAccess, async (req, re
 router.use("/teams", requireStaff);
 
 async function roster(teamId: number, seasonId: number) {
-  return db.select({ id: playersTable.id, name: playersTable.name, shirtNumber: playersTable.shirtNumber, position: playersTable.position })
+  const rows = await db.select({ id: playersTable.id, name: playersTable.name, shirtNumber: playersTable.shirtNumber, position: playersTable.position })
     .from(playersTable).leftJoin(playerParticipationsTable, and(
       eq(playerParticipationsTable.playerId, playersTable.id), eq(playerParticipationsTable.seasonId, seasonId),
       eq(playerParticipationsTable.participationStatus, "active"),
     )).where(and(eq(playersTable.memberStatus, "active"),
       sql`coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId}) = ${teamId}`,
     )).orderBy(asc(playersTable.name));
+  return (await withLeagueNumbers(rows.map((p) => ({ ...p, teamId })), seasonId)).map(({ teamId: _teamId, ...p }) => p);
 }
 
 const privateEvent = (teamId: number) => and(eq(eventsTable.teamId, teamId), eq(eventsTable.operationalScope, "local_2026_27"), eq(eventsTable.audienceMode, "squad"), eq(eventsTable.isPublic, false));

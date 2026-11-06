@@ -1,4 +1,5 @@
 import { format } from "date-fns"
+import { shirtSummaryText } from "@/components/shirt-numbers/shirt-format"
 import type { FundraisingEntry, Player } from "@workspace/api-client-react"
 
 export const PASSPORT_WARN_DATE = new Date("2026-10-31")
@@ -243,7 +244,7 @@ export const INSURANCE_COLUMNS: ReportColumn[] = [
 export const ALL_REPORT_COLUMNS: ReportColumn[] = [
   NAME_COL,
   TEAM_COL,
-  { key: "shirtNumber", header: "Shirt #", value: p => v(p.shirtNumber) },
+  { key: "shirtNumber", header: "Shirt numbers", value: p => (p.shirtNumbers ? shirtSummaryText(p.shirtNumbers) : v(p.shirtNumber)) },
   { key: "position", header: "Position", value: p => v(p.position) },
   { key: "email", header: "Email", value: p => v(p.email) },
   { key: "phone", header: "Phone", value: p => v(p.phone) },

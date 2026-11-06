@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { playersTable, teamsTable, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { withLeagueNumbers } from "../utils/shirtNumbers";
 
 const router = Router();
 
@@ -37,18 +38,21 @@ router.get("/squad", async (req, res) => {
       name: playersTable.name,
       shirtNumber: playersTable.shirtNumber,
       position: playersTable.position,
-      teamId: playersTable.teamId,
+      teamId: teamsTable.id,
       teamName: teamsTable.name,
       teamCategory: teamsTable.category,
     })
     .from(playersTable)
-    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .leftJoin(seasonsTable, eq(seasonsTable.slug, "membership-2026-27"))
+    .leftJoin(playerParticipationsTable, and(eq(playerParticipationsTable.playerId, playersTable.id),
+      eq(playerParticipationsTable.seasonId, seasonsTable.id), eq(playerParticipationsTable.participationStatus, "active")))
+    .leftJoin(teamsTable, sql`${teamsTable.id} = coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId})`)
     .where(eq(teamsTable.isInternal, false))
     .orderBy(playersTable.id);
 
   res.set("Cache-Control", "public, max-age=60");
   res.json(
-    rows.map((r) => ({
+    (await withLeagueNumbers(rows)).map((r) => ({
       id: r.id,
       name: r.name,
       shirtNumber: r.shirtNumber ?? null,

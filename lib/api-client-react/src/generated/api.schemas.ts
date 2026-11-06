@@ -5,6 +5,171 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+export type ShirtContextKind =
+  (typeof ShirtContextKind)[keyof typeof ShirtContextKind];
+
+export const ShirtContextKind = {
+  league: "league",
+  tournament: "tournament",
+} as const;
+
+export interface ShirtContext {
+  id: number;
+  name: string;
+  kind: ShirtContextKind;
+  /** @nullable */
+  seasonId: number | null;
+  /** @nullable */
+  seasonName: string | null;
+}
+
+export type ShirtContextInputKind =
+  (typeof ShirtContextInputKind)[keyof typeof ShirtContextInputKind];
+
+export const ShirtContextInputKind = {
+  league: "league",
+  tournament: "tournament",
+} as const;
+
+export interface ShirtContextInput {
+  /**
+   * @minLength 1
+   * @maxLength 150
+   */
+  name: string;
+  kind: ShirtContextInputKind;
+  /**
+   * @minimum 1
+   * @nullable
+   */
+  seasonId?: number | null;
+}
+
+export interface ShirtTeamOption {
+  id: number;
+  name: string;
+}
+
+export interface ShirtSeasonOption {
+  id: number;
+  name: string;
+  kind: string;
+}
+
+export interface ShirtContextDirectory {
+  contexts: ShirtContext[];
+  seasons: ShirtSeasonOption[];
+  teams: ShirtTeamOption[];
+}
+
+export type ShirtAssignmentKind =
+  (typeof ShirtAssignmentKind)[keyof typeof ShirtAssignmentKind];
+
+export const ShirtAssignmentKind = {
+  league: "league",
+  tournament: "tournament",
+} as const;
+
+export type ShirtAssignmentStatus =
+  (typeof ShirtAssignmentStatus)[keyof typeof ShirtAssignmentStatus];
+
+export const ShirtAssignmentStatus = {
+  current: "current",
+  historical: "historical",
+  void: "void",
+} as const;
+
+export interface ShirtAssignment {
+  id: number;
+  number: number;
+  contextId: number;
+  contextName: string;
+  kind: ShirtAssignmentKind;
+  /** @nullable */
+  seasonName: string | null;
+  teamId: number;
+  teamName: string;
+  status: ShirtAssignmentStatus;
+  /** @nullable */
+  startsOn: string | null;
+  /** @nullable */
+  endsOn: string | null;
+  /** @nullable */
+  notes: string | null;
+  recordedAt: string;
+}
+
+export interface ShirtSummary {
+  current: ShirtAssignment[];
+  /** @nullable */
+  legacyNumber: number | null;
+}
+
+export interface ShirtAuditEntry {
+  id: number;
+  actor: string;
+  action: string;
+  /** @nullable */
+  reason: string | null;
+  recordedAt: string;
+  detail: string;
+}
+
+export interface ShirtHistory {
+  revision: number;
+  /** @nullable */
+  legacyNumber: number | null;
+  assignments: ShirtAssignment[];
+  audit: ShirtAuditEntry[];
+  archiveEvidence: string[];
+  warnings: string[];
+}
+
+export type ShirtChangeInputAction =
+  (typeof ShirtChangeInputAction)[keyof typeof ShirtChangeInputAction];
+
+export const ShirtChangeInputAction = {
+  assign: "assign",
+  history: "history",
+  change: "change",
+  end: "end",
+  correct: "correct",
+  void: "void",
+  dismiss_legacy: "dismiss_legacy",
+} as const;
+
+export interface ShirtChangeInput {
+  /** @minimum 0 */
+  revision: number;
+  action: ShirtChangeInputAction;
+  /** @minimum 1 */
+  assignmentId?: number;
+  /** @minimum 1 */
+  contextId?: number;
+  /** @minimum 1 */
+  teamId?: number;
+  /**
+   * @minimum 1
+   * @maximum 99
+   */
+  number?: number;
+  /** @nullable */
+  startsOn?: string | null;
+  /** @nullable */
+  endsOn?: string | null;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  notes?: string | null;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  reason?: string | null;
+  attributeLegacy?: boolean;
+}
+
 export interface StaffSession {
   token: string;
 }
@@ -682,6 +847,7 @@ export const PlayerCurrentMembershipTier = {
 } as const;
 
 export interface Player {
+  shirtNumbers?: ShirtSummary;
   id: number;
   teamId: number;
   teamName?: string;
@@ -1132,6 +1298,7 @@ export const SelfPlayerCurrentMembershipTier = {
 } as const;
 
 export interface SelfPlayer {
+  shirtNumbers?: ShirtSummary;
   id: number;
   teamId: number;
   teamName?: string;

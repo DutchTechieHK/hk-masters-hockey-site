@@ -7,6 +7,149 @@
  */
 import * as zod from "zod";
 
+export const ListShirtContextsResponse = zod.object({
+  contexts: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      kind: zod.enum(["league", "tournament"]),
+      seasonId: zod.number().nullable(),
+      seasonName: zod.string().nullable(),
+    }),
+  ),
+  seasons: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      kind: zod.string(),
+    }),
+  ),
+  teams: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const createShirtContextBodyNameMax = 150;
+
+export const CreateShirtContextBody = zod.object({
+  name: zod.string().min(1).max(createShirtContextBodyNameMax),
+  kind: zod.enum(["league", "tournament"]),
+  seasonId: zod.number().min(1).nullish(),
+});
+
+export const GetPlayerShirtHistoryParams = zod.object({
+  playerId: zod.coerce.number().min(1),
+});
+
+export const GetPlayerShirtHistoryResponse = zod.object({
+  revision: zod.number(),
+  legacyNumber: zod.number().nullable(),
+  assignments: zod.array(
+    zod.object({
+      id: zod.number(),
+      number: zod.number(),
+      contextId: zod.number(),
+      contextName: zod.string(),
+      kind: zod.enum(["league", "tournament"]),
+      seasonName: zod.string().nullable(),
+      teamId: zod.number(),
+      teamName: zod.string(),
+      status: zod.enum(["current", "historical", "void"]),
+      startsOn: zod.string().nullable(),
+      endsOn: zod.string().nullable(),
+      notes: zod.string().nullable(),
+      recordedAt: zod.string(),
+    }),
+  ),
+  audit: zod.array(
+    zod.object({
+      id: zod.number(),
+      actor: zod.string(),
+      action: zod.string(),
+      reason: zod.string().nullable(),
+      recordedAt: zod.string(),
+      detail: zod.string(),
+    }),
+  ),
+  archiveEvidence: zod.array(zod.string()),
+  warnings: zod.array(zod.string()),
+});
+
+export const ChangePlayerShirtNumberParams = zod.object({
+  playerId: zod.coerce.number().min(1),
+});
+
+export const changePlayerShirtNumberBodyRevisionMin = 0;
+
+export const changePlayerShirtNumberBodyNumberMax = 99;
+
+export const changePlayerShirtNumberBodyNotesMax = 2000;
+
+export const changePlayerShirtNumberBodyReasonMax = 2000;
+
+export const ChangePlayerShirtNumberBody = zod.object({
+  revision: zod.number().min(changePlayerShirtNumberBodyRevisionMin),
+  action: zod.enum([
+    "assign",
+    "history",
+    "change",
+    "end",
+    "correct",
+    "void",
+    "dismiss_legacy",
+  ]),
+  assignmentId: zod.number().min(1).optional(),
+  contextId: zod.number().min(1).optional(),
+  teamId: zod.number().min(1).optional(),
+  number: zod
+    .number()
+    .min(1)
+    .max(changePlayerShirtNumberBodyNumberMax)
+    .optional(),
+  startsOn: zod.string().nullish(),
+  endsOn: zod.string().nullish(),
+  notes: zod.string().max(changePlayerShirtNumberBodyNotesMax).nullish(),
+  reason: zod.string().max(changePlayerShirtNumberBodyReasonMax).nullish(),
+  attributeLegacy: zod.boolean().optional(),
+});
+
+export const ChangePlayerShirtNumberResponse = zod.object({
+  revision: zod.number(),
+  legacyNumber: zod.number().nullable(),
+  assignments: zod.array(
+    zod.object({
+      id: zod.number(),
+      number: zod.number(),
+      contextId: zod.number(),
+      contextName: zod.string(),
+      kind: zod.enum(["league", "tournament"]),
+      seasonName: zod.string().nullable(),
+      teamId: zod.number(),
+      teamName: zod.string(),
+      status: zod.enum(["current", "historical", "void"]),
+      startsOn: zod.string().nullable(),
+      endsOn: zod.string().nullable(),
+      notes: zod.string().nullable(),
+      recordedAt: zod.string(),
+    }),
+  ),
+  audit: zod.array(
+    zod.object({
+      id: zod.number(),
+      actor: zod.string(),
+      action: zod.string(),
+      reason: zod.string().nullable(),
+      recordedAt: zod.string(),
+      detail: zod.string(),
+    }),
+  ),
+  archiveEvidence: zod.array(zod.string()),
+  warnings: zod.array(zod.string()),
+});
+
 export const CreateStaffSessionResponse = zod.object({
   token: zod.string(),
 });
@@ -1023,6 +1166,28 @@ export const ListPlayersQueryParams = zod.object({
 });
 
 export const ListPlayersResponseItem = zod.object({
+  shirtNumbers: zod
+    .object({
+      current: zod.array(
+        zod.object({
+          id: zod.number(),
+          number: zod.number(),
+          contextId: zod.number(),
+          contextName: zod.string(),
+          kind: zod.enum(["league", "tournament"]),
+          seasonName: zod.string().nullable(),
+          teamId: zod.number(),
+          teamName: zod.string(),
+          status: zod.enum(["current", "historical", "void"]),
+          startsOn: zod.string().nullable(),
+          endsOn: zod.string().nullable(),
+          notes: zod.string().nullable(),
+          recordedAt: zod.string(),
+        }),
+      ),
+      legacyNumber: zod.number().nullable(),
+    })
+    .optional(),
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
@@ -1480,6 +1645,28 @@ export const GetSelfPlayerParams = zod.object({
 });
 
 export const GetSelfPlayerResponse = zod.object({
+  shirtNumbers: zod
+    .object({
+      current: zod.array(
+        zod.object({
+          id: zod.number(),
+          number: zod.number(),
+          contextId: zod.number(),
+          contextName: zod.string(),
+          kind: zod.enum(["league", "tournament"]),
+          seasonName: zod.string().nullable(),
+          teamId: zod.number(),
+          teamName: zod.string(),
+          status: zod.enum(["current", "historical", "void"]),
+          startsOn: zod.string().nullable(),
+          endsOn: zod.string().nullable(),
+          notes: zod.string().nullable(),
+          recordedAt: zod.string(),
+        }),
+      ),
+      legacyNumber: zod.number().nullable(),
+    })
+    .optional(),
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
@@ -1585,6 +1772,28 @@ export const UpdateSelfPlayerBody = zod.object({
 });
 
 export const UpdateSelfPlayerResponse = zod.object({
+  shirtNumbers: zod
+    .object({
+      current: zod.array(
+        zod.object({
+          id: zod.number(),
+          number: zod.number(),
+          contextId: zod.number(),
+          contextName: zod.string(),
+          kind: zod.enum(["league", "tournament"]),
+          seasonName: zod.string().nullable(),
+          teamId: zod.number(),
+          teamName: zod.string(),
+          status: zod.enum(["current", "historical", "void"]),
+          startsOn: zod.string().nullable(),
+          endsOn: zod.string().nullable(),
+          notes: zod.string().nullable(),
+          recordedAt: zod.string(),
+        }),
+      ),
+      legacyNumber: zod.number().nullable(),
+    })
+    .optional(),
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),
@@ -1874,6 +2083,28 @@ export const UpdatePlayerBody = zod.object({
 });
 
 export const UpdatePlayerResponse = zod.object({
+  shirtNumbers: zod
+    .object({
+      current: zod.array(
+        zod.object({
+          id: zod.number(),
+          number: zod.number(),
+          contextId: zod.number(),
+          contextName: zod.string(),
+          kind: zod.enum(["league", "tournament"]),
+          seasonName: zod.string().nullable(),
+          teamId: zod.number(),
+          teamName: zod.string(),
+          status: zod.enum(["current", "historical", "void"]),
+          startsOn: zod.string().nullable(),
+          endsOn: zod.string().nullable(),
+          notes: zod.string().nullable(),
+          recordedAt: zod.string(),
+        }),
+      ),
+      legacyNumber: zod.number().nullable(),
+    })
+    .optional(),
   id: zod.number(),
   teamId: zod.number(),
   teamName: zod.string().optional(),

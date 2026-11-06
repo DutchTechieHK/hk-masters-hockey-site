@@ -22,6 +22,7 @@ export * from "./whatsapp-templates";
 export * from "./documents";
 export * from "./admin-sessions";
 export * from "./staff-access";
+export * from "./shirt-numbers";
 export * from "./auction";
 export * from "./push-subscriptions";
 export * from "./lego-jar";

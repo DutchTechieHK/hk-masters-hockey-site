@@ -45,6 +45,7 @@ import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEma
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { shirtSummaries, withShirtSummary } from "../utils/shirtNumbers";
 import { buildSeasonFeeAccount, membershipCategoryAmountDue, MEMBERSHIP_CATEGORIES } from "../utils/membershipFees";
 import {
   getLatestNotionMemberSync,
@@ -1001,12 +1002,16 @@ router.get("/", requireAdminAccess, async (req, res) => {
     ? await baseQuery.where(and(...filters)).orderBy(playersTable.id)
     : await baseQuery.orderBy(playersTable.id);
   const membershipFees = await getMembershipFeeAccounts(players.map(({ player }) => player.id));
+  const numbers = await shirtSummaries(players.map(({ player }) => player.id));
   res.json(players.map(({ player, teamName, lastLoginAt }) =>
-    mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id))));
+    ({ ...mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id)), shirtNumber: undefined, shirtNumbers: numbers.get(player.id) })));
   return;
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {
+  if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "shirtNumber")) {
+    res.status(409).json({ error: "Save the member first, then assign a competition-specific number in Shirt Numbers." }); return;
+  }
   if (hasLegacyPaymentMutation(req.body)) {
     res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
     return;
@@ -1039,7 +1044,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
   const [refreshed] = await db.select().from(playersTable).where(eq(playersTable.id, player.id));
   await syncCurrentParticipation(refreshed.id);
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, refreshed.teamId));
-  res.status(201).json(mapPlayer(refreshed, team?.name));
+  res.status(201).json(await withShirtSummary(mapPlayer(refreshed, team?.name)));
 });
 
 const SELF_EDITABLE_FIELDS = [
@@ -1175,10 +1180,13 @@ router.get("/self/:token", async (req, res) => {
     .set({ lastPortalAccessAt: new Date() })
     .where(eq(playersTable.id, row.player.id));
   const membershipFee = await getSelfMembershipFeeAccount(row.player);
-  res.json(mapSelfPlayer(row.player, row.teamName, membershipFee));
+  res.json(await withShirtSummary(mapSelfPlayer(row.player, row.teamName, membershipFee)));
 });
 
 router.patch("/self/:token", async (req, res) => {
+  if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "shirtNumber") || Object.prototype.hasOwnProperty.call(req.body ?? {}, "shirtNumbers")) {
+    res.status(403).json({ error: "Shirt number assignments are managed by club administrators." }); return;
+  }
   const token = req.params.token;
   if (!token || token.length < 8) {
     res.status(404).json({ error: "Not found" });
@@ -1241,7 +1249,7 @@ router.patch("/self/:token", async (req, res) => {
   const [updated] = await db.update(playersTable).set(allUpdates).where(eq(playersTable.id, existing.id)).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, updated.teamId));
   const membershipFee = await getSelfMembershipFeeAccount(updated);
-  res.json(mapSelfPlayer(updated, team?.name, membershipFee));
+  res.json(await withShirtSummary(mapSelfPlayer(updated, team?.name, membershipFee)));
 
   const updatedFields = Object.keys(updates);
 
@@ -1700,6 +1708,9 @@ router.patch("/membership-sections", requireAdminAccess, async (req, res) => {
 });
 
 router.put("/:id", requireAdminAccess, async (req, res) => {
+  if (Object.prototype.hasOwnProperty.call(req.body ?? {}, "shirtNumber")) {
+    res.status(409).json({ error: "Use Shirt Numbers to change a number for its competition and preserve history." }); return;
+  }
   const { id } = UpdatePlayerParams.parse(req.params);
   if (hasLegacyPaymentMutation(req.body)) {
     res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
@@ -1809,7 +1820,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   const membershipFees = await getMembershipFeeAccounts([id]);
-  res.json(mapPlayer(player, team?.name, undefined, membershipFees.get(id)));
+  res.json(await withShirtSummary(mapPlayer(player, team?.name, undefined, membershipFees.get(id))));
 });
 
 router.patch("/:id/passport-copy", requireAdminAccess, async (req, res) => {

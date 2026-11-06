@@ -84,6 +84,11 @@ import type {
   PlayerPayment,
   RemindStaffAttendance200,
   SelfPlayer,
+  ShirtChangeInput,
+  ShirtContext,
+  ShirtContextDirectory,
+  ShirtContextInput,
+  ShirtHistory,
   Sponsor,
   SquadCandidate,
   SquadSelectionUpdate,
@@ -111,6 +116,317 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getListShirtContextsUrl = () => {
+  return `/api/shirt-numbers/contexts`;
+};
+
+export const listShirtContexts = async (
+  options?: RequestInit,
+): Promise<ShirtContextDirectory> => {
+  return customFetch<ShirtContextDirectory>(getListShirtContextsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListShirtContextsQueryKey = () => {
+  return [`/api/shirt-numbers/contexts`] as const;
+};
+
+export const getListShirtContextsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listShirtContexts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listShirtContexts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListShirtContextsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listShirtContexts>>
+  > = ({ signal }) => listShirtContexts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listShirtContexts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListShirtContextsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listShirtContexts>>
+>;
+export type ListShirtContextsQueryError = ErrorType<unknown>;
+
+export function useListShirtContexts<
+  TData = Awaited<ReturnType<typeof listShirtContexts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listShirtContexts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListShirtContextsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateShirtContextUrl = () => {
+  return `/api/shirt-numbers/contexts`;
+};
+
+export const createShirtContext = async (
+  shirtContextInput: ShirtContextInput,
+  options?: RequestInit,
+): Promise<ShirtContext> => {
+  return customFetch<ShirtContext>(getCreateShirtContextUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(shirtContextInput),
+  });
+};
+
+export const getCreateShirtContextMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createShirtContext>>,
+    TError,
+    { data: BodyType<ShirtContextInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createShirtContext>>,
+  TError,
+  { data: BodyType<ShirtContextInput> },
+  TContext
+> => {
+  const mutationKey = ["createShirtContext"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createShirtContext>>,
+    { data: BodyType<ShirtContextInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createShirtContext(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateShirtContextMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createShirtContext>>
+>;
+export type CreateShirtContextMutationBody = BodyType<ShirtContextInput>;
+export type CreateShirtContextMutationError = ErrorType<unknown>;
+
+export const useCreateShirtContext = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createShirtContext>>,
+    TError,
+    { data: BodyType<ShirtContextInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createShirtContext>>,
+  TError,
+  { data: BodyType<ShirtContextInput> },
+  TContext
+> => {
+  return useMutation(getCreateShirtContextMutationOptions(options));
+};
+
+export const getGetPlayerShirtHistoryUrl = (playerId: number) => {
+  return `/api/shirt-numbers/players/${playerId}`;
+};
+
+export const getPlayerShirtHistory = async (
+  playerId: number,
+  options?: RequestInit,
+): Promise<ShirtHistory> => {
+  return customFetch<ShirtHistory>(getGetPlayerShirtHistoryUrl(playerId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPlayerShirtHistoryQueryKey = (playerId: number) => {
+  return [`/api/shirt-numbers/players/${playerId}`] as const;
+};
+
+export const getGetPlayerShirtHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlayerShirtHistory>>,
+  TError = ErrorType<unknown>,
+>(
+  playerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlayerShirtHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPlayerShirtHistoryQueryKey(playerId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPlayerShirtHistory>>
+  > = ({ signal }) =>
+    getPlayerShirtHistory(playerId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!playerId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlayerShirtHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPlayerShirtHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlayerShirtHistory>>
+>;
+export type GetPlayerShirtHistoryQueryError = ErrorType<unknown>;
+
+export function useGetPlayerShirtHistory<
+  TData = Awaited<ReturnType<typeof getPlayerShirtHistory>>,
+  TError = ErrorType<unknown>,
+>(
+  playerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlayerShirtHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlayerShirtHistoryQueryOptions(playerId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getChangePlayerShirtNumberUrl = (playerId: number) => {
+  return `/api/shirt-numbers/players/${playerId}`;
+};
+
+export const changePlayerShirtNumber = async (
+  playerId: number,
+  shirtChangeInput: ShirtChangeInput,
+  options?: RequestInit,
+): Promise<ShirtHistory> => {
+  return customFetch<ShirtHistory>(getChangePlayerShirtNumberUrl(playerId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(shirtChangeInput),
+  });
+};
+
+export const getChangePlayerShirtNumberMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changePlayerShirtNumber>>,
+    TError,
+    { playerId: number; data: BodyType<ShirtChangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changePlayerShirtNumber>>,
+  TError,
+  { playerId: number; data: BodyType<ShirtChangeInput> },
+  TContext
+> => {
+  const mutationKey = ["changePlayerShirtNumber"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changePlayerShirtNumber>>,
+    { playerId: number; data: BodyType<ShirtChangeInput> }
+  > = (props) => {
+    const { playerId, data } = props ?? {};
+
+    return changePlayerShirtNumber(playerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangePlayerShirtNumberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof changePlayerShirtNumber>>
+>;
+export type ChangePlayerShirtNumberMutationBody = BodyType<ShirtChangeInput>;
+export type ChangePlayerShirtNumberMutationError = ErrorType<void>;
+
+export const useChangePlayerShirtNumber = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changePlayerShirtNumber>>,
+    TError,
+    { playerId: number; data: BodyType<ShirtChangeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof changePlayerShirtNumber>>,
+  TError,
+  { playerId: number; data: BodyType<ShirtChangeInput> },
+  TContext
+> => {
+  return useMutation(getChangePlayerShirtNumberMutationOptions(options));
+};
 
 export const getCreateStaffSessionUrl = () => {
   return `/api/staff/session`;

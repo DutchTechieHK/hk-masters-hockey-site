@@ -8,8 +8,10 @@
 import type { SelfPlayerCurrentMembershipSection } from "./selfPlayerCurrentMembershipSection";
 import type { SelfPlayerCurrentMembershipTier } from "./selfPlayerCurrentMembershipTier";
 import type { SelfPlayerMemberStatus } from "./selfPlayerMemberStatus";
+import type { ShirtSummary } from "./shirtSummary";
 
 export interface SelfPlayer {
+  shirtNumbers?: ShirtSummary;
   id: number;
   teamId: number;
   teamName?: string;

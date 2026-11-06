@@ -21,6 +21,8 @@ import { passportStatus, PASSPORT_STATUS_LABEL } from "@/lib/reports"
 import { format, parseISO } from "date-fns"
 import { MembershipInterestPanel } from "@/components/MembershipInterestPanel"
 import { Link } from "wouter"
+import { ShirtHistoryPanel } from "@/components/shirt-numbers/ShirtHistoryPanel"
+import { ShirtSummaryCell } from "@/components/shirt-numbers/ShirtSummaryCell"
 
 function cloudinaryViewUrl(url: string): string {
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
@@ -122,7 +124,6 @@ async function rotateAccessToken(playerId: number, sessionToken: string): Promis
 const playerSchema = z.object({
   teamId: z.coerce.number().min(1, "Team selection is required"),
   name: z.string().min(1, "Name is required"),
-  shirtNumber: z.union([z.coerce.number().int().min(1).max(99), z.literal("")]).optional(),
   email: z.union([z.string().email("Invalid email"), z.literal("")]).optional(),
   phone: z.string().optional(),
   position: z.string().optional(),
@@ -305,7 +306,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
 
   const blankForm = (): Partial<PlayerFormValues> => ({
     teamId: teams.find((team) => team.name === "Awaiting Selection")?.id ?? 0,
-    name: "", shirtNumber: "", email: "", phone: "", position: "",
+    name: "", email: "", phone: "", position: "",
     dateOfBirth: "", nationality: "", hkidNumber: "",
     emergencyContactName: "", emergencyContactPhone: "",
     insuranceProvider: "", insurancePolicyNumber: "", insuranceEmergencyPhone: "",
@@ -338,7 +339,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     reset({
       teamId: player.teamId,
       name: player.name,
-      shirtNumber: player.shirtNumber ?? "",
       email: player.email,
       phone: player.phone || "",
       position: player.position || "",
@@ -567,9 +567,9 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       const clean = (v: any) => v === "" ? undefined : v
       const payload = {
         ...data,
-        shirtNumber: clean(data.shirtNumber) as number | undefined,
         paymentAmountDue: clean(data.paymentAmountDue) as number | undefined,
               }
+      delete (payload as Record<string, unknown>).shirtNumber
       if (editingPlayer) {
         await updateMutation.mutateAsync({ id: editingPlayer.id, data: payload as any })
         toast({ title: "Player updated" })
@@ -803,8 +803,10 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
                       </td>
                       {/* Shirt Number */}
                       <td className="px-4 py-4">
-                        {player.shirtNumber != null ? (
-                          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
+                        {player.shirtNumbers ? (
+                          <ShirtSummaryCell summary={player.shirtNumbers} testId={`cell-shirt-${player.id}`} />
+                        ) : player.shirtNumber != null ? (
+                          <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm" title="Archived record">
                             {player.shirtNumber}
                           </div>
                         ) : (
@@ -993,10 +995,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Shirt Number</label>
-              <Input type="number" min="1" max="99" {...register("shirtNumber")} placeholder="1-99" />
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-semibold">Email <span className="text-muted-foreground font-normal">(optional)</span></label>
               <Input type="email" {...register("email")} placeholder="jane@example.com" />
               {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
@@ -1018,6 +1016,15 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
               <Input {...register("hkidNumber")} placeholder="X123456(7)" />
             </div>
           </div>
+
+          <SectionHeading>Shirt numbers</SectionHeading>
+          {editingPlayer && !readOnly ? (
+            <ShirtHistoryPanel playerId={editingPlayer.id} />
+          ) : editingPlayer ? (
+            <ShirtSummaryCell summary={editingPlayer.shirtNumbers ?? (editingPlayer.shirtNumber != null ? { current: [], legacyNumber: editingPlayer.shirtNumber } : null)} />
+          ) : (
+            <p className="text-sm text-muted-foreground rounded-lg border border-dashed px-3 py-2.5" data-testid="text-shirt-save-first">Save the new member first, then reopen their profile to assign shirt numbers per league or tournament.</p>
+          )}
 
           {editingPlayer && (
             <>

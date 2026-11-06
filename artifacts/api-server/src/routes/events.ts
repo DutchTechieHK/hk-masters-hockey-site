@@ -13,6 +13,7 @@ import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { formatEventDateTime } from "../utils/eventTime";
 import { loadEventGroups, lockEventGroups, InvalidEventGroups, type EventAudience } from "../utils/eventGroups";
 import { assertStaffResource } from "../middleware/staffAccess";
+import { withLeagueNumbers } from "../utils/shirtNumbers";
 
 const router: IRouter = Router();
 const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
@@ -174,7 +175,7 @@ async function listLocalEventInvitees(
     ]),
   );
 
-  return players
+  return withLeagueNumbers(players
     .map((player) => {
       const current = currentByPlayer.get(player.id);
       return {
@@ -183,7 +184,7 @@ async function listLocalEventInvitees(
         teamName: current?.teamName ?? player.teamName ?? null,
       };
     })
-    .filter((player) => eventTeamId == null || player.teamId === eventTeamId);
+    .filter((player) => eventTeamId == null || player.teamId === eventTeamId));
 }
 
 async function getEventAudienceChangeImpact(
@@ -841,7 +842,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     .map((r) => ({
       playerId: r.playerId,
       playerName: r.playerName,
-      shirtNumber: r.shirtNumber,
+      shirtNumber: invitedById.get(r.playerId)!.shirtNumber,
       teamId: invitedById.get(r.playerId)!.teamId,
       teamName: invitedById.get(r.playerId)!.teamName ?? null,
       status: r.status,
@@ -854,7 +855,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     .map((r) => ({
       playerId: r.playerId,
       playerName: r.playerName,
-      shirtNumber: r.shirtNumber,
+      shirtNumber: null,
       teamId: r.teamId,
       teamName: r.teamName ?? null,
       status: r.status,

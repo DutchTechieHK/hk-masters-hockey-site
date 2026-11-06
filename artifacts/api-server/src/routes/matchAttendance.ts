@@ -7,6 +7,7 @@ import {
 import { sendMatchReminderEmail } from "../utils/email";
 import { getSessionLabel } from "../middleware/adminSession";
 import { assertStaffResource, lookupStaffIdentity } from "../middleware/staffAccess";
+import { withLeagueNumbers } from "../utils/shirtNumbers";
 
 const CURRENT_SEASON = "membership-2026-27";
 const STATUSES = ["yes", "maybe", "no"] as const;
@@ -19,7 +20,7 @@ function matchId(req: Request): number | null {
 
 export async function eligiblePlayersForTeams(teamIds: number[]) {
   if (!teamIds.length) return [];
-  return db.select({
+  const rows = await db.select({
     teamId: playerParticipationsTable.teamId,
     id: playersTable.id, name: playersTable.name, shirtNumber: playersTable.shirtNumber,
     email: playersTable.email,
@@ -32,6 +33,7 @@ export async function eligiblePlayersForTeams(teamIds: number[]) {
        inArray(playerParticipationsTable.teamId, teamIds),
       eq(playersTable.memberStatus, "active"),
     )).orderBy(asc(playersTable.name));
+  return withLeagueNumbers(rows);
 }
 
 async function eligiblePlayers(teamId: number) {

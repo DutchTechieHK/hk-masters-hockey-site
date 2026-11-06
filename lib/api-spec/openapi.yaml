@@ -31,6 +31,53 @@ tags:
     description: Read-only historical World Cup showcase operations
 
 paths:
+  /shirt-numbers/contexts:
+    get:
+      operationId: listShirtContexts
+      responses:
+        "200":
+          description: Full-admin competition, season and team choices
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShirtContextDirectory" }
+    post:
+      operationId: createShirtContext
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShirtContextInput" }
+      responses:
+        "201":
+          description: Created competition context
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShirtContext" }
+  /shirt-numbers/players/{playerId}:
+    parameters:
+      - { name: playerId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: getPlayerShirtHistory
+      responses:
+        "200":
+          description: Full-admin contextual shirt history and audit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShirtHistory" }
+    post:
+      operationId: changePlayerShirtNumber
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ShirtChangeInput" }
+      responses:
+        "200":
+          description: Updated history with duplicate-number warnings
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ShirtHistory" }
+        "409": { description: History changed; reload before saving }
   /staff/session:
     post:
       operationId: createStaffSession
@@ -1821,6 +1868,100 @@ paths:
 
 components:
   schemas:
+    ShirtContext:
+      type: object
+      required: [id, name, kind, seasonId, seasonName]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string, enum: [league, tournament] }
+        seasonId: { type: [integer, "null"] }
+        seasonName: { type: [string, "null"] }
+    ShirtContextInput:
+      type: object
+      required: [name, kind]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 150 }
+        kind: { type: string, enum: [league, tournament] }
+        seasonId: { type: [integer, "null"], minimum: 1 }
+    ShirtTeamOption:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    ShirtSeasonOption:
+      type: object
+      required: [id, name, kind]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        kind: { type: string }
+    ShirtContextDirectory:
+      type: object
+      required: [contexts, seasons, teams]
+      properties:
+        contexts: { type: array, items: { $ref: "#/components/schemas/ShirtContext" } }
+        seasons: { type: array, items: { $ref: "#/components/schemas/ShirtSeasonOption" } }
+        teams: { type: array, items: { $ref: "#/components/schemas/ShirtTeamOption" } }
+    ShirtAssignment:
+      type: object
+      required: [id, number, contextId, contextName, kind, seasonName, teamId, teamName, status, startsOn, endsOn, notes, recordedAt]
+      properties:
+        id: { type: integer }
+        number: { type: integer }
+        contextId: { type: integer }
+        contextName: { type: string }
+        kind: { type: string, enum: [league, tournament] }
+        seasonName: { type: [string, "null"] }
+        teamId: { type: integer }
+        teamName: { type: string }
+        status: { type: string, enum: [current, historical, void] }
+        startsOn: { type: [string, "null"] }
+        endsOn: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
+        recordedAt: { type: string }
+    ShirtSummary:
+      type: object
+      required: [current, legacyNumber]
+      properties:
+        current: { type: array, items: { $ref: "#/components/schemas/ShirtAssignment" } }
+        legacyNumber: { type: [integer, "null"] }
+    ShirtAuditEntry:
+      type: object
+      required: [id, actor, action, reason, recordedAt, detail]
+      properties:
+        id: { type: integer }
+        actor: { type: string }
+        action: { type: string }
+        reason: { type: [string, "null"] }
+        recordedAt: { type: string }
+        detail: { type: string }
+    ShirtHistory:
+      type: object
+      required: [revision, legacyNumber, assignments, audit, archiveEvidence, warnings]
+      properties:
+        revision: { type: integer }
+        legacyNumber: { type: [integer, "null"] }
+        assignments: { type: array, items: { $ref: "#/components/schemas/ShirtAssignment" } }
+        audit: { type: array, items: { $ref: "#/components/schemas/ShirtAuditEntry" } }
+        archiveEvidence: { type: array, items: { type: string } }
+        warnings: { type: array, items: { type: string } }
+    ShirtChangeInput:
+      type: object
+      required: [revision, action]
+      properties:
+        revision: { type: integer, minimum: 0 }
+        action: { type: string, enum: [assign, history, change, end, correct, void, dismiss_legacy] }
+        assignmentId: { type: integer, minimum: 1 }
+        contextId: { type: integer, minimum: 1 }
+        teamId: { type: integer, minimum: 1 }
+        number: { type: integer, minimum: 1, maximum: 99 }
+        startsOn: { type: [string, "null"] }
+        endsOn: { type: [string, "null"] }
+        notes: { type: [string, "null"], maxLength: 2000 }
+        reason: { type: [string, "null"], maxLength: 2000 }
+        attributeLegacy: { type: boolean }
     StaffSession:
       type: object
       required: [token]
@@ -2578,6 +2719,7 @@ components:
     Player:
       type: object
       properties:
+        shirtNumbers: { $ref: "#/components/schemas/ShirtSummary" }
         id:
           type: integer
         teamId:
@@ -3152,6 +3294,7 @@ components:
     SelfPlayer:
       type: object
       properties:
+        shirtNumbers: { $ref: "#/components/schemas/ShirtSummary" }
         id:
           type: integer
         teamId:

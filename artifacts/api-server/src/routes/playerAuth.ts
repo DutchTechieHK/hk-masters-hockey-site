@@ -7,6 +7,7 @@ import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
 import { ensureMembershipFoundation, mapPlayer } from "./players";
+import { withShirtSummary } from "../utils/shirtNumbers";
 import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
 import { playerMatchRsvps, submitMatchRsvp } from "./matchAttendance";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
@@ -154,7 +155,7 @@ router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
   }
 
   const sessionToken = await createPlayerSession(player.id);
-  res.json({ sessionToken, player: { ...mapPlayer(player, null), accessToken: player.accessToken } });
+  res.json({ sessionToken, player: { ...await withShirtSummary(mapPlayer(player, null)), accessToken: player.accessToken } });
   return;
 });
 
@@ -172,7 +173,7 @@ router.get("/me", requirePlayerSession, async (req, res) => {
   ));
   const account = buildSeasonFeeAccount(foundation.currentSeasonId, participation?.amountDue == null ? null : parseFloat(participation.amountDue), payments);
   res.json({
-    ...mapPlayer(player, null, undefined, account),
+    ...await withShirtSummary(mapPlayer(player, null, undefined, account)),
     currentSquadTeamId: (participation?.participationStatus === "active" ? participation.teamId : null) ?? player.teamId,
     accessToken: player.accessToken,
   });

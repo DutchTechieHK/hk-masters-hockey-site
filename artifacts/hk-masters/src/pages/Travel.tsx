@@ -68,7 +68,6 @@ function toCreatePlayer(data: PlayerFormValues): CreatePlayer {
     name: data.name,
     email: data.email,
     feePaid: data.feePaid,
-    shirtNumber: data.shirtNumber === "" ? undefined : data.shirtNumber,
     paymentAmountPaid: data.paymentAmountPaid === "" ? undefined : data.paymentAmountPaid,
     phone: data.phone || undefined,
     position: data.position || undefined,
@@ -601,8 +600,8 @@ export default function Travel({ scope, readOnly }: { scope?: string, readOnly?:
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Shirt Number</label>
-              <Input type="number" min="1" max="99" {...register("shirtNumber")} placeholder="1–99" />
+              <label className="text-sm font-semibold">Campaign shirt number</label>
+              <p className="text-sm text-muted-foreground">{editingPlayer?.shirtNumber ?? "—"} · Archived campaign record. Manage current numbers from the member’s Shirt Numbers section.</p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Email *</label>

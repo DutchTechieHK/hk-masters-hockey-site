@@ -8,8 +8,10 @@
 import type { PlayerCurrentMembershipSection } from "./playerCurrentMembershipSection";
 import type { PlayerCurrentMembershipTier } from "./playerCurrentMembershipTier";
 import type { PlayerMemberStatus } from "./playerMemberStatus";
+import type { ShirtSummary } from "./shirtSummary";
 
 export interface Player {
+  shirtNumbers?: ShirtSummary;
   id: number;
   teamId: number;
   teamName?: string;

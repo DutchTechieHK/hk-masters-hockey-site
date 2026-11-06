@@ -12,6 +12,7 @@ import {
   UpdateCurrentSquadSelectionBody,
 } from "@workspace/api-zod";
 import { hasAdminAccess, requireAdminAccess } from "../middleware/adminAuth";
+import { withLeagueNumbers } from "../utils/shirtNumbers";
 
 const CURRENT_SEASON_SLUG = "membership-2026-27";
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"]);
@@ -211,8 +212,9 @@ router.get("/:id/squad", requireAdminAccess, async (req, res): Promise<void> => 
     ))
     .orderBy(playersTable.name);
 
-  res.json(rows.map(({ player, participation }) =>
-    mapSquadCandidate(player, participation.membershipTier, participation.teamId === id)));
+  const contextual = await withLeagueNumbers(rows.map(({ player }) => ({ ...player, teamId: id })), currentSeason.id);
+  res.json(rows.map(({ participation }, i) =>
+    mapSquadCandidate(contextual[i], participation.membershipTier, participation.teamId === id)));
 });
 
 router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise<void> => {
@@ -265,7 +267,7 @@ router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise
   }
 
   res.json(mapSquadCandidate(
-    player,
+    (await withLeagueNumbers([{ ...player, teamId: id }], currentSeason.id))[0],
     updated.membershipTier,
     updated.teamId === id,
   ));

@@ -687,8 +687,30 @@ export default function MyDetails() {
               <dd className="font-semibold text-gray-900 truncate">{player.teamName || "—"}</dd>
             </div>
             <div>
-              <dt className="text-gray-500 text-xs mb-0.5">Shirt #</dt>
-              <dd className="font-semibold text-gray-900">{player.shirtNumber ?? "—"}</dd>
+              <dt className="text-gray-500 text-xs mb-0.5">Shirt numbers</dt>
+              <dd className="text-gray-900" data-testid="text-shirt-numbers">
+                {player.shirtNumbers ? (
+                  <ul className="space-y-1">
+                    {player.shirtNumbers.current.map((a) => (
+                      <li key={a.id} className="flex items-baseline gap-1.5">
+                        <span className="font-bold tabular-nums">#{a.number}</span>
+                        <span className="text-xs text-gray-600">{a.contextName} · {a.teamName}</span>
+                      </li>
+                    ))}
+                    {player.shirtNumbers.legacyNumber != null && (
+                      <li className="flex items-baseline gap-1.5">
+                        <span className="font-bold tabular-nums">#{player.shirtNumbers.legacyNumber}</span>
+                        <span className="text-xs text-gray-500">earlier number, competition not confirmed</span>
+                      </li>
+                    )}
+                    {player.shirtNumbers.current.length === 0 && player.shirtNumbers.legacyNumber == null && (
+                      <li className="font-semibold">Not assigned</li>
+                    )}
+                  </ul>
+                ) : (
+                  <span className="font-semibold">{player.shirtNumber ?? "Not assigned"}</span>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500 text-xs mb-0.5">Email</dt>

@@ -9,6 +9,8 @@ export const playersTable = pgTable("players", {
   accessToken: text("access_token").unique(),
   name: text("name").notNull(),
   shirtNumber: integer("shirt_number"),
+  shirtNumberRevision: integer("shirt_number_revision").default(0).notNull(),
+  shirtNumberLegacyResolved: boolean("shirt_number_legacy_resolved").default(false).notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
   position: text("position"),

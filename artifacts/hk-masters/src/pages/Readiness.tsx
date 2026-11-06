@@ -1,3 +1,4 @@
+import { shirtSummaryText } from "@/components/shirt-numbers/shirt-format"
 import { useMemo, useState } from "react"
 import { Link } from "wouter"
 import { useScopedPlayers, useScopedTeams } from "@/hooks/use-scoped-data"
@@ -380,8 +381,8 @@ export default function Readiness({ scope, readOnly }: { scope?: string, readOnl
                         <tr key={player.id} className="hover:bg-muted/10 group">
                           <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-muted/10 border-r border-border/50">
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                                {player.shirtNumber ?? "—"}
+                              <div className="max-w-40 rounded-lg bg-primary/10 text-primary p-1 font-semibold text-[10px] break-words">
+                                {shirtSummaryText(player.shirtNumbers, player.shirtNumber) || "—"}
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium text-foreground truncate">{player.name}</p>
@@ -514,8 +515,8 @@ export default function Readiness({ scope, readOnly }: { scope?: string, readOnl
                               key={player.id}
                               className="px-5 py-3 flex items-center gap-3 hover:bg-muted/20"
                             >
-                              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                                {player.shirtNumber ?? "—"}
+                              <div className="max-w-40 rounded-lg bg-primary/10 text-primary p-1 font-semibold text-[10px] break-words">
+                                {shirtSummaryText(player.shirtNumbers, player.shirtNumber) || "—"}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-foreground truncate">
@@ -576,7 +577,7 @@ export default function Readiness({ scope, readOnly }: { scope?: string, readOnl
               {incompletePlayers.map((p) => (
                 <div key={p.id} className="px-3 py-2 flex items-center gap-2 text-sm">
                   <div className="w-5 h-5 rounded bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
-                    {p.shirtNumber ?? "—"}
+                    {shirtSummaryText(p.shirtNumbers, p.shirtNumber) || "—"}
                   </div>
                   <span className="font-medium text-foreground truncate">{p.name}</span>
                   <span className="text-muted-foreground truncate ml-auto text-xs">{p.email}</span>
