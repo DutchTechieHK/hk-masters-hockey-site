@@ -37,3 +37,4 @@
 - [Project config validation](project-config-validation.md) — .replit changes must go through verifyAndReplaceDotReplit with an absolute workspace temp-file path.
 - [Manual invitee groups](manual-invitee-groups.md) — user chose manually selected event groups that can mix teams and include non-World-Cup members; independent of Notion.
 - [Staff delegation boundaries](staff-delegation-scope.md) — permissions are explicit per team/season; shared event administration remains full-admin-only in the first version.
+- [Competition-specific shirt numbers](shirt-number-context.md) — user confirmed simultaneous numbers per competition, with previous numbers and league/tournament context retained.
