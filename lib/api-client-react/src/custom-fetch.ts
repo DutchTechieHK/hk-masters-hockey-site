@@ -315,7 +315,8 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const staffPrivate = /\/api\/(?:staff(?:\/|$)|admin\/auth(?:[/?]|$))/.test(requestInfo.url);
+  const response = await fetch(input, { ...init, ...(staffPrivate ? { cache: "no-store" as const } : {}), method, headers });
 
   if (response.status === 401 && typeof window !== "undefined") {
     try {

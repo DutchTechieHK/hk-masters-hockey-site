@@ -6,6 +6,7 @@ import {
 } from "@workspace/db";
 import { sendMatchReminderEmail } from "../utils/email";
 import { getSessionLabel } from "../middleware/adminSession";
+import { assertStaffResource, lookupStaffIdentity } from "../middleware/staffAccess";
 
 const CURRENT_SEASON = "membership-2026-27";
 const STATUSES = ["yes", "maybe", "no"] as const;
@@ -16,7 +17,7 @@ function matchId(req: Request): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-async function eligiblePlayersForTeams(teamIds: number[]) {
+export async function eligiblePlayersForTeams(teamIds: number[]) {
   if (!teamIds.length) return [];
   return db.select({
     teamId: playerParticipationsTable.teamId,
@@ -88,6 +89,7 @@ export async function remindMatchNonresponders(req: Request, res: Response): Pro
     }
     const [match] = await db.select().from(matchesTable).where(eq(matchesTable.id, id)).limit(1);
     if (!match) { res.status(404).json({ error: "Match not found" }); return; }
+    assertStaffResource(req, match);
     if (match.operationalScope !== "local_2026_27" || match.status !== "scheduled" || match.kickoffAt <= new Date()) {
       res.status(409).json({ error: "Only future scheduled local matches can receive reminders" }); return;
     }
@@ -119,8 +121,8 @@ export async function remindMatchNonresponders(req: Request, res: Response): Pro
     const skippedAlreadySent = nonresponders.filter((player) => player.email && alreadySent.has(player.id)).length;
     const skippedUncertain = nonresponders.filter((player) => player.email && !alreadySent.has(player.id) && uncertain.has(player.id)).length;
     const recipients = nonresponders.filter((player) => player.email && !alreadySent.has(player.id) && !uncertain.has(player.id));
-    const sender = typeof req.headers["x-session-token"] === "string"
-      ? await getSessionLabel(req.headers["x-session-token"]) : null;
+    const sender = req.staffActor ?? (typeof req.headers["x-session-token"] === "string"
+      ? await getSessionLabel(req.headers["x-session-token"]) : null);
 
     if (!recipients.length) {
       res.json({ sent: 0, total: nonresponders.length, skippedNoEmail: noEmail,
@@ -149,6 +151,13 @@ export async function remindMatchNonresponders(req: Request, res: Response): Pro
     let historyRecorded = true;
     for (let i = 0; i < recipients.length; i++) {
       const player = recipients[i];
+      if (req.staffIdentity) {
+        const identity = await lookupStaffIdentity(String(req.headers["x-session-token"]));
+        if (!identity?.grants.some((g) => g.teamId === req.staffTeamId && g.manageAttendance)) {
+          skippedChanged += recipients.length - i;
+          break;
+        }
+      }
       // Re-check eligibility and replies while the batch is running; a player may respond or change squads.
       const [currentMatch] = await db.select({
         status: matchesTable.status, kickoffAt: matchesTable.kickoffAt,
@@ -370,12 +379,13 @@ export async function adminCorrectMatchRsvp(req: Request, res: Response): Promis
   }
   // Never store session tokens in history. API-key callers are labelled separately.
   const token = req.headers["x-session-token"];
-  const actor = typeof token === "string" ? (await getSessionLabel(token) ?? "Admin API key") : "Admin API key";
+  const actor = req.staffActor ?? (typeof token === "string" ? (await getSessionLabel(token) ?? "Admin API key") : "Admin API key");
   const result = await db.transaction(async (tx) => {
     // Serialize against fixture edits/deletes; the reply CAS below serializes against player updates.
     await tx.execute(sql`SELECT id FROM matches WHERE id = ${id} FOR UPDATE`);
     const [match] = await tx.select().from(matchesTable).where(eq(matchesTable.id, id));
     if (!match) return { code: 404, error: "Match not found" } as const;
+    assertStaffResource(req, match);
     if (match.operationalScope !== "local_2026_27")
       return { code: 409, error: "Archived or unclassified match attendance is read-only" } as const;
     if (match.status === "cancelled")

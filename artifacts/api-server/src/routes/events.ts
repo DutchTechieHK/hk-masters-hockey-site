@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import multer from "multer";
 import { db, eventsTable, teamsTable, eventGroupsTable, memberGroupMembersTable, eventRsvpsTable, playersTable, RSVP_STATUSES, type RsvpStatus, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable, emailBlastsTable, emailBlastRecipientsTable } from "@workspace/db";
-import { eq, asc, or, isNull, and, inArray, gt } from "drizzle-orm";
+import { eq, asc, or, isNull, and, inArray, gt, sql } from "drizzle-orm";
 import { requireAdminAccess, hasAdminAccess } from "../middleware/adminAuth";
 import { sendRsvpReminderEmail, sendNewEventEmail } from "../utils/email";
 import { sendPushToPlayers } from "../utils/push";
@@ -12,6 +12,7 @@ import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { formatEventDateTime } from "../utils/eventTime";
 import { loadEventGroups, lockEventGroups, InvalidEventGroups, type EventAudience } from "../utils/eventGroups";
+import { assertStaffResource } from "../middleware/staffAccess";
 
 const router: IRouter = Router();
 const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
@@ -308,7 +309,7 @@ function parseBody(body: unknown, existingMode = "squad"): {
   };
 }
 
-async function listEventInvitees(event: EventAudience, activeMembersOnly = false) {
+export async function listEventInvitees(event: EventAudience, activeMembersOnly = false) {
   const [members, groups] = await Promise.all([
     listLocalEventInvitees(null, activeMembersOnly),
     loadEventGroups([event]),
@@ -431,9 +432,10 @@ router.get("/", requireAdminOrPlayer, (async (req, res) => {
   res.json(filtered);
 }) as (req: Request, res: Response) => Promise<void>);
 
-router.post("/", requireAdminAccess, async (req, res) => {
+export async function createLocalEvent(req: Request, res: Response) {
   const parsed = parseBody(req.body);
   if ("error" in parsed) return res.status(400).json({ error: parsed.error });
+  assertStaffResource(req, { ...parsed, operationalScope: "local_2026_27" });
   const parsedTeamId = "teamId" in parsed ? parsed.teamId : null;
   if (parsedTeamId != null && await isArchivedRotterdamTeam(parsedTeamId)) {
     res.status(409).json({ error: "Archived content is read-only" });
@@ -520,7 +522,8 @@ router.post("/", requireAdminAccess, async (req, res) => {
     })();
   }
   return;
-});
+}
+router.post("/", requireAdminAccess, createLocalEvent);
 
 router.get("/:id/audience-change-impact", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
@@ -573,7 +576,7 @@ router.get("/:id/audience-change-impact", requireAdminAccess, async (req, res) =
   res.json(impact);
 });
 
-router.patch("/:id", requireAdminAccess, async (req, res) => {
+export async function updateLocalEvent(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid id" });
   const [existingScope] = await db.select().from(eventsTable).where(eq(eventsTable.id, id));
@@ -617,6 +620,12 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
   let row: typeof eventsTable.$inferSelect | undefined;
   try {
     row = await db.transaction(async (tx) => {
+      if (req.staffTeamId !== undefined) {
+        const [locked] = await tx.select().from(eventsTable).where(eq(eventsTable.id, id)).for("update");
+        if (!locked) return undefined;
+        assertStaffResource(req, locked);
+        assertStaffResource(req, { ...parsed, operationalScope: "local_2026_27" });
+      }
       await lockEventGroups(tx, groupIds);
       const [updated] = await tx.update(eventsTable).set(updateValues)
         .where(and(eq(eventsTable.id, id), eq(eventsTable.operationalScope, "local_2026_27"))).returning();
@@ -645,7 +654,8 @@ router.patch("/:id", requireAdminAccess, async (req, res) => {
     cleanupOrphanedUpload(oldId).catch(() => {});
   }
   return;
-});
+}
+router.patch("/:id", requireAdminAccess, updateLocalEvent);
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
   const id = Number(req.params.id);
@@ -879,12 +889,13 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
 }) as (req: Request, res: Response) => Promise<void>);
 
 // Admin-only: send reminder emails to all non-responders for a single event.
-router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
+export async function remindEventNonresponders(req: Request, res: Response) {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [event] = await db.select().from(eventsTable).where(eq(eventsTable.id, id)).limit(1);
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+  assertStaffResource(req, event);
   if (event.operationalScope === "world_cup_2026") { res.status(409).json({ error: "Archived content is read-only" }); return; }
   if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
   const operationalScope = event.operationalScope;
@@ -987,7 +998,8 @@ router.post("/:id/rsvps/remind", requireAdminAccess, (async (req, res) => {
 
   console.log(`[events] Sent ${sent} RSVP reminders for event #${id} (${nonResponders.length} eligible, ${skippedNoEmail} skipped no-email, ${failed} failed, historyRecorded=${historyRecorded})`);
   res.json({ sent, total: allNonResponders.length, skippedNoEmail, failed, historyRecorded });
-}) as (req: Request, res: Response) => Promise<void>);
+}
+router.post("/:id/rsvps/remind", requireAdminAccess, remindEventNonresponders);
 
 // Player upserts their own RSVP for an event.
 async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
@@ -1019,7 +1031,7 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
     .values({ eventId: id, playerId: player.id, status, note, respondedAt: now })
     .onConflictDoUpdate({
       target: [eventRsvpsTable.eventId, eventRsvpsTable.playerId],
-      set: { status, note, respondedAt: now },
+      set: { status, note, respondedAt: now, revision: sql`${eventRsvpsTable.revision} + 1` },
     });
 
   res.json({ eventId: id, status, note, respondedAt: now.toISOString() });

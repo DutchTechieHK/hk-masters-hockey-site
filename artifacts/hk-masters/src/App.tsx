@@ -34,7 +34,9 @@ import FundraisingSearch from "@/pages/FundraisingSearch";
 import NewsAdmin from "@/pages/NewsAdmin";
 import WebsiteContent from "@/pages/WebsiteContent";
 import NotFound from "@/pages/not-found";
-import { AdminAuthGate } from "@/components/AdminAuthGate";
+import { AdminAuthGate, useAuthIdentity } from "@/components/AdminAuthGate";
+import StaffAccess from "@/pages/StaffAccess";
+import StaffWorkspace, { StaffWorkspaceAdminNotice } from "@/pages/StaffWorkspace";
 
 import ArchiveLanding from "@/pages/archive/ArchiveLanding";
 import ArchiveLayout from "@/pages/archive/ArchiveLayout";
@@ -48,9 +50,27 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+function StaffRouter() {
+  // Team-scoped staff: only the workspace exists. No full-admin component is ever mounted.
   return (
     <Switch>
+      <Route path="/staff" component={StaffWorkspace} />
+      <Route>{() => <Redirect to="/staff" />}</Route>
+    </Switch>
+  );
+}
+
+function Router() {
+  const { identity } = useAuthIdentity();
+  if (identity.kind === "staff") return <StaffRouter />;
+  return <AdminRouter />;
+}
+
+function AdminRouter() {
+  return (
+    <Switch>
+      <Route path="/access" component={StaffAccess} />
+      <Route path="/staff" component={StaffWorkspaceAdminNotice} />
       {/* Current Operations */}
       <Route path="/" component={Dashboard} />
       <Route path="/teams">{() => <Teams />}</Route>

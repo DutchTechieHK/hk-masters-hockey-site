@@ -30,9 +30,13 @@ import siteContentRouter from "./site-content";
 import worldCupShowcaseRouter from "./world-cup-showcase";
 import reportsRouter from "./reports";
 import { retiredArchiveReadOnly } from "../middleware/retiredArchive";
+import staffRouter from "./staff";
+import { isolateStaffSession } from "../middleware/staffAccess";
 
 const router: IRouter = Router();
 
+router.use(isolateStaffSession);
+router.use("/staff", staffRouter);
 router.use(healthRouter);
 router.use("/teams", teamsRouter);
 router.use("/players", playersRouter);

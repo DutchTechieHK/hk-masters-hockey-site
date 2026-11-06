@@ -7,6 +7,360 @@
  */
 import * as zod from "zod";
 
+export const CreateStaffSessionResponse = zod.object({
+  token: zod.string(),
+});
+
+export const GetStaffIdentityResponse = zod.object({
+  playerId: zod.number(),
+  name: zod.string(),
+  seasonId: zod.number(),
+  seasonName: zod.string(),
+  grants: zod.array(
+    zod.object({
+      id: zod.number(),
+      playerId: zod.number(),
+      playerName: zod.string(),
+      teamId: zod.number(),
+      teamName: zod.string(),
+      seasonId: zod.number(),
+      roleLabel: zod.string(),
+      manageAttendance: zod.boolean(),
+      manageSchedule: zod.boolean(),
+      version: zod.number(),
+      revokedAt: zod.string().nullable(),
+    }),
+  ),
+});
+
+export const GetStaffAccessResponse = zod.object({
+  seasonId: zod.number(),
+  seasonName: zod.string(),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      email: zod.string(),
+      memberStatus: zod.string(),
+    }),
+  ),
+  teams: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+    }),
+  ),
+  grants: zod.array(
+    zod.object({
+      id: zod.number(),
+      playerId: zod.number(),
+      playerName: zod.string(),
+      teamId: zod.number(),
+      teamName: zod.string(),
+      seasonId: zod.number(),
+      roleLabel: zod.string(),
+      manageAttendance: zod.boolean(),
+      manageSchedule: zod.boolean(),
+      version: zod.number(),
+      revokedAt: zod.string().nullable(),
+    }),
+  ),
+  audit: zod.array(
+    zod.object({
+      id: zod.number(),
+      actor: zod.string(),
+      actorPlayerId: zod.number().nullable(),
+      teamId: zod.number().nullable(),
+      action: zod.string(),
+      target: zod.string(),
+      status: zod.number().nullable(),
+      createdAt: zod.string(),
+    }),
+  ),
+});
+
+export const saveStaffGrantBodyVersionMin = 0;
+
+export const SaveStaffGrantBody = zod.object({
+  playerId: zod.number().min(1),
+  teamId: zod.number().min(1),
+  seasonId: zod.number().min(1),
+  roleLabel: zod.enum(["Coach", "Manager"]),
+  manageAttendance: zod.boolean(),
+  manageSchedule: zod.boolean(),
+  version: zod.number().min(saveStaffGrantBodyVersionMin),
+});
+
+export const RevokeStaffGrantParams = zod.object({
+  grantId: zod.coerce.number(),
+});
+
+export const RevokeStaffGrantBody = zod.object({
+  version: zod.number().min(1),
+});
+
+export const GetStaffTeamParams = zod.object({
+  teamId: zod.coerce.number(),
+});
+
+export const GetStaffTeamResponse = zod.object({
+  roster: zod.array(
+    zod.object({
+      id: zod.number(),
+      name: zod.string(),
+      shirtNumber: zod.number().nullable(),
+      position: zod.string(),
+    }),
+  ),
+  matches: zod.array(
+    zod.object({
+      id: zod.number(),
+      teamId: zod.number(),
+      teamName: zod.string().optional(),
+      teamCategory: zod.string().optional(),
+      opponent: zod.string(),
+      kickoffAt: zod.string(),
+      venue: zod.string().optional(),
+      ourScore: zod.number().nullish(),
+      theirScore: zod.number().nullish(),
+      status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+      notes: zod.string().optional(),
+      createdAt: zod.string().optional(),
+    }),
+  ),
+  events: zod.array(
+    zod
+      .object({
+        kind: zod.enum([
+          "training",
+          "meeting",
+          "social",
+          "physio",
+          "team_dinner",
+          "dinner",
+          "free_time",
+          "warmup",
+          "game",
+        ]),
+        title: zod.string(),
+        startsAt: zod.date(),
+        endsAt: zod.date().nullish(),
+        location: zod.string().nullish(),
+        description: zod.string().nullish(),
+        teamId: zod.number().nullish(),
+        audienceMode: zod.enum(["squad", "groups"]).optional(),
+        groupIds: zod
+          .array(zod.number().min(1))
+          .optional()
+          .describe(
+            "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+          ),
+        isPublic: zod.boolean().optional(),
+        sendNotify: zod.boolean().optional(),
+        photoUrl: zod.string().nullish(),
+      })
+      .and(
+        zod.object({
+          id: zod.number(),
+          teamName: zod.string().nullish(),
+          createdAt: zod.date(),
+          rsvpCounts: zod
+            .object({
+              yes: zod.number(),
+              maybe: zod.number(),
+              no: zod.number(),
+            })
+            .optional(),
+          myRsvp: zod
+            .union([
+              zod.literal("yes"),
+              zod.literal("no"),
+              zod.literal("maybe"),
+              zod.literal(null),
+            ])
+            .nullish(),
+          myNote: zod.string().nullish(),
+        }),
+      ),
+  ),
+});
+
+export const CreateStaffMatchParams = zod.object({
+  teamId: zod.coerce.number(),
+});
+
+export const CreateStaffMatchBody = zod.object({
+  teamId: zod.number(),
+  opponent: zod.string(),
+  kickoffAt: zod.string(),
+  venue: zod.string().optional(),
+  ourScore: zod.number().nullish(),
+  theirScore: zod.number().nullish(),
+  status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+  notes: zod.string().optional(),
+});
+
+export const UpdateStaffMatchParams = zod.object({
+  teamId: zod.coerce.number(),
+  id: zod.coerce.number(),
+});
+
+export const UpdateStaffMatchBody = zod.object({
+  teamId: zod.number(),
+  opponent: zod.string(),
+  kickoffAt: zod.string(),
+  venue: zod.string().optional(),
+  ourScore: zod.number().nullish(),
+  theirScore: zod.number().nullish(),
+  status: zod.enum(["scheduled", "in_progress", "final", "cancelled"]),
+  notes: zod.string().optional(),
+});
+
+export const CreateStaffEventParams = zod.object({
+  teamId: zod.coerce.number(),
+});
+
+export const CreateStaffEventBody = zod.object({
+  kind: zod.enum([
+    "training",
+    "meeting",
+    "social",
+    "physio",
+    "team_dinner",
+    "dinner",
+    "free_time",
+    "warmup",
+    "game",
+  ]),
+  title: zod.string(),
+  startsAt: zod.date(),
+  endsAt: zod.date().nullish(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  teamId: zod.number().nullish(),
+  audienceMode: zod.enum(["squad", "groups"]).optional(),
+  groupIds: zod
+    .array(zod.number().min(1))
+    .optional()
+    .describe(
+      "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+    ),
+  isPublic: zod.boolean().optional(),
+  sendNotify: zod.boolean().optional(),
+  photoUrl: zod.string().nullish(),
+});
+
+export const UpdateStaffEventParams = zod.object({
+  teamId: zod.coerce.number(),
+  id: zod.coerce.number(),
+});
+
+export const UpdateStaffEventBody = zod.object({
+  kind: zod.enum([
+    "training",
+    "meeting",
+    "social",
+    "physio",
+    "team_dinner",
+    "dinner",
+    "free_time",
+    "warmup",
+    "game",
+  ]),
+  title: zod.string(),
+  startsAt: zod.date(),
+  endsAt: zod.date().nullish(),
+  location: zod.string().nullish(),
+  description: zod.string().nullish(),
+  teamId: zod.number().nullish(),
+  audienceMode: zod.enum(["squad", "groups"]).optional(),
+  groupIds: zod
+    .array(zod.number().min(1))
+    .optional()
+    .describe(
+      "Required nonempty for groups; union of memberships. Omitted on PATCH preserves the audience.",
+    ),
+  isPublic: zod.boolean().optional(),
+  sendNotify: zod.boolean().optional(),
+  photoUrl: zod.string().nullish(),
+});
+
+export const GetStaffAttendanceParams = zod.object({
+  teamId: zod.coerce.number(),
+  resource: zod.enum(["matches", "events"]),
+  id: zod.coerce.number(),
+});
+
+export const GetStaffAttendanceResponse = zod.object({
+  people: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      playerName: zod.string(),
+      shirtNumber: zod.number().nullable(),
+      status: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("maybe"),
+          zod.literal("no"),
+          zod.literal(null),
+        ])
+        .nullable(),
+      note: zod.string().nullable(),
+      expected: zod.union([
+        zod.null(),
+        zod.object({
+          id: zod.number(),
+          revision: zod.number(),
+        }),
+      ]),
+    }),
+  ),
+  counts: zod.object({
+    yes: zod.number(),
+    maybe: zod.number(),
+    no: zod.number(),
+  }),
+});
+
+export const CorrectStaffAttendanceParams = zod.object({
+  teamId: zod.coerce.number(),
+  resource: zod.enum(["matches", "events"]),
+  id: zod.coerce.number(),
+  playerId: zod.coerce.number(),
+});
+
+export const correctStaffAttendanceBodyNoteMax = 2000;
+
+export const CorrectStaffAttendanceBody = zod.object({
+  status: zod
+    .union([
+      zod.literal("yes"),
+      zod.literal("maybe"),
+      zod.literal("no"),
+      zod.literal(null),
+    ])
+    .nullable(),
+  note: zod.string().max(correctStaffAttendanceBodyNoteMax).nullish(),
+  expected: zod.union([
+    zod.null(),
+    zod.object({
+      id: zod.number(),
+      revision: zod.number(),
+    }),
+  ]),
+});
+
+export const RemindStaffAttendanceParams = zod.object({
+  teamId: zod.coerce.number(),
+  resource: zod.enum(["matches", "events"]),
+  id: zod.coerce.number(),
+});
+
+export const RemindStaffAttendanceResponse = zod.record(
+  zod.string(),
+  zod.unknown(),
+);
+
 /**
  * @summary Admin-only manually maintained member groups
  */

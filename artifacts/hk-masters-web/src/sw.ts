@@ -37,7 +37,7 @@ registerRoute(
 );
 
 const isPrivateAttendance = (url: URL) =>
-  /\/api\/(?:player-auth\/matches\/rsvps|events\/training-attendance|player-auth\/my-schedule|events|groups(?:\/.*)?)\/?$/.test(url.pathname);
+  /\/api\/(?:player-auth\/matches\/rsvps|events\/training-attendance|player-auth\/my-schedule|player-auth\/(?:request-code|verify-code)|admin\/auth|staff(?:\/.*)?|events|groups(?:\/.*)?)\/?$/.test(url.pathname);
 
 // Squad-only attendee names must never be served from a shared/offline cache.
 registerRoute(({ url }) => isPrivateAttendance(url), new NetworkOnly());

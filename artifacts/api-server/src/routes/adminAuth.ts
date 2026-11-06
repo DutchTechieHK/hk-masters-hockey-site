@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { createSession, destroySession, validateSession } from "../middleware/adminSession.js";
 import { safeKeyEqual } from "../middleware/adminAuth.js";
+import { db, staffSessionsTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { lookupStaffIdentity } from "../middleware/staffAccess";
 
 const router = Router();
 
@@ -23,18 +26,23 @@ router.delete("/", async (req, res) => {
   const token =
     (req.headers["x-session-token"] as string | undefined) ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
-  if (token) await destroySession(token);
+  if (token) {
+    await destroySession(token);
+    await db.delete(staffSessionsTable).where(eq(staffSessionsTable.token, token));
+  }
   res.status(204).send();
 });
 
 router.get("/", async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
   const token =
     (req.headers["x-session-token"] as string | undefined) ||
     req.headers["authorization"]?.replace(/^Bearer\s+/i, "");
   if (token && (await validateSession(token))) {
-    res.json({ authenticated: true });
+    res.json({ authenticated: true, kind: "admin" });
   } else {
-    res.json({ authenticated: false });
+    const staff = token ? await lookupStaffIdentity(token) : null;
+    res.json(staff ? { authenticated: true, kind: "staff", staff } : { authenticated: false });
   }
 });
 

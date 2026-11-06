@@ -31,6 +31,175 @@ tags:
     description: Read-only historical World Cup showcase operations
 
 paths:
+  /staff/session:
+    post:
+      operationId: createStaffSession
+      responses:
+        "200":
+          description: Exchange a verified player session for a restricted staff session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffSession"
+    delete:
+      operationId: endStaffSession
+      responses:
+        "204": { description: Signed out }
+  /staff/me:
+    get:
+      operationId: getStaffIdentity
+      responses:
+        "200":
+          description: Current staff identity and live grants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffIdentity"
+  /staff/access:
+    get:
+      operationId: getStaffAccess
+      responses:
+        "200":
+          description: Full-admin access management directory and audit history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAccessDirectory"
+  /staff/access/grants:
+    put:
+      operationId: saveStaffGrant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffGrantInput"
+      responses:
+        "200": { description: Saved }
+  /staff/access/grants/{grantId}/revoke:
+    post:
+      operationId: revokeStaffGrant
+      parameters:
+        - { name: grantId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffGrantVersion"
+      responses:
+        "204": { description: Revoked }
+  /staff/teams/{teamId}:
+    get:
+      operationId: getStaffTeam
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Restricted operational team workspace
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffTeamWorkspace"
+  /staff/teams/{teamId}/matches:
+    post:
+      operationId: createStaffMatch
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatch"
+      responses:
+        "201": { description: Created }
+  /staff/teams/{teamId}/matches/{id}:
+    patch:
+      operationId: updateStaffMatch
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatch"
+      responses:
+        "200": { description: Updated }
+  /staff/teams/{teamId}/events:
+    post:
+      operationId: createStaffEvent
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClubEventInput"
+      responses:
+        "201": { description: Created }
+  /staff/teams/{teamId}/events/{id}:
+    patch:
+      operationId: updateStaffEvent
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClubEventInput"
+      responses:
+        "200": { description: Updated }
+  /staff/teams/{teamId}/{resource}/{id}/attendance:
+    get:
+      operationId: getStaffAttendance
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+        - { name: resource, in: path, required: true, schema: { type: string, enum: [matches, events] } }
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Current eligible attendance only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffAttendance"
+  /staff/teams/{teamId}/{resource}/{id}/attendance/{playerId}:
+    put:
+      operationId: correctStaffAttendance
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+        - { name: resource, in: path, required: true, schema: { type: string, enum: [matches, events] } }
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: playerId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffAttendanceInput"
+      responses:
+        "200": { description: Updated }
+  /staff/teams/{teamId}/{resource}/{id}/remind:
+    post:
+      operationId: remindStaffAttendance
+      parameters:
+        - { name: teamId, in: path, required: true, schema: { type: integer } }
+        - { name: resource, in: path, required: true, schema: { type: string, enum: [matches, events] } }
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Existing reminder delivery summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
   /groups:
     get:
       operationId: listMemberGroups
@@ -1652,6 +1821,157 @@ paths:
 
 components:
   schemas:
+    StaffSession:
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    StaffGrant:
+      type: object
+      required: [id, playerId, playerName, teamId, teamName, seasonId, roleLabel, manageAttendance, manageSchedule, version, revokedAt]
+      properties:
+        id: { type: integer }
+        playerId: { type: integer }
+        playerName: { type: string }
+        teamId: { type: integer }
+        teamName: { type: string }
+        seasonId: { type: integer }
+        roleLabel: { type: string }
+        manageAttendance: { type: boolean }
+        manageSchedule: { type: boolean }
+        version: { type: integer }
+        revokedAt: { type: [string, "null"] }
+    StaffIdentity:
+      type: object
+      required: [playerId, name, seasonId, seasonName, grants]
+      properties:
+        playerId: { type: integer }
+        name: { type: string }
+        seasonId: { type: integer }
+        seasonName: { type: string }
+        grants:
+          type: array
+          items: { $ref: "#/components/schemas/StaffGrant" }
+    StaffGrantInput:
+      type: object
+      required: [playerId, teamId, seasonId, roleLabel, manageAttendance, manageSchedule, version]
+      properties:
+        playerId: { type: integer, minimum: 1 }
+        teamId: { type: integer, minimum: 1 }
+        seasonId: { type: integer, minimum: 1 }
+        roleLabel: { type: string, enum: [Coach, Manager] }
+        manageAttendance: { type: boolean }
+        manageSchedule: { type: boolean }
+        version: { type: integer, minimum: 0 }
+    StaffGrantVersion:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+    StaffDirectoryMember:
+      type: object
+      required: [id, name, email, memberStatus]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        memberStatus: { type: string }
+    StaffTeamOption:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+    StaffAuditEntry:
+      type: object
+      required: [id, actor, actorPlayerId, teamId, action, target, status, createdAt]
+      properties:
+        id: { type: integer }
+        actor: { type: string }
+        actorPlayerId: { type: [integer, "null"] }
+        teamId: { type: [integer, "null"] }
+        action: { type: string }
+        target: { type: string }
+        status: { type: [integer, "null"] }
+        createdAt: { type: string }
+    StaffAccessDirectory:
+      type: object
+      required: [seasonId, seasonName, members, teams, grants, audit]
+      properties:
+        seasonId: { type: integer }
+        seasonName: { type: string }
+        members:
+          type: array
+          items: { $ref: "#/components/schemas/StaffDirectoryMember" }
+        teams:
+          type: array
+          items: { $ref: "#/components/schemas/StaffTeamOption" }
+        grants:
+          type: array
+          items: { $ref: "#/components/schemas/StaffGrant" }
+        audit:
+          type: array
+          items: { $ref: "#/components/schemas/StaffAuditEntry" }
+    StaffRosterMember:
+      type: object
+      required: [id, name, shirtNumber, position]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        shirtNumber: { type: [integer, "null"] }
+        position: { type: string }
+    StaffTeamWorkspace:
+      type: object
+      required: [roster, matches, events]
+      properties:
+        roster:
+          type: array
+          items: { $ref: "#/components/schemas/StaffRosterMember" }
+        matches:
+          type: array
+          items: { $ref: "#/components/schemas/Match" }
+        events:
+          type: array
+          items: { $ref: "#/components/schemas/ClubEvent" }
+    StaffAttendancePerson:
+      type: object
+      required: [playerId, playerName, shirtNumber, status, note, expected]
+      properties:
+        playerId: { type: integer }
+        playerName: { type: string }
+        shirtNumber: { type: [integer, "null"] }
+        status: { type: [string, "null"], enum: [yes, maybe, no, null] }
+        note: { type: [string, "null"] }
+        expected:
+          oneOf:
+            - { type: "null" }
+            - type: object
+              required: [id, revision]
+              properties:
+                id: { type: integer }
+                revision: { type: integer }
+    StaffAttendance:
+      type: object
+      required: [people, counts]
+      properties:
+        people:
+          type: array
+          items: { $ref: "#/components/schemas/StaffAttendancePerson" }
+        counts: { $ref: "#/components/schemas/MatchAttendanceCounts" }
+    StaffAttendanceInput:
+      type: object
+      required: [status, expected]
+      properties:
+        status: { type: [string, "null"], enum: [yes, maybe, no, null] }
+        note: { type: [string, "null"], maxLength: 2000 }
+        expected:
+          oneOf:
+            - { type: "null" }
+            - type: object
+              required: [id, revision]
+              properties:
+                id: { type: integer }
+                revision: { type: integer }
     MemberGroupInput:
       type: object
       required: [name, memberIds]

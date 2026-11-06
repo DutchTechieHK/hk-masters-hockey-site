@@ -1,5 +1,5 @@
 import { Link, useRoute } from "wouter"
-import { Trophy, Users, UserRound, DollarSign, CalendarDays, CalendarClock, Megaphone, History, Globe, PlayCircle, LogOut, Menu, X, BarChart2, Newspaper, Archive, FileBarChart2, UsersRound } from "lucide-react"
+import { Trophy, Users, UserRound, DollarSign, CalendarDays, CalendarClock, Megaphone, History, Globe, PlayCircle, LogOut, Menu, X, BarChart2, Newspaper, Archive, FileBarChart2, UsersRound, ShieldCheck, ClipboardList } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -9,6 +9,7 @@ import {
   getStoredAdminToken,
   notifySessionExpired,
 } from "@/lib/admin-auth"
+import { useAuthIdentity } from "@/components/AdminAuthGate"
 
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: Trophy },
@@ -24,7 +25,12 @@ const NAV_ITEMS = [
   { href: "/polls", label: "Polls", icon: BarChart2 },
   { href: "/email-history", label: "Email History", icon: History },
   { href: "/website", label: "Website", icon: Globe },
+  { href: "/access", label: "Staff Access", icon: ShieldCheck },
   { href: "/tutorials", label: "Tutorials", icon: PlayCircle },
+]
+
+const STAFF_NAV_ITEMS = [
+  { href: "/staff", label: "Team Workspace", icon: ClipboardList },
 ]
 
 async function handleSignOut() {
@@ -83,15 +89,25 @@ const Logo = () => (
 
 export function Navbar() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { identity } = useAuthIdentity()
+  const isStaff = identity.kind === "staff"
+  const items = isStaff ? STAFF_NAV_ITEMS : NAV_ITEMS
 
   const NavList = ({ onItemClick }: { onItemClick?: () => void }) => (
     <>
       <div className="space-y-0.5">
-        {NAV_ITEMS.map((item) => (
+        {items.map((item) => (
           <SidebarNavItem key={item.href} href={item.href} label={item.label} icon={item.icon} onClick={onItemClick} />
         ))}
       </div>
 
+      {isStaff ? (
+        <div className="mt-6 pt-4 border-t border-white/10 px-3">
+          <p className="text-xs font-semibold text-primary-foreground/40 uppercase tracking-wider mb-1">Signed in as</p>
+          <p className="text-sm text-white font-medium truncate" data-testid="text-staff-name">{identity.staff.name}</p>
+          <p className="text-[11px] text-primary-foreground/60">{identity.staff.seasonName}</p>
+        </div>
+      ) : (
       <div className="mt-6 pt-4 border-t border-white/10">
         <p className="px-3 text-xs font-semibold text-primary-foreground/40 uppercase tracking-wider mb-2">Archives</p>
         <SidebarNavItem
@@ -102,6 +118,7 @@ export function Navbar() {
           isArchive
         />
       </div>
+      )}
     </>
   )
 

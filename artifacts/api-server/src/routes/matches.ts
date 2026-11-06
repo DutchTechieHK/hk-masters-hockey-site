@@ -16,6 +16,7 @@ import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { getWorldCupTeamSnapshots } from "../utils/archivedTeams";
 import { adminMatchRsvps, adminCorrectMatchRsvp, adminMatchRsvpSummaries, remindMatchNonresponders } from "./matchAttendance";
 import { previewMatchChange, sendMatchChange } from "./matchChanges";
+import { assertStaffResource } from "../middleware/staffAccess";
 
 const router = Router();
 router.get("/rsvps/summary", requireAdminAccess, adminMatchRsvpSummaries);
@@ -177,8 +178,9 @@ router.get("/:id/calendar.ics", async (req, res) => {
   res.send(ics);
 });
 
-router.post("/", requireAdminAccess, async (req, res) => {
+export async function createLocalMatch(req: import("express").Request, res: import("express").Response) {
   const body = CreateMatchBody.parse(req.body);
+  assertStaffResource(req, { teamId: body.teamId, operationalScope: "local_2026_27" });
   if (await isArchivedRotterdamTeam(body.teamId)) {
     res.status(409).json({ error: "Archived content is read-only" });
     return;
@@ -206,7 +208,8 @@ router.post("/", requireAdminAccess, async (req, res) => {
   }).returning();
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, match.teamId));
   res.status(201).json(serialize(match, team?.name, team?.category, true));
-});
+}
+router.post("/", requireAdminAccess, createLocalMatch);
 
 router.post("/correct-september-hkt-import", requireAdminAccess, async (req, res): Promise<void> => {
   const result = await db.transaction(async (tx) => {
@@ -314,7 +317,7 @@ router.post("/correct-september-hkt-import", requireAdminAccess, async (req, res
   res.json(CorrectSeptemberHktImportResponse.parse(result));
 });
 
-async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {
+export async function handleUpdateMatch(req: import("express").Request, res: import("express").Response) {
   const { id } = UpdateMatchParams.parse(req.params);
   // Preserve the archived/unclassified boundary even for legacy callers whose
   // update payload does not satisfy the current form schema.
@@ -341,6 +344,8 @@ async function handleUpdateMatch(req: import("express").Request, res: import("ex
     await tx.execute(sql`SELECT id FROM matches WHERE id = ${id} FOR UPDATE`);
     const [existing] = await tx.select().from(matchesTable).where(eq(matchesTable.id, id));
     if (!existing) return { error: "Match not found", status: 404 } as const;
+    assertStaffResource(req, existing);
+    assertStaffResource(req, { teamId: body.teamId, operationalScope: "local_2026_27" });
     if (existing.operationalScope !== "local_2026_27")
       return { error: existing.operationalScope === "world_cup_2026" ? "Archived content is read-only" : "Unclassified records must be classified before editing", status: 409 } as const;
     const [match] = await tx.update(matchesTable).set({

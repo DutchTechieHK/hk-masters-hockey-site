@@ -5,45 +5,125 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
-export interface MemberGroupInput {
-  /**
-   * @minLength 1
-   * @maxLength 100
-   */
-  name: string;
-  /**
-   * @maxLength 2000
-   * @nullable
-   */
-  description?: string | null;
-  /** @maxItems 5000 */
-  memberIds: number[];
+export interface StaffSession {
+  token: string;
 }
 
-export type MemberGroupUpdate = MemberGroupInput & {
+export interface StaffGrant {
+  id: number;
+  playerId: number;
+  playerName: string;
+  teamId: number;
+  teamName: string;
+  seasonId: number;
+  roleLabel: string;
+  manageAttendance: boolean;
+  manageSchedule: boolean;
+  version: number;
+  /** @nullable */
+  revokedAt: string | null;
+}
+
+export interface StaffIdentity {
+  playerId: number;
+  name: string;
+  seasonId: number;
+  seasonName: string;
+  grants: StaffGrant[];
+}
+
+export type StaffGrantInputRoleLabel =
+  (typeof StaffGrantInputRoleLabel)[keyof typeof StaffGrantInputRoleLabel];
+
+export const StaffGrantInputRoleLabel = {
+  Coach: "Coach",
+  Manager: "Manager",
+} as const;
+
+export interface StaffGrantInput {
+  /** @minimum 1 */
+  playerId: number;
+  /** @minimum 1 */
+  teamId: number;
+  /** @minimum 1 */
+  seasonId: number;
+  roleLabel: StaffGrantInputRoleLabel;
+  manageAttendance: boolean;
+  manageSchedule: boolean;
+  /** @minimum 0 */
+  version: number;
+}
+
+export interface StaffGrantVersion {
   /** @minimum 1 */
   version: number;
-};
-
-export interface MemberGroup {
-  id: number;
-  name: string;
-  /** @nullable */
-  description: string | null;
-  version: number;
-  memberIds: number[];
-  eventCount: number;
 }
 
-export interface GroupCandidateMember {
+export interface StaffDirectoryMember {
+  id: number;
+  name: string;
+  email: string;
+  memberStatus: string;
+}
+
+export interface StaffTeamOption {
+  id: number;
+  name: string;
+}
+
+export interface StaffAuditEntry {
+  id: number;
+  actor: string;
+  /** @nullable */
+  actorPlayerId: number | null;
+  /** @nullable */
+  teamId: number | null;
+  action: string;
+  target: string;
+  /** @nullable */
+  status: number | null;
+  createdAt: string;
+}
+
+export interface StaffAccessDirectory {
+  seasonId: number;
+  seasonName: string;
+  members: StaffDirectoryMember[];
+  teams: StaffTeamOption[];
+  grants: StaffGrant[];
+  audit: StaffAuditEntry[];
+}
+
+export interface StaffRosterMember {
   id: number;
   name: string;
   /** @nullable */
-  memberStatus: string | null;
-  /** @nullable */
-  membershipSection: string | null;
-  /** @nullable */
-  teamName: string | null;
+  shirtNumber: number | null;
+  position: string;
+}
+
+export type MatchStatus = (typeof MatchStatus)[keyof typeof MatchStatus];
+
+export const MatchStatus = {
+  scheduled: "scheduled",
+  in_progress: "in_progress",
+  final: "final",
+  cancelled: "cancelled",
+} as const;
+
+export interface Match {
+  id: number;
+  teamId: number;
+  teamName?: string;
+  teamCategory?: string;
+  opponent: string;
+  kickoffAt: string;
+  venue?: string;
+  ourScore?: number | null;
+  theirScore?: number | null;
+  status: MatchStatus;
+  notes?: string;
+  createdAt?: string;
 }
 
 export type ClubEventInputKind =
@@ -90,6 +170,12 @@ export interface ClubEventInput {
   photoUrl?: string | null;
 }
 
+export interface MatchAttendanceCounts {
+  yes: number;
+  maybe: number;
+  no: number;
+}
+
 /**
  * @nullable
  */
@@ -103,12 +189,6 @@ export const ClubEventMyRsvp = {
   maybe: "maybe",
 } as const;
 
-export interface MatchAttendanceCounts {
-  yes: number;
-  maybe: number;
-  no: number;
-}
-
 export type ClubEvent = ClubEventInput & {
   id: number;
   /** @nullable */
@@ -120,6 +200,117 @@ export type ClubEvent = ClubEventInput & {
   /** @nullable */
   myNote?: string | null;
 };
+
+export interface StaffTeamWorkspace {
+  roster: StaffRosterMember[];
+  matches: Match[];
+  events: ClubEvent[];
+}
+
+/**
+ * @nullable
+ */
+export type StaffAttendancePersonStatus =
+  | (typeof StaffAttendancePersonStatus)[keyof typeof StaffAttendancePersonStatus]
+  | null;
+
+export const StaffAttendancePersonStatus = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export type StaffAttendancePersonExpected = null | {
+  id: number;
+  revision: number;
+};
+
+export interface StaffAttendancePerson {
+  playerId: number;
+  playerName: string;
+  /** @nullable */
+  shirtNumber: number | null;
+  /** @nullable */
+  status: StaffAttendancePersonStatus;
+  /** @nullable */
+  note: string | null;
+  expected: StaffAttendancePersonExpected;
+}
+
+export interface StaffAttendance {
+  people: StaffAttendancePerson[];
+  counts: MatchAttendanceCounts;
+}
+
+/**
+ * @nullable
+ */
+export type StaffAttendanceInputStatus =
+  | (typeof StaffAttendanceInputStatus)[keyof typeof StaffAttendanceInputStatus]
+  | null;
+
+export const StaffAttendanceInputStatus = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export type StaffAttendanceInputExpected = null | {
+  id: number;
+  revision: number;
+};
+
+export interface StaffAttendanceInput {
+  /** @nullable */
+  status: StaffAttendanceInputStatus;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  note?: string | null;
+  expected: StaffAttendanceInputExpected;
+}
+
+export interface MemberGroupInput {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @maxLength 2000
+   * @nullable
+   */
+  description?: string | null;
+  /** @maxItems 5000 */
+  memberIds: number[];
+}
+
+export type MemberGroupUpdate = MemberGroupInput & {
+  /** @minimum 1 */
+  version: number;
+};
+
+export interface MemberGroup {
+  id: number;
+  name: string;
+  /** @nullable */
+  description: string | null;
+  version: number;
+  memberIds: number[];
+  eventCount: number;
+}
+
+export interface GroupCandidateMember {
+  id: number;
+  name: string;
+  /** @nullable */
+  memberStatus: string | null;
+  /** @nullable */
+  membershipSection: string | null;
+  /** @nullable */
+  teamName: string | null;
+}
 
 export interface EventAudienceImpact {
   totalResponses: number;
@@ -1482,30 +1673,6 @@ export interface MatchAttendanceSaved {
   respondedAt: string;
 }
 
-export type MatchStatus = (typeof MatchStatus)[keyof typeof MatchStatus];
-
-export const MatchStatus = {
-  scheduled: "scheduled",
-  in_progress: "in_progress",
-  final: "final",
-  cancelled: "cancelled",
-} as const;
-
-export interface Match {
-  id: number;
-  teamId: number;
-  teamName?: string;
-  teamCategory?: string;
-  opponent: string;
-  kickoffAt: string;
-  venue?: string;
-  ourScore?: number | null;
-  theirScore?: number | null;
-  status: MatchStatus;
-  notes?: string;
-  createdAt?: string;
-}
-
 export type CreateMatchStatus =
   (typeof CreateMatchStatus)[keyof typeof CreateMatchStatus];
 
@@ -1615,6 +1782,8 @@ export interface UpdateWhatsappTemplateVariables {
   id: number;
   body: WhatsappTemplateUpdateInput;
 }
+
+export type RemindStaffAttendance200 = { [key: string]: unknown };
 
 export type DeleteMemberGroupParams = {
   /**

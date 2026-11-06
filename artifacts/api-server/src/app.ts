@@ -3,6 +3,7 @@ import cors, { type CorsOptions } from "cors";
 import helmet from "helmet";
 import router from "./routes";
 import sitemapRouter from "./routes/sitemap.js";
+import { StaffAccessError } from "./middleware/staffAccess";
 
 const app: Express = express();
 
@@ -57,6 +58,9 @@ app.use(sitemapRouter);
 app.use("/api", router);
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof StaffAccessError) {
+    return res.status(err.status).json({ error: err.message });
+  }
   if (err != null && typeof err === "object" && "name" in err && err.name === "ZodError" && "errors" in err) {
     return res.status(400).json({ error: "Validation error", details: (err as { errors: unknown }).errors });
   }
