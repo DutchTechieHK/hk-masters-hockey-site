@@ -3,6 +3,14 @@ name: openapi.yaml schema drift breaks api-server boot / can silently drop field
 description: openapi.yaml can drift from hand-written route code in two dangerous ways — missing schema (crashes on boot) or missing field on an existing schema (regenerating validation silently strips real data on update). Check before and after any codegen run.
 ---
 
+## Zod constructor compatibility
+
+Generated API validators use Zod's root entry point, which is v3 with the current catalog version. Database validators may use the separate v4 entry point.
+
+**Why:** Importing v4 to extend a generated v3 object produces incompatible validators even though both come from the same installed Zod package.
+
+**How to apply:** Match the constructor family of the validator being extended. Do not mix root/v3 and v4 schemas in one extend/merge operation; check the generated imports and installed package before changing versions.
+
 The generated Zod modules (via orval codegen in `lib/api-spec`) are derived entirely from `openapi.yaml`, not from the hand-written route code in `artifacts/api-server`. Two failure modes stem from the same root cause (spec/code drift):
 
 1. **Missing schema entirely** — a route imports a schema (e.g. `SendInsuranceRemindersBody`) that isn't declared as a schema + path in `openapi.yaml`. Codegen silently omits it instead of erroring; the route file then fails to import it and api-server crashes on boot. Loud and easy to catch.

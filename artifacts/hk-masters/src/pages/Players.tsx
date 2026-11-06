@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react"
-import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites, useListFundraising, getListFundraisingQueryKey, useBulkAssignMembershipSection } from "@workspace/api-client-react"
+import { useListPlayers, useCreatePlayer, useUpdatePlayer, useDeletePlayer, getListPlayersQueryKey, useListTeams, useSendOnboardingInvites, useListFundraising, getListFundraisingQueryKey } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,7 @@ import { MembershipInterestPanel } from "@/components/MembershipInterestPanel"
 import { Link } from "wouter"
 import { ShirtHistoryPanel } from "@/components/shirt-numbers/ShirtHistoryPanel"
 import { ShirtSummaryCell } from "@/components/shirt-numbers/ShirtSummaryCell"
+import { MemberBulkEditor } from "@/components/members/MemberBulkEditor"
 
 function cloudinaryViewUrl(url: string): string {
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
@@ -180,8 +181,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const [participations, setParticipations] = useState<PlayerParticipation[]>([])
   const [participationsLoading, setParticipationsLoading] = useState(false)
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<number>>(new Set())
-  const [bulkSection, setBulkSection] = useState<"not_set" | "men" | "women">("not_set")
-  const [bulkSectionModalOpen, setBulkSectionModalOpen] = useState(false)
 
   const acknowledgeHkid = (playerId: number) => {
     setHkidAck(playerId)
@@ -223,7 +222,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const updateMutation = useUpdatePlayer()
   const deleteMutation = useDeletePlayer()
   const sendInvitesMutation = useSendOnboardingInvites()
-  const bulkSectionMutation = useBulkAssignMembershipSection()
 
   const handleSendInvite = async (player: Player) => {
     if (!player.email) {
@@ -263,7 +261,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     )
 
   const selectedPlayers = filteredPlayers.filter((player) => selectedPlayerIds.has(player.id))
-  const bulkChangeCount = selectedPlayers.filter((player) => player.currentMembershipSection !== bulkSection).length
   const allFilteredSelected = filteredPlayers.length > 0 && filteredPlayers.every((player) => selectedPlayerIds.has(player.id))
 
   useEffect(() => {
@@ -284,25 +281,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       ? new Set()
       : new Set(filteredPlayers.map((player) => player.id)))
   }
-
-  const handleBulkSectionAssignment = async () => {
-    if (bulkChangeCount === 0) return
-    try {
-      const result = await bulkSectionMutation.mutateAsync({
-        data: {
-          playerIds: selectedPlayers.map((player) => player.id),
-          membershipSection: bulkSection,
-        },
-      })
-      await queryClient.invalidateQueries({ queryKey: getListPlayersQueryKey() })
-      setSelectedPlayerIds(new Set())
-      setBulkSectionModalOpen(false)
-      toast({ title: `${result.updated} member${result.updated === 1 ? "" : "s"} updated` })
-    } catch {
-      toast({ title: "Failed to assign membership section", variant: "destructive" })
-    }
-  }
-
 
   const blankForm = (): Partial<PlayerFormValues> => ({
     teamId: teams.find((team) => team.name === "Awaiting Selection")?.id ?? 0,
@@ -714,31 +692,8 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
           </Select>
         </div>
 
-        {selectedPlayerIds.size > 0 && !readOnly && (
-          <div className="px-4 py-3 border-b border-border bg-primary/5 flex flex-col sm:flex-row sm:items-center gap-3">
-            <span className="text-sm font-semibold">{selectedPlayerIds.size} selected</span>
-            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
-              <Select
-                className="w-36 bg-white"
-                value={bulkSection}
-                onChange={(e) => setBulkSection(e.target.value as "not_set" | "men" | "women")}
-              >
-                {Object.entries(MEMBERSHIP_SECTION_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </Select>
-              <Button
-                size="sm"
-                disabled={bulkChangeCount === 0}
-                onClick={() => setBulkSectionModalOpen(true)}
-              >
-                Assign section
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setSelectedPlayerIds(new Set())}>
-                Clear
-              </Button>
-            </div>
-          </div>
+        {!scope && !readOnly && (
+          <MemberBulkEditor selectedPlayers={selectedPlayers} onClearSelection={() => setSelectedPlayerIds(new Set())} />
         )}
 
         {/* Table */}
@@ -926,33 +881,6 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
           </table>
         </div>
       </div>
-
-      <Modal
-        isOpen={bulkSectionModalOpen}
-        onClose={() => !bulkSectionMutation.isPending && setBulkSectionModalOpen(false)}
-        title="Confirm section assignment"
-        description={`Assign ${MEMBERSHIP_SECTION_LABELS[bulkSection]} to the selected members.`}
-      >
-        <div className="space-y-5">
-          <p className="text-sm text-foreground">
-            <strong>{bulkChangeCount} member{bulkChangeCount === 1 ? "" : "s"}</strong> will change.
-            {selectedPlayers.length > bulkChangeCount && (
-              <> {selectedPlayers.length - bulkChangeCount} already {selectedPlayers.length - bulkChangeCount === 1 ? "has" : "have"} this section and will not change.</>
-            )}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Membership categories, fees, squad assignments, and Rotterdam history will stay unchanged.
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setBulkSectionModalOpen(false)} disabled={bulkSectionMutation.isPending}>
-              Cancel
-            </Button>
-            <Button onClick={handleBulkSectionAssignment} disabled={bulkSectionMutation.isPending || bulkChangeCount === 0}>
-              {bulkSectionMutation.isPending ? "Assigning…" : `Change ${bulkChangeCount} member${bulkChangeCount === 1 ? "" : "s"}`}
-            </Button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Form Modal */}
       <Modal

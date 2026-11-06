@@ -31,6 +31,49 @@ tags:
     description: Read-only historical World Cup showcase operations
 
 paths:
+  /member-bulk-edits/preview:
+    post:
+      operationId: previewMemberBulkEdit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberBulkEditSelection" }
+      responses:
+        "200":
+          description: Full-admin selected member changes and consequences
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberBulkEditPreview" }
+        "400": { description: "Invalid field, value or selection" }
+        "409": { description: Current membership records unavailable }
+  /member-bulk-edits/apply:
+    post:
+      operationId: applyMemberBulkEdit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberBulkEditInput" }
+      responses:
+        "200":
+          description: Atomic persisted changes and audit snapshot
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberBulkEditResult" }
+        "400": { description: Invalid request }
+        "409": { description: Stale preview or no changes; preview again }
+  /member-bulk-edits/history:
+    get:
+      operationId: listMemberBulkEditHistory
+      parameters:
+        - { name: beforeId, in: query, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Full-admin audit history, newest first
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MemberBulkEditHistory" }
   /players/email-blasts/{id}/recipients:
     get:
       operationId: listEmailBlastRecipients
@@ -785,7 +828,8 @@ paths:
     patch:
       operationId: bulkAssignMembershipSection
       tags: [players]
-      summary: Assign a membership section to multiple members
+      deprecated: true
+      summary: Retired; use member-bulk-edits preview and apply
       requestBody:
         required: true
         content:
@@ -793,8 +837,10 @@ paths:
             schema:
               $ref: "#/components/schemas/MembershipSectionAssignment"
       responses:
+        "410":
+          description: Reload Members and use the audited bulk editor
         "200":
-          description: Membership sections assigned
+          description: Legacy response shape; this endpoint now returns 410
           content:
             application/json:
               schema:
@@ -1912,6 +1958,95 @@ paths:
 
 components:
   schemas:
+    MemberBulkEditSelection:
+      type: object
+      required: [playerIds, field, value]
+      properties:
+        playerIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { type: integer, minimum: 1 }
+        field: { type: string, enum: [category, section] }
+        value: { type: string, minLength: 1 }
+    MemberBulkEditInput:
+      type: object
+      required: [playerIds, field, value, previewToken, requestId]
+      properties:
+        playerIds:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { type: integer, minimum: 1 }
+        field: { type: string, enum: [category, section] }
+        value: { type: string, minLength: 1 }
+        previewToken: { type: string, minLength: 64, maxLength: 64 }
+        requestId: { type: string, format: uuid }
+    MemberBulkEditRow:
+      type: object
+      required: [playerId, name, oldValue, newValue, changed, oldAmountDue, newAmountDue, amountPaid, balanceBefore, balanceAfter, customFee, teamIdBefore, teamNameBefore, teamIdAfter, teamNameAfter, warnings]
+      properties:
+        playerId: { type: integer }
+        name: { type: string }
+        oldValue: { type: string }
+        newValue: { type: string }
+        changed: { type: boolean }
+        oldAmountDue: { type: ["number", "null"] }
+        newAmountDue: { type: ["number", "null"] }
+        amountPaid: { type: number }
+        balanceBefore: { type: ["number", "null"] }
+        balanceAfter: { type: ["number", "null"] }
+        customFee: { type: boolean }
+        teamIdBefore: { type: ["integer", "null"] }
+        teamNameBefore: { type: ["string", "null"] }
+        teamIdAfter: { type: ["integer", "null"] }
+        teamNameAfter: { type: ["string", "null"] }
+        warnings:
+          type: array
+          items: { type: string }
+    MemberBulkEditPreview:
+      type: object
+      required: [seasonId, seasonName, field, value, rows, changed, unchanged, total, previewToken, warnings]
+      properties:
+        seasonId: { type: integer }
+        seasonName: { type: string }
+        field: { type: string, enum: [category, section] }
+        value: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/MemberBulkEditRow" }
+        changed: { type: integer }
+        unchanged: { type: integer }
+        total: { type: integer }
+        previewToken: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+    MemberBulkEditResult:
+      type: object
+      required: [batchId, seasonId, seasonName, field, value, rows, changed, unchanged, total, recordedAt, actor]
+      properties:
+        batchId: { type: integer }
+        seasonId: { type: integer }
+        seasonName: { type: string }
+        field: { type: string, enum: [category, section] }
+        value: { type: string }
+        rows:
+          type: array
+          items: { $ref: "#/components/schemas/MemberBulkEditRow" }
+        changed: { type: integer }
+        unchanged: { type: integer }
+        total: { type: integer }
+        recordedAt: { type: string }
+        actor: { type: string }
+    MemberBulkEditHistory:
+      type: object
+      required: [items, nextBeforeId]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/MemberBulkEditResult" }
+        nextBeforeId: { type: ["integer", "null"] }
     EmailDeliveryRecipient:
       type: object
       required: [id, playerId, playerName, playerEmail, sent, deliveryStatus, errorMessage]

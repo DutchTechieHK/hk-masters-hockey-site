@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import request from "supertest";
+import crypto from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { db } from "@workspace/db";
+import { db, memberBulkEditsTable } from "@workspace/db";
 import {
   playerParticipationsTable,
   playersTable,
@@ -16,6 +17,7 @@ vi.mock("../middleware/adminAuth", () => ({
 }));
 
 const { default: teamsRouter } = await import("./teams");
+const { default: memberBulkEditsRouter } = await import("./memberBulkEdits");
 const {
   clearLegacyCopiedCurrentTeamLinks,
   default: playersRouter,
@@ -25,11 +27,14 @@ const app = express();
 app.use(express.json());
 app.use("/api/teams", teamsRouter);
 app.use("/api/players", playersRouter);
+app.use("/api/member-bulk-edits", memberBulkEditsRouter);
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   res.status(500).json({ error: error instanceof Error ? error.message : String(error) });
 });
 
 const runId = `${process.pid}-${Date.now()}`;
+const bulkRequestId = crypto.randomUUID();
+const bulkRestoreRequestId = crypto.randomUUID();
 let playerId: number;
 let squadTeamId: number;
 let legacyTeamId: number;
@@ -92,6 +97,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db.delete(memberBulkEditsTable).where(eq(memberBulkEditsTable.requestId, bulkRequestId));
+  await db.delete(memberBulkEditsTable).where(eq(memberBulkEditsTable.requestId, bulkRestoreRequestId));
   if (!playerId) return;
   await db.delete(playerParticipationsTable).where(eq(playerParticipationsTable.playerId, playerId));
   await db.delete(playersTable).where(eq(playersTable.id, playerId));
@@ -215,11 +222,14 @@ describe("Masters Div. 1 current squad selection", () => {
       eq(playerParticipationsTable.seasonId, rotterdamSeasonId),
     ));
 
+    const selection = { playerIds: [playerId], field: "section", value: "women" };
+    const preview = await request(app).post("/api/member-bulk-edits/preview").send(selection);
+    expect(preview.status).toBe(200);
     const response = await request(app)
-      .patch("/api/players/membership-sections")
-      .send({ playerIds: [playerId], membershipSection: "women" });
+      .post("/api/member-bulk-edits/apply")
+      .send({ ...selection, previewToken: preview.body.previewToken, requestId: bulkRequestId });
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ updated: 1 });
+    expect(response.body).toMatchObject({ changed: 1, unchanged: 0 });
 
     const [afterPlayer] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
     expect(afterPlayer).toMatchObject({
@@ -248,9 +258,12 @@ describe("Masters Div. 1 current squad selection", () => {
     ));
     expect(afterRotterdam).toEqual(beforeRotterdam);
 
+    const restoreSelection = { ...selection, value: "men" };
+    const restorePreview = await request(app).post("/api/member-bulk-edits/preview").send(restoreSelection);
+    expect(restorePreview.status).toBe(200);
     const restored = await request(app)
-      .patch("/api/players/membership-sections")
-      .send({ playerIds: [playerId], membershipSection: "men" });
+      .post("/api/member-bulk-edits/apply")
+      .send({ ...restoreSelection, previewToken: restorePreview.body.previewToken, requestId: bulkRestoreRequestId });
     expect(restored.status).toBe(200);
   });
 

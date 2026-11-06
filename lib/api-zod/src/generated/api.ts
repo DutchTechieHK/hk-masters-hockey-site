@@ -7,6 +7,143 @@
  */
 import * as zod from "zod";
 
+export const previewMemberBulkEditBodyPlayerIdsMax = 500;
+
+export const PreviewMemberBulkEditBody = zod.object({
+  playerIds: zod
+    .array(zod.number().min(1))
+    .min(1)
+    .max(previewMemberBulkEditBodyPlayerIdsMax),
+  field: zod.enum(["category", "section"]),
+  value: zod.string().min(1),
+});
+
+export const PreviewMemberBulkEditResponse = zod.object({
+  seasonId: zod.number(),
+  seasonName: zod.string(),
+  field: zod.enum(["category", "section"]),
+  value: zod.string(),
+  rows: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      name: zod.string(),
+      oldValue: zod.string(),
+      newValue: zod.string(),
+      changed: zod.boolean(),
+      oldAmountDue: zod.number().nullable(),
+      newAmountDue: zod.number().nullable(),
+      amountPaid: zod.number(),
+      balanceBefore: zod.number().nullable(),
+      balanceAfter: zod.number().nullable(),
+      customFee: zod.boolean(),
+      teamIdBefore: zod.number().nullable(),
+      teamNameBefore: zod.string().nullable(),
+      teamIdAfter: zod.number().nullable(),
+      teamNameAfter: zod.string().nullable(),
+      warnings: zod.array(zod.string()),
+    }),
+  ),
+  changed: zod.number(),
+  unchanged: zod.number(),
+  total: zod.number(),
+  previewToken: zod.string(),
+  warnings: zod.array(zod.string()),
+});
+
+export const applyMemberBulkEditBodyPlayerIdsMax = 500;
+
+export const applyMemberBulkEditBodyPreviewTokenMin = 64;
+export const applyMemberBulkEditBodyPreviewTokenMax = 64;
+
+export const ApplyMemberBulkEditBody = zod.object({
+  playerIds: zod
+    .array(zod.number().min(1))
+    .min(1)
+    .max(applyMemberBulkEditBodyPlayerIdsMax),
+  field: zod.enum(["category", "section"]),
+  value: zod.string().min(1),
+  previewToken: zod
+    .string()
+    .min(applyMemberBulkEditBodyPreviewTokenMin)
+    .max(applyMemberBulkEditBodyPreviewTokenMax),
+  requestId: zod.string().uuid(),
+});
+
+export const ApplyMemberBulkEditResponse = zod.object({
+  batchId: zod.number(),
+  seasonId: zod.number(),
+  seasonName: zod.string(),
+  field: zod.enum(["category", "section"]),
+  value: zod.string(),
+  rows: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      name: zod.string(),
+      oldValue: zod.string(),
+      newValue: zod.string(),
+      changed: zod.boolean(),
+      oldAmountDue: zod.number().nullable(),
+      newAmountDue: zod.number().nullable(),
+      amountPaid: zod.number(),
+      balanceBefore: zod.number().nullable(),
+      balanceAfter: zod.number().nullable(),
+      customFee: zod.boolean(),
+      teamIdBefore: zod.number().nullable(),
+      teamNameBefore: zod.string().nullable(),
+      teamIdAfter: zod.number().nullable(),
+      teamNameAfter: zod.string().nullable(),
+      warnings: zod.array(zod.string()),
+    }),
+  ),
+  changed: zod.number(),
+  unchanged: zod.number(),
+  total: zod.number(),
+  recordedAt: zod.string(),
+  actor: zod.string(),
+});
+
+export const ListMemberBulkEditHistoryQueryParams = zod.object({
+  beforeId: zod.coerce.number().min(1).optional(),
+});
+
+export const ListMemberBulkEditHistoryResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      batchId: zod.number(),
+      seasonId: zod.number(),
+      seasonName: zod.string(),
+      field: zod.enum(["category", "section"]),
+      value: zod.string(),
+      rows: zod.array(
+        zod.object({
+          playerId: zod.number(),
+          name: zod.string(),
+          oldValue: zod.string(),
+          newValue: zod.string(),
+          changed: zod.boolean(),
+          oldAmountDue: zod.number().nullable(),
+          newAmountDue: zod.number().nullable(),
+          amountPaid: zod.number(),
+          balanceBefore: zod.number().nullable(),
+          balanceAfter: zod.number().nullable(),
+          customFee: zod.boolean(),
+          teamIdBefore: zod.number().nullable(),
+          teamNameBefore: zod.string().nullable(),
+          teamIdAfter: zod.number().nullable(),
+          teamNameAfter: zod.string().nullable(),
+          warnings: zod.array(zod.string()),
+        }),
+      ),
+      changed: zod.number(),
+      unchanged: zod.number(),
+      total: zod.number(),
+      recordedAt: zod.string(),
+      actor: zod.string(),
+    }),
+  ),
+  nextBeforeId: zod.number().nullable(),
+});
+
 export const ListEmailBlastRecipientsParams = zod.object({
   id: zod.coerce.number().min(1),
 });
@@ -1424,7 +1561,8 @@ export const CreatePlayerBody = zod.object({
 });
 
 /**
- * @summary Assign a membership section to multiple members
+ * @deprecated
+ * @summary Retired; use member-bulk-edits preview and apply
  */
 
 export const BulkAssignMembershipSectionBody = zod.object({

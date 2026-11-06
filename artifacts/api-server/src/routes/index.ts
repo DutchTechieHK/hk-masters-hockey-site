@@ -33,6 +33,7 @@ import { retiredArchiveReadOnly } from "../middleware/retiredArchive";
 import staffRouter from "./staff";
 import shirtNumbersRouter from "./shirtNumbers";
 import portalInvitationsRouter from "./portalInvitations";
+import memberBulkEditsRouter from "./memberBulkEdits";
 import { isolateStaffSession } from "../middleware/staffAccess";
 
 const router: IRouter = Router();
@@ -41,6 +42,7 @@ router.use(isolateStaffSession);
 router.use("/staff", staffRouter);
 router.use("/shirt-numbers", shirtNumbersRouter);
 router.use("/portal-invitations", portalInvitationsRouter);
+router.use("/member-bulk-edits", memberBulkEditsRouter);
 router.use(healthRouter);
 router.use("/teams", teamsRouter);
 router.use("/players", playersRouter);

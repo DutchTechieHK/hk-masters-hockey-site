@@ -5,6 +5,126 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+export type MemberBulkEditSelectionField =
+  (typeof MemberBulkEditSelectionField)[keyof typeof MemberBulkEditSelectionField];
+
+export const MemberBulkEditSelectionField = {
+  category: "category",
+  section: "section",
+} as const;
+
+export interface MemberBulkEditSelection {
+  /**
+   * @minItems 1
+   * @maxItems 500
+   */
+  playerIds: number[];
+  field: MemberBulkEditSelectionField;
+  /** @minLength 1 */
+  value: string;
+}
+
+export type MemberBulkEditInputField =
+  (typeof MemberBulkEditInputField)[keyof typeof MemberBulkEditInputField];
+
+export const MemberBulkEditInputField = {
+  category: "category",
+  section: "section",
+} as const;
+
+export interface MemberBulkEditInput {
+  /**
+   * @minItems 1
+   * @maxItems 500
+   */
+  playerIds: number[];
+  field: MemberBulkEditInputField;
+  /** @minLength 1 */
+  value: string;
+  /**
+   * @minLength 64
+   * @maxLength 64
+   */
+  previewToken: string;
+  requestId: string;
+}
+
+export interface MemberBulkEditRow {
+  playerId: number;
+  name: string;
+  oldValue: string;
+  newValue: string;
+  changed: boolean;
+  /** @nullable */
+  oldAmountDue: number | null;
+  /** @nullable */
+  newAmountDue: number | null;
+  amountPaid: number;
+  /** @nullable */
+  balanceBefore: number | null;
+  /** @nullable */
+  balanceAfter: number | null;
+  customFee: boolean;
+  /** @nullable */
+  teamIdBefore: number | null;
+  /** @nullable */
+  teamNameBefore: string | null;
+  /** @nullable */
+  teamIdAfter: number | null;
+  /** @nullable */
+  teamNameAfter: string | null;
+  warnings: string[];
+}
+
+export type MemberBulkEditPreviewField =
+  (typeof MemberBulkEditPreviewField)[keyof typeof MemberBulkEditPreviewField];
+
+export const MemberBulkEditPreviewField = {
+  category: "category",
+  section: "section",
+} as const;
+
+export interface MemberBulkEditPreview {
+  seasonId: number;
+  seasonName: string;
+  field: MemberBulkEditPreviewField;
+  value: string;
+  rows: MemberBulkEditRow[];
+  changed: number;
+  unchanged: number;
+  total: number;
+  previewToken: string;
+  warnings: string[];
+}
+
+export type MemberBulkEditResultField =
+  (typeof MemberBulkEditResultField)[keyof typeof MemberBulkEditResultField];
+
+export const MemberBulkEditResultField = {
+  category: "category",
+  section: "section",
+} as const;
+
+export interface MemberBulkEditResult {
+  batchId: number;
+  seasonId: number;
+  seasonName: string;
+  field: MemberBulkEditResultField;
+  value: string;
+  rows: MemberBulkEditRow[];
+  changed: number;
+  unchanged: number;
+  total: number;
+  recordedAt: string;
+  actor: string;
+}
+
+export interface MemberBulkEditHistory {
+  items: MemberBulkEditResult[];
+  /** @nullable */
+  nextBeforeId: number | null;
+}
+
 export type EmailDeliveryRecipientDeliveryStatus =
   (typeof EmailDeliveryRecipientDeliveryStatus)[keyof typeof EmailDeliveryRecipientDeliveryStatus];
 
@@ -2039,6 +2159,13 @@ export interface UpdateWhatsappTemplateVariables {
   id: number;
   body: WhatsappTemplateUpdateInput;
 }
+
+export type ListMemberBulkEditHistoryParams = {
+  /**
+   * @minimum 1
+   */
+  beforeId?: number;
+};
 
 export type RemindStaffAttendance200 = { [key: string]: unknown };
 

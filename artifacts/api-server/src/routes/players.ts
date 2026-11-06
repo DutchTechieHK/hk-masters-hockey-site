@@ -38,8 +38,6 @@ import {
   ResolveMembershipInterestSubmissionBody,
   ResolveMembershipInterestSubmissionParams,
   ListPlayerParticipationsParams,
-  BulkAssignMembershipSectionBody,
-  BulkAssignMembershipSectionResponse,
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
@@ -393,17 +391,8 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
   // Older current-season rows copied the legacy player.teamId. Remove only
   // those copied links; independently selected league squads remain intact.
   await clearLegacyCopiedCurrentTeamLinks(executor, current.id);
-  for (const category of MEMBERSHIP_CATEGORIES) {
-    const expectedAmountDue = membershipCategoryAmountDue(category)?.toFixed(2) ?? null;
-    await executor.update(playerParticipationsTable).set({
-      amountDue: expectedAmountDue,
-      updatedAt: new Date(),
-    }).where(and(
-      eq(playerParticipationsTable.seasonId, current.id),
-      eq(playerParticipationsTable.membershipTier, category),
-      sql`${playerParticipationsTable.amountDue} IS DISTINCT FROM ${expectedAmountDue}`,
-    ));
-  }
+  // Initial provisioning and explicit category changes set the category fee.
+  // Reads must not reset an existing nonstandard/current-season amount due.
   await executor.execute(sql`
     UPDATE ${playerParticipationsTable} AS current_participation
     SET membership_section = member.current_membership_section,
@@ -1663,48 +1652,8 @@ router.post("/send-insurance-reminders", requireSession, async (req, res) => {
   res.json({ sent, failed, total: players.length });
 });
 
-router.patch("/membership-sections", requireAdminAccess, async (req, res) => {
-  const { playerIds, membershipSection } = BulkAssignMembershipSectionBody.parse(req.body);
-  const [currentSeason] = await db.select({ id: seasonsTable.id })
-    .from(seasonsTable)
-    .where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG))
-    .limit(1);
-  if (!currentSeason) {
-    res.status(409).json({ error: "Current membership season is not initialized" });
-    return;
-  }
-  const updated = await db.transaction(async (tx) => {
-    const changedPlayers = await tx.update(playersTable).set({
-      currentMembershipSection: membershipSection,
-    }).where(and(
-      inArray(playersTable.id, playerIds),
-      sql`${playersTable.currentMembershipSection} IS DISTINCT FROM ${membershipSection}`,
-    )).returning({ id: playersTable.id });
-
-    if (changedPlayers.length > 0) {
-      const changedPlayerIds = changedPlayers.map((player) => player.id);
-      await tx.update(playerParticipationsTable).set({
-        teamId: sql`CASE
-          WHEN ${playerParticipationsTable.teamId} IS NULL THEN NULL
-          WHEN EXISTS (
-            SELECT 1 FROM ${teamsTable} assigned_team
-            WHERE assigned_team.id = ${playerParticipationsTable.teamId}
-              AND assigned_team.membership_section = ${membershipSection}
-          ) THEN ${playerParticipationsTable.teamId}
-          ELSE NULL
-        END`,
-        membershipSection,
-        updatedAt: new Date(),
-      }).where(and(
-        eq(playerParticipationsTable.seasonId, currentSeason.id),
-        inArray(playerParticipationsTable.playerId, changedPlayerIds),
-      ));
-    }
-
-    return changedPlayers.length;
-  });
-
-  res.json(BulkAssignMembershipSectionResponse.parse({ updated }));
+router.patch("/membership-sections", requireAdminAccess, async (_req, res) => {
+  res.status(410).json({ error: "Reload Members and use Bulk edit to preview and record this change safely." });
 });
 
 router.put("/:id", requireAdminAccess, async (req, res) => {

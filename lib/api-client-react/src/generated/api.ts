@@ -51,6 +51,7 @@ import type {
   ListLogisticsParams,
   ListMatchAttendanceSummaries200,
   ListMatchesParams,
+  ListMemberBulkEditHistoryParams,
   ListMyMatchAttendance200,
   ListPlayersParams,
   ListTeamsParams,
@@ -64,6 +65,11 @@ import type {
   MatchChangeResult,
   MatchImportCorrectionResult,
   MatchReminderResult,
+  MemberBulkEditHistory,
+  MemberBulkEditInput,
+  MemberBulkEditPreview,
+  MemberBulkEditResult,
+  MemberBulkEditSelection,
   MemberGroup,
   MemberGroupInput,
   MemberGroupUpdate,
@@ -121,6 +127,269 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getPreviewMemberBulkEditUrl = () => {
+  return `/api/member-bulk-edits/preview`;
+};
+
+export const previewMemberBulkEdit = async (
+  memberBulkEditSelection: MemberBulkEditSelection,
+  options?: RequestInit,
+): Promise<MemberBulkEditPreview> => {
+  return customFetch<MemberBulkEditPreview>(getPreviewMemberBulkEditUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberBulkEditSelection),
+  });
+};
+
+export const getPreviewMemberBulkEditMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewMemberBulkEdit>>,
+    TError,
+    { data: BodyType<MemberBulkEditSelection> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewMemberBulkEdit>>,
+  TError,
+  { data: BodyType<MemberBulkEditSelection> },
+  TContext
+> => {
+  const mutationKey = ["previewMemberBulkEdit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewMemberBulkEdit>>,
+    { data: BodyType<MemberBulkEditSelection> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewMemberBulkEdit(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewMemberBulkEditMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewMemberBulkEdit>>
+>;
+export type PreviewMemberBulkEditMutationBody =
+  BodyType<MemberBulkEditSelection>;
+export type PreviewMemberBulkEditMutationError = ErrorType<void>;
+
+export const usePreviewMemberBulkEdit = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewMemberBulkEdit>>,
+    TError,
+    { data: BodyType<MemberBulkEditSelection> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewMemberBulkEdit>>,
+  TError,
+  { data: BodyType<MemberBulkEditSelection> },
+  TContext
+> => {
+  return useMutation(getPreviewMemberBulkEditMutationOptions(options));
+};
+
+export const getApplyMemberBulkEditUrl = () => {
+  return `/api/member-bulk-edits/apply`;
+};
+
+export const applyMemberBulkEdit = async (
+  memberBulkEditInput: MemberBulkEditInput,
+  options?: RequestInit,
+): Promise<MemberBulkEditResult> => {
+  return customFetch<MemberBulkEditResult>(getApplyMemberBulkEditUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(memberBulkEditInput),
+  });
+};
+
+export const getApplyMemberBulkEditMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyMemberBulkEdit>>,
+    TError,
+    { data: BodyType<MemberBulkEditInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyMemberBulkEdit>>,
+  TError,
+  { data: BodyType<MemberBulkEditInput> },
+  TContext
+> => {
+  const mutationKey = ["applyMemberBulkEdit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyMemberBulkEdit>>,
+    { data: BodyType<MemberBulkEditInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return applyMemberBulkEdit(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyMemberBulkEditMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyMemberBulkEdit>>
+>;
+export type ApplyMemberBulkEditMutationBody = BodyType<MemberBulkEditInput>;
+export type ApplyMemberBulkEditMutationError = ErrorType<void>;
+
+export const useApplyMemberBulkEdit = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyMemberBulkEdit>>,
+    TError,
+    { data: BodyType<MemberBulkEditInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyMemberBulkEdit>>,
+  TError,
+  { data: BodyType<MemberBulkEditInput> },
+  TContext
+> => {
+  return useMutation(getApplyMemberBulkEditMutationOptions(options));
+};
+
+export const getListMemberBulkEditHistoryUrl = (
+  params?: ListMemberBulkEditHistoryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/member-bulk-edits/history?${stringifiedParams}`
+    : `/api/member-bulk-edits/history`;
+};
+
+export const listMemberBulkEditHistory = async (
+  params?: ListMemberBulkEditHistoryParams,
+  options?: RequestInit,
+): Promise<MemberBulkEditHistory> => {
+  return customFetch<MemberBulkEditHistory>(
+    getListMemberBulkEditHistoryUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListMemberBulkEditHistoryQueryKey = (
+  params?: ListMemberBulkEditHistoryParams,
+) => {
+  return [
+    `/api/member-bulk-edits/history`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListMemberBulkEditHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMemberBulkEditHistory>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListMemberBulkEditHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMemberBulkEditHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMemberBulkEditHistoryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMemberBulkEditHistory>>
+  > = ({ signal }) =>
+    listMemberBulkEditHistory(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMemberBulkEditHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMemberBulkEditHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMemberBulkEditHistory>>
+>;
+export type ListMemberBulkEditHistoryQueryError = ErrorType<unknown>;
+
+export function useListMemberBulkEditHistory<
+  TData = Awaited<ReturnType<typeof listMemberBulkEditHistory>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListMemberBulkEditHistoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMemberBulkEditHistory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMemberBulkEditHistoryQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getListEmailBlastRecipientsUrl = (id: number) => {
   return `/api/players/email-blasts/${id}/recipients`;
@@ -4038,7 +4307,8 @@ export const useCreatePlayer = <
 };
 
 /**
- * @summary Assign a membership section to multiple members
+ * @deprecated
+ * @summary Retired; use member-bulk-edits preview and apply
  */
 export const getBulkAssignMembershipSectionUrl = () => {
   return `/api/players/membership-sections`;
@@ -4105,7 +4375,8 @@ export type BulkAssignMembershipSectionMutationBody =
 export type BulkAssignMembershipSectionMutationError = ErrorType<void>;
 
 /**
- * @summary Assign a membership section to multiple members
+ * @deprecated
+ * @summary Retired; use member-bulk-edits preview and apply
  */
 export const useBulkAssignMembershipSection = <
   TError = ErrorType<void>,
