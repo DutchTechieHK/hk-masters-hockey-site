@@ -7,6 +7,85 @@
  */
 import * as zod from "zod";
 
+export const ListEmailBlastRecipientsParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const ListEmailBlastRecipientsResponseItem = zod.object({
+  id: zod.number(),
+  playerId: zod.number().nullable(),
+  playerName: zod.string(),
+  playerEmail: zod.string(),
+  sent: zod.boolean(),
+  deliveryStatus: zod.enum(["sent", "pending", "uncertain", "failed"]),
+  errorMessage: zod.string().nullable(),
+});
+export const ListEmailBlastRecipientsResponse = zod.array(
+  ListEmailBlastRecipientsResponseItem,
+);
+
+export const previewPortalInvitationsBodyPlayerIdsMax = 1000;
+
+export const PreviewPortalInvitationsBody = zod.object({
+  playerIds: zod
+    .array(zod.number().min(1))
+    .min(1)
+    .max(previewPortalInvitationsBodyPlayerIdsMax),
+  resend: zod.boolean(),
+});
+
+export const PreviewPortalInvitationsResponse = zod.object({
+  recipients: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      name: zod.string(),
+      email: zod.string(),
+      status: zod.enum(["eligible", "already_invited", "skipped", "blocked"]),
+      reason: zod.string(),
+      previouslyInvited: zod.boolean(),
+    }),
+  ),
+  eligible: zod.number(),
+  alreadyInvited: zod.number(),
+  skipped: zod.number(),
+  blocked: zod.number(),
+  total: zod.number(),
+  previewToken: zod.string(),
+  subject: zod.string(),
+  body: zod.string(),
+  loginUrl: zod.string(),
+});
+
+export const sendPortalInvitationsBodyPlayerIdsMax = 1000;
+
+export const sendPortalInvitationsBodyPreviewTokenMin = 64;
+export const sendPortalInvitationsBodyPreviewTokenMax = 64;
+
+export const SendPortalInvitationsBody = zod.object({
+  playerIds: zod
+    .array(zod.number().min(1))
+    .min(1)
+    .max(sendPortalInvitationsBodyPlayerIdsMax),
+  resend: zod.boolean(),
+  previewToken: zod
+    .string()
+    .min(sendPortalInvitationsBodyPreviewTokenMin)
+    .max(sendPortalInvitationsBodyPreviewTokenMax),
+  requestId: zod.string().uuid(),
+});
+
+export const SendPortalInvitationsResponse = zod.object({
+  blastId: zod.number(),
+  sent: zod.number(),
+  failed: zod.number(),
+  uncertain: zod.number(),
+  pending: zod.number(),
+  alreadyInvited: zod.number(),
+  skipped: zod.number(),
+  blocked: zod.number(),
+  total: zod.number(),
+});
+
 export const ListShirtContextsResponse = zod.object({
   contexts: zod.array(
     zod.object({

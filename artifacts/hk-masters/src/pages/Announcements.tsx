@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useListTeams, useListPlayers } from "@workspace/api-client-react"
 import { PageLayout } from "@/components/layout/PageLayout"
 import { TemplateLoader } from "@/components/email/TemplateLoader"
+import { PortalInvitationPanel } from "@/components/email/PortalInvitationPanel"
 import { WhatsAppTemplateLoader } from "@/components/whatsapp/WhatsAppTemplateLoader"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -66,7 +67,6 @@ type EmailFormState = {
   subject: string
   body: string
   attachments: File[]
-  emailPurpose: "trials_app_invitation" | null
 }
 
 const EMPTY_EMAIL_FORM: EmailFormState = {
@@ -77,17 +77,6 @@ const EMPTY_EMAIL_FORM: EmailFormState = {
   subject: "",
   body: "",
   attachments: [],
-  emailPurpose: null,
-}
-
-const TRIALS_APP_INVITE_SUBJECT = "Respond to your HK Masters trial invitation"
-
-function trialsAppInviteBody() {
-  const loginUrl = `${window.location.origin}/login?next=%2Fschedule`
-  return `<p>You are invited to the upcoming <strong>HK Masters Hockey trials</strong>. Please use the app to tell us whether you can attend each trial.</p>
-<p>Open the app using the link below and sign in with this same email address. We will send you a secure six-digit code. After signing in, you will be taken to the Events schedule, where you can choose <strong>Going</strong>, <strong>Maybe</strong>, or <strong>Not going</strong>.</p>
-<p><a href="${loginUrl}"><strong>Open the app and respond</strong></a></p>
-<p>Questions? Please reply to this email.</p>`
 }
 
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024
@@ -117,6 +106,7 @@ function audienceLabel(audienceType: string) {
   if (audienceType === "trials") return "Trials"
   if (audienceType === "trials_invite") return "Trials app invitation"
   if (audienceType === "trials_invite_manual") return "Selected app invitations"
+  if (audienceType.startsWith("portal_invite:")) return "Portal invitation"
   if (audienceType === "teams") return "By squad"
   return "Selected players"
 }
@@ -198,11 +188,8 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
   const [showConfirm, setShowConfirm] = useState(false)
   const [expandedBlastId, setExpandedBlastId] = useState<number | null>(null)
   const [blastRecipients, setBlastRecipients] = useState<Record<number, BlastRecipient[]>>({})
+  const [portalFocusSignal, setPortalFocusSignal] = useState(0)
   const [blastRecipientsLoading, setBlastRecipientsLoading] = useState<number | null>(null)
-  const [trialsInvitePreview, setTrialsInvitePreview] = useState<{ eligible: number, alreadyInvited: number, skipped: number, total: number } | null>(null)
-  const [trialsInviteLoading, setTrialsInviteLoading] = useState(false)
-  const [showTrialsInviteConfirm, setShowTrialsInviteConfirm] = useState(false)
-  const [trialsInviteResult, setTrialsInviteResult] = useState<{ sent: number, failed: number, alreadyInvited: number, skipped: number } | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -256,19 +243,6 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
   useEffect(() => {
     if (activeTab === "email") refreshBlasts()
   }, [activeTab, refreshBlasts])
-  useEffect(() => {
-    if (activeTab !== "email") return
-    fetch("/api/players/membership/trials-invites", { headers: authHeaders() })
-      .then(async (response) => {
-        const data = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(data?.error || "Could not count Trials invitees")
-        setTrialsInvitePreview(data)
-      })
-      .catch((error) => {
-        setTrialsInvitePreview(null)
-        console.error(error)
-      })
-  }, [activeTab])
 
   useEffect(() => {
     if (!isModalOpen) return
@@ -560,7 +534,6 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
   }
 
   const handleSendEmail = async () => {
-    const sentAppInvitation = emailForm.emailPurpose === "trials_app_invitation"
     setEmailError(null)
     setSending(true)
     setShowConfirm(false)
@@ -571,7 +544,6 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       formData.append("fromEmail", emailForm.fromEmail)
       formData.append("subject", emailForm.subject.trim())
       formData.append("body", emailForm.body.trim())
-      if (emailForm.emailPurpose) formData.append("emailPurpose", emailForm.emailPurpose)
       if (emailForm.audienceType === "teams") {
         formData.append("teamIds", JSON.stringify(emailForm.teamIds))
       }
@@ -596,11 +568,6 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       }
       setEmailForm(EMPTY_EMAIL_FORM)
       setPlayerSearch("")
-      if (sentAppInvitation) {
-        const previewResponse = await fetch("/api/players/membership/trials-invites", { headers: authHeaders() })
-        const preview = await previewResponse.json().catch(() => ({}))
-        if (previewResponse.ok) setTrialsInvitePreview(preview)
-      }
       refreshBlasts()
     } catch (err) {
       const msg = (err as Error).message
@@ -608,38 +575,6 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       toast({ title: msg, variant: "destructive" })
     } finally {
       setSending(false)
-    }
-  }
-
-  const sendTrialsInvites = async () => {
-    setTrialsInviteLoading(true)
-    try {
-      const response = await fetch("/api/players/membership/trials-invites", {
-        method: "POST",
-        headers: authHeaders(),
-      })
-      const result = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(result?.error || "Could not send Trials invitations")
-      toast({
-        title: `Trials invitations sent to ${result.sent} player${result.sent !== 1 ? "s" : ""}`,
-        description: `${result.failed} failed, ${result.alreadyInvited} previously invited, and ${result.skipped} skipped without a valid email.`,
-        variant: result.failed > 0 ? "destructive" : "default",
-      })
-      setTrialsInviteResult({
-        sent: result.sent,
-        failed: result.failed,
-        alreadyInvited: result.alreadyInvited,
-        skipped: result.skipped,
-      })
-      setShowTrialsInviteConfirm(false)
-      const previewResponse = await fetch("/api/players/membership/trials-invites", { headers: authHeaders() })
-      const preview = await previewResponse.json().catch(() => ({}))
-      if (previewResponse.ok) setTrialsInvitePreview(preview)
-      refreshBlasts()
-    } catch (error) {
-      toast({ title: (error as Error).message, variant: "destructive" })
-    } finally {
-      setTrialsInviteLoading(false)
     }
   }
 
@@ -779,45 +714,8 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
       {/* Email Players Tab */}
       {activeTab === "email" && (
         <div className="space-y-6">
-          <div className="bg-blue-50 rounded-2xl border border-blue-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-semibold text-blue-950">Invite Trials members to the app</h2>
-              <p className="text-sm text-blue-800 mt-1">
-                Sends a secure sign-in link only to Trials members who have not successfully received one before.
-              </p>
-              <p className="text-xs text-blue-700 mt-2">
-                {trialsInvitePreview
-                  ? `${trialsInvitePreview.eligible} new recipient${trialsInvitePreview.eligible !== 1 ? "s" : ""}${trialsInvitePreview.alreadyInvited ? ` · ${trialsInvitePreview.alreadyInvited} already invited` : ""}${trialsInvitePreview.skipped ? ` · ${trialsInvitePreview.skipped} without a valid email` : ""}`
-                  : "Loading recipient count…"}
-              </p>
-            </div>
-            <Button
-              onClick={() => setShowTrialsInviteConfirm(true)}
-              disabled={!trialsInvitePreview?.eligible || trialsInviteLoading}
-              className="gap-2 shrink-0"
-            >
-              <Mail className="w-4 h-4" />
-              Send to {trialsInvitePreview?.eligible ?? 0} new player{trialsInvitePreview?.eligible === 1 ? "" : "s"}
-            </Button>
-          </div>
-          {trialsInviteResult && (
-            <div className={`rounded-xl border px-4 py-3 text-sm ${
-              trialsInviteResult.failed > 0
-                ? "bg-amber-50 border-amber-200 text-amber-900"
-                : "bg-green-50 border-green-200 text-green-900"
-            }`}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-semibold">Latest app invitation result</p>
-                  <p className="mt-1">
-                    {trialsInviteResult.sent} sent · {trialsInviteResult.failed} failed · {trialsInviteResult.alreadyInvited} already invited · {trialsInviteResult.skipped} without a valid email
-                  </p>
-                </div>
-                <button type="button" onClick={() => setTrialsInviteResult(null)} className="text-current opacity-60 hover:opacity-100" aria-label="Dismiss invitation result">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+          {!scope && !readOnly && (
+            <PortalInvitationPanel activePlayers={activePlayers} onSent={refreshBlasts} focusSignal={portalFocusSignal} />
           )}
 
           {/* Composer */}
@@ -954,20 +852,19 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
               <TemplateLoader
                 currentSubject={emailForm.subject}
                 currentBody={emailForm.body}
-                onLoad={(subject, body) => setEmailForm((f) => ({ ...f, subject, body, emailPurpose: null }))}
+                onLoad={(subject, body) => setEmailForm((f) => ({ ...f, subject, body }))}
               />
               <button
                 type="button"
-                onClick={() => setEmailForm((f) => ({
-                  ...f,
-                  subject: TRIALS_APP_INVITE_SUBJECT,
-                  body: trialsAppInviteBody(),
-                  emailPurpose: "trials_app_invitation",
-                }))}
+                onClick={() => setPortalFocusSignal((n) => n + 1)}
+                disabled={!!scope || !!readOnly}
                 className="text-sm font-medium text-primary hover:underline"
               >
-                Use the app invitation template
+                Invite members to the portal
               </button>
+              <p className="text-xs text-muted-foreground">
+                Portal invitations use the club's standard template and are sent from the dedicated picker above, never from this composer.
+              </p>
             </div>
 
             {/* Subject */}
@@ -1385,40 +1282,6 @@ export default function Announcements({ scope, readOnly }: { scope?: string, rea
         </div>
       </Modal>
 
-      <Modal
-        isOpen={showTrialsInviteConfirm}
-        onClose={() => setShowTrialsInviteConfirm(false)}
-        title="Invite Trials members"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-foreground">
-            Send an app invitation to <strong>{trialsInvitePreview?.eligible ?? 0} Trials member{trialsInvitePreview?.eligible === 1 ? "" : "s"} who ha{trialsInvitePreview?.eligible === 1 ? "s" : "ve"} not received one before</strong>?
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Each email will use the member's registered address and link directly to sign-in. After entering their six-digit code, they will arrive on Events to answer Going, Maybe, or Not going.
-          </p>
-          <p className="text-xs font-medium text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-            This sends to the new-recipient count shown above. It does not use any individual players selected in the email composer below.
-          </p>
-          {(trialsInvitePreview?.skipped ?? 0) > 0 && (
-            <p className="text-xs text-amber-700">
-              {trialsInvitePreview?.skipped} Trials member{trialsInvitePreview?.skipped === 1 ? "" : "s"} will be skipped because no valid email is available.
-            </p>
-          )}
-          {(trialsInvitePreview?.alreadyInvited ?? 0) > 0 && (
-            <p className="text-xs text-green-700">
-              {trialsInvitePreview?.alreadyInvited} previously invited member{trialsInvitePreview?.alreadyInvited === 1 ? "" : "s"} will not be emailed again.
-            </p>
-          )}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowTrialsInviteConfirm(false)} disabled={trialsInviteLoading}>Cancel</Button>
-            <Button onClick={sendTrialsInvites} disabled={trialsInviteLoading || !trialsInvitePreview?.eligible} className="gap-2">
-              <Send className="w-4 h-4" />
-              {trialsInviteLoading ? "Sending invitations…" : "Send invitations"}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </PageLayout>
   )
 }

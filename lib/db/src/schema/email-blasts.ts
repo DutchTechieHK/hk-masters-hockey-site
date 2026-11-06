@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, index, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, index, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export const emailBlastsTable = pgTable("email_blasts", {
   id: serial("id").primaryKey(),
@@ -11,6 +11,14 @@ export const emailBlastsTable = pgTable("email_blasts", {
   sentCount: integer("sent_count").notNull().default(0),
   failedCount: integer("failed_count").notNull().default(0),
   sentByEmail: text("sent_by_email"),
+  deliverySummary: jsonb("delivery_summary").$type<{
+    selectionHash: string;
+    previewToken: string;
+    alreadyInvited: number;
+    skipped: number;
+    blocked: number;
+    total: number;
+  }>(),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
   operationalScope: text("operational_scope").notNull().default("world_cup_2026"),
 }, (t) => ({

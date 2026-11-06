@@ -5,6 +5,96 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+export type EmailDeliveryRecipientDeliveryStatus =
+  (typeof EmailDeliveryRecipientDeliveryStatus)[keyof typeof EmailDeliveryRecipientDeliveryStatus];
+
+export const EmailDeliveryRecipientDeliveryStatus = {
+  sent: "sent",
+  pending: "pending",
+  uncertain: "uncertain",
+  failed: "failed",
+} as const;
+
+export interface EmailDeliveryRecipient {
+  id: number;
+  /** @nullable */
+  playerId: number | null;
+  playerName: string;
+  playerEmail: string;
+  sent: boolean;
+  deliveryStatus: EmailDeliveryRecipientDeliveryStatus;
+  /** @nullable */
+  errorMessage: string | null;
+}
+
+export interface PortalInvitationSelection {
+  /**
+   * @minItems 1
+   * @maxItems 1000
+   */
+  playerIds: number[];
+  resend: boolean;
+}
+
+export interface PortalInvitationSendInput {
+  /**
+   * @minItems 1
+   * @maxItems 1000
+   */
+  playerIds: number[];
+  resend: boolean;
+  /**
+   * @minLength 64
+   * @maxLength 64
+   */
+  previewToken: string;
+  requestId: string;
+}
+
+export type PortalInvitationRecipientStatus =
+  (typeof PortalInvitationRecipientStatus)[keyof typeof PortalInvitationRecipientStatus];
+
+export const PortalInvitationRecipientStatus = {
+  eligible: "eligible",
+  already_invited: "already_invited",
+  skipped: "skipped",
+  blocked: "blocked",
+} as const;
+
+export interface PortalInvitationRecipient {
+  playerId: number;
+  name: string;
+  email: string;
+  status: PortalInvitationRecipientStatus;
+  reason: string;
+  previouslyInvited: boolean;
+}
+
+export interface PortalInvitationPreview {
+  recipients: PortalInvitationRecipient[];
+  eligible: number;
+  alreadyInvited: number;
+  skipped: number;
+  blocked: number;
+  total: number;
+  previewToken: string;
+  subject: string;
+  body: string;
+  loginUrl: string;
+}
+
+export interface PortalInvitationResult {
+  blastId: number;
+  sent: number;
+  failed: number;
+  uncertain: number;
+  pending: number;
+  alreadyInvited: number;
+  skipped: number;
+  blocked: number;
+  total: number;
+}
+
 export type ShirtContextKind =
   (typeof ShirtContextKind)[keyof typeof ShirtContextKind];
 

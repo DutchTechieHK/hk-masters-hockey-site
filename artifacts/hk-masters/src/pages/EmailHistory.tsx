@@ -13,7 +13,83 @@ type EmailBlastHistoryItem = EmailBlastItem & {
   teamNames?: string[]
 }
 
+type PortalRecipient = {
+  id: number
+  playerId: number | null
+  playerName: string
+  playerEmail: string
+  sent: boolean
+  status?: string | null
+  deliveryStatus?: string | null
+  errorMessage: string | null
+}
+
+const isPortalInvite = (audienceType: string) => audienceType.startsWith("portal_invite:")
+
+function recipientState(r: PortalRecipient): "sent" | "pending" | "uncertain" | "failed" {
+  const raw = (r.deliveryStatus ?? r.status ?? "").toLowerCase()
+  if (raw === "sent" || raw === "pending" || raw === "uncertain" || raw === "failed") return raw
+  return r.sent ? "sent" : "failed"
+}
+
+const RECIPIENT_STYLE = {
+  sent: "bg-green-50 text-green-700 border-green-200",
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
+  uncertain: "bg-orange-50 text-orange-700 border-orange-200",
+  failed: "bg-rose-50 text-rose-700 border-rose-200",
+} as const
+
+function PortalRecipientList({ blastId }: { blastId: number }) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["email-blast-recipients", blastId],
+    queryFn: async () => {
+      const token = getStoredAdminToken()
+      const res = await fetch(`/api/players/email-blasts/${blastId}/recipients`, {
+        headers: { "Content-Type": "application/json", ...(token ? { "x-session-token": token } : {}) },
+      })
+      if (!res.ok) throw new Error("Failed to load recipients")
+      return res.json() as Promise<PortalRecipient[]>
+    },
+    staleTime: 0,
+    refetchInterval: (query) => query.state.data?.some((recipient) => recipientState(recipient) === "pending") ? 5000 : false,
+  })
+  if (isLoading) return <div className="h-16 bg-muted/40 rounded-xl animate-pulse" />
+  if (isError) return (
+    <button onClick={() => refetch()} className="text-sm text-primary hover:underline inline-flex items-center gap-1" data-testid={`button-retry-recipients-${blastId}`}>
+      <RefreshCw className="w-3.5 h-3.5" /> Couldn't load recipients. Try again
+    </button>
+  )
+  const rows = data ?? []
+  if (rows.length === 0) return <p className="text-sm text-muted-foreground">No recipient records.</p>
+  const unresolved = rows.some((r) => { const st = recipientState(r); return st === "pending" || st === "uncertain" })
+  return (
+    <div className="space-y-2">
+      {unresolved && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Some deliveries are pending or uncertain. Check the email provider before inviting these members again; the server will not resend automatically.
+        </p>
+      )}
+      <ul className="divide-y divide-border border border-border rounded-xl max-h-64 overflow-y-auto">
+        {rows.map((r) => {
+          const st = recipientState(r)
+          return (
+            <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 text-sm" data-testid={`row-portal-recipient-${r.id}`}>
+              <span className="font-medium text-foreground">{r.playerName}</span>
+              <span className="text-xs text-muted-foreground">{r.playerEmail}</span>
+              <span className={`ml-auto text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize ${RECIPIENT_STYLE[st]}`}>{st}</span>
+              {r.errorMessage && <span className="w-full text-xs text-muted-foreground">{r.errorMessage}</span>}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
 function audienceLabel(blast: EmailBlastHistoryItem): string {
+  if (isPortalInvite(blast.audienceType)) {
+    return `${blast.recipientCount} member${blast.recipientCount === 1 ? "" : "s"} — portal invitation`
+  }
   if (blast.audienceType === "onboarding") {
     try {
       const ids: number[] = JSON.parse(blast.playerIds ?? "[]")
@@ -77,7 +153,7 @@ function audienceLabel(blast: EmailBlastHistoryItem): string {
 }
 
 function AudienceIcon({ audienceType }: { audienceType: string }) {
-  if (audienceType === "onboarding") return <Send className="w-3.5 h-3.5" />
+  if (audienceType === "onboarding" || audienceType.startsWith("portal_invite:")) return <Send className="w-3.5 h-3.5" />
   if (audienceType === "insurance-reminder") return <ShieldCheck className="w-3.5 h-3.5" />
   if (audienceType === "pledge-digest") return <HandCoins className="w-3.5 h-3.5" />
   if (audienceType === "event-rsvp-reminder" || audienceType.startsWith("match-rsvp-reminder:") || audienceType.startsWith("match-change:")) return <Mail className="w-3.5 h-3.5" />
@@ -263,6 +339,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
               const isInsuranceReminder = blast.audienceType === "insurance-reminder"
               const isMatchReminder = blast.audienceType.startsWith("match-rsvp-reminder:")
               const isMatchChange = blast.audienceType.startsWith("match-change:")
+              const isPortal = isPortalInvite(blast.audienceType)
               const isEventReminder = blast.audienceType === "event-rsvp-reminder" || isMatchReminder || isMatchChange
 
               return (
@@ -292,6 +369,11 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                         {isOnboarding && (
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
                             <Send className="w-2.5 h-2.5" /> Onboarding
+                          </span>
+                        )}
+                        {isPortal && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 whitespace-nowrap">
+                            <LogIn className="w-2.5 h-2.5" /> Portal Invitation
                           </span>
                         )}
                         {isInsuranceReminder && (
@@ -333,7 +415,7 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                       </span>
                       {hasFailed && (
                         <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                          {blast.failedCount} {isMatchChange ? "uncertain / pending" : "failed"}
+                          {blast.failedCount} {isMatchChange || isPortal ? "uncertain / pending" : "failed"}
                         </span>
                       )}
                       {isExpanded
@@ -353,6 +435,12 @@ export default function EmailHistory({ scope, readOnly }: { scope?: string, read
                         <div className="bg-muted/30 rounded-xl border border-border px-4 py-3 text-sm text-foreground whitespace-pre-line leading-relaxed max-h-64 overflow-y-auto">
                           {blast.body}
                         </div>
+                        {isPortal && (
+                          <div className="mt-4">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Recipients</p>
+                            <PortalRecipientList blastId={blast.id} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

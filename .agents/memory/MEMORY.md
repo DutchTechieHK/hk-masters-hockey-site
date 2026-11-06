@@ -38,3 +38,4 @@
 - [Manual invitee groups](manual-invitee-groups.md) — user chose manually selected event groups that can mix teams and include non-World-Cup members; independent of Notion.
 - [Staff delegation boundaries](staff-delegation-scope.md) — permissions are explicit per team/season; shared event administration remains full-admin-only in the first version.
 - [Competition-specific shirt numbers](shirt-number-context.md) — user confirmed simultaneous numbers per competition, with previous numbers and league/tournament context retained.
+- [Portal invitation semantics](portal-invitation-semantics.md) — selective email targeting is not an access grant or sign-in allowlist; keep authentication independent.

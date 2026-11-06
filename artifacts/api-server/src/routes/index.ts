@@ -32,6 +32,7 @@ import reportsRouter from "./reports";
 import { retiredArchiveReadOnly } from "../middleware/retiredArchive";
 import staffRouter from "./staff";
 import shirtNumbersRouter from "./shirtNumbers";
+import portalInvitationsRouter from "./portalInvitations";
 import { isolateStaffSession } from "../middleware/staffAccess";
 
 const router: IRouter = Router();
@@ -39,6 +40,7 @@ const router: IRouter = Router();
 router.use(isolateStaffSession);
 router.use("/staff", staffRouter);
 router.use("/shirt-numbers", shirtNumbersRouter);
+router.use("/portal-invitations", portalInvitationsRouter);
 router.use(healthRouter);
 router.use("/teams", teamsRouter);
 router.use("/players", playersRouter);

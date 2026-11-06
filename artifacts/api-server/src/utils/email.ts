@@ -1717,45 +1717,50 @@ The HK Masters Hockey Team`;
   });
 }
 
-export async function sendTrialsAppInviteEmail(opts: {
+export const PORTAL_INVITE_SUBJECT = "Your HK Masters Hockey portal invitation";
+
+export function portalInvitationContent(playerEmail?: string) {
+  const loginUrl = `${PUBLIC_URL.replace(/\/$/, "")}/login${playerEmail ? `?email=${encodeURIComponent(playerEmail)}` : ""}`;
+  const body = `You are invited to the HK Masters Hockey member portal.
+
+Sign in using the email address this invitation was sent to. We will email you a secure six-digit code; no password is needed.
+
+In the portal you can view your schedule, respond to events and matches available to you, and keep your member details up to date.
+
+Open the member portal: ${loginUrl}
+
+Questions? Reply to this email or contact ${ADMIN_EMAIL}.`;
+  return { subject: PORTAL_INVITE_SUBJECT, body, loginUrl };
+}
+
+export async function sendPortalInviteEmail(opts: {
   playerName: string;
   playerEmail: string;
 }): Promise<boolean> {
   const safeName = escapeHtml(opts.playerName);
-  const loginUrl = `${PUBLIC_URL}/login?email=${encodeURIComponent(opts.playerEmail)}&next=${encodeURIComponent("/schedule")}`;
+  const { subject, body, loginUrl } = portalInvitationContent(opts.playerEmail);
   const safeLoginUrl = escapeHtml(loginUrl);
-  const subject = "Respond to your HK Masters trial invitation";
 
   const html = emailShell(
     "#1E3A6E",
-    "Your Masters trial invitation",
+    "Your member portal invitation",
     `<p style="margin:0 0 16px 0;font-size:16px;color:#1f2937;line-height:1.6;">Hi ${safeName},</p>
     <p style="margin:0 0 16px 0;font-size:15px;color:#374151;line-height:1.7;">
-      You are invited to the upcoming <strong>HK Masters Hockey trials</strong>. Please use the app to tell us whether you can attend each trial.
+      You are invited to the <strong>HK Masters Hockey member portal</strong>.
     </p>
     <p style="margin:0 0 20px 0;font-size:15px;color:#374151;line-height:1.7;">
-      Sign in using this same email address. We will send you a secure six-digit code, then take you directly to the Events schedule where you can choose <strong>Going</strong>, <strong>Maybe</strong>, or <strong>Not going</strong>.
+      Sign in using this same email address. We will send you a secure six-digit code; no password is needed. View your schedule, respond to events and matches available to you, and keep your member details up to date.
     </p>
     <p style="margin:0 0 24px 0;text-align:center;">
-      <a href="${safeLoginUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:6px;">Open the app and respond</a>
+      <a href="${safeLoginUrl}" style="display:inline-block;background-color:#1E3A6E;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 30px;border-radius:6px;">Open the member portal</a>
     </p>
     <p style="margin:0;font-size:13px;color:#6b7280;line-height:1.6;">
       Questions? Email us at <a href="mailto:${ADMIN_EMAIL}" style="color:#1E3A6E;text-decoration:none;font-weight:600;">${ADMIN_EMAIL}</a>.
     </p>`,
-    "2026/27 Masters League",
+    "Member portal",
   );
 
-  const text = `Hi ${opts.playerName},
-
-You are invited to the upcoming HK Masters Hockey trials. Please use the app to tell us whether you can attend each trial.
-
-Open the app and sign in using this same email address. We will send you a secure six-digit code, then take you directly to the Events schedule where you can choose Going, Maybe, or Not going.
-
-${loginUrl}
-
-Questions? Email us at ${ADMIN_EMAIL}.
-
-The HK Masters Hockey Team`;
+  const text = `Hi ${opts.playerName},\n\n${body}\n\nThe HK Masters Hockey Team`;
 
   return sendEmail({
     to: opts.playerEmail,

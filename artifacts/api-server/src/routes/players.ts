@@ -41,7 +41,7 @@ import {
   BulkAssignMembershipSectionBody,
   BulkAssignMembershipSectionResponse,
 } from "@workspace/api-zod";
-import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail, sendTrialsAppInviteEmail } from "../utils/email";
+import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
@@ -1882,132 +1882,16 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   res.status(204).send();
 });
 
-const TRIALS_INVITE_SUBJECT = "Respond to your HK Masters trial invitation";
-const EMAIL_ADDRESS_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-async function getTrialsInviteRecipients() {
-  const activePlayers = await db.select().from(playersTable).where(eq(playersTable.memberStatus, "active"));
-  const successfullyInvited = await db.selectDistinct({
-    playerId: emailBlastRecipientsTable.playerId,
-  })
-    .from(emailBlastRecipientsTable)
-    .innerJoin(emailBlastsTable, eq(emailBlastRecipientsTable.blastId, emailBlastsTable.id))
-    .where(and(
-      inArray(emailBlastsTable.audienceType, ["trials_invite", "trials_invite_manual"]),
-      eq(emailBlastsTable.operationalScope, "local_2026_27"),
-      eq(emailBlastRecipientsTable.sent, true),
-      isNotNull(emailBlastRecipientsTable.playerId),
-    ));
-  const successfullyInvitedPlayerIds = new Set(
-    successfullyInvited.flatMap(({ playerId }) => playerId == null ? [] : [playerId]),
-  );
-  const activeEmailCounts = new Map<string, number>();
-  for (const player of activePlayers) {
-    const normalizedEmail = player.email.trim().toLowerCase();
-    activeEmailCounts.set(normalizedEmail, (activeEmailCounts.get(normalizedEmail) ?? 0) + 1);
-  }
-  const trials = activePlayers.filter((player) => player.currentMembershipTier === "trials");
-  const valid = trials.filter((player) => {
-    const normalizedEmail = player.email.trim().toLowerCase();
-    return EMAIL_ADDRESS_RE.test(normalizedEmail) && activeEmailCounts.get(normalizedEmail) === 1;
-  });
-  return {
-    eligible: valid
-      .filter((player) => !successfullyInvitedPlayerIds.has(player.id))
-      .map((player) => ({ ...player, email: player.email.trim().toLowerCase() })),
-    alreadyInvited: valid.filter((player) => successfullyInvitedPlayerIds.has(player.id)),
-    skipped: trials.filter((player) => {
-      const normalizedEmail = player.email.trim().toLowerCase();
-      return !EMAIL_ADDRESS_RE.test(normalizedEmail) || activeEmailCounts.get(normalizedEmail) !== 1;
-    }),
-  };
-}
-
-router.get("/membership/trials-invites", requireAdminAccess, async (_req, res) => {
-  const { eligible, alreadyInvited, skipped } = await getTrialsInviteRecipients();
-  res.json({
-    eligible: eligible.length,
-    alreadyInvited: alreadyInvited.length,
-    skipped: skipped.length,
-    total: eligible.length + alreadyInvited.length + skipped.length,
-  });
-});
-
-router.post("/membership/trials-invites", requireAdminAccess, async (_req, res) => {
-  const { eligible, alreadyInvited, skipped: invalid } = await getTrialsInviteRecipients();
-  let sent = 0;
-  let failed = 0;
-  const recipientResults: Array<{
-    playerId: number;
-    playerName: string;
-    playerEmail: string;
-    sent: boolean;
-    errorMessage: string | null;
-  }> = [];
-
-  for (let index = 0; index < eligible.length; index++) {
-    const player = eligible[index];
-    let delivered = false;
-    let errorMessage: string | null = null;
-    try {
-      delivered = await sendTrialsAppInviteEmail({
-        playerName: player.name,
-        playerEmail: player.email,
-      });
-      if (!delivered) errorMessage = "delivery_failed";
-    } catch (error) {
-      errorMessage = error instanceof Error ? error.message : "delivery_failed";
-      console.error(`[trials-invites] Failed to invite player ${player.id}:`, error);
-    }
-    if (delivered) sent++;
-    else failed++;
-    recipientResults.push({
-      playerId: player.id,
-      playerName: player.name,
-      playerEmail: player.email,
-      sent: delivered,
-      errorMessage,
-    });
-    if (index < eligible.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-    }
-  }
-
-  const [blast] = await db.insert(emailBlastsTable).values({
-    subject: TRIALS_INVITE_SUBJECT,
-    body: "App invitation to respond to Masters trial attendance.",
-    audienceType: "trials_invite",
-    teamIds: null,
-    playerIds: null,
-    recipientCount: eligible.length,
-    sentCount: sent,
-    failedCount: failed,
-    sentByEmail: null,
-    operationalScope: "local_2026_27",
-  }).returning();
-
-  if (recipientResults.length > 0) {
-    await db.insert(emailBlastRecipientsTable).values(recipientResults.map((recipient) => ({
-      blastId: blast.id,
-      playerId: recipient.playerId,
-      playerName: recipient.playerName,
-      playerEmail: recipient.playerEmail,
-      sent: recipient.sent,
-      errorMessage: recipient.errorMessage,
-    })));
-  }
-
-  res.json({
-    sent,
-    failed,
-    alreadyInvited: alreadyInvited.length,
-    skipped: invalid.length,
-    total: eligible.length + alreadyInvited.length + invalid.length,
-    blastId: blast.id,
-  });
+// Retire broad, implicit sends. Stale admin tabs must reload and select members.
+router.all("/membership/trials-invites", requireAdminAccess, (_req, res) => {
+  res.status(410).json({ error: "Use Invite members to the portal in Announcements and select recipients explicitly." });
 });
 
 router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachments", 5), async (req, res) => {
+  if (req.body.emailPurpose === "trials_app_invitation" || req.body.emailPurpose === "portal_invitation") {
+    res.status(410).json({ error: "Use Invite members to the portal to preview recipients and send invitations safely." });
+    return;
+  }
   // Fields arrive as strings from multipart/form-data
   const rawBody = {
     audienceType: req.body.audienceType,
@@ -2017,7 +1901,6 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
     subject: req.body.subject,
     body: req.body.body,
   };
-  const isTrialsAppInvitation = req.body.emailPurpose === "trials_app_invitation";
   const parseResult = SendBulkEmailBody.safeParse(rawBody);
   if (!parseResult.success) {
     res.status(400).json({ error: "Invalid request", details: parseResult.error.flatten() });
@@ -2086,7 +1969,7 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
   const [blast] = await db.insert(emailBlastsTable).values({
     subject,
     body,
-    audienceType: isTrialsAppInvitation ? "trials_invite_manual" : audienceType,
+    audienceType,
     teamIds: teamIds ? JSON.stringify(teamIds) : null,
     playerIds: playerIds ? JSON.stringify(playerIds) : null,
     recipientCount,
@@ -2115,6 +1998,8 @@ router.post("/send-bulk-email", requireAdminAccess, emailUpload.array("attachmen
 });
 
 router.get("/email-blasts/:id/recipients", requireAdminAccess, async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
+  res.vary("X-Session-Token");
   const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const rows = await db
@@ -2128,6 +2013,9 @@ router.get("/email-blasts/:id/recipients", requireAdminAccess, async (req, res) 
     playerName: r.playerName,
     playerEmail: r.playerEmail,
     sent: r.sent,
+    deliveryStatus: r.sent ? "sent"
+      : r.errorMessage === "portal_invite_pending" ? "pending"
+      : r.errorMessage === "portal_invite_uncertain" ? "uncertain" : "failed",
     errorMessage: r.errorMessage ?? null,
   })));
 });
