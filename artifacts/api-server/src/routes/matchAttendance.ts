@@ -270,11 +270,14 @@ export async function playerMatchRsvps(req: Request, res: Response): Promise<voi
     const counts: Record<Status, number> = { yes: 0, maybe: 0, no: 0 };
     for (const row of rows) if (row.matchId === id && STATUSES.includes(row.status as Status)) counts[row.status as Status]++;
     const mine = rows.find((row) => row.matchId === id && row.playerId === playerId);
-    const goingIds = new Set(rows.filter((row) => row.matchId === id && row.status === "yes").map((row) => row.playerId));
-    const goingPlayers = players.filter((player) => goingIds.has(player.id))
-      .map((player) => ({ id: player.id, name: player.name }))
-      .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.id - b.id);
-    return { matchId: id, myRsvp: mine?.status ?? null, myNote: mine?.note ?? null, rsvpCounts: counts, goingPlayers };
+    const namesFor = (status: Status) => {
+      const respondingIds = new Set(rows.filter((row) => row.matchId === id && row.status === status).map((row) => row.playerId));
+      return players.filter((player) => respondingIds.has(player.id))
+        .map((player) => ({ id: player.id, name: player.name }))
+        .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.id - b.id);
+    };
+    return { matchId: id, myRsvp: mine?.status ?? null, myNote: mine?.note ?? null, rsvpCounts: counts,
+      goingPlayers: namesFor("yes"), maybePlayers: namesFor("maybe") };
   });
   res.json({ matches });
 }

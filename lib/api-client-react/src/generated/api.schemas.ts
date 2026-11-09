@@ -1988,6 +1988,8 @@ export interface MyTrainingAttendance {
   rsvpCounts: MatchAttendanceCounts;
   /** Eligible active members marked Going, alphabetized by display name. */
   goingPlayers: MatchGoingPlayer[];
+  /** Eligible active members marked Maybe, alphabetized by display name. */
+  maybePlayers: MatchGoingPlayer[];
 }
 
 export interface MyTrainingAttendanceList {
@@ -2016,6 +2018,8 @@ export interface MyMatchAttendance {
   rsvpCounts: MatchAttendanceCounts;
   /** Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad. */
   goingPlayers: MatchGoingPlayer[];
+  /** Eligible current-squad players marked Maybe, sorted by display name. Same access restrictions as goingPlayers. */
+  maybePlayers: MatchGoingPlayer[];
 }
 
 export type MatchAttendanceInputStatus =

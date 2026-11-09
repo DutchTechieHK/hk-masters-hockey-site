@@ -13,4 +13,6 @@ export interface MyTrainingAttendance {
   rsvpCounts: MatchAttendanceCounts;
   /** Eligible active members marked Going, alphabetized by display name. */
   goingPlayers: MatchGoingPlayer[];
+  /** Eligible active members marked Maybe, alphabetized by display name. */
+  maybePlayers: MatchGoingPlayer[];
 }

@@ -47,7 +47,7 @@ export default function useMatchAttendance(kind = "match", { optionalSession = f
       if (!response.ok) throw new Error(`Could not load ${kind} attendance. Please retry.`);
       const data = await response.json();
       if (!Array.isArray(data[collection]) || data[collection].some((match) =>
-        !Array.isArray(match.goingPlayers) || !match.rsvpCounts)) {
+        !Array.isArray(match.goingPlayers) || !Array.isArray(match.maybePlayers) || !match.rsvpCounts)) {
         throw new Error(`Could not load ${kind} attendance. Please retry.`);
       }
       if (version !== request.current || getPlayerToken() !== token) return false;

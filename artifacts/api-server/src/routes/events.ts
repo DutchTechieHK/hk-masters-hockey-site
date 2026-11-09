@@ -766,6 +766,7 @@ router.get("/training-attendance", (_req, res, next) => {
     eventId: event.id,
     rsvpCounts: emptyCounts(),
     goingPlayers: [] as Array<{ id: number; name: string }>,
+    maybePlayers: [] as Array<{ id: number; name: string }>,
   }]));
   const eventById = new Map(events.map((event) => [event.id, event]));
   for (const reply of replies) {
@@ -777,9 +778,11 @@ router.get("/training-attendance", (_req, res, next) => {
       snapshot.rsvpCounts[reply.status]++;
     }
     if (reply.status === "yes") snapshot.goingPlayers.push({ id: invitee.id, name: invitee.name });
+    if (reply.status === "maybe") snapshot.maybePlayers.push({ id: invitee.id, name: invitee.name });
   }
   for (const snapshot of snapshots.values()) {
     snapshot.goingPlayers.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
+    snapshot.maybePlayers.sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id);
   }
   res.json({ events: [...snapshots.values()] });
 });

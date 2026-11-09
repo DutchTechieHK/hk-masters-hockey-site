@@ -4223,7 +4223,12 @@ components:
           description: Eligible active members marked Going, alphabetized by display name.
           items:
             $ref: "#/components/schemas/MatchGoingPlayer"
-      required: [eventId, rsvpCounts, goingPlayers]
+        maybePlayers:
+          type: array
+          description: Eligible active members marked Maybe, alphabetized by display name.
+          items:
+            $ref: "#/components/schemas/MatchGoingPlayer"
+      required: [eventId, rsvpCounts, goingPlayers, maybePlayers]
 
     MyMatchAttendance:
       type: object
@@ -4237,7 +4242,12 @@ components:
           description: Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad.
           items:
             $ref: "#/components/schemas/MatchGoingPlayer"
-      required: [matchId, myRsvp, myNote, rsvpCounts, goingPlayers]
+        maybePlayers:
+          type: array
+          description: Eligible current-squad players marked Maybe, sorted by display name. Same access restrictions as goingPlayers.
+          items:
+            $ref: "#/components/schemas/MatchGoingPlayer"
+      required: [matchId, myRsvp, myNote, rsvpCounts, goingPlayers, maybePlayers]
 
     MatchGoingPlayer:
       type: object

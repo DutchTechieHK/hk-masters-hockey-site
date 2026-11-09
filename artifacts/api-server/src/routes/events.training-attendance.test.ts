@@ -123,6 +123,9 @@ describe("private training attendance", () => {
     const snapshot = ownEvents[0];
     expect(snapshot.rsvpCounts).toEqual({ yes: 20, maybe: 1, no: 1 });
     expect(snapshot.goingPlayers).toHaveLength(20);
+    expect(snapshot.maybePlayers).toHaveLength(1);
+    expect(snapshot.maybePlayers[0].id).toBe(playerIds[19]);
+    expect(Object.keys(snapshot.maybePlayers[0]).sort()).toEqual(["id", "name"]);
     const names = snapshot.goingPlayers.map((player: { name: string }) => player.name);
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
     expect(snapshot.goingPlayers.map((player: { id: number }) => player.id)).toContain(playerIds[22]);
@@ -130,10 +133,10 @@ describe("private training attendance", () => {
       expect(snapshot.goingPlayers.some((player: { id: number }) => player.id === playerIds[excluded])).toBe(false);
     }
     for (const player of snapshot.goingPlayers) expect(Object.keys(player).sort()).toEqual(["id", "name"]);
-    expect(Object.keys(snapshot).sort()).toEqual(["eventId", "goingPlayers", "rsvpCounts"]);
+    expect(Object.keys(snapshot).sort()).toEqual(["eventId", "goingPlayers", "maybePlayers", "rsvpCounts"]);
     expect(JSON.stringify(response.body)).not.toContain("@example.com");
     expect(JSON.stringify(response.body)).not.toContain("Private absence reason");
-    expect(ownEvents[2]).toEqual({ eventId: emptyId, goingPlayers: [], rsvpCounts: { yes: 0, maybe: 0, no: 0 } });
+    expect(ownEvents[2]).toEqual({ eventId: emptyId, goingPlayers: [], maybePlayers: [], rsvpCounts: { yes: 0, maybe: 0, no: 0 } });
   });
 
   it("does not treat public visibility or a stale legacy squad as permission", async () => {

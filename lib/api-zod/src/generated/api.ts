@@ -2931,6 +2931,16 @@ export const ListMyTrainingAttendanceResponse = zod.object({
         .describe(
           "Eligible active members marked Going, alphabetized by display name.",
         ),
+      maybePlayers: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+          }),
+        )
+        .describe(
+          "Eligible active members marked Maybe, alphabetized by display name.",
+        ),
     }),
   ),
 });
@@ -3114,6 +3124,16 @@ export const ListMyMatchAttendanceResponse = zod.object({
         )
         .describe(
           "Eligible current-squad players marked Going, sorted by display name. Only available to authenticated members of that squad.",
+        ),
+      maybePlayers: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+          }),
+        )
+        .describe(
+          "Eligible current-squad players marked Maybe, sorted by display name. Same access restrictions as goingPlayers.",
         ),
     }),
   ),

@@ -319,6 +319,7 @@ describe("match attendance", () => {
     const row = listing.body.matches.find((m: { matchId: number }) => m.matchId === fixture.id);
     expect(row.rsvpCounts).toEqual({ yes: 19, maybe: 1, no: 1 });
     expect(row.goingPlayers).toHaveLength(19);
+    expect(row.maybePlayers).toEqual([{ id: rosterIds[18], name: "Going Test 04" }]);
     expect(row.goingPlayers.map((p: { id: number }) => p.id)).toEqual(expect.arrayContaining([playerIds[0], rosterIds[0]]));
     expect(row.goingPlayers.every((p: object) => Object.keys(p).sort().join(",") === "id,name")).toBe(true);
     const names = row.goingPlayers.map((p: { name: string }) => p.name);
@@ -342,6 +343,13 @@ describe("match attendance", () => {
     expect(updated.goingPlayers).toHaveLength(18);
     expect(updated.goingPlayers.some((p: { id: number }) => p.id === playerIds[0])).toBe(false);
     expect(updated.myNote).toBe("My private reason");
+    expect((await request(app).post(`/player/matches/${fixture.id}/rsvp`).set(auth())
+      .send({ status: "maybe", note: "Still confirming availability" })).status).toBe(200);
+    const maybeResponse = await request(app).get("/player/matches/rsvps").set(auth());
+    const maybeSnapshot = maybeResponse.body.matches.find((m: { matchId: number }) => m.matchId === fixture.id);
+    expect(maybeSnapshot.rsvpCounts).toEqual({ yes: 18, maybe: 2, no: 1 });
+    expect(maybeSnapshot.maybePlayers.map((p: { id: number }) => p.id)).toEqual(expect.arrayContaining([playerIds[0], rosterIds[18]]));
+    expect(maybeSnapshot.maybePlayers.every((p: object) => Object.keys(p).sort().join(",") === "id,name")).toBe(true);
     // Current participation, not legacy team, controls viewing as well as responding.
     await db.update(playerParticipationsTable).set({ teamId: teamIds[1] })
       .where(and(eq(playerParticipationsTable.playerId, playerIds[0]), eq(playerParticipationsTable.seasonId, seasonId)));

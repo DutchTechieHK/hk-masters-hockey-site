@@ -8,6 +8,7 @@ const attendance = {
   matchId: 42,
   rsvpCounts: { yes: 20, maybe: 2, no: 1 },
   goingPlayers: Array.from({ length: 20 }, (_, id) => ({ id, name: `Teammate ${id}` })),
+  maybePlayers: [],
 };
 const render = (component, props = {}) => renderToStaticMarkup(createElement(component, {
   attendance, loading: false, error: "", onRefresh: () => {}, ...props,
@@ -20,7 +21,7 @@ describe("player match attendance display", () => {
     expect(html).toContain('aria-expanded="false"');
     const list = render(MatchGoingList, { kind: "training" });
     expect(list).toContain('aria-label="Players going to this training"');
-    expect(list).toContain("Players marked Going to training");
+    expect(list).toContain("Players marked Going or Maybe to training");
     expect(list).not.toContain("lineup");
     expect(list.match(/<li /g)).toHaveLength(20);
   });
@@ -74,5 +75,26 @@ describe("player match attendance display", () => {
     });
     expect(escaped).not.toContain("<script>");
     expect(escaped).toContain("&lt;script&gt;");
+  });
+
+  it("shows Maybe names separately, including when nobody is Going", () => {
+    const snapshot = { ...attendance, goingPlayers: [], maybePlayers: [{ id: 25, name: "Maybe Teammate" }],
+      rsvpCounts: { yes: 0, maybe: 1, no: 0 } };
+    const summary = render(MatchAttendanceSummary, { attendance: snapshot });
+    expect(summary).toContain("Maybe (1)");
+    expect(summary).not.toContain("Maybe Teammate");
+    for (const kind of ["match", "training"]) {
+      const html = render(MatchGoingList, { attendance: snapshot, kind });
+      expect(html).toContain("Maybe Teammate");
+      expect(html).toContain("Maybe (1)");
+      expect(html).toContain(`aria-label="Players maybe to this ${kind}"`);
+      expect(html).toContain("No players have signed on yet");
+    }
+    const empty = render(MatchGoingList);
+    expect(empty).toContain("No players have replied Maybe");
+    const loading = render(MatchGoingList, { attendance: snapshot, loading: true });
+    expect(loading).not.toContain("Maybe Teammate");
+    const failed = render(MatchGoingList, { attendance: snapshot, error: "Offline" });
+    expect(failed).not.toContain("Maybe Teammate");
   });
 });

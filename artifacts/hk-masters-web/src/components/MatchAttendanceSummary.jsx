@@ -3,19 +3,31 @@ import React, { useId, useState } from "react";
 export function MatchGoingList({ attendance, loading, error, onRefresh, kind = "match" }) {
   return (
     <>
-      <p className="mb-2 text-xs text-gray-600">{kind === "training" ? "Players marked Going to training — not a confirmed attendance register." : "Players marked Going — not a confirmed lineup."}</p>
+      <p className="mb-2 text-xs text-gray-600">{kind === "training" ? "Players marked Going or Maybe to training — not a confirmed attendance register." : "Players marked Going or Maybe — not a confirmed lineup."}</p>
       {loading ? <p role="status" className="text-sm text-gray-600">Loading who’s going…</p> : error ? (
         <div role="alert" className="text-sm text-rose-700">
           <p>{error}</p>
           <button type="button" className="mt-1 min-h-10 font-semibold underline" onClick={() => void onRefresh()}>Retry</button>
         </div>
-      ) : attendance.goingPlayers.length ? (
-        <ul aria-label={`Players going to this ${kind}`} className="grid gap-1 sm:grid-cols-2">
-          {attendance.goingPlayers.map((player) => (
-            <li key={player.id} className="min-w-0 break-words rounded-lg bg-white px-3 py-2 text-sm text-gray-800">{player.name}</li>
+      ) : (
+        <div className="space-y-3">
+          {[
+            { label: "Going", players: attendance.goingPlayers, status: "going", empty: "No players have signed on yet." },
+            { label: "Maybe", players: attendance.maybePlayers, status: "maybe", empty: "No players have replied Maybe." },
+          ].map(({ label, players, status, empty }) => (
+            <section key={status}>
+              <h4 className="mb-1 text-sm font-semibold text-gray-800">{label} ({players.length})</h4>
+              {players.length ? (
+                <ul aria-label={`Players ${status} to this ${kind}`} className="grid gap-1 sm:grid-cols-2">
+                  {players.map((player) => (
+                    <li key={player.id} className="min-w-0 break-words rounded-lg bg-white px-3 py-2 text-sm text-gray-800">{player.name}</li>
+                  ))}
+                </ul>
+              ) : <p className="text-sm text-gray-600">{empty}</p>}
+            </section>
           ))}
-        </ul>
-      ) : <p className="text-sm text-gray-600">No players have signed on yet.</p>}
+        </div>
+      )}
     </>
   );
 }
@@ -43,7 +55,7 @@ export default function MatchAttendanceSummary({ attendance, loading, error, onR
           }}
           className="inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[#006B3C] hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
         >
-          Who’s going{current ? ` (${attendance.rsvpCounts.yes})` : ""}
+          Who’s going{current ? ` (${attendance.rsvpCounts.yes})` : ""} · Maybe{current ? ` (${attendance.rsvpCounts.maybe})` : ""}
           <span aria-hidden="true">{open ? "▴" : "▾"}</span>
         </button>
       </div>
