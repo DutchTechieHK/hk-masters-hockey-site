@@ -3,7 +3,7 @@ import React, { useId, useState } from "react";
 export function MatchGoingList({ attendance, loading, error, onRefresh, kind = "match" }) {
   return (
     <>
-      <p className="mb-2 text-xs text-gray-600">{kind === "training" ? "Players marked Going or Maybe to training — not a confirmed attendance register." : "Players marked Going or Maybe — not a confirmed lineup."}</p>
+      <p className="mb-2 text-xs text-gray-600">{kind === "event" ? "Members marked Going or Maybe to this event." : kind === "training" ? "Players marked Going or Maybe to training — not a confirmed attendance register." : "Players marked Going or Maybe — not a confirmed lineup."}</p>
       {loading ? <p role="status" className="text-sm text-gray-600">Loading who’s going…</p> : error ? (
         <div role="alert" className="text-sm text-rose-700">
           <p>{error}</p>

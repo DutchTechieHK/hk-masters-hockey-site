@@ -7,7 +7,7 @@ const matcher = new RegExp(expression.slice(1, -1));
 
 describe("private attendance offline cache exclusions", () => {
   it("excludes match and training snapshots, including trailing slashes and query strings", () => {
-    for (const path of ["/api/player-auth/matches/rsvps", "/api/events/training-attendance", "/api/events", "/api/player-auth/my-schedule", "/api/groups", "/api/groups/members", "/api/staff", "/api/staff/me", "/api/staff/access", "/api/staff/teams/5", "/api/admin/auth", "/api/player-auth/request-code", "/api/player-auth/verify-code"]) {
+    for (const path of ["/api/player-auth/matches/rsvps", "/api/events/attendance", "/api/events/training-attendance", "/api/events", "/api/player-auth/my-schedule", "/api/groups", "/api/groups/members", "/api/staff", "/api/staff/me", "/api/staff/access", "/api/staff/teams/5", "/api/admin/auth", "/api/player-auth/request-code", "/api/player-auth/verify-code"]) {
       for (const suffix of ["", "/", "?refresh=1"]) {
         expect(matcher.test(new URL(`https://example.com${path}${suffix}`).pathname)).toBe(true);
       }

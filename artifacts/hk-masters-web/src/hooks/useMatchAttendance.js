@@ -6,9 +6,10 @@ import { clearPlayerToken, getPlayerToken } from "../lib/playerAuth";
 // A single snapshot supplies both counts and names on each player page.
 export default function useMatchAttendance(kind = "match", { optionalSession = false } = {}) {
   const training = kind === "training";
-  const collection = training ? "events" : "matches";
-  const idKey = training ? "eventId" : "matchId";
-  const path = training ? "/api/events/training-attendance" : "/api/player-auth/matches/rsvps";
+  const event = training || kind === "event";
+  const collection = event ? "events" : "matches";
+  const idKey = event ? "eventId" : "matchId";
+  const path = training ? "/api/events/training-attendance" : event ? "/api/events/attendance" : "/api/player-auth/matches/rsvps";
   const [, setLocation] = useLocation();
   const [matches, setMatches] = useState({});
   const [loading, setLoading] = useState(true);

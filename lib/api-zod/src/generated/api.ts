@@ -2909,6 +2909,43 @@ export const DeleteMatchParams = zod.object({
 });
 
 /**
+ * Uses current team and selected-group eligibility for every event kind. Returns Going and Maybe IDs and names and matching counts, never other members' reasons or contact details. Must not be cached.
+ * @summary Private attendance for upcoming events visible to the signed-in member
+ */
+export const ListMyEventAttendanceResponse = zod.object({
+  events: zod.array(
+    zod.object({
+      eventId: zod.number(),
+      rsvpCounts: zod.object({
+        yes: zod.number(),
+        maybe: zod.number(),
+        no: zod.number(),
+      }),
+      goingPlayers: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+          }),
+        )
+        .describe(
+          "Eligible active members marked Going, alphabetized by display name.",
+        ),
+      maybePlayers: zod
+        .array(
+          zod.object({
+            id: zod.number(),
+            name: zod.string(),
+          }),
+        )
+        .describe(
+          "Eligible active members marked Maybe, alphabetized by display name.",
+        ),
+    }),
+  ),
+});
+
+/**
  * Uses current local event eligibility. Returns only eligible Going player IDs and names, with counts from the same replies. Never returns emails or absence reasons. Must not be cached.
  * @summary Private attendance for upcoming training sessions visible to the signed-in member
  */

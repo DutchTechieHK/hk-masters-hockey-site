@@ -88,6 +88,11 @@ beforeAll(async () => {
     note: `Private absence reason ${n}`,
   })));
   await db.insert(eventRsvpsTable).values({ eventId: allSquadsId, playerId: playerIds[21], status: "yes" });
+  await db.insert(eventRsvpsTable).values([
+    { eventId: eventIds[4], playerId: playerIds[0], status: "yes" },
+    { eventId: eventIds[4], playerId: playerIds[1], status: "maybe", note: "Private social reason" },
+    { eventId: eventIds[4], playerId: playerIds[21], status: "maybe" },
+  ]);
 });
 
 afterAll(async () => {
@@ -102,6 +107,38 @@ afterAll(async () => {
 
 describe("private training attendance", () => {
   const auth = () => ({ Authorization: `Bearer ${token}` });
+
+  it("provides Going and Maybe names for social events using the same private audience rules", async () => {
+    const endpoint = "/api/events/attendance";
+    const denied = await request(app).get(endpoint);
+    expect(denied.status).toBe(401);
+    expect(denied.headers["cache-control"]).toBe("private, no-store");
+    const response = await request(app).get(endpoint).set(auth());
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    const own = response.body.events.filter((event: { eventId: number }) => eventIds.includes(event.eventId));
+    expect(own.map((event: { eventId: number }) => event.eventId)).toEqual(expect.arrayContaining([trainingId, allSquadsId, emptyId, eventIds[4]]));
+    expect(own).toHaveLength(4);
+    const social = own.find((event: { eventId: number }) => event.eventId === eventIds[4]);
+    expect(social).toEqual({
+      eventId: eventIds[4], rsvpCounts: { yes: 1, maybe: 1, no: 0 },
+      goingPlayers: [{ id: playerIds[0], name: `${tag}-24` }],
+      maybePlayers: [{ id: playerIds[1], name: `${tag}-23` }],
+    });
+    expect(JSON.stringify(response.body)).not.toContain("Private social reason");
+    expect(JSON.stringify(response.body)).not.toContain("@example.com");
+    const outsider = await request(app).get(endpoint).set("Authorization", `Bearer ${outsiderToken}`);
+    expect(outsider.body.events.some((event: { eventId: number }) => event.eventId === eventIds[4])).toBe(false);
+    const inactiveEventToken = await createPlayerSession(playerIds[23]);
+    expect((await request(app).get(endpoint).set("Authorization", `Bearer ${inactiveEventToken}`)).status).toBe(403);
+    expect((await request(app).post(`/player/events/${eventIds[4]}/rsvp`).set(auth())
+      .send({ status: "maybe", note: "Uncertain" })).status).toBe(200);
+    const refreshed = await request(app).get(endpoint).set(auth());
+    const updated = refreshed.body.events.find((event: { eventId: number }) => event.eventId === eventIds[4]);
+    expect(updated.goingPlayers).toEqual([]);
+    expect(updated.maybePlayers).toHaveLength(2);
+    expect(updated.rsvpCounts).toEqual({ yes: 0, maybe: 2, no: 0 });
+  });
 
   it("requires an active member session and marks even denied responses private", async () => {
     for (const headers of [{}, { Authorization: "Bearer invalid" }, { "x-session-token": "admin-only" }]) {

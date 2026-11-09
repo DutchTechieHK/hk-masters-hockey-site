@@ -1711,6 +1711,24 @@ paths:
         "204":
           description: Deleted
 
+  /events/attendance:
+    get:
+      operationId: listMyEventAttendance
+      tags: [events]
+      summary: Private attendance for upcoming events visible to the signed-in member
+      description: Uses current team and selected-group eligibility for every event kind. Returns Going and Maybe IDs and names and matching counts, never other members' reasons or contact details. Must not be cached.
+      responses:
+        "200":
+          description: Eligible upcoming local event attendance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyTrainingAttendanceList"
+        "401":
+          description: Player authentication required
+        "403":
+          description: Membership is not active
+
   /events/training-attendance:
     get:
       operationId: listMyTrainingAttendance

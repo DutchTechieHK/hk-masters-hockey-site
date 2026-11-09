@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { API_BASE } from "../utils/api";
 import { matchesForPlayer } from "../utils/playerMatches";
@@ -255,8 +255,8 @@ function MatchFixtureCard({ match, attendance, saving, error, onSubmit, attendan
 }
 
 // Shared event card ----------------------------------------------------------
-function EventCard({ ev, rsvpSaving, submitRsvp, trainingAttendance, trainingLoading, trainingError, refreshTraining }) {
-  const upcomingTraining = ev.kind === "training" && new Date(ev.startsAt).getTime() > Date.now();
+export function EventCard({ ev, rsvpSaving, submitRsvp, eventAttendance, eventLoading, eventError, refreshEvents }) {
+  const upcomingEvent = new Date(ev.startsAt).getTime() > Date.now();
   const meta = KIND_META[ev.kind] || { label: ev.kind, emoji: "📌", chip: "bg-gray-100 text-gray-700" };
   const dateStr = formatDateTime(ev.startsAt);
   const timeRange = ` · ${formatTimeRange(ev.startsAt, ev.endsAt)}`;
@@ -344,16 +344,17 @@ function EventCard({ ev, rsvpSaving, submitRsvp, trainingAttendance, trainingLoa
               );
             })}
           </div>
-          {!upcomingTraining && <div className="text-xs text-gray-500 whitespace-nowrap">
+          {!upcomingEvent && <div className="text-xs text-gray-500 whitespace-nowrap">
             {ev.rsvpCounts?.yes ?? 0} going · {ev.rsvpCounts?.maybe ?? 0} maybe · {ev.rsvpCounts?.no ?? 0} no
           </div>}
         </div>
-        {upcomingTraining && (
+        {upcomingEvent && (
           <TrainingAttendanceSummary
-            attendance={trainingAttendance}
-            loading={trainingLoading || !!rsvpSaving[ev.id]}
-            error={trainingError}
-            onRefresh={refreshTraining}
+            kind={ev.kind === "training" ? "training" : "event"}
+            attendance={eventAttendance}
+            loading={eventLoading || !!rsvpSaving[ev.id]}
+            error={eventError}
+            onRefresh={refreshEvents}
           />
         )}
 
@@ -420,7 +421,7 @@ export default function MySchedule() {
   const [rsvpSaving, setRsvpSaving] = useState({});
   const [rsvpError, setRsvpError] = useState("");
   const { matches: matchAttendance, loading: attendanceLoading, error: attendanceLoadError, refresh: refreshAttendance, rememberReply } = useMatchAttendance();
-  const { matches: trainingAttendance, loading: trainingLoading, error: trainingError, refresh: refreshTraining } = useMatchAttendance("training");
+  const { matches: eventAttendance, loading: eventLoading, error: eventError, refresh: refreshEvents } = useMatchAttendance("event");
   const [matchSaving, setMatchSaving] = useState({});
   const [matchErrors, setMatchErrors] = useState({});
 
@@ -487,7 +488,7 @@ export default function MySchedule() {
         }
       } catch { /* ignore */ }
     } finally {
-      if (events.some((ev) => ev.id === eventId && ev.kind === "training")) await refreshTraining();
+      await refreshEvents();
       setRsvpSaving((s) => { const n = { ...s }; delete n[eventId]; return n; });
     }
   };
@@ -661,8 +662,8 @@ export default function MySchedule() {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#DE2910] mb-3">{month}</h3>
                 <ul className="space-y-3">
                   {items.map((ev) => <EventCard key={ev.id} ev={ev} rsvpSaving={rsvpSaving} submitRsvp={submitRsvp}
-                    trainingAttendance={trainingAttendance[ev.id]} trainingLoading={trainingLoading}
-                    trainingError={trainingError} refreshTraining={refreshTraining} />)}
+                    eventAttendance={eventAttendance[ev.id]} eventLoading={eventLoading}
+                    eventError={eventError} refreshEvents={refreshEvents} />)}
                 </ul>
               </section>
             ))}

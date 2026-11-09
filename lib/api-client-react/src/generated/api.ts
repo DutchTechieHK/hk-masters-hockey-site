@@ -8137,6 +8137,82 @@ export const useDeleteMatch = <
 };
 
 /**
+ * Uses current team and selected-group eligibility for every event kind. Returns Going and Maybe IDs and names and matching counts, never other members' reasons or contact details. Must not be cached.
+ * @summary Private attendance for upcoming events visible to the signed-in member
+ */
+export const getListMyEventAttendanceUrl = () => {
+  return `/api/events/attendance`;
+};
+
+export const listMyEventAttendance = async (
+  options?: RequestInit,
+): Promise<MyTrainingAttendanceList> => {
+  return customFetch<MyTrainingAttendanceList>(getListMyEventAttendanceUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyEventAttendanceQueryKey = () => {
+  return [`/api/events/attendance`] as const;
+};
+
+export const getListMyEventAttendanceQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyEventAttendance>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyEventAttendance>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyEventAttendanceQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyEventAttendance>>
+  > = ({ signal }) => listMyEventAttendance({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyEventAttendance>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyEventAttendanceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyEventAttendance>>
+>;
+export type ListMyEventAttendanceQueryError = ErrorType<void>;
+
+/**
+ * @summary Private attendance for upcoming events visible to the signed-in member
+ */
+
+export function useListMyEventAttendance<
+  TData = Awaited<ReturnType<typeof listMyEventAttendance>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyEventAttendance>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyEventAttendanceQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * Uses current local event eligibility. Returns only eligible Going player IDs and names, with counts from the same replies. Never returns emails or absence reasons. Must not be cached.
  * @summary Private attendance for upcoming training sessions visible to the signed-in member
  */

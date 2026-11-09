@@ -736,7 +736,7 @@ router.get("/serve-image/:objectId", async (req: Request, res: Response) => {
 // A private player snapshot, deliberately separate from the admin response roster.
 // Counts and Going names come from the same eligible replies, including any
 // replies entered by an administrator in event_rsvps.
-router.get("/training-attendance", (_req, res, next) => {
+router.get(["/attendance", "/training-attendance"], (_req, res, next) => {
   res.set("Cache-Control", "private, no-store");
   res.vary("Authorization");
   res.vary("X-Player-Session");
@@ -748,7 +748,7 @@ router.get("/training-attendance", (_req, res, next) => {
     .from(eventsTable)
     .where(and(
       eq(eventsTable.operationalScope, "local_2026_27"),
-      eq(eventsTable.kind, "training"),
+      ...(req.path === "/training-attendance" ? [eq(eventsTable.kind, "training")] : []),
       gt(eventsTable.startsAt, new Date()),
     )).orderBy(asc(eventsTable.startsAt));
   const groups = await loadEventGroups(candidateEvents);
