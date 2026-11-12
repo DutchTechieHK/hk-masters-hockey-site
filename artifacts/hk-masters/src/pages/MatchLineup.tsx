@@ -98,6 +98,8 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
   });
 
   const canEdit = !!w?.canEdit && view === "draft" && busy == null && !lineup.isFetching;
+  const canClearRef = useRef(false);
+  canClearRef.current = canEdit && placements.length > 0;
 
   // Lookups
   const people = useMemo(() => new Map((w?.people ?? []).map((p) => [p.playerId, p])), [w]);
@@ -272,6 +274,23 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
     setConfirm({ title: `Replace the board with ${formation} suggestions?`, body: "Suggestions only use Going players with a single known position. Everyone currently placed (pitch and bench) will be cleared from the board, not from the squad.", confirmLabel: "Replace with suggestions", onConfirm: () => applySuggestions(formation) });
   };
 
+  const askClear = () => {
+    if (!canClearRef.current) return;
+    setConfirm({
+      title: "Clear the board?",
+      body: "Remove all pitch and substitute placements from this private draft? Players return to their lists. Your formation, attendance and published lineup stay unchanged. Nothing is saved until you press Save draft.",
+      confirmLabel: "Clear board", danger: true,
+      onConfirm: () => {
+        // Permission or request state can change while the confirmation is open.
+        if (!canClearRef.current) return;
+        dragCleanup.current?.();
+        setPlacements([]);
+        setSelected(null);
+        markEdited();
+      },
+    });
+  };
+
   const askFormation = (f: Formation) => {
     if (f === formation) return;
     if (!placements.length) { applySuggestions(f); return; }
@@ -383,7 +402,7 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
             ))}
           </div>
           {view === "draft" && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <div className="inline-flex p-1 rounded-lg bg-white border border-border" role="radiogroup" aria-label="Formation">
                 {(["4-3-3", "3-4-3"] as const).map((f) => (
                   <button key={f} role="radio" aria-checked={formation === f} disabled={!canEdit}
@@ -393,6 +412,7 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
                 ))}
               </div>
               {canEdit && <Button size="sm" variant="outline" className="bg-white" onClick={askSuggest} data-testid="button-suggest"><Sparkles className="w-3.5 h-3.5 mr-1" />Suggest</Button>}
+              {canEdit && <Button size="sm" variant="outline" className="bg-white min-h-10 text-destructive" disabled={!placements.length} onClick={askClear} data-testid="button-clear-board"><Trash2 className="w-3.5 h-3.5 mr-1" />Clear board</Button>}
             </div>
           )}
         </div>

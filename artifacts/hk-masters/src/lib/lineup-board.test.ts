@@ -30,6 +30,12 @@ export function runLineupBoardTests() {
   assert(boardKey("4-3-3", p1) === boardKey("4-3-3", p2), "order/bench coords are not dirty");
   assert(boardKey("4-3-3", p1) !== boardKey("3-4-3", p1), "formation change is dirty");
   assert(boardKey("4-3-3", p1) !== boardKey("4-3-3", [{ ...p1[0], x: 12 }, p1[1]]), "moved marker is dirty");
+
+  // Clearing pitch and bench uses the normal dirty/save lifecycle, without changing formation.
+  const cleared: LineupPlacement[] = [];
+  assert(boardKey("3-4-3", p1) !== boardKey("3-4-3", cleared), "clearing a saved board is unsaved work");
+  assert(boardKey("3-4-3", cleared) === boardKey("3-4-3", []), "saved empty board becomes clean");
+  assert(p1.length === 2 && p1[1].area === "bench", "clearing does not mutate saved/published placements");
 }
 
 runLineupBoardTests();

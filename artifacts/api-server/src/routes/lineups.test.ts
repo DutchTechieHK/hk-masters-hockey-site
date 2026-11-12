@@ -213,4 +213,25 @@ describe("private match lineup lifecycle", () => {
     const [row] = await db.select().from(matchLineupsTable).where(eq(matchLineupsTable.matchId, match));
     expect(row.revision).toBe(11);
   });
+  it("saves and reloads a cleared pitch and bench without changing formation, replies or publication", async () => {
+    await db.update(matchRsvpsTable).set({ status: "yes" }).where(and(eq(matchRsvpsTable.matchId, match), eq(matchRsvpsTable.playerId, player)));
+    await db.update(playerParticipationsTable).set({ teamId: team }).where(and(eq(playerParticipationsTable.playerId, maybe), eq(playerParticipationsTable.seasonId, seasonId)));
+    const initial = await full("put").send({
+      revision: 11, formation: "3-4-3", placements: [placement(player), placement(maybe, "bench")],
+    });
+    expect(initial.status).toBe(200);
+    expect((await full("post", "/publication").send({ revision: 12, action: "publish" })).status).toBe(200);
+    const publication = (await pub()).body;
+    const before = (await full("get")).body;
+    const cleared = await full("put").send({ revision: before.revision, formation: before.draft.formation, placements: [] });
+    expect(cleared.status).toBe(200);
+    const reopened = (await full("get")).body;
+    expect(reopened.draft).toEqual({ formation: "3-4-3", players: [] });
+    expect(reopened.people).toEqual(before.people);
+    expect((await pub()).body).toEqual(publication);
+    expect((await full("post", "/publication").send({ revision: reopened.revision, action: "publish" })).status).toBe(409);
+    expect((await full("put").send({ revision: before.revision, formation: "3-4-3", placements: [] })).status).toBe(409);
+    expect((await staff("put").send({ revision: reopened.revision, formation: "3-4-3", placements: [] })).status).toBe(403);
+    expect((await pub()).body).toEqual(publication);
+  });
 });
