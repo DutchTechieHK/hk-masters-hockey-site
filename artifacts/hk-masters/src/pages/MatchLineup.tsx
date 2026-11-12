@@ -3,8 +3,9 @@ import { useLocation, useParams } from "wouter";
 import { useGetStaffTeam, getGetStaffTeamQueryKey, type LineupPlacement } from "@workspace/api-client-react";
 import { useLineupController, toPlacements, type Formation } from "@/hooks/use-lineup-controller";
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
-import { ArrowLeft, ArrowUp, AlertTriangle, CheckCircle2, CircleDashed, Eye, Lock, RefreshCw, Save, Send, ShieldAlert, Sparkles, Undo2, X, Armchair, Trash2, Crosshair } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, CircleDashed, Eye, Lock, RefreshCw, Save, Send, ShieldAlert, Sparkles, Undo2, X, Armchair, Trash2, Crosshair } from "lucide-react";
 import { HockeyPitch } from "@/components/lineup/HockeyPitch";
+import { LineupBoardLayout } from "@/components/lineup/LineupBoardLayout";
 import { PublishedLineupDownload } from "@/components/lineup/PublishedLineupDownload";
 import { Chip, Marker, PoolGroup, SaveStatus, surname, type Snap } from "@/components/lineup/BoardPieces";
 import { useAuthIdentity } from "@/components/AdminAuthGate";
@@ -419,10 +420,9 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
 
         <PublishedLineupDownload teamId={teamId} matchId={matchId} isStaff={isStaff} hasPublished={!!w.published} disabled={busy != null} />
 
-        <div className="grid lg:grid-cols-[400px_1fr] gap-6 items-start">
-          {/* Pitch column */}
-          <div>
-            <p className="flex items-center justify-center gap-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5"><ArrowUp className="w-3 h-3" />Attacking</p>
+        <LineupBoardLayout
+          published={view === "published"}
+          pitch={
             <HockeyPitch ref={pitchRef} data-drop="pitch" onClick={onPitchClick}
               className={cn(canEdit && selected != null && "cursor-crosshair")}
               aria-label={`Pitch, ${shownPitch.length} of ${MAX_ON_PITCH} placed`} data-testid="pitch-board">
@@ -441,14 +441,16 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
                   onKeyDown={(e) => nudge(e, p.playerId)} />
               ))}
             </HockeyPitch>
-            <p className="text-center text-xs mt-2 font-mono" data-testid="text-pitch-count">
+          }
+          count={
+            <p className="text-center text-xs font-mono" data-testid="text-pitch-count">
               <span className={cn("font-bold", shownPitch.length === MAX_ON_PITCH ? "text-emerald-700" : "text-amber-700")}>{shownPitch.length}/{MAX_ON_PITCH}</span>
               <span className="text-muted-foreground"> on pitch{shownPitch.length < MAX_ON_PITCH ? " · incomplete XI" : ""}</span>
             </p>
-
-            {/* Bench */}
+          }
+          bench={
             <section data-drop="bench" onClick={() => { if (canEdit && selected != null && !suppressClick.current) { if (place(selected, "bench")) setSelected(null); } }}
-              className={cn("mt-3 rounded-2xl border-2 border-dashed p-3 transition-colors", canEdit && selected != null ? "border-primary/50 bg-primary/5" : "border-border bg-white")}
+              className={cn("rounded-2xl border-2 border-dashed p-3 transition-colors", canEdit && selected != null ? "border-primary/50 bg-primary/5" : "border-border bg-white")}
               data-testid="zone-bench">
               <h2 className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-1.5"><Armchair className="w-3.5 h-3.5" />Substitutes · {shownBench.length}</h2>
               {shownBench.length === 0 ? (
@@ -467,19 +469,21 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
                 </ul>
               )}
             </section>
-          </div>
-
-          {/* Side column */}
-          <div className="space-y-4">
-            {view === "published" ? (
+          }
+          available={view === "published" ? (
               <div className="rounded-2xl border border-emerald-600/25 bg-emerald-50 p-4 text-sm" data-testid="panel-published-info">
                 <p className="font-semibold text-emerald-900">This is what players see.</p>
                 <p className="text-emerald-900/75 text-xs mt-1">Published {w.publishedAt ? `${hkFull(w.publishedAt)} HKT` : ""}. Editing the private draft never changes it until you publish again.</p>
               </div>
             ) : (
-              <>
+              <section data-drop="pool" className="rounded-2xl border border-border bg-white p-4" data-testid="zone-pool">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 className="font-display font-bold">Available</h2>
+                  <span className="text-xs text-muted-foreground font-mono">{goingUnplaced.length} unplaced</span>
+                </div>
+                {canEdit && <p className="text-xs text-muted-foreground mt-0.5">Tap a player, then tap the pitch. Or drag them into place.</p>}
                 {(placedIssues.length > 0 || maybePlaced.length > 0) && (
-                  <section className="rounded-2xl border border-border bg-white p-4 space-y-2" data-testid="panel-review">
+                  <section className="mt-3 rounded-xl border border-border bg-muted/30 p-3 space-y-2" data-testid="panel-review">
                     {placedIssues.length > 0 && (
                       <div>
                         <h2 className="text-sm font-bold text-destructive flex items-center gap-1.5"><AlertTriangle className="w-4 h-4" />Needs review · {placedIssues.length}</h2>
@@ -500,12 +504,6 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
                   </section>
                 )}
 
-                <section data-drop="pool" className="rounded-2xl border border-border bg-white p-4" data-testid="zone-pool">
-                  <div className="flex items-baseline justify-between">
-                    <h2 className="font-display font-bold">Available</h2>
-                    <span className="text-xs text-muted-foreground font-mono">{goingUnplaced.length} unplaced</span>
-                  </div>
-                  {canEdit && <p className="text-xs text-muted-foreground mt-0.5">Tap a player, then tap the pitch. Or drag them into place.</p>}
                   <PoolGroup title="Going" people={pool.going} placedMap={placedMap} selected={selected} canEdit={canEdit} issues={issues}
                     onSelect={(id) => { if (!suppressClick.current) setSelected(selected === id ? null : id); }} onDrag={startDrag} />
                   <PoolGroup title="Maybe · provisional" tone="maybe" people={pool.maybe} placedMap={placedMap} selected={selected} canEdit={canEdit} issues={issues}
@@ -529,8 +527,8 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
                   )}
                   {w.people.length === 0 && <p className="text-sm text-muted-foreground mt-3">No eligible players for this match yet.</p>}
                 </section>
-
-                {w.canEdit && (
+            )}
+          publication={view === "draft" && w.canEdit ? (
                   <section className="rounded-2xl border border-border bg-white p-4 space-y-2" data-testid="panel-publication">
                     <h2 className="font-display font-bold">Publication</h2>
                     <p className="text-xs text-muted-foreground">Publishing copies the saved draft for players in this match. Later edits stay private until you publish again.</p>
@@ -550,11 +548,8 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
                     </div>
                     {dirty && <p className="text-[11px] text-amber-800">Save your changes before publishing.</p>}
                   </section>
-                )}
-              </>
-            )}
-          </div>
-        </div>
+          ) : undefined}
+        />
       </main>
 
       {/* Drag ghost */}

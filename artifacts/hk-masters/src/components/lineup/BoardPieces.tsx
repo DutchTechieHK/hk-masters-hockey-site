@@ -66,7 +66,7 @@ export function Chip({ snap, status, issue, selected, editable, onPointerDown, o
   const maybe = status === "maybe";
   return (
     <button type="button" disabled={!editable} onPointerDown={(e) => { if (e.pointerType !== "touch") onPointerDown(e); }} onClick={onClick} aria-pressed={selected}
-      className={cn("touch-pan-y inline-flex items-center gap-1.5 rounded-full border pl-1 pr-2.5 py-1 min-h-10 text-sm transition-all text-left",
+      className={cn("touch-pan-y inline-flex max-w-full items-center gap-1.5 rounded-full border pl-1 pr-2.5 py-1 min-h-10 text-sm transition-all text-left",
         maybe ? "border-dashed border-amber-400 bg-amber-50" : "border-border bg-white",
         issue && "border-destructive bg-destructive/5",
         selected && "ring-2 ring-[hsl(75_90%_50%)] border-transparent bg-[hsl(75_90%_92%)] -translate-y-0.5 shadow",
@@ -78,7 +78,7 @@ export function Chip({ snap, status, issue, selected, editable, onPointerDown, o
         title={editable ? "Drag to place" : undefined}
         className={cn("w-7 h-7 shrink-0 rounded-full flex items-center justify-center font-mono text-xs font-bold", editable && "touch-none cursor-grab ring-2 ring-offset-1 ring-primary/20", maybe ? "bg-amber-400 text-amber-950" : "bg-primary text-primary-foreground")}>{snap?.shirtNumber ?? "–"}</span>
       <span className="min-w-0">
-        <span className="block font-medium leading-tight">{snap?.name ?? "Unknown player"}</span>
+        <span className="block font-medium leading-tight [overflow-wrap:anywhere]">{snap?.name ?? "Unknown player"}</span>
         <span className="block text-[10px] text-muted-foreground leading-tight">{issue ?? (placedLabel ?? (snap?.position || "No position"))}{maybe && !issue ? " · Maybe" : ""}</span>
       </span>
     </button>
@@ -97,7 +97,7 @@ export function PoolGroup({ title, tone, people, placedMap, selected, canEdit, i
         {people.map((p) => {
           const placed = placedMap.get(p.playerId);
           return (
-            <li key={p.playerId}>
+            <li key={p.playerId} className="min-w-0 max-w-full">
               <Chip snap={p} status={p.status} issue={issues.get(p.playerId)} selected={selected === p.playerId} editable={canEdit}
                 placedLabel={placed ? (placed.area === "pitch" ? "On pitch" : "On bench") : undefined}
                 onPointerDown={(e) => onDrag(e, p.playerId)} onClick={() => onSelect(p.playerId)} testId={`chip-pool-${p.playerId}`} />
