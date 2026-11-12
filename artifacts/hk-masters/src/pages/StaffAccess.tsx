@@ -8,7 +8,7 @@ import {
   StaffGrantInputRoleLabel,
   type StaffGrant,
 } from "@workspace/api-client-react";
-import { ShieldCheck, RotateCcw, AlertTriangle, Pencil, Ban, RefreshCw, Users, ClipboardCheck, CalendarCog, Eye } from "lucide-react";
+import { ShieldCheck, RotateCcw, AlertTriangle, Pencil, Ban, RefreshCw, Users, ClipboardCheck, CalendarCog, Eye, LayoutGrid } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,11 +31,12 @@ type Draft = {
   roleLabel: StaffGrantInputRoleLabel;
   manageAttendance: boolean;
   manageSchedule: boolean;
+  manageLineups: boolean;
 };
 
-const EMPTY: Draft = { playerId: "", teamId: "", roleLabel: "Coach", manageAttendance: false, manageSchedule: false };
+const EMPTY: Draft = { playerId: "", teamId: "", roleLabel: "Coach", manageAttendance: false, manageSchedule: false, manageLineups: false };
 
-export function PermissionChips({ grant, dark = false }: { grant: Pick<StaffGrant, "manageAttendance" | "manageSchedule">; dark?: boolean }) {
+export function PermissionChips({ grant, dark = false }: { grant: Pick<StaffGrant, "manageAttendance" | "manageSchedule"> & { manageLineups?: boolean }; dark?: boolean }) {
   const base = dark ? "border-white/25 text-white/85" : "border-border text-muted-foreground";
   return (
     <div className="flex flex-wrap gap-1">
@@ -50,6 +51,11 @@ export function PermissionChips({ grant, dark = false }: { grant: Pick<StaffGran
       {grant.manageSchedule && (
         <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", dark ? "border-amber-300/50 text-amber-200" : "border-primary/30 text-primary bg-primary/5")}>
           <CalendarCog className="w-3 h-3" /> Schedule
+        </span>
+      )}
+      {grant.manageLineups && (
+        <span className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", dark ? "border-amber-300/50 text-amber-200" : "border-primary/30 text-primary bg-primary/5")} data-testid="badge-manage-lineups">
+          <LayoutGrid className="w-3 h-3" /> Lineups
         </span>
       )}
     </div>
@@ -112,6 +118,7 @@ export default function StaffAccess() {
       roleLabel: g.roleLabel === "Manager" ? "Manager" : "Coach",
       manageAttendance: g.manageAttendance,
       manageSchedule: g.manageSchedule,
+      manageLineups: !!g.manageLineups,
     });
     setFormError(null);
     setConflict(false);
@@ -133,6 +140,7 @@ export default function StaffAccess() {
           roleLabel: draft.roleLabel,
           manageAttendance: draft.manageAttendance,
           manageSchedule: draft.manageSchedule,
+          manageLineups: draft.manageLineups,
           version: existing?.version ?? 0,
         },
       },
@@ -248,6 +256,10 @@ export default function StaffAccess() {
                 <label className="flex items-start gap-3 text-sm cursor-pointer">
                   <Switch checked={draft.manageSchedule} onCheckedChange={(v) => setDraft((d) => ({ ...d, manageSchedule: v }))} data-testid="switch-manage-schedule" />
                   <div><p className="font-medium">Manage schedule</p><p className="text-xs text-muted-foreground">Create and edit matches and private team events.</p></div>
+                </label>
+                <label className="flex items-start gap-3 text-sm cursor-pointer">
+                  <Switch checked={draft.manageLineups} onCheckedChange={(v) => setDraft((d) => ({ ...d, manageLineups: v }))} data-testid="switch-manage-lineups" />
+                  <div><p className="font-medium">Manage lineups</p><p className="text-xs text-muted-foreground">Edit, publish and withdraw match lineups. Without it, staff can view the private draft only.</p></div>
                 </label>
               </div>
 

@@ -7,6 +7,604 @@
  */
 import * as zod from "zod";
 
+export const GetMatchLineupParams = zod.object({
+  teamId: zod.coerce.number().min(1),
+  id: zod.coerce.number().min(1),
+});
+
+export const getMatchLineupResponseDraftPlayersItemOneXMin = 0;
+export const getMatchLineupResponseDraftPlayersItemOneXMax = 100;
+
+export const getMatchLineupResponseDraftPlayersItemOneYMin = 0;
+export const getMatchLineupResponseDraftPlayersItemOneYMax = 100;
+
+export const getMatchLineupResponseDraftPlayersMax = 100;
+
+export const getMatchLineupResponsePublishedOnePlayersItemOneXMin = 0;
+export const getMatchLineupResponsePublishedOnePlayersItemOneXMax = 100;
+
+export const getMatchLineupResponsePublishedOnePlayersItemOneYMin = 0;
+export const getMatchLineupResponsePublishedOnePlayersItemOneYMax = 100;
+
+export const getMatchLineupResponsePublishedOnePlayersMax = 100;
+
+export const getMatchLineupResponseSuggestions433ItemXMin = 0;
+export const getMatchLineupResponseSuggestions433ItemXMax = 100;
+
+export const getMatchLineupResponseSuggestions433ItemYMin = 0;
+export const getMatchLineupResponseSuggestions433ItemYMax = 100;
+
+export const getMatchLineupResponseSuggestions343ItemXMin = 0;
+export const getMatchLineupResponseSuggestions343ItemXMax = 100;
+
+export const getMatchLineupResponseSuggestions343ItemYMin = 0;
+export const getMatchLineupResponseSuggestions343ItemYMax = 100;
+
+export const GetMatchLineupResponse = zod.object({
+  revision: zod.number(),
+  draft: zod.object({
+    formation: zod.enum(["4-3-3", "3-4-3"]),
+    players: zod
+      .array(
+        zod
+          .object({
+            playerId: zod.number().min(1),
+            area: zod.enum(["pitch", "bench"]),
+            x: zod
+              .number()
+              .min(getMatchLineupResponseDraftPlayersItemOneXMin)
+              .max(getMatchLineupResponseDraftPlayersItemOneXMax),
+            y: zod
+              .number()
+              .min(getMatchLineupResponseDraftPlayersItemOneYMin)
+              .max(getMatchLineupResponseDraftPlayersItemOneYMax),
+          })
+          .and(
+            zod.object({
+              playerId: zod.number(),
+              name: zod.string(),
+              shirtNumber: zod.number().nullable(),
+              position: zod.string().nullable(),
+              status: zod
+                .union([
+                  zod.literal("yes"),
+                  zod.literal("maybe"),
+                  zod.literal("no"),
+                  zod.literal(null),
+                ])
+                .nullable(),
+            }),
+          ),
+      )
+      .max(getMatchLineupResponseDraftPlayersMax),
+  }),
+  published: zod.union([
+    zod.object({
+      formation: zod.enum(["4-3-3", "3-4-3"]),
+      players: zod
+        .array(
+          zod
+            .object({
+              playerId: zod.number().min(1),
+              area: zod.enum(["pitch", "bench"]),
+              x: zod
+                .number()
+                .min(getMatchLineupResponsePublishedOnePlayersItemOneXMin)
+                .max(getMatchLineupResponsePublishedOnePlayersItemOneXMax),
+              y: zod
+                .number()
+                .min(getMatchLineupResponsePublishedOnePlayersItemOneYMin)
+                .max(getMatchLineupResponsePublishedOnePlayersItemOneYMax),
+            })
+            .and(
+              zod.object({
+                playerId: zod.number(),
+                name: zod.string(),
+                shirtNumber: zod.number().nullable(),
+                position: zod.string().nullable(),
+                status: zod
+                  .union([
+                    zod.literal("yes"),
+                    zod.literal("maybe"),
+                    zod.literal("no"),
+                    zod.literal(null),
+                  ])
+                  .nullable(),
+              }),
+            ),
+        )
+        .max(getMatchLineupResponsePublishedOnePlayersMax),
+    }),
+    zod.null(),
+  ]),
+  publishedAt: zod.string().nullable(),
+  updatedAt: zod.string().nullable(),
+  canEdit: zod.boolean(),
+  people: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      name: zod.string(),
+      shirtNumber: zod.number().nullable(),
+      position: zod.string().nullable(),
+      status: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("maybe"),
+          zod.literal("no"),
+          zod.literal(null),
+        ])
+        .nullable(),
+    }),
+  ),
+  issues: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      reason: zod.string(),
+    }),
+  ),
+  suggestions433: zod.array(
+    zod.object({
+      playerId: zod.number().min(1),
+      area: zod.enum(["pitch", "bench"]),
+      x: zod
+        .number()
+        .min(getMatchLineupResponseSuggestions433ItemXMin)
+        .max(getMatchLineupResponseSuggestions433ItemXMax),
+      y: zod
+        .number()
+        .min(getMatchLineupResponseSuggestions433ItemYMin)
+        .max(getMatchLineupResponseSuggestions433ItemYMax),
+    }),
+  ),
+  suggestions343: zod.array(
+    zod.object({
+      playerId: zod.number().min(1),
+      area: zod.enum(["pitch", "bench"]),
+      x: zod
+        .number()
+        .min(getMatchLineupResponseSuggestions343ItemXMin)
+        .max(getMatchLineupResponseSuggestions343ItemXMax),
+      y: zod
+        .number()
+        .min(getMatchLineupResponseSuggestions343ItemYMin)
+        .max(getMatchLineupResponseSuggestions343ItemYMax),
+    }),
+  ),
+});
+
+export const SaveMatchLineupParams = zod.object({
+  teamId: zod.coerce.number().min(1),
+  id: zod.coerce.number().min(1),
+});
+
+export const saveMatchLineupBodyRevisionMin = 0;
+
+export const saveMatchLineupBodyPlacementsItemXMin = 0;
+export const saveMatchLineupBodyPlacementsItemXMax = 100;
+
+export const saveMatchLineupBodyPlacementsItemYMin = 0;
+export const saveMatchLineupBodyPlacementsItemYMax = 100;
+
+export const saveMatchLineupBodyPlacementsMax = 100;
+
+export const SaveMatchLineupBody = zod.object({
+  revision: zod.number().min(saveMatchLineupBodyRevisionMin),
+  formation: zod.enum(["4-3-3", "3-4-3"]),
+  placements: zod
+    .array(
+      zod.object({
+        playerId: zod.number().min(1),
+        area: zod.enum(["pitch", "bench"]),
+        x: zod
+          .number()
+          .min(saveMatchLineupBodyPlacementsItemXMin)
+          .max(saveMatchLineupBodyPlacementsItemXMax),
+        y: zod
+          .number()
+          .min(saveMatchLineupBodyPlacementsItemYMin)
+          .max(saveMatchLineupBodyPlacementsItemYMax),
+      }),
+    )
+    .max(saveMatchLineupBodyPlacementsMax),
+});
+
+export const saveMatchLineupResponseDraftPlayersItemOneXMin = 0;
+export const saveMatchLineupResponseDraftPlayersItemOneXMax = 100;
+
+export const saveMatchLineupResponseDraftPlayersItemOneYMin = 0;
+export const saveMatchLineupResponseDraftPlayersItemOneYMax = 100;
+
+export const saveMatchLineupResponseDraftPlayersMax = 100;
+
+export const saveMatchLineupResponsePublishedOnePlayersItemOneXMin = 0;
+export const saveMatchLineupResponsePublishedOnePlayersItemOneXMax = 100;
+
+export const saveMatchLineupResponsePublishedOnePlayersItemOneYMin = 0;
+export const saveMatchLineupResponsePublishedOnePlayersItemOneYMax = 100;
+
+export const saveMatchLineupResponsePublishedOnePlayersMax = 100;
+
+export const saveMatchLineupResponseSuggestions433ItemXMin = 0;
+export const saveMatchLineupResponseSuggestions433ItemXMax = 100;
+
+export const saveMatchLineupResponseSuggestions433ItemYMin = 0;
+export const saveMatchLineupResponseSuggestions433ItemYMax = 100;
+
+export const saveMatchLineupResponseSuggestions343ItemXMin = 0;
+export const saveMatchLineupResponseSuggestions343ItemXMax = 100;
+
+export const saveMatchLineupResponseSuggestions343ItemYMin = 0;
+export const saveMatchLineupResponseSuggestions343ItemYMax = 100;
+
+export const SaveMatchLineupResponse = zod.object({
+  revision: zod.number(),
+  draft: zod.object({
+    formation: zod.enum(["4-3-3", "3-4-3"]),
+    players: zod
+      .array(
+        zod
+          .object({
+            playerId: zod.number().min(1),
+            area: zod.enum(["pitch", "bench"]),
+            x: zod
+              .number()
+              .min(saveMatchLineupResponseDraftPlayersItemOneXMin)
+              .max(saveMatchLineupResponseDraftPlayersItemOneXMax),
+            y: zod
+              .number()
+              .min(saveMatchLineupResponseDraftPlayersItemOneYMin)
+              .max(saveMatchLineupResponseDraftPlayersItemOneYMax),
+          })
+          .and(
+            zod.object({
+              playerId: zod.number(),
+              name: zod.string(),
+              shirtNumber: zod.number().nullable(),
+              position: zod.string().nullable(),
+              status: zod
+                .union([
+                  zod.literal("yes"),
+                  zod.literal("maybe"),
+                  zod.literal("no"),
+                  zod.literal(null),
+                ])
+                .nullable(),
+            }),
+          ),
+      )
+      .max(saveMatchLineupResponseDraftPlayersMax),
+  }),
+  published: zod.union([
+    zod.object({
+      formation: zod.enum(["4-3-3", "3-4-3"]),
+      players: zod
+        .array(
+          zod
+            .object({
+              playerId: zod.number().min(1),
+              area: zod.enum(["pitch", "bench"]),
+              x: zod
+                .number()
+                .min(saveMatchLineupResponsePublishedOnePlayersItemOneXMin)
+                .max(saveMatchLineupResponsePublishedOnePlayersItemOneXMax),
+              y: zod
+                .number()
+                .min(saveMatchLineupResponsePublishedOnePlayersItemOneYMin)
+                .max(saveMatchLineupResponsePublishedOnePlayersItemOneYMax),
+            })
+            .and(
+              zod.object({
+                playerId: zod.number(),
+                name: zod.string(),
+                shirtNumber: zod.number().nullable(),
+                position: zod.string().nullable(),
+                status: zod
+                  .union([
+                    zod.literal("yes"),
+                    zod.literal("maybe"),
+                    zod.literal("no"),
+                    zod.literal(null),
+                  ])
+                  .nullable(),
+              }),
+            ),
+        )
+        .max(saveMatchLineupResponsePublishedOnePlayersMax),
+    }),
+    zod.null(),
+  ]),
+  publishedAt: zod.string().nullable(),
+  updatedAt: zod.string().nullable(),
+  canEdit: zod.boolean(),
+  people: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      name: zod.string(),
+      shirtNumber: zod.number().nullable(),
+      position: zod.string().nullable(),
+      status: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("maybe"),
+          zod.literal("no"),
+          zod.literal(null),
+        ])
+        .nullable(),
+    }),
+  ),
+  issues: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      reason: zod.string(),
+    }),
+  ),
+  suggestions433: zod.array(
+    zod.object({
+      playerId: zod.number().min(1),
+      area: zod.enum(["pitch", "bench"]),
+      x: zod
+        .number()
+        .min(saveMatchLineupResponseSuggestions433ItemXMin)
+        .max(saveMatchLineupResponseSuggestions433ItemXMax),
+      y: zod
+        .number()
+        .min(saveMatchLineupResponseSuggestions433ItemYMin)
+        .max(saveMatchLineupResponseSuggestions433ItemYMax),
+    }),
+  ),
+  suggestions343: zod.array(
+    zod.object({
+      playerId: zod.number().min(1),
+      area: zod.enum(["pitch", "bench"]),
+      x: zod
+        .number()
+        .min(saveMatchLineupResponseSuggestions343ItemXMin)
+        .max(saveMatchLineupResponseSuggestions343ItemXMax),
+      y: zod
+        .number()
+        .min(saveMatchLineupResponseSuggestions343ItemYMin)
+        .max(saveMatchLineupResponseSuggestions343ItemYMax),
+    }),
+  ),
+});
+
+export const SetLineupPublicationParams = zod.object({
+  teamId: zod.coerce.number().min(1),
+  id: zod.coerce.number().min(1),
+});
+
+export const SetLineupPublicationBody = zod.object({
+  revision: zod.number().min(1),
+  action: zod.enum(["publish", "withdraw"]),
+});
+
+export const setLineupPublicationResponseDraftPlayersItemOneXMin = 0;
+export const setLineupPublicationResponseDraftPlayersItemOneXMax = 100;
+
+export const setLineupPublicationResponseDraftPlayersItemOneYMin = 0;
+export const setLineupPublicationResponseDraftPlayersItemOneYMax = 100;
+
+export const setLineupPublicationResponseDraftPlayersMax = 100;
+
+export const setLineupPublicationResponsePublishedOnePlayersItemOneXMin = 0;
+export const setLineupPublicationResponsePublishedOnePlayersItemOneXMax = 100;
+
+export const setLineupPublicationResponsePublishedOnePlayersItemOneYMin = 0;
+export const setLineupPublicationResponsePublishedOnePlayersItemOneYMax = 100;
+
+export const setLineupPublicationResponsePublishedOnePlayersMax = 100;
+
+export const setLineupPublicationResponseSuggestions433ItemXMin = 0;
+export const setLineupPublicationResponseSuggestions433ItemXMax = 100;
+
+export const setLineupPublicationResponseSuggestions433ItemYMin = 0;
+export const setLineupPublicationResponseSuggestions433ItemYMax = 100;
+
+export const setLineupPublicationResponseSuggestions343ItemXMin = 0;
+export const setLineupPublicationResponseSuggestions343ItemXMax = 100;
+
+export const setLineupPublicationResponseSuggestions343ItemYMin = 0;
+export const setLineupPublicationResponseSuggestions343ItemYMax = 100;
+
+export const SetLineupPublicationResponse = zod.object({
+  revision: zod.number(),
+  draft: zod.object({
+    formation: zod.enum(["4-3-3", "3-4-3"]),
+    players: zod
+      .array(
+        zod
+          .object({
+            playerId: zod.number().min(1),
+            area: zod.enum(["pitch", "bench"]),
+            x: zod
+              .number()
+              .min(setLineupPublicationResponseDraftPlayersItemOneXMin)
+              .max(setLineupPublicationResponseDraftPlayersItemOneXMax),
+            y: zod
+              .number()
+              .min(setLineupPublicationResponseDraftPlayersItemOneYMin)
+              .max(setLineupPublicationResponseDraftPlayersItemOneYMax),
+          })
+          .and(
+            zod.object({
+              playerId: zod.number(),
+              name: zod.string(),
+              shirtNumber: zod.number().nullable(),
+              position: zod.string().nullable(),
+              status: zod
+                .union([
+                  zod.literal("yes"),
+                  zod.literal("maybe"),
+                  zod.literal("no"),
+                  zod.literal(null),
+                ])
+                .nullable(),
+            }),
+          ),
+      )
+      .max(setLineupPublicationResponseDraftPlayersMax),
+  }),
+  published: zod.union([
+    zod.object({
+      formation: zod.enum(["4-3-3", "3-4-3"]),
+      players: zod
+        .array(
+          zod
+            .object({
+              playerId: zod.number().min(1),
+              area: zod.enum(["pitch", "bench"]),
+              x: zod
+                .number()
+                .min(setLineupPublicationResponsePublishedOnePlayersItemOneXMin)
+                .max(
+                  setLineupPublicationResponsePublishedOnePlayersItemOneXMax,
+                ),
+              y: zod
+                .number()
+                .min(setLineupPublicationResponsePublishedOnePlayersItemOneYMin)
+                .max(
+                  setLineupPublicationResponsePublishedOnePlayersItemOneYMax,
+                ),
+            })
+            .and(
+              zod.object({
+                playerId: zod.number(),
+                name: zod.string(),
+                shirtNumber: zod.number().nullable(),
+                position: zod.string().nullable(),
+                status: zod
+                  .union([
+                    zod.literal("yes"),
+                    zod.literal("maybe"),
+                    zod.literal("no"),
+                    zod.literal(null),
+                  ])
+                  .nullable(),
+              }),
+            ),
+        )
+        .max(setLineupPublicationResponsePublishedOnePlayersMax),
+    }),
+    zod.null(),
+  ]),
+  publishedAt: zod.string().nullable(),
+  updatedAt: zod.string().nullable(),
+  canEdit: zod.boolean(),
+  people: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      name: zod.string(),
+      shirtNumber: zod.number().nullable(),
+      position: zod.string().nullable(),
+      status: zod
+        .union([
+          zod.literal("yes"),
+          zod.literal("maybe"),
+          zod.literal("no"),
+          zod.literal(null),
+        ])
+        .nullable(),
+    }),
+  ),
+  issues: zod.array(
+    zod.object({
+      playerId: zod.number(),
+      reason: zod.string(),
+    }),
+  ),
+  suggestions433: zod.array(
+    zod.object({
+      playerId: zod.number().min(1),
+      area: zod.enum(["pitch", "bench"]),
+      x: zod
+        .number()
+        .min(setLineupPublicationResponseSuggestions433ItemXMin)
+        .max(setLineupPublicationResponseSuggestions433ItemXMax),
+      y: zod
+        .number()
+        .min(setLineupPublicationResponseSuggestions433ItemYMin)
+        .max(setLineupPublicationResponseSuggestions433ItemYMax),
+    }),
+  ),
+  suggestions343: zod.array(
+    zod.object({
+      playerId: zod.number().min(1),
+      area: zod.enum(["pitch", "bench"]),
+      x: zod
+        .number()
+        .min(setLineupPublicationResponseSuggestions343ItemXMin)
+        .max(setLineupPublicationResponseSuggestions343ItemXMax),
+      y: zod
+        .number()
+        .min(setLineupPublicationResponseSuggestions343ItemYMin)
+        .max(setLineupPublicationResponseSuggestions343ItemYMax),
+    }),
+  ),
+});
+
+export const GetPublishedMatchLineupParams = zod.object({
+  id: zod.coerce.number().min(1),
+});
+
+export const getPublishedMatchLineupResponsePublishedOnePlayersItemOneXMin = 0;
+export const getPublishedMatchLineupResponsePublishedOnePlayersItemOneXMax = 100;
+
+export const getPublishedMatchLineupResponsePublishedOnePlayersItemOneYMin = 0;
+export const getPublishedMatchLineupResponsePublishedOnePlayersItemOneYMax = 100;
+
+export const getPublishedMatchLineupResponsePublishedOnePlayersMax = 100;
+
+export const GetPublishedMatchLineupResponse = zod.object({
+  published: zod.union([
+    zod.object({
+      formation: zod.enum(["4-3-3", "3-4-3"]),
+      players: zod
+        .array(
+          zod
+            .object({
+              playerId: zod.number().min(1),
+              area: zod.enum(["pitch", "bench"]),
+              x: zod
+                .number()
+                .min(
+                  getPublishedMatchLineupResponsePublishedOnePlayersItemOneXMin,
+                )
+                .max(
+                  getPublishedMatchLineupResponsePublishedOnePlayersItemOneXMax,
+                ),
+              y: zod
+                .number()
+                .min(
+                  getPublishedMatchLineupResponsePublishedOnePlayersItemOneYMin,
+                )
+                .max(
+                  getPublishedMatchLineupResponsePublishedOnePlayersItemOneYMax,
+                ),
+            })
+            .and(
+              zod.object({
+                playerId: zod.number(),
+                name: zod.string(),
+                shirtNumber: zod.number().nullable(),
+                position: zod.string().nullable(),
+                status: zod
+                  .union([
+                    zod.literal("yes"),
+                    zod.literal("maybe"),
+                    zod.literal("no"),
+                    zod.literal(null),
+                  ])
+                  .nullable(),
+              }),
+            ),
+        )
+        .max(getPublishedMatchLineupResponsePublishedOnePlayersMax),
+    }),
+    zod.null(),
+  ]),
+  publishedAt: zod.string().nullable(),
+});
+
 export const previewMemberBulkEditBodyPlayerIdsMax = 500;
 
 export const PreviewMemberBulkEditBody = zod.object({
@@ -386,6 +984,7 @@ export const GetStaffIdentityResponse = zod.object({
       roleLabel: zod.string(),
       manageAttendance: zod.boolean(),
       manageSchedule: zod.boolean(),
+      manageLineups: zod.boolean(),
       version: zod.number(),
       revokedAt: zod.string().nullable(),
     }),
@@ -420,6 +1019,7 @@ export const GetStaffAccessResponse = zod.object({
       roleLabel: zod.string(),
       manageAttendance: zod.boolean(),
       manageSchedule: zod.boolean(),
+      manageLineups: zod.boolean(),
       version: zod.number(),
       revokedAt: zod.string().nullable(),
     }),
@@ -438,6 +1038,7 @@ export const GetStaffAccessResponse = zod.object({
   ),
 });
 
+export const saveStaffGrantBodyManageLineupsDefault = false;
 export const saveStaffGrantBodyVersionMin = 0;
 
 export const SaveStaffGrantBody = zod.object({
@@ -447,6 +1048,7 @@ export const SaveStaffGrantBody = zod.object({
   roleLabel: zod.enum(["Coach", "Manager"]),
   manageAttendance: zod.boolean(),
   manageSchedule: zod.boolean(),
+  manageLineups: zod.boolean().default(saveStaffGrantBodyManageLineupsDefault),
   version: zod.number().min(saveStaffGrantBodyVersionMin),
 });
 

@@ -23,6 +23,7 @@ export * from "./whatsapp-templates";
 export * from "./documents";
 export * from "./admin-sessions";
 export * from "./staff-access";
+export * from "./match-lineups";
 export * from "./shirt-numbers";
 export * from "./auction";
 export * from "./push-subscriptions";

@@ -1,6 +1,7 @@
 import { API_BASE } from "../utils/api";
 
 const TOKEN_KEY = "hkm_player_session";
+export const PLAYER_SESSION_EVENT = "hkm:player-session-change";
 
 export function getPlayerToken() {
   try {
@@ -12,8 +13,12 @@ export function getPlayerToken() {
 
 export function setPlayerToken(token) {
   try {
+    const previous = localStorage.getItem(TOKEN_KEY);
     if (token) localStorage.setItem(TOKEN_KEY, token);
     else localStorage.removeItem(TOKEN_KEY);
+    if (previous !== (token || null) && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(PLAYER_SESSION_EVENT));
+    }
   } catch {
     // ignore (private browsing etc.)
   }

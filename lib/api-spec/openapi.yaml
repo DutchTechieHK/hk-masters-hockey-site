@@ -31,6 +31,61 @@ tags:
     description: Read-only historical World Cup showcase operations
 
 paths:
+  /staff/teams/{teamId}/matches/{id}/lineup:
+    parameters:
+      - { name: teamId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    get:
+      operationId: getMatchLineup
+      responses:
+        "200":
+          description: Private lineup workspace for team staff or full admins
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LineupWorkspace" }
+    put:
+      operationId: saveMatchLineup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LineupInput" }
+      responses:
+        "200":
+          description: Saved draft; publication is unchanged
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LineupWorkspace" }
+        "409": { description: Stale revision or eligibility changed }
+  /staff/teams/{teamId}/matches/{id}/lineup/publication:
+    parameters:
+      - { name: teamId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    post:
+      operationId: setLineupPublication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LineupPublicationInput" }
+      responses:
+        "200":
+          description: Published saved revision or withdrew publication
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LineupWorkspace" }
+        "409": { description: Stale revision or unavailable selection }
+  /player-auth/matches/{id}/lineup:
+    get:
+      operationId: getPublishedMatchLineup
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Eligible member read-only publication; never includes a draft
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LineupPublication" }
   /member-bulk-edits/preview:
     post:
       operationId: previewMemberBulkEdit
@@ -1976,6 +2031,92 @@ paths:
 
 components:
   schemas:
+    LineupPlacement:
+      type: object
+      required: [playerId, area, x, y]
+      properties:
+        playerId: { type: integer, minimum: 1 }
+        area: { type: string, enum: [pitch, bench] }
+        x: { type: number, minimum: 0, maximum: 100 }
+        y: { type: number, minimum: 0, maximum: 100 }
+    LineupPerson:
+      type: object
+      required: [playerId, name, shirtNumber, position, status]
+      properties:
+        playerId: { type: integer }
+        name: { type: string }
+        shirtNumber: { type: ["integer", "null"] }
+        position: { type: ["string", "null"] }
+        status: { type: ["string", "null"], enum: [yes, maybe, no, null] }
+    LineupPlayer:
+      allOf:
+        - { $ref: "#/components/schemas/LineupPlacement" }
+        - { $ref: "#/components/schemas/LineupPerson" }
+    LineupBoard:
+      type: object
+      required: [formation, players]
+      properties:
+        formation: { type: string, enum: ["4-3-3", "3-4-3"] }
+        players:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/LineupPlayer" }
+    LineupInput:
+      type: object
+      required: [revision, formation, placements]
+      properties:
+        revision: { type: integer, minimum: 0 }
+        formation: { type: string, enum: ["4-3-3", "3-4-3"] }
+        placements:
+          type: array
+          maxItems: 100
+          items: { $ref: "#/components/schemas/LineupPlacement" }
+    LineupPublicationInput:
+      type: object
+      required: [revision, action]
+      properties:
+        revision: { type: integer, minimum: 1 }
+        action: { type: string, enum: [publish, withdraw] }
+    LineupIssue:
+      type: object
+      required: [playerId, reason]
+      properties:
+        playerId: { type: integer }
+        reason: { type: string }
+    LineupPublication:
+      type: object
+      required: [published, publishedAt]
+      properties:
+        published:
+          oneOf:
+            - { $ref: "#/components/schemas/LineupBoard" }
+            - { type: "null" }
+        publishedAt: { type: ["string", "null"] }
+    LineupWorkspace:
+      type: object
+      required: [revision, draft, published, publishedAt, updatedAt, canEdit, people, issues, suggestions433, suggestions343]
+      properties:
+        revision: { type: integer }
+        draft: { $ref: "#/components/schemas/LineupBoard" }
+        published:
+          oneOf:
+            - { $ref: "#/components/schemas/LineupBoard" }
+            - { type: "null" }
+        publishedAt: { type: ["string", "null"] }
+        updatedAt: { type: ["string", "null"] }
+        canEdit: { type: boolean }
+        people:
+          type: array
+          items: { $ref: "#/components/schemas/LineupPerson" }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/LineupIssue" }
+        suggestions433:
+          type: array
+          items: { $ref: "#/components/schemas/LineupPlacement" }
+        suggestions343:
+          type: array
+          items: { $ref: "#/components/schemas/LineupPlacement" }
     MemberBulkEditSelection:
       type: object
       required: [playerIds, field, value]
@@ -2238,7 +2379,7 @@ components:
         token: { type: string }
     StaffGrant:
       type: object
-      required: [id, playerId, playerName, teamId, teamName, seasonId, roleLabel, manageAttendance, manageSchedule, version, revokedAt]
+      required: [id, playerId, playerName, teamId, teamName, seasonId, roleLabel, manageAttendance, manageSchedule, manageLineups, version, revokedAt]
       properties:
         id: { type: integer }
         playerId: { type: integer }
@@ -2249,6 +2390,7 @@ components:
         roleLabel: { type: string }
         manageAttendance: { type: boolean }
         manageSchedule: { type: boolean }
+        manageLineups: { type: boolean }
         version: { type: integer }
         revokedAt: { type: [string, "null"] }
     StaffIdentity:
@@ -2272,6 +2414,7 @@ components:
         roleLabel: { type: string, enum: [Coach, Manager] }
         manageAttendance: { type: boolean }
         manageSchedule: { type: boolean }
+        manageLineups: { type: boolean, default: false }
         version: { type: integer, minimum: 0 }
     StaffGrantVersion:
       type: object

@@ -16,6 +16,7 @@ export interface StaffGrant {
   roleLabel: string;
   manageAttendance: boolean;
   manageSchedule: boolean;
+  manageLineups: boolean;
   version: number;
   /** @nullable */
   revokedAt: string | null;

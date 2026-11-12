@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useGetStaffTeam, getGetStaffTeamQueryKey, type Match, type ClubEvent } from "@workspace/api-client-react";
-import { CalendarPlus, Plus, Pencil, MapPin, Users, ShieldAlert, RefreshCw, ChevronRight, ShieldCheck, Swords, CalendarClock } from "lucide-react";
+import { CalendarPlus, Plus, Pencil, MapPin, Users, ShieldAlert, RefreshCw, ChevronRight, ShieldCheck, Swords, CalendarClock, LayoutGrid } from "lucide-react";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { useAuthIdentity } from "@/components/AdminAuthGate";
 import { PermissionChips } from "@/pages/StaffAccess";
@@ -301,6 +301,13 @@ function MatchRow({ match, canEdit, onOpen, onEdit }: { match: Match; canEdit: b
         {scored && <span className="font-mono font-bold text-lg tabular-nums">{match.ourScore}–{match.theirScore}</span>}
         <ChevronRight className="w-4 h-4 text-muted-foreground" />
       </button>
+      {match.status !== "cancelled" && (
+        <Link href={`/staff/teams/${match.teamId}/matches/${match.id}/lineup`} state={{ opponent: match.opponent, kickoffAt: match.kickoffAt }}
+          className="px-3 border-l border-border flex flex-col items-center justify-center gap-0.5 text-primary hover:bg-primary/5 min-w-14"
+          aria-label={`Lineup vs ${match.opponent}`} data-testid={`link-lineup-${match.id}`}>
+          <LayoutGrid className="w-4 h-4" /><span className="text-[10px] font-semibold uppercase tracking-wide">Lineup</span>
+        </Link>
+      )}
       {canEdit && (
         <button onClick={onEdit} className="px-3 border-l border-border text-muted-foreground hover:text-foreground hover:bg-muted/40" aria-label="Edit match" data-testid={`button-edit-match-${match.id}`}>
           <Pencil className="w-4 h-4" />

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 import type { Match } from "@workspace/api-client-react"
+import { Link } from "wouter"
+import { LayoutGrid } from "lucide-react"
 import { Modal } from "@/components/ui/modal"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -152,6 +154,13 @@ export default function MatchAttendanceModal({ match, token, onClose, onChanged 
             hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Hong_Kong",
           })} HKT
         </p>
+        {match.status !== "cancelled" && (
+          <Link href={`/staff/teams/${match.teamId}/matches/${match.id}/lineup`} state={{ opponent: match.opponent, kickoffAt: match.kickoffAt }}
+            className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5 text-sm hover:bg-primary/10" data-testid="link-admin-lineup">
+            <LayoutGrid className="w-4 h-4 text-primary" />
+            <span className="flex-1"><span className="font-semibold text-primary">Open lineup board</span><span className="block text-xs text-muted-foreground">Full admin access: edit, publish or withdraw the match lineup.</span></span>
+          </Link>
+        )}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
         {!attendance && !error && <p className="text-sm text-muted-foreground">Loading attendance…</p>}
         {attendance && (

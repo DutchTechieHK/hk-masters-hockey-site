@@ -8,6 +8,7 @@ import { themeFor } from "../utils/teamTheme";
 import MatchAttendanceControls from "../components/MatchAttendanceControls";
 import useMatchAttendance from "../hooks/useMatchAttendance";
 import TrainingAttendanceSummary from "../components/TrainingAttendanceSummary";
+import PublishedLineup from "../components/PublishedLineup";
 
 const KIND_META = {
   training:    { label: "Training",    emoji: "🏑", chip: "bg-emerald-100 text-emerald-800" },
@@ -128,7 +129,7 @@ function downloadIcs(events, filename, calendarName) {
 }
 
 // Match fixture card ---------------------------------------------------------
-function MatchFixtureCard({ match, attendance, saving, error, onSubmit, attendanceLoading, attendanceError, onRefresh }) {
+function MatchFixtureCard({ match, onOpenLineup, attendance, saving, error, onSubmit, attendanceLoading, attendanceError, onRefresh }) {
   const isPast    = match.status === "final" || match.status === "cancelled";
   const isLive    = match.status === "in_progress";
   const countdown = match.status === "scheduled" ? getMatchCountdown(match.kickoffAt) : null;
@@ -236,6 +237,13 @@ function MatchFixtureCard({ match, attendance, saving, error, onSubmit, attendan
               </svg>
               Add to calendar
             </a>
+          </div>
+        )}
+        {onOpenLineup && match.status !== "cancelled" && (
+          <div className="mt-2 pt-2 border-t border-gray-100 text-center">
+            <button type="button" onClick={() => onOpenLineup(match)} className="min-h-10 inline-flex items-center gap-1.5 text-xs font-semibold text-[#1E3A6E] hover:underline" data-testid={`button-view-lineup-${match.id}`}>
+              View published lineup
+            </button>
           </div>
         )}
         {attendance && match.status === "scheduled" && new Date(match.kickoffAt).getTime() > Date.now() && (
@@ -424,6 +432,7 @@ export default function MySchedule() {
   const { matches: eventAttendance, loading: eventLoading, error: eventError, refresh: refreshEvents } = useMatchAttendance("event");
   const [matchSaving, setMatchSaving] = useState({});
   const [matchErrors, setMatchErrors] = useState({});
+  const [lineupMatch, setLineupMatch] = useState(null);
 
   const submitMatchRsvp = async (matchId, status, note) => {
     const token = getPlayerToken();
@@ -679,7 +688,7 @@ export default function MySchedule() {
             </div>
             <div className="space-y-3">
               {upcomingMatches.map((match) => (
-                <MatchFixtureCard key={match.id} match={match}
+                <MatchFixtureCard key={match.id} match={match} onOpenLineup={setLineupMatch}
                   attendance={matchAttendance[match.id]}
                   saving={!!matchSaving[match.id]}
                   error={matchErrors[match.id]}
@@ -690,6 +699,10 @@ export default function MySchedule() {
               ))}
             </div>
           </div>
+        )}
+
+        {lineupMatch && (
+          <PublishedLineup key={lineupMatch.id} matchId={lineupMatch.id} title={`HK Masters vs ${lineupMatch.opponent}`} onClose={() => setLineupMatch(null)} />
         )}
 
         {/* Past events & results */}

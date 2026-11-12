@@ -5,6 +5,126 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+export type LineupPlacementArea =
+  (typeof LineupPlacementArea)[keyof typeof LineupPlacementArea];
+
+export const LineupPlacementArea = {
+  pitch: "pitch",
+  bench: "bench",
+} as const;
+
+export interface LineupPlacement {
+  /** @minimum 1 */
+  playerId: number;
+  area: LineupPlacementArea;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  x: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  y: number;
+}
+
+/**
+ * @nullable
+ */
+export type LineupPersonStatus =
+  | (typeof LineupPersonStatus)[keyof typeof LineupPersonStatus]
+  | null;
+
+export const LineupPersonStatus = {
+  yes: "yes",
+  maybe: "maybe",
+  no: "no",
+} as const;
+
+export interface LineupPerson {
+  playerId: number;
+  name: string;
+  /** @nullable */
+  shirtNumber: number | null;
+  /** @nullable */
+  position: string | null;
+  /** @nullable */
+  status: LineupPersonStatus;
+}
+
+export type LineupPlayer = LineupPlacement & LineupPerson;
+
+export type LineupBoardFormation =
+  (typeof LineupBoardFormation)[keyof typeof LineupBoardFormation];
+
+export const LineupBoardFormation = {
+  "4-3-3": "4-3-3",
+  "3-4-3": "3-4-3",
+} as const;
+
+export interface LineupBoard {
+  formation: LineupBoardFormation;
+  /** @maxItems 100 */
+  players: LineupPlayer[];
+}
+
+export type LineupInputFormation =
+  (typeof LineupInputFormation)[keyof typeof LineupInputFormation];
+
+export const LineupInputFormation = {
+  "4-3-3": "4-3-3",
+  "3-4-3": "3-4-3",
+} as const;
+
+export interface LineupInput {
+  /** @minimum 0 */
+  revision: number;
+  formation: LineupInputFormation;
+  /** @maxItems 100 */
+  placements: LineupPlacement[];
+}
+
+export type LineupPublicationInputAction =
+  (typeof LineupPublicationInputAction)[keyof typeof LineupPublicationInputAction];
+
+export const LineupPublicationInputAction = {
+  publish: "publish",
+  withdraw: "withdraw",
+} as const;
+
+export interface LineupPublicationInput {
+  /** @minimum 1 */
+  revision: number;
+  action: LineupPublicationInputAction;
+}
+
+export interface LineupIssue {
+  playerId: number;
+  reason: string;
+}
+
+export interface LineupPublication {
+  published: LineupBoard | null;
+  /** @nullable */
+  publishedAt: string | null;
+}
+
+export interface LineupWorkspace {
+  revision: number;
+  draft: LineupBoard;
+  published: LineupBoard | null;
+  /** @nullable */
+  publishedAt: string | null;
+  /** @nullable */
+  updatedAt: string | null;
+  canEdit: boolean;
+  people: LineupPerson[];
+  issues: LineupIssue[];
+  suggestions433: LineupPlacement[];
+  suggestions343: LineupPlacement[];
+}
+
 export type MemberBulkEditSelectionField =
   (typeof MemberBulkEditSelectionField)[keyof typeof MemberBulkEditSelectionField];
 
@@ -394,6 +514,7 @@ export interface StaffGrant {
   roleLabel: string;
   manageAttendance: boolean;
   manageSchedule: boolean;
+  manageLineups: boolean;
   version: number;
   /** @nullable */
   revokedAt: string | null;
@@ -425,6 +546,7 @@ export interface StaffGrantInput {
   roleLabel: StaffGrantInputRoleLabel;
   manageAttendance: boolean;
   manageSchedule: boolean;
+  manageLineups?: boolean;
   /** @minimum 0 */
   version: number;
 }

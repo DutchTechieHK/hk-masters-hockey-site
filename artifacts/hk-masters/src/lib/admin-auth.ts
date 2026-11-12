@@ -100,7 +100,7 @@ export function identityFingerprint(identity: AuthIdentity | null): string {
   const s = identity.staff;
   const grants = [...s.grants]
     .sort((a, b) => a.id - b.id)
-    .map((g) => `${g.id}:${g.version}:${g.teamId}:${g.manageAttendance ? 1 : 0}${g.manageSchedule ? 1 : 0}:${g.revokedAt ? "r" : "a"}`)
+    .map((g) => `${g.id}:${g.version}:${g.teamId}:${g.manageAttendance ? 1 : 0}${g.manageSchedule ? 1 : 0}${g.manageLineups ? 1 : 0}:${g.revokedAt ? "r" : "a"}`)
     .join(",");
   return `staff:${s.playerId}:${s.seasonId}:${grants}`;
 }

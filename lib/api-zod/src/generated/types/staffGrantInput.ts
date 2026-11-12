@@ -17,6 +17,7 @@ export interface StaffGrantInput {
   roleLabel: StaffGrantInputRoleLabel;
   manageAttendance: boolean;
   manageSchedule: boolean;
+  manageLineups?: boolean;
   /** @minimum 0 */
   version: number;
 }

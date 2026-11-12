@@ -36,6 +36,7 @@ import WebsiteContent from "@/pages/WebsiteContent";
 import NotFound from "@/pages/not-found";
 import { AdminAuthGate, useAuthIdentity } from "@/components/AdminAuthGate";
 import StaffAccess from "@/pages/StaffAccess";
+import MatchLineup from "@/pages/MatchLineup";
 import StaffWorkspace, { StaffWorkspaceAdminNotice } from "@/pages/StaffWorkspace";
 
 import ArchiveLanding from "@/pages/archive/ArchiveLanding";
@@ -54,6 +55,7 @@ function StaffRouter() {
   // Team-scoped staff: only the workspace exists. No full-admin component is ever mounted.
   return (
     <Switch>
+      <Route path="/staff/teams/:teamId/matches/:matchId/lineup" component={MatchLineup} />
       <Route path="/staff" component={StaffWorkspace} />
       <Route>{() => <Redirect to="/staff" />}</Route>
     </Switch>
@@ -70,6 +72,7 @@ function AdminRouter() {
   return (
     <Switch>
       <Route path="/access" component={StaffAccess} />
+      <Route path="/staff/teams/:teamId/matches/:matchId/lineup" component={MatchLineup} />
       <Route path="/staff" component={StaffWorkspaceAdminNotice} />
       {/* Current Operations */}
       <Route path="/" component={Dashboard} />

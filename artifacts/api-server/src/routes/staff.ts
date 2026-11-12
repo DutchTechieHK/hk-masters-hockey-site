@@ -90,7 +90,7 @@ router.put("/access/grants", requireAdminAccess, async (req, res) => {
       eq(staffTeamGrantsTable.seasonId, season.id),
     )).for("update");
     if ((existing?.version ?? 0) !== input.version) throw new StaffAccessError(409, "Access changed since you opened it. Reload before saving.");
-    const values = { roleLabel: input.roleLabel, manageAttendance: input.manageAttendance, manageSchedule: input.manageSchedule, revokedAt: null, updatedAt: new Date() };
+    const values = { roleLabel: input.roleLabel, manageAttendance: input.manageAttendance, manageSchedule: input.manageSchedule, manageLineups: input.manageLineups ?? false, revokedAt: null, updatedAt: new Date() };
     if (existing) {
       await tx.update(staffTeamGrantsTable).set({ ...values, version: existing.version + 1 }).where(eq(staffTeamGrantsTable.id, existing.id));
     } else {
@@ -101,7 +101,7 @@ router.put("/access/grants", requireAdminAccess, async (req, res) => {
     }
     await tx.insert(staffAuditTable).values({
       actor, teamId: input.teamId, action: existing ? "access.updated" : "access.granted",
-      target: `member:${input.playerId};season:${season.id};role:${input.roleLabel};attendance:${input.manageAttendance};schedule:${input.manageSchedule}`,
+      target: `member:${input.playerId};season:${season.id};role:${input.roleLabel};attendance:${input.manageAttendance};schedule:${input.manageSchedule};lineups:${values.manageLineups}`,
       status: 200,
     });
   });

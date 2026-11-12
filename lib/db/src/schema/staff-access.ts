@@ -12,6 +12,7 @@ export const staffTeamGrantsTable = pgTable("staff_team_grants", {
   roleLabel: text("role_label").notNull().default("Coach"),
   manageAttendance: boolean("manage_attendance").notNull().default(false),
   manageSchedule: boolean("manage_schedule").notNull().default(false),
+  manageLineups: boolean("manage_lineups").notNull().default(false),
   version: integer("version").notNull().default(1),
   revokedAt: timestamp("revoked_at"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

@@ -35,10 +35,12 @@ import shirtNumbersRouter from "./shirtNumbers";
 import portalInvitationsRouter from "./portalInvitations";
 import memberBulkEditsRouter from "./memberBulkEdits";
 import { isolateStaffSession } from "../middleware/staffAccess";
+import lineupsRouter from "./lineups";
 
 const router: IRouter = Router();
 
 router.use(isolateStaffSession);
+router.use(lineupsRouter);
 router.use("/staff", staffRouter);
 router.use("/shirt-numbers", shirtNumbersRouter);
 router.use("/portal-invitations", portalInvitationsRouter);

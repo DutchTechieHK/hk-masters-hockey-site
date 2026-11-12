@@ -45,6 +45,10 @@ import type {
   InsuranceReminderRequest,
   KitDistribution,
   KitOrder,
+  LineupInput,
+  LineupPublication,
+  LineupPublicationInput,
+  LineupWorkspace,
   ListAnnouncementsParams,
   ListClubEventsParams,
   ListKitsParams,
@@ -127,6 +131,336 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetMatchLineupUrl = (teamId: number, id: number) => {
+  return `/api/staff/teams/${teamId}/matches/${id}/lineup`;
+};
+
+export const getMatchLineup = async (
+  teamId: number,
+  id: number,
+  options?: RequestInit,
+): Promise<LineupWorkspace> => {
+  return customFetch<LineupWorkspace>(getGetMatchLineupUrl(teamId, id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMatchLineupQueryKey = (teamId: number, id: number) => {
+  return [`/api/staff/teams/${teamId}/matches/${id}/lineup`] as const;
+};
+
+export const getGetMatchLineupQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMatchLineup>>,
+  TError = ErrorType<unknown>,
+>(
+  teamId: number,
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMatchLineup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMatchLineupQueryKey(teamId, id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMatchLineup>>> = ({
+    signal,
+  }) => getMatchLineup(teamId, id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(teamId && id),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMatchLineup>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMatchLineupQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMatchLineup>>
+>;
+export type GetMatchLineupQueryError = ErrorType<unknown>;
+
+export function useGetMatchLineup<
+  TData = Awaited<ReturnType<typeof getMatchLineup>>,
+  TError = ErrorType<unknown>,
+>(
+  teamId: number,
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMatchLineup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMatchLineupQueryOptions(teamId, id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSaveMatchLineupUrl = (teamId: number, id: number) => {
+  return `/api/staff/teams/${teamId}/matches/${id}/lineup`;
+};
+
+export const saveMatchLineup = async (
+  teamId: number,
+  id: number,
+  lineupInput: LineupInput,
+  options?: RequestInit,
+): Promise<LineupWorkspace> => {
+  return customFetch<LineupWorkspace>(getSaveMatchLineupUrl(teamId, id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lineupInput),
+  });
+};
+
+export const getSaveMatchLineupMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMatchLineup>>,
+    TError,
+    { teamId: number; id: number; data: BodyType<LineupInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveMatchLineup>>,
+  TError,
+  { teamId: number; id: number; data: BodyType<LineupInput> },
+  TContext
+> => {
+  const mutationKey = ["saveMatchLineup"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveMatchLineup>>,
+    { teamId: number; id: number; data: BodyType<LineupInput> }
+  > = (props) => {
+    const { teamId, id, data } = props ?? {};
+
+    return saveMatchLineup(teamId, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveMatchLineupMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveMatchLineup>>
+>;
+export type SaveMatchLineupMutationBody = BodyType<LineupInput>;
+export type SaveMatchLineupMutationError = ErrorType<void>;
+
+export const useSaveMatchLineup = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveMatchLineup>>,
+    TError,
+    { teamId: number; id: number; data: BodyType<LineupInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveMatchLineup>>,
+  TError,
+  { teamId: number; id: number; data: BodyType<LineupInput> },
+  TContext
+> => {
+  return useMutation(getSaveMatchLineupMutationOptions(options));
+};
+
+export const getSetLineupPublicationUrl = (teamId: number, id: number) => {
+  return `/api/staff/teams/${teamId}/matches/${id}/lineup/publication`;
+};
+
+export const setLineupPublication = async (
+  teamId: number,
+  id: number,
+  lineupPublicationInput: LineupPublicationInput,
+  options?: RequestInit,
+): Promise<LineupWorkspace> => {
+  return customFetch<LineupWorkspace>(getSetLineupPublicationUrl(teamId, id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lineupPublicationInput),
+  });
+};
+
+export const getSetLineupPublicationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setLineupPublication>>,
+    TError,
+    { teamId: number; id: number; data: BodyType<LineupPublicationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setLineupPublication>>,
+  TError,
+  { teamId: number; id: number; data: BodyType<LineupPublicationInput> },
+  TContext
+> => {
+  const mutationKey = ["setLineupPublication"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setLineupPublication>>,
+    { teamId: number; id: number; data: BodyType<LineupPublicationInput> }
+  > = (props) => {
+    const { teamId, id, data } = props ?? {};
+
+    return setLineupPublication(teamId, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetLineupPublicationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setLineupPublication>>
+>;
+export type SetLineupPublicationMutationBody = BodyType<LineupPublicationInput>;
+export type SetLineupPublicationMutationError = ErrorType<void>;
+
+export const useSetLineupPublication = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setLineupPublication>>,
+    TError,
+    { teamId: number; id: number; data: BodyType<LineupPublicationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setLineupPublication>>,
+  TError,
+  { teamId: number; id: number; data: BodyType<LineupPublicationInput> },
+  TContext
+> => {
+  return useMutation(getSetLineupPublicationMutationOptions(options));
+};
+
+export const getGetPublishedMatchLineupUrl = (id: number) => {
+  return `/api/player-auth/matches/${id}/lineup`;
+};
+
+export const getPublishedMatchLineup = async (
+  id: number,
+  options?: RequestInit,
+): Promise<LineupPublication> => {
+  return customFetch<LineupPublication>(getGetPublishedMatchLineupUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublishedMatchLineupQueryKey = (id: number) => {
+  return [`/api/player-auth/matches/${id}/lineup`] as const;
+};
+
+export const getGetPublishedMatchLineupQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublishedMatchLineup>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublishedMatchLineup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublishedMatchLineupQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublishedMatchLineup>>
+  > = ({ signal }) =>
+    getPublishedMatchLineup(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublishedMatchLineup>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublishedMatchLineupQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublishedMatchLineup>>
+>;
+export type GetPublishedMatchLineupQueryError = ErrorType<unknown>;
+
+export function useGetPublishedMatchLineup<
+  TData = Awaited<ReturnType<typeof getPublishedMatchLineup>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublishedMatchLineup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublishedMatchLineupQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getPreviewMemberBulkEditUrl = () => {
   return `/api/member-bulk-edits/preview`;
