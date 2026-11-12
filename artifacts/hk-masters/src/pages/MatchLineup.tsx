@@ -5,6 +5,7 @@ import { useLineupController, toPlacements, type Formation } from "@/hooks/use-l
 import { useUnsavedGuard } from "@/hooks/use-unsaved-guard";
 import { ArrowLeft, ArrowUp, AlertTriangle, CheckCircle2, CircleDashed, Eye, Lock, RefreshCw, Save, Send, ShieldAlert, Sparkles, Undo2, X, Armchair, Trash2, Crosshair } from "lucide-react";
 import { HockeyPitch } from "@/components/lineup/HockeyPitch";
+import { PublishedLineupDownload } from "@/components/lineup/PublishedLineupDownload";
 import { Chip, Marker, PoolGroup, SaveStatus, surname, type Snap } from "@/components/lineup/BoardPieces";
 import { useAuthIdentity } from "@/components/AdminAuthGate";
 import { Button } from "@/components/ui/button";
@@ -395,6 +396,8 @@ function LineupEditor({ teamId, matchId, isStaff, revalidate }: { teamId: number
             </div>
           )}
         </div>
+
+        <PublishedLineupDownload teamId={teamId} matchId={matchId} isStaff={isStaff} hasPublished={!!w.published} disabled={busy != null} />
 
         <div className="grid lg:grid-cols-[400px_1fr] gap-6 items-start">
           {/* Pitch column */}
