@@ -16,6 +16,7 @@ import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { createLocalMatch, handleUpdateMatch } from "./matches";
 import { createLocalEvent, updateLocalEvent, listEventInvitees } from "./events";
 import { adminCorrectMatchRsvp, eligiblePlayersForTeams, remindMatchNonresponders } from "./matchAttendance";
+import { visibleMember } from "../utils/memberVisibility";
 import { remindStaffEvent } from "../utils/staffEventReminders";
 
 const router = Router();
@@ -49,12 +50,12 @@ router.get("/access", requireAdminAccess, async (_req, res) => {
   const season = await currentStaffSeason();
   const [members, teams, grants, audit] = await Promise.all([
     db.select({ id: playersTable.id, name: playersTable.name, email: playersTable.email, memberStatus: playersTable.memberStatus })
-      .from(playersTable).orderBy(asc(playersTable.name)),
+      .from(playersTable).where(visibleMember()).orderBy(asc(playersTable.name)),
     db.select({ id: teamsTable.id, name: teamsTable.name }).from(teamsTable).where(eq(teamsTable.isInternal, false)).orderBy(asc(teamsTable.name)),
     db.select({ grant: staffTeamGrantsTable, playerName: playersTable.name, teamName: teamsTable.name })
       .from(staffTeamGrantsTable).innerJoin(playersTable, eq(playersTable.id, staffTeamGrantsTable.playerId))
       .innerJoin(teamsTable, eq(teamsTable.id, staffTeamGrantsTable.teamId))
-      .where(eq(staffTeamGrantsTable.seasonId, season.id)).orderBy(asc(playersTable.name), asc(teamsTable.name)),
+      .where(and(eq(staffTeamGrantsTable.seasonId, season.id), visibleMember())).orderBy(asc(playersTable.name), asc(teamsTable.name)),
     db.select().from(staffAuditTable).orderBy(desc(staffAuditTable.id)).limit(100),
   ]);
   const eligibleTeams = [];

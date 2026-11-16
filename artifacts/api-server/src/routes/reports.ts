@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { visibleMember } from "../utils/memberVisibility";
 import {
   and,
   asc,
@@ -68,7 +69,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
       .from(playerParticipationsTable)
       .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
       .leftJoin(teamsTable, eq(teamsTable.id, playerParticipationsTable.teamId))
-      .where(eq(playerParticipationsTable.seasonId, season.id))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), visibleMember()))
       .orderBy(asc(playersTable.name)),
     db
       .select({
@@ -93,7 +94,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
         ),
       )
       .leftJoin(teamsTable, eq(teamsTable.id, playerParticipationsTable.teamId))
-      .where(eq(playerPaymentsTable.seasonId, season.id))
+      .where(and(eq(playerPaymentsTable.seasonId, season.id), visibleMember()))
       .orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id)),
     db
       .select({
@@ -133,6 +134,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
       })
       .from(playersTable)
       .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
+      .where(visibleMember())
       .orderBy(asc(playersTable.name)),
   ]);
 

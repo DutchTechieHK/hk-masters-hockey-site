@@ -178,6 +178,23 @@ describe("private match lineup lifecycle", () => {
     expect((await pub()).status).toBe(403);
     await db.update(playerParticipationsTable).set({ teamId: team }).where(and(eq(playerParticipationsTable.playerId, player), eq(playerParticipationsTable.seasonId, seasonId)));
   });
+  it("hides archived members from draft and published displays without changing saved snapshots", async () => {
+    await db.update(playersTable).set({ memberStatus: "archived" }).where(eq(playersTable.id, maybe));
+    try {
+      const staffView = await staff("get");
+      expect(staffView.status).toBe(200);
+      expect(staffView.body.draft.players.some((person: any) => person.playerId === maybe)).toBe(false);
+      expect(staffView.body.published.players.some((person: any) => person.playerId === maybe)).toBe(false);
+      const playerView = await pub();
+      expect(playerView.status).toBe(200);
+      expect(playerView.body.published.players.some((person: any) => person.playerId === maybe)).toBe(false);
+      const [saved] = await db.select().from(matchLineupsTable).where(eq(matchLineupsTable.matchId, match));
+      expect(saved.draft.players.some((person) => person.playerId === maybe)).toBe(true);
+      expect(saved.published!.players.some((person) => person.playerId === maybe)).toBe(true);
+    } finally {
+      await db.update(playersTable).set({ memberStatus: "active" }).where(eq(playersTable.id, maybe));
+    }
+  });
   it("withdraws a publication while preserving the private draft", async () => {
     const withdrawn = await full("post", "/publication").send({ revision: 9, action: "withdraw" });
     expect(withdrawn.status).toBe(200);

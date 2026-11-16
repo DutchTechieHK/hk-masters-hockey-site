@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db, memberGroupsTable, memberGroupMembersTable, eventGroupsTable, playersTable, teamsTable } from "@workspace/db";
 import { CreateMemberGroupBody, UpdateMemberGroupBody } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
+import { visibleMember } from "../utils/memberVisibility";
 
 const router: IRouter = Router();
 router.use(requireAdminAccess);
@@ -31,7 +32,8 @@ router.get("/members", async (_req, res) => {
   const members = await db.select({
     id: playersTable.id, name: playersTable.name, memberStatus: playersTable.memberStatus,
     membershipSection: playersTable.currentMembershipSection, teamName: teamsTable.name,
-  }).from(playersTable).leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id)).orderBy(asc(playersTable.name));
+  }).from(playersTable).leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(visibleMember()).orderBy(asc(playersTable.name));
   res.json(members);
 });
 

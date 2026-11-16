@@ -16,6 +16,7 @@ import { assertStaffResource } from "../middleware/staffAccess";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
 import { eventRsvpAdminChangesTable } from "@workspace/db";
 import { createEventRsvpCorrection } from "./eventRsvpManagement";
+import { visibleMember } from "../utils/memberVisibility";
 
 const router: IRouter = Router();
 const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
@@ -149,7 +150,7 @@ async function listLocalEventInvitees(
       })
       .from(playersTable)
       .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
-      .where(activeMembersOnly ? eq(playersTable.memberStatus, "active") : undefined)
+      .where(activeMembersOnly ? eq(playersTable.memberStatus, "active") : visibleMember())
       .orderBy(asc(playersTable.name)),
     db
       .select({
@@ -803,9 +804,10 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, "rotterdam-2026"));
     const archived = season ? await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
       .from(playerParticipationsTable)
+      .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
       .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
       .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
-      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"))) : [];
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"), visibleMember())) : [];
     const eligible = archived.filter(({ participation }) => event.teamId == null || participation.teamId === event.teamId);
     const ids = eligible.map(({ participation }) => participation.playerId);
     const rsvpRows = ids.length ? await db.select().from(eventRsvpsTable).where(and(eq(eventRsvpsTable.eventId, id), inArray(eventRsvpsTable.playerId, ids))) : [];
@@ -839,7 +841,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     .from(eventRsvpsTable)
     .innerJoin(playersTable, eq(playersTable.id, eventRsvpsTable.playerId))
     .leftJoin(teamsTable, eq(teamsTable.id, playersTable.teamId))
-    .where(eq(eventRsvpsTable.eventId, id))
+    .where(and(eq(eventRsvpsTable.eventId, id), visibleMember()))
     .orderBy(asc(playersTable.name));
 
   // Current-season squad selection is authoritative for local event audiences.
@@ -909,7 +911,7 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
       newNote: eventRsvpAdminChangesTable.newNote,
     }).from(eventRsvpAdminChangesTable)
       .innerJoin(playersTable, eq(playersTable.id, eventRsvpAdminChangesTable.playerId))
-      .where(eq(eventRsvpAdminChangesTable.eventId, id))
+      .where(and(eq(eventRsvpAdminChangesTable.eventId, id), visibleMember()))
       .orderBy(asc(eventRsvpAdminChangesTable.changedAt), asc(eventRsvpAdminChangesTable.id)),
   });
 }) as (req: Request, res: Response) => Promise<void>);

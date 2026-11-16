@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { playersTable, teamsTable, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
+import { visibleMember } from "../utils/memberVisibility";
 
 const router = Router();
 
@@ -12,9 +13,10 @@ router.get("/squad", async (req, res) => {
     if (!season) return res.json([]);
     const rows = await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
       .from(playerParticipationsTable)
+      .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
       .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
       .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
-      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active")))
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"), visibleMember()))
       .orderBy(playerParticipationsTable.playerId);
     const mapped = rows.map(({ participation, playerSnapshot, teamSnapshot }) => {
       const player = playerSnapshot as Record<string, unknown>;
@@ -47,7 +49,7 @@ router.get("/squad", async (req, res) => {
     .leftJoin(playerParticipationsTable, and(eq(playerParticipationsTable.playerId, playersTable.id),
       eq(playerParticipationsTable.seasonId, seasonsTable.id), eq(playerParticipationsTable.participationStatus, "active")))
     .leftJoin(teamsTable, sql`${teamsTable.id} = coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId})`)
-    .where(eq(teamsTable.isInternal, false))
+    .where(and(eq(teamsTable.isInternal, false), visibleMember()))
     .orderBy(playersTable.id);
 
   res.set("Cache-Control", "public, max-age=60");

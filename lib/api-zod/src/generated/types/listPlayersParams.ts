@@ -6,10 +6,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ListPlayersMembershipSection } from "./listPlayersMembershipSection";
+import type { ListPlayersMemberStatus } from "./listPlayersMemberStatus";
 import type { ListPlayersPosition } from "./listPlayersPosition";
 import type { ListPlayersScope } from "./listPlayersScope";
 
 export type ListPlayersParams = {
+  /**
+   * Archived members are excluded unless explicitly requested for restoration.
+   */
+  memberStatus?: ListPlayersMemberStatus;
   teamId?: number;
   position?: ListPlayersPosition;
   membershipSection?: ListPlayersMembershipSection;

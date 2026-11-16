@@ -93,6 +93,7 @@ export * from "./listMatchesScope";
 export * from "./listMemberBulkEditHistoryParams";
 export * from "./listMyMatchAttendance200";
 export * from "./listPlayersMembershipSection";
+export * from "./listPlayersMemberStatus";
 export * from "./listPlayersParams";
 export * from "./listPlayersPosition";
 export * from "./listPlayersScope";

@@ -2008,6 +2008,12 @@ export const UpdateCurrentSquadSelectionResponse = zod.object({
  * @summary List all players
  */
 export const ListPlayersQueryParams = zod.object({
+  memberStatus: zod
+    .enum(["active", "inactive", "archived"])
+    .optional()
+    .describe(
+      "Archived members are excluded unless explicitly requested for restoration.",
+    ),
   teamId: zod.coerce.number().optional(),
   position: zod
     .enum(["Goalkeeper", "Defender", "Midfield", "Forward"])

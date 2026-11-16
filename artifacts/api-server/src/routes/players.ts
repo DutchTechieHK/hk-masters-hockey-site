@@ -41,6 +41,7 @@ import {
 } from "@workspace/api-zod";
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
+import { visibleMember } from "../utils/memberVisibility";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { shirtSummaries, withShirtSummary } from "../utils/shirtNumbers";
@@ -938,6 +939,7 @@ router.get("/", requireAdminAccess, async (req, res) => {
       .where(and(
         eq(playerParticipationsTable.seasonId, season.id),
         eq(playerParticipationsTable.participationStatus, "active"),
+        visibleMember(),
         query.teamId ? eq(playerParticipationsTable.teamId, query.teamId) : undefined,
       ))
       .orderBy(playersTable.id);
@@ -960,6 +962,7 @@ router.get("/", requireAdminAccess, async (req, res) => {
     }));
   }
   const filters = [
+    query.memberStatus ? eq(playersTable.memberStatus, query.memberStatus) : visibleMember(),
     query.teamId ? eq(playersTable.teamId, query.teamId) : undefined,
     query.position
       ? sql`EXISTS (
@@ -1992,7 +1995,7 @@ router.get("/onboarding-invite-log", requireAdminAccess, async (req, res) => {
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
     .leftJoin(lastSessionSq, eq(playersTable.id, lastSessionSq.playerId))
-    .where(isNotNull(playersTable.onboardingInviteSentAt))
+    .where(and(isNotNull(playersTable.onboardingInviteSentAt), visibleMember()))
     .orderBy(desc(playersTable.onboardingInviteSentAt));
 
   res.json(rows.map(r => {
@@ -2103,9 +2106,10 @@ router.get("/arrivals", requireAdminAccess, async (req, res) => {
     const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, ROTTERDAM_SEASON_SLUG));
     const archived = season ? await db.select({ participation: playerParticipationsTable, playerSnapshot: worldCupPlayerSnapshotsTable.snapshot, teamSnapshot: worldCupTeamSnapshotsTable.snapshot })
       .from(playerParticipationsTable)
+      .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
       .innerJoin(worldCupPlayerSnapshotsTable, eq(worldCupPlayerSnapshotsTable.playerId, playerParticipationsTable.playerId))
       .leftJoin(worldCupTeamSnapshotsTable, eq(worldCupTeamSnapshotsTable.teamId, playerParticipationsTable.teamId))
-      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"))) : [];
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.participationStatus, "active"), visibleMember())) : [];
     const allRows = archived.map(({ participation, playerSnapshot, teamSnapshot }) => {
       const player = playerSnapshot as Record<string, unknown>;
       const team = teamSnapshot && typeof teamSnapshot === "object" ? teamSnapshot as Record<string, unknown> : {};
@@ -2143,6 +2147,7 @@ router.get("/arrivals", requireAdminAccess, async (req, res) => {
     })
     .from(playersTable)
     .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(visibleMember())
     .orderBy(playersTable.flightArrivalDateTime);
 
   const withArrival = allRows

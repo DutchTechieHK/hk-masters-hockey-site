@@ -28,7 +28,8 @@ async function history(playerId: number, warnings: string[] = []) {
   ]);
   const current = assignments.filter((a) => a.status === "current");
   if (current.length) {
-    const others = await db.select({ assignment: shirtAssignmentsTable, name: playersTable.name })
+    const others = await db.select({ assignment: shirtAssignmentsTable,
+      name: sql<string>`CASE WHEN ${playersTable.memberStatus} = 'archived' THEN 'an archived member' ELSE ${playersTable.name} END` })
       .from(shirtAssignmentsTable).innerJoin(playersTable, eq(playersTable.id, shirtAssignmentsTable.playerId))
       .where(and(ne(shirtAssignmentsTable.playerId, playerId), eq(shirtAssignmentsTable.status, "current")));
     for (const a of current) {
@@ -158,7 +159,9 @@ router.post("/players/:playerId", async (req, res) => {
     await tx.insert(shirtAuditTable).values({ playerId, actor, action: b.action, reason, before, after,
       detail: `${b.action}${changed ? ` #${changed.number}, assignment ${changed.id}, competition ${changed.contextId}, ${changed.teamName}` : " legacy number"}${b.attributeLegacy ? "; legacy context confirmed" : ""}` });
     if (!changed || changed.status !== "current") return [];
-    const duplicates = await tx.select({ name: playersTable.name }).from(shirtAssignmentsTable)
+    const duplicates = await tx.select({
+      name: sql<string>`CASE WHEN ${playersTable.memberStatus} = 'archived' THEN 'an archived member' ELSE ${playersTable.name} END`,
+    }).from(shirtAssignmentsTable)
       .innerJoin(playersTable, eq(playersTable.id, shirtAssignmentsTable.playerId))
       .where(and(eq(shirtAssignmentsTable.contextId, changed.contextId), eq(shirtAssignmentsTable.teamId, changed.teamId),
         eq(shirtAssignmentsTable.number, changed.number), eq(shirtAssignmentsTable.status, "current"), ne(shirtAssignmentsTable.playerId, playerId)));

@@ -86,10 +86,19 @@ async function matchPeople(tx: Tx, teamId: number, seasonId: number, matchId: nu
     return { ...p, status: status === "yes" || status === "maybe" || status === "no" ? status : null } as LineupPerson;
   });
 }
-function workspace(saved: Saved | undefined, people: LineupPerson[], canEdit: boolean) {
-  const draft = saved?.draft ?? EMPTY;
+// Redact archived accounts at the display boundary, never rewrite stored snapshots.
+async function visibleLineups(...boards: (LineupBoard | null | undefined)[]) {
+  const ids = [...new Set(boards.flatMap((board) => board?.players.map((person) => person.playerId) ?? []))];
+  const archived = ids.length ? await db.select({ id: playersTable.id }).from(playersTable)
+    .where(and(inArray(playersTable.id, ids), eq(playersTable.memberStatus, "archived"))) : [];
+  const hidden = new Set(archived.map((member) => member.id));
+  return boards.map((board) => board ? { ...board, players: board.players.filter((person) => !hidden.has(person.playerId)) } : null);
+}
+async function workspace(saved: Saved | undefined, people: LineupPerson[], canEdit: boolean) {
+  const [visibleDraft, published] = await visibleLineups(saved?.draft ?? EMPTY, saved?.published);
+  const draft = visibleDraft ?? EMPTY;
   return GetMatchLineupResponse.parse({
-    revision: saved?.revision ?? 0, draft, published: saved?.published ?? null,
+    revision: saved?.revision ?? 0, draft, published,
     publishedAt: saved?.publishedAt?.toISOString() ?? null, updatedAt: saved?.updatedAt.toISOString() ?? null,
     canEdit, people, issues: placementIssues(draft, people),
     suggestions433: suggestLineup(people, "4-3-3"), suggestions343: suggestLineup(people, "3-4-3"),
@@ -180,7 +189,8 @@ router.get("/player-auth/matches/:id/lineup", privateResponse, requirePlayerSess
     if (!eligible || await isArchivedRotterdamTeam(match.teamId)) throw new StaffAccessError(403, "This lineup is not available to your current squad.");
     const [saved] = await tx.select({ published: matchLineupsTable.published, publishedAt: matchLineupsTable.publishedAt })
       .from(matchLineupsTable).where(and(eq(matchLineupsTable.matchId, match.id), eq(matchLineupsTable.teamId, match.teamId), eq(matchLineupsTable.seasonId, season.id)));
-    return GetPublishedMatchLineupResponse.parse({ published: saved?.published ?? null, publishedAt: saved?.publishedAt?.toISOString() ?? null });
+    const [published] = await visibleLineups(saved?.published);
+    return GetPublishedMatchLineupResponse.parse({ published, publishedAt: saved?.publishedAt?.toISOString() ?? null });
   });
   res.json(result);
 });

@@ -855,6 +855,13 @@ paths:
       tags: [players]
       summary: List all players
       parameters:
+        - name: memberStatus
+          in: query
+          required: false
+          description: Archived members are excluded unless explicitly requested for restoration.
+          schema:
+            type: string
+            enum: [active, inactive, archived]
         - name: teamId
           in: query
           required: false

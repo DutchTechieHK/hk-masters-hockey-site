@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { visibleMember } from "../utils/memberVisibility";
 import { db } from "@workspace/db";
 import { teamsTable, playersTable, playerParticipationsTable, seasonsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
 import { and, eq, isNull, or, sql, inArray, notExists } from "drizzle-orm";
@@ -116,6 +117,7 @@ router.get("/", async (req, res) => {
   const counts = await db
     .select({ teamId: playersTable.teamId, count: sql<number>`count(*)::int` })
     .from(playersTable)
+    .where(visibleMember())
     .groupBy(playersTable.teamId);
   const countMap = new Map(counts.map((r) => [r.teamId, r.count]));
   return res.json(teams.map((t) => mapTeamPublic(t, countMap.get(t.id) ?? 0)));

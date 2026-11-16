@@ -41,3 +41,4 @@
 - [Competition-specific shirt numbers](shirt-number-context.md) — user confirmed simultaneous numbers per competition, with previous numbers and league/tournament context retained.
 - [Portal invitation semantics](portal-invitation-semantics.md) — selective email targeting is not an access grant or sign-in allowlist; keep authentication independent.
 - [Match lineup choices](match-lineup-product-rules.md) — private staff drafts become player-visible only on publication; suggest positions, then coach adjusts.
+- [Archived member visibility](archived-member-visibility.md) — hide archived players from normal member displays; show them only when explicitly restoring accounts.

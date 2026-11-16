@@ -2382,11 +2382,24 @@ export const ListTeamsScope = {
 } as const;
 
 export type ListPlayersParams = {
+  /**
+   * Archived members are excluded unless explicitly requested for restoration.
+   */
+  memberStatus?: ListPlayersMemberStatus;
   teamId?: number;
   position?: ListPlayersPosition;
   membershipSection?: ListPlayersMembershipSection;
   scope?: ListPlayersScope;
 };
+
+export type ListPlayersMemberStatus =
+  (typeof ListPlayersMemberStatus)[keyof typeof ListPlayersMemberStatus];
+
+export const ListPlayersMemberStatus = {
+  active: "active",
+  inactive: "inactive",
+  archived: "archived",
+} as const;
 
 export type ListPlayersPosition =
   (typeof ListPlayersPosition)[keyof typeof ListPlayersPosition];

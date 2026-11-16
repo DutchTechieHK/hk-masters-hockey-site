@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { visibleMember } from "../utils/memberVisibility";
 import { db } from "@workspace/db";
 import { pollsTable, pollOptionsTable, pollVotesTable, playersTable, teamsTable, pushSubscriptionsTable, seasonsTable, playerParticipationsTable, worldCupPlayerSnapshotsTable, worldCupTeamSnapshotsTable } from "@workspace/db/schema";
 import { eq, and, inArray, isNull, sql } from "drizzle-orm";
@@ -95,7 +96,8 @@ async function getEligiblePlayers(audience: Audience) {
   const rows = await db
     .select({ player: playersTable, teamCategory: teamsTable.category })
     .from(playersTable)
-    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id));
+    .leftJoin(teamsTable, eq(playersTable.teamId, teamsTable.id))
+    .where(visibleMember());
   if (audience === "all" || audience === "both") return rows.map(r => r.player);
   return rows.filter(r => r.teamCategory === audience).map(r => r.player);
 }

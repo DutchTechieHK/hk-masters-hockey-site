@@ -204,6 +204,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     query: { queryKey: getListFundraisingQueryKey(), enabled: !!sessionToken, retry: false }
   })
   const playerQueryParams = {
+    ...(memberStatusFilter !== "all" ? { memberStatus: memberStatusFilter } : {}),
     ...(positionFilter !== "all" ? { position: positionFilter as "Goalkeeper" | "Defender" | "Midfield" | "Forward" } : {}),
     ...(membershipSectionFilter !== "all" ? { membershipSection: membershipSectionFilter as "not_set" | "men" | "women" } : {}),
     ...(scope ? { scope } : {}),
@@ -253,6 +254,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.email.toLowerCase().includes(searchQuery.toLowerCase())
     )
+    .filter(p => memberStatusFilter === "archived" ? p.memberStatus === "archived" : p.memberStatus !== "archived")
     .filter(p => memberStatusFilter === "all" || p.memberStatus === memberStatusFilter)
     .filter(p => membershipTierFilter === "all" || p.currentMembershipTier === membershipTierFilter)
     .sort((a, b) => sortOrder === "asc"
@@ -665,10 +667,10 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             value={memberStatusFilter}
             onChange={(e) => setMemberStatusFilter(e.target.value)}
           >
-            <option value="all">All statuses</option>
+            <option value="all">All non-archived statuses</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-            <option value="archived">Archived</option>
+            <option value="archived">Archived — restore members</option>
           </Select>
           <Select
             className="sm:w-40 bg-white"
@@ -691,6 +693,13 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             ))}
           </Select>
         </div>
+
+        {memberStatusFilter === "archived" && !readOnly && (
+          <p className="mx-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            Restore members: open an archived member, change Member status to Active or Inactive, and save.
+            Archived members are hidden from all normal member lists.
+          </p>
+        )}
 
         {!scope && !readOnly && (
           <MemberBulkEditor selectedPlayers={selectedPlayers} onClearSelection={() => setSelectedPlayerIds(new Set())} />

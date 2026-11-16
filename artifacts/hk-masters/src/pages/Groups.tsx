@@ -193,7 +193,7 @@ export default function Groups() {
                       {g.description && <div className="text-xs text-muted-foreground">{g.description}</div>}
                     </td>
                     <td className="px-6 py-3">
-                      <div className="font-medium">{g.memberIds.length}</div>
+                      <div className="font-medium">{g.memberIds.filter((id) => memberById.has(id)).length}</div>
                       <div className="text-xs text-muted-foreground max-w-xs truncate">{names.slice(0, 4).join(", ")}{names.length > 4 ? ` +${names.length - 4}` : ""}</div>
                     </td>
                     <td className="px-6 py-3 text-muted-foreground">{g.eventCount} event{g.eventCount === 1 ? "" : "s"}</td>
@@ -236,7 +236,7 @@ export default function Groups() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-semibold">Members <span className="text-muted-foreground font-normal">({draft.memberIds.size} selected of {members.length})</span></label>
+              <label className="text-sm font-semibold">Members <span className="text-muted-foreground font-normal">({members.filter((member) => draft.memberIds.has(member.id)).length} selected of {members.length})</span></label>
               <label className="text-xs flex items-center gap-1.5 text-muted-foreground cursor-pointer">
                 <input type="checkbox" checked={onlySelected} onChange={(e) => setOnlySelected(e.target.checked)} className="accent-[#1E3A6E]" /> Selected only
               </label>
@@ -275,7 +275,7 @@ export default function Groups() {
                 )
               })}
             </ul>
-            <p className="text-xs text-muted-foreground">Inactive or archived members can be listed, but the server decides whether they are actually invited.</p>
+            <p className="text-xs text-muted-foreground">Archived members are hidden. Their stored group memberships are preserved if they are restored later.</p>
           </div>
 
           {formError && (
