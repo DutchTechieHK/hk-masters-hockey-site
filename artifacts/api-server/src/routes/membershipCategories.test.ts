@@ -98,6 +98,48 @@ describe("membership category catalogue", () => {
     expect(response.status).toBe(201);
     expect((await create(`${tag} \t multiple   spaces`, 0)).status).toBe(400);
   });
+  it("generates normalized names on insert and rename without accepting a writable value", async () => {
+    const key = `generated_${randomUUID()}`;
+    keys.push(key);
+    await pool.query("INSERT INTO membership_categories (key,name) VALUES ($1,$2)", [key, `  ${tag}  Mixed\t CASE  `]);
+    const read = async () => (await pool.query(
+      "SELECT normalized_name FROM membership_categories WHERE key=$1", [key],
+    )).rows[0].normalized_name;
+    expect(await read()).toBe(`${tag} mixed case`);
+    await pool.query("UPDATE membership_categories SET name=$1 WHERE key=$2", [`${tag}  Renamed\nName`, key]);
+    expect(await read()).toBe(`${tag} renamed name`);
+    await expect(pool.query("UPDATE membership_categories SET normalized_name=$1 WHERE key=$2", ["override", key]))
+      .rejects.toMatchObject({ code: "428C9" });
+  });
+  it("enforces normalized uniqueness for simultaneous direct database writes", async () => {
+    const candidates = [randomUUID(), randomUUID()];
+    keys.push(...candidates);
+    const names = [`  ${tag}  Concurrent\tName  `, `${tag.toUpperCase()} concurrent name`];
+    const results = await Promise.allSettled(candidates.map((key, i) => pool.query(
+      "INSERT INTO membership_categories (key,name) VALUES ($1,$2)", [key, names[i]],
+    )));
+    expect(results.filter(r => r.status === "fulfilled")).toHaveLength(1);
+    expect(results.find(r => r.status === "rejected")).toMatchObject({
+      reason: { code: "23505", constraint: "membership_categories_normalized_name_unique" },
+    });
+  });
+  it("exposes a plain index column to identifier-typed migration introspection", async () => {
+    // This is the COALESCE that truncated the former expression to 63 bytes.
+    const { rows } = await pool.query(`
+      SELECT coalesce(a.attname, pg_get_indexdef(i.indexrelid,1,false)) AS index_column,
+             i.indexprs IS NULL AS plain_column
+      FROM pg_index i
+      LEFT JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=i.indkey[0]
+      WHERE i.indexrelid='public.membership_categories_normalized_name_unique'::regclass
+    `);
+    expect(rows).toEqual([{ index_column: "normalized_name", plain_column: true }]);
+    const { rows: generated } = await pool.query(`
+      SELECT is_generated, generation_expression FROM information_schema.columns
+      WHERE table_schema='public' AND table_name='membership_categories' AND column_name='normalized_name'
+    `);
+    expect(generated[0].is_generated).toBe("ALWAYS");
+    expect(generated[0].generation_expression).toContain("'g'::text");
+  });
   it("round-trips custom keys without stripping unrelated request/response fields", async () => {
     const body = { ...playerBody(tag, custom.key), nationality: "HK", passportCopyUrl: "/api/test-copy",
       passportCopyReviewed: true, hkidCopyUrl: "/api/test-hkid", insurancePolicyHolder: tag, notes: tag };

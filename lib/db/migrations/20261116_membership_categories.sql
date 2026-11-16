@@ -2,6 +2,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS membership_categories (
   key text PRIMARY KEY,
   name text NOT NULL,
+  normalized_name text GENERATED ALWAYS AS (lower(regexp_replace(trim(name), '\s+', ' ', 'g'))) STORED,
   default_fee numeric(10,2),
   retired boolean NOT NULL DEFAULT false,
   protected boolean NOT NULL DEFAULT false,
@@ -10,8 +11,12 @@ CREATE TABLE IF NOT EXISTS membership_categories (
   CONSTRAINT membership_categories_fee CHECK (default_fee IS NULL OR (default_fee >= 0 AND default_fee <= 99999999.99)),
   CONSTRAINT membership_categories_protected CHECK (NOT protected OR NOT retired)
 );
-CREATE UNIQUE INDEX IF NOT EXISTS membership_categories_normalized_name
-  ON membership_categories (lower(regexp_replace(trim(name), '\s+', ' ', 'g')));
+ALTER TABLE membership_categories ADD COLUMN IF NOT EXISTS normalized_name text
+  GENERATED ALWAYS AS (lower(regexp_replace(trim(name), '\s+', ' ', 'g'))) STORED;
+CREATE UNIQUE INDEX IF NOT EXISTS membership_categories_normalized_name_unique
+  ON membership_categories (normalized_name);
+-- The replacement is already enforcing uniqueness before removing the old index.
+DROP INDEX IF EXISTS membership_categories_normalized_name;
 INSERT INTO membership_categories (key, name, default_fee, protected) VALUES
  ('awaiting_selection', 'Awaiting Selection', NULL, true),
  ('trials', 'Trials', NULL, true),
