@@ -31,6 +31,47 @@ tags:
     description: Read-only historical World Cup showcase operations
 
 paths:
+  /membership-categories:
+    get:
+      operationId: listMembershipCategories
+      responses:
+        "200":
+          description: Full-admin category catalogue including retired categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/MembershipCategory" }
+    post:
+      operationId: createMembershipCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MembershipCategoryInput" }
+      responses:
+        "201":
+          description: Created category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MembershipCategory" }
+  /membership-categories/{key}:
+    patch:
+      operationId: updateMembershipCategory
+      parameters:
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MembershipCategoryUpdate" }
+      responses:
+        "200":
+          description: Updated category
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MembershipCategory" }
+        "409": { description: Category changed; reload before editing }
   /staff/teams/{teamId}/matches/{id}/lineup:
     parameters:
       - { name: teamId, in: path, required: true, schema: { type: integer, minimum: 1 } }
@@ -2064,6 +2105,28 @@ paths:
 
 components:
   schemas:
+    MembershipCategoryInput:
+      type: object
+      required: [name, defaultFee]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        defaultFee: { type: [number, "null"], minimum: 0, maximum: 99999999.99 }
+    MembershipCategoryUpdate:
+      allOf:
+        - { $ref: "#/components/schemas/MembershipCategoryInput" }
+        - type: object
+          required: [retired, version]
+          properties:
+            retired: { type: boolean }
+            version: { type: integer, minimum: 1 }
+    MembershipCategory:
+      allOf:
+        - { $ref: "#/components/schemas/MembershipCategoryUpdate" }
+        - type: object
+          required: [key, protected]
+          properties:
+            key: { type: string }
+            protected: { type: boolean }
     LineupPlacement:
       type: object
       required: [playerId, area, x, y]
@@ -3311,7 +3374,6 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         membershipTierUpdatedAt:
           type: string
           nullable: true
@@ -3488,7 +3550,6 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
       required:
         - teamId
         - name
@@ -3568,7 +3629,6 @@ components:
           enum: [not_set, men, women]
         membershipTier:
           type: string
-          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         matchedPlayerId:
           type: integer
           nullable: true
@@ -3629,7 +3689,6 @@ components:
           enum: [not_set, men, women]
         membershipTier:
           type: string
-          enum: [trials, community_member, social_player, masters_division_one]
         rawData:
           type: object
           additionalProperties: true
@@ -3708,7 +3767,6 @@ components:
           nullable: true
         membershipTier:
           type: string
-          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         membershipSection:
           type: string
           enum: [not_set, men, women]
@@ -3821,7 +3879,6 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
-          enum: [awaiting_selection, trials, community_member, social_player, masters_division_one]
         paymentAmountDue:
           type: number
           nullable: true

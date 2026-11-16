@@ -5,6 +5,31 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+export interface MembershipCategoryInput {
+  /**
+   * @minLength 1
+   * @maxLength 100
+   */
+  name: string;
+  /**
+   * @minimum 0
+   * @maximum 99999999.99
+   * @nullable
+   */
+  defaultFee: number | null;
+}
+
+export type MembershipCategoryUpdate = MembershipCategoryInput & {
+  retired: boolean;
+  /** @minimum 1 */
+  version: number;
+};
+
+export type MembershipCategory = MembershipCategoryUpdate & {
+  key: string;
+  protected: boolean;
+};
+
 export type LineupPlacementArea =
   (typeof LineupPlacementArea)[keyof typeof LineupPlacementArea];
 
@@ -1168,17 +1193,6 @@ export const PlayerCurrentMembershipSection = {
   women: "women",
 } as const;
 
-export type PlayerCurrentMembershipTier =
-  (typeof PlayerCurrentMembershipTier)[keyof typeof PlayerCurrentMembershipTier];
-
-export const PlayerCurrentMembershipTier = {
-  awaiting_selection: "awaiting_selection",
-  trials: "trials",
-  community_member: "community_member",
-  social_player: "social_player",
-  masters_division_one: "masters_division_one",
-} as const;
-
 export interface Player {
   shirtNumbers?: ShirtSummary;
   id: number;
@@ -1246,7 +1260,7 @@ export interface Player {
   facebookHandle?: string;
   memberStatus: PlayerMemberStatus;
   currentMembershipSection: PlayerCurrentMembershipSection;
-  currentMembershipTier: PlayerCurrentMembershipTier;
+  currentMembershipTier: string;
   membershipTierUpdatedAt?: string | null;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
@@ -1281,17 +1295,6 @@ export const CreatePlayerCurrentMembershipSection = {
   not_set: "not_set",
   men: "men",
   women: "women",
-} as const;
-
-export type CreatePlayerCurrentMembershipTier =
-  (typeof CreatePlayerCurrentMembershipTier)[keyof typeof CreatePlayerCurrentMembershipTier];
-
-export const CreatePlayerCurrentMembershipTier = {
-  awaiting_selection: "awaiting_selection",
-  trials: "trials",
-  community_member: "community_member",
-  social_player: "social_player",
-  masters_division_one: "masters_division_one",
 } as const;
 
 export interface CreatePlayer {
@@ -1354,7 +1357,7 @@ export interface CreatePlayer {
   facebookHandle?: string;
   memberStatus?: CreatePlayerMemberStatus;
   currentMembershipSection?: CreatePlayerCurrentMembershipSection;
-  currentMembershipTier?: CreatePlayerCurrentMembershipTier;
+  currentMembershipTier?: string;
 }
 
 export interface MembershipInitializationResult {
@@ -1405,17 +1408,6 @@ export const MembershipInterestSubmissionMembershipSection = {
   women: "women",
 } as const;
 
-export type MembershipInterestSubmissionMembershipTier =
-  (typeof MembershipInterestSubmissionMembershipTier)[keyof typeof MembershipInterestSubmissionMembershipTier];
-
-export const MembershipInterestSubmissionMembershipTier = {
-  awaiting_selection: "awaiting_selection",
-  trials: "trials",
-  community_member: "community_member",
-  social_player: "social_player",
-  masters_division_one: "masters_division_one",
-} as const;
-
 export type MembershipInterestSubmissionMatchStatus =
   (typeof MembershipInterestSubmissionMatchStatus)[keyof typeof MembershipInterestSubmissionMatchStatus];
 
@@ -1459,7 +1451,7 @@ export interface MembershipInterestSubmission {
   submittedEmail: string;
   submittedPhone?: string | null;
   membershipSection: MembershipInterestSubmissionMembershipSection;
-  membershipTier: MembershipInterestSubmissionMembershipTier;
+  membershipTier: string;
   matchedPlayerId?: number | null;
   matchedPlayerName?: string | null;
   matchStatus: MembershipInterestSubmissionMatchStatus;
@@ -1481,16 +1473,6 @@ export const MembershipInterestInputMembershipSection = {
   women: "women",
 } as const;
 
-export type MembershipInterestInputMembershipTier =
-  (typeof MembershipInterestInputMembershipTier)[keyof typeof MembershipInterestInputMembershipTier];
-
-export const MembershipInterestInputMembershipTier = {
-  trials: "trials",
-  community_member: "community_member",
-  social_player: "social_player",
-  masters_division_one: "masters_division_one",
-} as const;
-
 export type MembershipInterestInputRawData = { [key: string]: unknown };
 
 export interface MembershipInterestInput {
@@ -1500,7 +1482,7 @@ export interface MembershipInterestInput {
   email: string;
   phone?: string;
   membershipSection?: MembershipInterestInputMembershipSection;
-  membershipTier: MembershipInterestInputMembershipTier;
+  membershipTier: string;
   rawData?: MembershipInterestInputRawData;
 }
 
@@ -1545,17 +1527,6 @@ export interface NotionMembershipSyncStatus {
   latest?: NotionMembershipSyncRun | null;
 }
 
-export type MembershipInterestResolutionMembershipTier =
-  (typeof MembershipInterestResolutionMembershipTier)[keyof typeof MembershipInterestResolutionMembershipTier];
-
-export const MembershipInterestResolutionMembershipTier = {
-  awaiting_selection: "awaiting_selection",
-  trials: "trials",
-  community_member: "community_member",
-  social_player: "social_player",
-  masters_division_one: "masters_division_one",
-} as const;
-
 export type MembershipInterestResolutionMembershipSection =
   (typeof MembershipInterestResolutionMembershipSection)[keyof typeof MembershipInterestResolutionMembershipSection];
 
@@ -1594,7 +1565,7 @@ export interface MembershipInterestFieldChoice {
 
 export interface MembershipInterestResolution {
   playerId?: number | null;
-  membershipTier: MembershipInterestResolutionMembershipTier;
+  membershipTier: string;
   membershipSection?: MembershipInterestResolutionMembershipSection;
   dismiss?: boolean;
   expectedSourceUpdatedAt?: string;
@@ -1617,17 +1588,6 @@ export const SelfPlayerCurrentMembershipSection = {
   not_set: "not_set",
   men: "men",
   women: "women",
-} as const;
-
-export type SelfPlayerCurrentMembershipTier =
-  (typeof SelfPlayerCurrentMembershipTier)[keyof typeof SelfPlayerCurrentMembershipTier];
-
-export const SelfPlayerCurrentMembershipTier = {
-  awaiting_selection: "awaiting_selection",
-  trials: "trials",
-  community_member: "community_member",
-  social_player: "social_player",
-  masters_division_one: "masters_division_one",
 } as const;
 
 export interface SelfPlayer {
@@ -1669,7 +1629,7 @@ export interface SelfPlayer {
   feePaid: boolean;
   memberStatus: SelfPlayerMemberStatus;
   currentMembershipSection: SelfPlayerCurrentMembershipSection;
-  currentMembershipTier: SelfPlayerCurrentMembershipTier;
+  currentMembershipTier: string;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;
   /** Outstanding balance (amount due minus amount paid). Null when amount due is not set. */

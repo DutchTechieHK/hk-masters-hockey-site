@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { SelfPlayerCurrentMembershipSection } from "./selfPlayerCurrentMembershipSection";
-import type { SelfPlayerCurrentMembershipTier } from "./selfPlayerCurrentMembershipTier";
 import type { SelfPlayerMemberStatus } from "./selfPlayerMemberStatus";
 import type { ShirtSummary } from "./shirtSummary";
 
@@ -49,7 +48,7 @@ export interface SelfPlayer {
   feePaid: boolean;
   memberStatus: SelfPlayerMemberStatus;
   currentMembershipSection: SelfPlayerCurrentMembershipSection;
-  currentMembershipTier: SelfPlayerCurrentMembershipTier;
+  currentMembershipTier: string;
   paymentAmountDue?: number | null;
   paymentAmountPaid?: number | null;
   /** Outstanding balance (amount due minus amount paid). Null when amount due is not set. */

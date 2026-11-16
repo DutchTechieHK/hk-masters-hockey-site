@@ -9,13 +9,6 @@ import MatchAttendanceSummary from "../components/MatchAttendanceSummary";
 import TrainingAttendanceSummary from "../components/TrainingAttendanceSummary";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
-const MEMBERSHIP_TIER_LABELS = {
-  awaiting_selection: "Awaiting Selection",
-  community_member: "Community Member",
-  social_player: "Social Player",
-  masters_division_one: "Masters Div. 1",
-  trials: "Trials",
-};
 
 function formatMatchDate(iso) {
   return new Date(iso).toLocaleDateString("en-GB", {
@@ -320,7 +313,7 @@ export default function Dashboard() {
                   {player.memberStatus === "active" ? "Active member" : `${player.memberStatus || "inactive"} member`}
                 </span>
                 <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
-                  2026/27 · {MEMBERSHIP_TIER_LABELS[player.currentMembershipTier] || player.currentMembershipTier}
+                  2026/27 · {player.currentMembershipCategoryName || player.currentMembershipTier.replaceAll("_", " ")}
                 </span>
               </div>
             )}

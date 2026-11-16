@@ -6,6 +6,7 @@ import { db, playersTable, playerLoginCodesTable, playerPaymentsTable, playerPar
 import { desc } from "drizzle-orm";
 import { sendPlayerLoginCodeEmail } from "../utils/email";
 import { createPlayerSession, destroyPlayerSession, requirePlayerSession } from "../middleware/playerSession";
+import { categoryRows } from "../utils/membershipCategories";
 import { ensureMembershipFoundation, mapPlayer } from "./players";
 import { withShirtSummary } from "../utils/shirtNumbers";
 import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
@@ -160,8 +161,10 @@ router.post("/verify-code", verifyCodeLimiter, async (req, res) => {
 });
 
 router.get("/me", requirePlayerSession, async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
   const player = req.player!;
   const foundation = await ensureMembershipFoundation();
+  const catalogue = await categoryRows();
   const [participation] = await db.select({
     amountDue: playerParticipationsTable.amountDue,
     teamId: playerParticipationsTable.teamId,
@@ -174,6 +177,7 @@ router.get("/me", requirePlayerSession, async (req, res) => {
   const account = buildSeasonFeeAccount(foundation.currentSeasonId, participation?.amountDue == null ? null : parseFloat(participation.amountDue), payments);
   res.json({
     ...await withShirtSummary(mapPlayer(player, null, undefined, account)),
+    currentMembershipCategoryName: catalogue.find(c => c.key === player.currentMembershipTier)?.name ?? player.currentMembershipTier.replaceAll("_", " "),
     currentSquadTeamId: (participation?.participationStatus === "active" ? participation.teamId : null) ?? player.teamId,
     accessToken: player.accessToken,
   });

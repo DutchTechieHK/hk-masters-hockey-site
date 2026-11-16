@@ -45,7 +45,8 @@ import { visibleMember } from "../utils/memberVisibility";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { shirtSummaries, withShirtSummary } from "../utils/shirtNumbers";
-import { buildSeasonFeeAccount, membershipCategoryAmountDue, MEMBERSHIP_CATEGORIES } from "../utils/membershipFees";
+import { buildSeasonFeeAccount, membershipCategoryAmountDue } from "../utils/membershipFees";
+import { categoryRows, resolveCategory, CategoryError, lockCategories, seedMissingCategories } from "../utils/membershipCategories";
 import {
   getLatestNotionMemberSync,
   getNotionMemberConflicts,
@@ -70,7 +71,6 @@ const CURRENT_SEASON_SLUG = "membership-2026-27";
 const ROTTERDAM_SEASON_SLUG = "rotterdam-2026";
 const ROTTERDAM_MIGRATION_CUTOFF = new Date("2026-09-09T00:00:00.000Z");
 
-const MEMBERSHIP_TIERS = new Set<string>(MEMBERSHIP_CATEGORIES);
 const MEMBERSHIP_SECTIONS = new Set(["not_set", "men", "women"]);
 const LEGACY_MEMBERSHIP_TIERS = ["masters_registration", "active_player", "division_one_squad"] as const;
 
@@ -340,6 +340,8 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
     isInternal: false,
   });
 
+  await seedMissingCategories(executor);
+  const catalogue = await categoryRows(executor);
   const players = await executor.select().from(playersTable).orderBy(playersTable.id);
   await executor.update(playerPaymentsTable)
     .set({ seasonId: rotterdam.id })
@@ -363,7 +365,7 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
       participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
       membershipSection: player.currentMembershipSection,
       membershipTier: player.currentMembershipTier,
-      amountDue: membershipCategoryAmountDue(player.currentMembershipTier)?.toFixed(2) ?? null,
+      amountDue: membershipCategoryAmountDue(player.currentMembershipTier, catalogue)?.toFixed(2) ?? null,
       source: "membership_backfill",
     }).onConflictDoNothing();
   }
@@ -476,10 +478,7 @@ async function getSelfMembershipFeeAccount(
     .from(seasonsTable)
     .where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG))
     .limit(1);
-  const effectiveCategory = MEMBERSHIP_TIERS.has(player.currentMembershipTier)
-    ? player.currentMembershipTier
-    : "awaiting_selection";
-  const categoryAmountDue = membershipCategoryAmountDue(effectiveCategory);
+  const categoryAmountDue = membershipCategoryAmountDue(player.currentMembershipTier, await categoryRows());
   if (!currentSeason) {
     return {
       amountDue: categoryAmountDue,
@@ -493,7 +492,10 @@ async function getSelfMembershipFeeAccount(
     eq(playerPaymentsTable.playerId, player.id),
     eq(playerPaymentsTable.seasonId, currentSeason.id),
   )).orderBy(desc(playerPaymentsTable.paymentDate), desc(playerPaymentsTable.id));
-  const amountDue = categoryAmountDue;
+  const [participation] = await db.select().from(playerParticipationsTable).where(and(
+    eq(playerParticipationsTable.playerId, player.id), eq(playerParticipationsTable.seasonId, currentSeason.id),
+  ));
+  const amountDue = participation ? (participation.amountDue == null ? null : Number(participation.amountDue)) : categoryAmountDue;
   const account = buildSeasonFeeAccount(currentSeason.id, amountDue, payments);
   return {
     amountDue,
@@ -505,28 +507,30 @@ async function getSelfMembershipFeeAccount(
 }
 
 async function syncCurrentParticipation(playerId: number) {
-  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
-  if (!player) return;
-  const foundation = await ensureMembershipFoundation();
-  await db.update(playerParticipationsTable).set({
-    teamId: sql`CASE
-      WHEN ${playerParticipationsTable.teamId} IS NULL THEN NULL
-      WHEN EXISTS (
-        SELECT 1 FROM ${teamsTable} assigned_team
-        WHERE assigned_team.id = ${playerParticipationsTable.teamId}
-          AND assigned_team.membership_section = ${player.currentMembershipSection}
-      ) THEN ${playerParticipationsTable.teamId}
-      ELSE NULL
-    END`,
-    membershipSection: player.currentMembershipSection,
-    membershipTier: player.currentMembershipTier,
-    amountDue: membershipCategoryAmountDue(player.currentMembershipTier)?.toFixed(2) ?? null,
-    participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
-    updatedAt: new Date(),
-  }).where(and(
-    eq(playerParticipationsTable.playerId, playerId),
-    eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
-  ));
+  await db.transaction(async tx => {
+    await lockCategories(tx);
+    const foundation = await ensureMembershipFoundation(tx);
+    const [player] = await tx.select().from(playersTable).where(eq(playersTable.id, playerId)).for("update");
+    if (!player) return;
+    await tx.update(playerParticipationsTable).set({
+      teamId: sql`CASE
+        WHEN ${playerParticipationsTable.teamId} IS NULL THEN NULL
+        WHEN EXISTS (
+          SELECT 1 FROM ${teamsTable} assigned_team
+          WHERE assigned_team.id = ${playerParticipationsTable.teamId}
+            AND assigned_team.membership_section = ${player.currentMembershipSection}
+        ) THEN ${playerParticipationsTable.teamId}
+        ELSE NULL
+      END`,
+      membershipSection: player.currentMembershipSection,
+      membershipTier: player.currentMembershipTier,
+      participationStatus: player.memberStatus === "active" ? "active" : player.memberStatus,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
+    ));
+  });
 }
 
 function mapInterestSubmission(row: {
@@ -648,7 +652,9 @@ router.post("/membership/interest-submissions", requireAdminAccess, async (req, 
     let matched = 0;
     let needsReview = 0;
 
+    const catalogue = await categoryRows(tx);
     for (const input of submissions) {
+      await resolveCategory(input.membershipTier, tx);
       const normalizedEmail = normalizeEmail(input.email);
       const membershipSection = input.membershipSection ?? "not_set";
       const candidates = await tx.select().from(playersTable)
@@ -697,7 +703,8 @@ router.post("/membership/interest-submissions", requireAdminAccess, async (req, 
         await tx.update(playerParticipationsTable).set({
           membershipTier: input.membershipTier,
           membershipSection: resolvedMembershipSection,
-          amountDue: membershipCategoryAmountDue(input.membershipTier)?.toFixed(2) ?? null,
+          ...(matchedCandidate.currentMembershipTier !== input.membershipTier
+            ? { amountDue: membershipCategoryAmountDue(input.membershipTier, catalogue)?.toFixed(2) ?? null } : {}),
           updatedAt: now,
         }).where(and(
           eq(playerParticipationsTable.playerId, matchedCandidate.id),
@@ -838,6 +845,14 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
     matchedPlayer = player;
   }
   const updated = await db.transaction(async (tx) => {
+    await lockCategories(tx);
+    const catalogue = await categoryRows(tx);
+    if (matchedPlayer) {
+      const [fresh] = await tx.select().from(playersTable).where(eq(playersTable.id, matchedPlayer.id)).for("update");
+      if (!fresh) throw new CategoryError(409, "Member changed. Reload before resolving this submission.");
+      matchedPlayer = fresh;
+    }
+    if (!body.dismiss && body.membershipTier !== matchedPlayer?.currentMembershipTier) await resolveCategory(body.membershipTier, tx);
     const now = new Date();
     const membershipSection = body.membershipSection ?? existing.membershipSection ?? "not_set";
     const rawData = !body.dismiss &&
@@ -851,14 +866,15 @@ router.patch("/membership/interest-submissions/:id", requireAdminAccess, async (
         existing.source,
         matchedPlayer.currentMembershipTier,
       );
-      if (shouldApplyTier) {
+      if (shouldApplyTier && body.membershipTier !== matchedPlayer.currentMembershipTier) {
+        await resolveCategory(body.membershipTier, tx);
         await tx.update(playersTable).set({
           currentMembershipTier: body.membershipTier,
           membershipTierUpdatedAt: now,
         }).where(eq(playersTable.id, matchedPlayer.id));
         await tx.update(playerParticipationsTable).set({
           membershipTier: body.membershipTier,
-          amountDue: membershipCategoryAmountDue(body.membershipTier)?.toFixed(2) ?? null,
+          amountDue: membershipCategoryAmountDue(body.membershipTier, catalogue)?.toFixed(2) ?? null,
           participationStatus: matchedPlayer.memberStatus === "active" ? "active" : matchedPlayer.memberStatus,
           updatedAt: now,
         }).where(and(
@@ -1013,10 +1029,14 @@ router.post("/", requireAdminAccess, async (req, res) => {
     res.status(409).json({ error: "Archived content is read-only" });
     return;
   }
-  const [player] = await db
-    .insert(playersTable)
-    .values({ ...(body as any), accessToken: crypto.randomUUID() })
-    .returning();
+  const [player] = await db.transaction(async tx => {
+    await lockCategories(tx);
+    await seedMissingCategories(tx);
+    await resolveCategory(body.currentMembershipTier ?? "awaiting_selection", tx);
+    const created = await tx.insert(playersTable).values({ ...(body as any), accessToken: crypto.randomUUID() }).returning();
+    await ensureMembershipFoundation(tx);
+    return created;
+  });
   const membershipFoundation = await ensureMembershipFoundation();
   // If an initial paid amount was supplied via the legacy fields,
   // mirror it into the ledger so the new payments table remains the
@@ -1087,9 +1107,7 @@ function mapSelfPlayer(
   teamName?: string | null,
   membershipFee?: MembershipFeeAccount,
 ) {
-  const effectiveMembershipTier = MEMBERSHIP_TIERS.has(player.currentMembershipTier)
-    ? player.currentMembershipTier
-    : "awaiting_selection";
+  const effectiveMembershipTier = player.currentMembershipTier;
   return {
     id: player.id,
     teamId: player.teamId,
@@ -1669,7 +1687,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     return;
   }
   const body = UpdatePlayerBody.parse(req.body);
-  const [existingPlayer] = await db.select({ teamId: playersTable.teamId }).from(playersTable).where(eq(playersTable.id, id));
+  const [existingPlayer] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   if (!existingPlayer) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -1691,14 +1709,6 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     membershipFeeAmountDue,
     ...directUpdate
   } = body;
-  if (
-    "currentMembershipTier" in directUpdate &&
-    directUpdate.currentMembershipTier &&
-    !MEMBERSHIP_TIERS.has(directUpdate.currentMembershipTier)
-  ) {
-    res.status(400).json({ error: "Invalid membership tier" });
-    return;
-  }
   if (
     "currentMembershipSection" in directUpdate &&
     directUpdate.currentMembershipSection &&
@@ -1732,19 +1742,23 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
       (directUpdate as Record<string, unknown>).passportCopyUploadedIsUpdate = isUpdate;
     }
   }
-  if (Object.keys(directUpdate).length > 0) {
-    await db.update(playersTable).set(directUpdate as typeof playersTable.$inferInsert).where(eq(playersTable.id, id));
-  }
-  if (membershipFeeAmountDue !== undefined) {
-    const foundation = await ensureMembershipFoundation();
-    await db.update(playerParticipationsTable).set({
-      amountDue: membershipFeeAmountDue == null ? null : membershipFeeAmountDue.toFixed(2),
-      updatedAt: new Date(),
-    }).where(and(
-      eq(playerParticipationsTable.playerId, id),
-      eq(playerParticipationsTable.seasonId, foundation.currentSeasonId),
-    ));
-  }
+  await db.transaction(async tx => {
+    await lockCategories(tx);
+    const foundation = await ensureMembershipFoundation(tx);
+    const [current] = await tx.select().from(playersTable).where(eq(playersTable.id, id)).for("update");
+    const target = directUpdate.currentMembershipTier;
+    const changed = target !== undefined && target !== current.currentMembershipTier;
+    const category = changed ? await resolveCategory(target!, tx) : null;
+    if (Object.keys(directUpdate).length > 0)
+      await tx.update(playersTable).set(directUpdate as typeof playersTable.$inferInsert).where(eq(playersTable.id, id));
+    if (changed || membershipFeeAmountDue !== undefined) {
+      const due = changed ? category!.defaultFee : (membershipFeeAmountDue == null ? null : membershipFeeAmountDue.toFixed(2));
+      await tx.update(playerParticipationsTable).set({
+        ...(changed ? { membershipTier: target } : {}),
+        amountDue: due, updatedAt: new Date(),
+      }).where(and(eq(playerParticipationsTable.playerId, id), eq(playerParticipationsTable.seasonId, foundation.currentSeasonId)));
+    }
+  });
   if (typeof requestedPaid === "number" && Number.isFinite(requestedPaid)) {
     const foundation = await ensureMembershipFoundation();
     const existing = await db
@@ -2200,4 +2214,8 @@ router.get("/arrivals", requireAdminAccess, async (req, res) => {
   return;
 });
 
+router.use((error: unknown, _req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
+  if (error instanceof CategoryError) { res.status(error.status).json({ error: error.message }); return; }
+  next(error);
+});
 export default router;

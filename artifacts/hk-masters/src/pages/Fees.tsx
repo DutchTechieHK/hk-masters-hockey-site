@@ -36,7 +36,8 @@ import { z } from "zod"
 import type { Player } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { sanitizePlayerPayload } from "@/lib/player-payload"
-import { formatCurrency } from "@/lib/utils"
+import { formatMembershipCurrency as formatCurrency } from "@/lib/utils"
+import { useMembershipCategories } from "@/lib/membership-categories"
 
 function formatEuro(amount: number) {
   return new Intl.NumberFormat("en-GB", {
@@ -84,15 +85,7 @@ function isMissingFeeDetails(p: Player): boolean {
   return false
 }
 
-const CATEGORY_LABELS: Record<Player["currentMembershipTier"], string> = {
-  awaiting_selection: "Awaiting Selection",
-  trials: "Trials",
-  community_member: "Community Member",
-  social_player: "Social Player",
-  masters_division_one: "Masters Div. 1",
-}
-
-function exportToCSV(players: Player[]) {
+function exportToCSV(players: Player[], labelFor: (key: string) => string) {
   const headers = [
     "Category",
     "Name",
@@ -105,7 +98,7 @@ function exportToCSV(players: Player[]) {
   ]
   const rows = players.map(p => {
     return [
-      CATEGORY_LABELS[p.currentMembershipTier],
+      labelFor(p.currentMembershipTier),
       p.name,
       p.email,
       p.membershipFeeAmountDue ?? "",
@@ -290,7 +283,19 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
     }
   }
 
-  const categories = Object.entries(CATEGORY_LABELS) as Array<[Player["currentMembershipTier"], string]>
+  const { categories: catalogue, labelFor } = useMembershipCategories()
+  // All catalogue categories (active and retired) plus any unknown keys still held by members.
+  const categories = useMemo<Array<[string, string]>>(() => {
+    const entries: Array<[string, string]> = catalogue.map(c => [c.key, c.retired ? `${c.name} (retired)` : c.name])
+    const known = new Set(entries.map(([k]) => k))
+    for (const p of activePlayers) {
+      if (p.currentMembershipTier && !known.has(p.currentMembershipTier)) {
+        known.add(p.currentMembershipTier)
+        entries.push([p.currentMembershipTier, labelFor(p.currentMembershipTier)])
+      }
+    }
+    return entries
+  }, [catalogue, activePlayers, labelFor])
 
   const visiblePlayers = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -320,7 +325,7 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
   )
 
   const categoryTotals = useMemo(() => {
-    const map = new Map<Player["currentMembershipTier"], { paid: number; total: number; collected: number; due: number }>()
+    const map = new Map<string, { paid: number; total: number; collected: number; due: number }>()
     for (const [value] of categories) {
       const categoryPlayers = activePlayers.filter(p => p.currentMembershipTier === value)
       map.set(value, {
@@ -354,7 +359,7 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
       action={
         <Button
           variant="outline"
-          onClick={() => exportToCSV(visiblePlayers)}
+          onClick={() => exportToCSV(visiblePlayers, labelFor)}
           disabled={visiblePlayers.length === 0}
         >
           <Download className="w-4 h-4 mr-2" /> Export CSV
@@ -683,7 +688,7 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
             <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
               {editingPlayer?.membershipFeeAmountDue == null
                 ? "No fee until a category is assigned"
-                : `${formatCurrency(editingPlayer.membershipFeeAmountDue)} — set by ${CATEGORY_LABELS[editingPlayer.currentMembershipTier]}`}
+                : `${formatCurrency(editingPlayer.membershipFeeAmountDue)} — set by ${labelFor(editingPlayer.currentMembershipTier)}`}
             </div>
           </div>
 

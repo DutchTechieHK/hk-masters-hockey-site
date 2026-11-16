@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
-import type { MembershipInterestSubmission, Player } from "@workspace/api-client-react"
+import type { MembershipCategory, MembershipInterestSubmission, Player } from "@workspace/api-client-react"
+import { useMembershipCategories, resolveCategoryKey } from "@/lib/membership-categories"
 import { AlertTriangle, CheckCircle, RefreshCw, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
@@ -9,18 +10,11 @@ type ImportRow = {
   name: string
   email: string
   phone?: string
-  membershipTier: "trials" | "community_member" | "social_player" | "masters_division_one"
+  membershipTier: string
   membershipSection?: "not_set" | "men" | "women"
   rawData?: Record<string, unknown>
 }
 
-const TIER_LABELS: Record<string, string> = {
-  awaiting_selection: "Awaiting Selection",
-  trials: "Trials",
-  community_member: "Community Member",
-  social_player: "Social Player",
-  masters_division_one: "Masters Div. 1",
-}
 
 const CONFLICT_FIELD_LABELS: Record<string, string> = {
   email: "Email address",
@@ -70,13 +64,6 @@ function parseCsvLine(line: string) {
   return cells
 }
 
-function normalizeTier(value: string): ImportRow["membershipTier"] | null {
-  const tier = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
-  if (tier === "trials" || tier === "community_member" || tier === "social_player" || tier === "masters_division_one") {
-    return tier
-  }
-  return null
-}
 
 function normalizeSection(value: string): ImportRow["membershipSection"] {
   const section = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "")
@@ -85,10 +72,19 @@ function normalizeSection(value: string): ImportRow["membershipSection"] {
   return "not_set"
 }
 
-function parseImport(text: string, filename: string): ImportRow[] {
+function parseImport(text: string, filename: string, categories: MembershipCategory[]): ImportRow[] {
+  const active = categories.filter((c) => !c.retired)
+  const toKey = (raw: string) => {
+    const key = resolveCategoryKey(raw, active)
+    if (key) return key
+    const retired = resolveCategoryKey(raw, categories)
+    if (retired) throw new Error(`Membership category "${raw}" is retired. Reactivate it or choose an active category.`)
+    throw new Error(`Unknown membership category: ${raw || "(blank)"}. Use an active category name or key: ${active.map((c) => c.name).join(", ")}.`)
+  }
   if (filename.toLowerCase().endsWith(".json")) {
     const parsed = JSON.parse(text) as ImportRow[] | { submissions: ImportRow[] }
-    return Array.isArray(parsed) ? parsed : parsed.submissions
+    const rows = Array.isArray(parsed) ? parsed : parsed.submissions
+    return rows.map((row) => ({ ...row, membershipTier: toKey(String(row.membershipTier ?? "")) }))
   }
   const lines = text.split(/\r?\n/).filter((line) => line.trim())
   if (lines.length < 2) return []
@@ -97,15 +93,14 @@ function parseImport(text: string, filename: string): ImportRow[] {
   const nameIndex = find(["name", "full name", "member name"])
   const emailIndex = find(["email", "email address"])
   const phoneIndex = find(["phone", "phone number", "mobile"])
-  const tierIndex = find(["membership tier", "tier", "membership"])
+  const tierIndex = find(["membership tier", "tier", "membership", "membership category", "category"])
   const sectionIndex = find(["membership section", "section", "playing section"])
   if (nameIndex < 0 || emailIndex < 0 || tierIndex < 0) {
-    throw new Error("CSV needs Name, Email and Membership Tier columns.")
+    throw new Error("CSV needs Name, Email and Membership Category (or Membership Tier) columns.")
   }
   return lines.slice(1).map((line) => {
     const cells = parseCsvLine(line)
-    const tier = normalizeTier(cells[tierIndex] || "")
-    if (!tier) throw new Error(`Unknown membership tier: ${cells[tierIndex] || "(blank)"}`)
+    const tier = toKey(cells[tierIndex] || "")
     const rawData = Object.fromEntries(headers.map((header, index) => [header, cells[index] || ""]))
     return {
       name: cells[nameIndex] || "",
@@ -128,8 +123,10 @@ export function MembershipInterestPanel({
   onMembersUpdated: () => void
 }) {
   const { toast } = useToast()
+  const { categories, labelFor, isLoading: categoriesLoading, isError: categoriesError } = useMembershipCategories()
   const [submissions, setSubmissions] = useState<MembershipInterestSubmission[]>([])
   const [selectedMembers, setSelectedMembers] = useState<Record<number, string>>({})
+  const [selectedCategories, setSelectedCategories] = useState<Record<number, string>>({})
   const [fieldChoices, setFieldChoices] = useState<Record<number, Record<string, "app" | "notion">>>({})
   const [busy, setBusy] = useState(false)
   const [duplicateEmails, setDuplicateEmails] = useState<string[]>([])
@@ -171,7 +168,8 @@ export function MembershipInterestPanel({
   const importFile = async (file: File) => {
     setBusy(true)
     try {
-      const rows = parseImport(await file.text(), file.name)
+      if (categoriesError || categoriesLoading) throw new Error("Membership categories are not loaded yet. Try the import again in a moment.")
+      const rows = parseImport(await file.text(), file.name, categories)
       if (!rows.length) throw new Error("No valid submissions were found.")
       const response = await fetch("/api/players/membership/interest-submissions", {
         method: "POST",
@@ -232,7 +230,7 @@ export function MembershipInterestPanel({
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify({
           playerId: dismiss ? null : playerId,
-          membershipTier: submission.membershipTier,
+          membershipTier: selectedCategories[submission.id] || submission.membershipTier,
           membershipSection: submission.membershipSection,
           dismiss,
           ...(resolvingConflict ? {
@@ -369,7 +367,7 @@ export function MembershipInterestPanel({
               <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="font-semibold">{submission.submittedName}</p>
-                  <p className="text-xs text-muted-foreground">{submission.submittedEmail} · {TIER_LABELS[submission.membershipTier]}</p>
+                  <p className="text-xs text-muted-foreground">{submission.submittedEmail} · {labelFor(submission.membershipTier)}</p>
                 </div>
                 <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
                   submission.conflictDetails?.some((detail) => detail.kind === "identity")
@@ -455,7 +453,18 @@ export function MembershipInterestPanel({
                   <option value="">Select existing member…</option>
                   {players.map((player) => <option key={player.id} value={player.id}>{player.name} — {player.email}</option>)}
                 </Select>
-                <Button type="button" size="sm" disabled={busy} onClick={() => void resolve(submission)}>
+                <Select
+                  aria-label={`Membership category for ${submission.submittedName}`}
+                  value={selectedCategories[submission.id] || submission.membershipTier}
+                  disabled={busy || categoriesLoading || categoriesError}
+                  onChange={(event) => setSelectedCategories(current => ({ ...current, [submission.id]: event.target.value }))}
+                >
+                  {!categories.some(c => c.key === submission.membershipTier && !c.retired) && (
+                    <option value={submission.membershipTier} disabled>{labelFor(submission.membershipTier)} (unavailable — choose a category)</option>
+                  )}
+                  {categories.filter(c => !c.retired).map(c => <option key={c.key} value={c.key}>{c.name}</option>)}
+                </Select>
+                <Button type="button" size="sm" disabled={busy || categoriesLoading || categoriesError} onClick={() => void resolve(submission)}>
                   Confirm match
                 </Button>
                 <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void resolve(submission, true)}>Ignore submission</Button>

@@ -7,7 +7,7 @@ import { db, pool, playersTable, teamsTable, seasonsTable, playerParticipationsT
   worldCupPlayerSnapshotsTable } from "@workspace/db";
 import { createSession } from "../middleware/adminSession";
 import { createPlayerSession } from "../middleware/playerSession";
-import { membershipCategoryAmountDue, MEMBERSHIP_CATEGORIES } from "../utils/membershipFees";
+import { membershipCategoryAmountDue, MEMBERSHIP_CATEGORIES } from "../utils/membershipCategoryFixtures";
 import { shouldApplyImportedTier } from "../lib/notionMemberSync";
 
 vi.mock("../utils/email", () => ({}));

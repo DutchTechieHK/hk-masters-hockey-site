@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PlayerCurrentMembershipSection } from "./playerCurrentMembershipSection";
-import type { PlayerCurrentMembershipTier } from "./playerCurrentMembershipTier";
 import type { PlayerMemberStatus } from "./playerMemberStatus";
 import type { ShirtSummary } from "./shirtSummary";
 
@@ -77,7 +76,7 @@ export interface Player {
   facebookHandle?: string;
   memberStatus: PlayerMemberStatus;
   currentMembershipSection: PlayerCurrentMembershipSection;
-  currentMembershipTier: PlayerCurrentMembershipTier;
+  currentMembershipTier: string;
   membershipTierUpdatedAt?: string | null;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;

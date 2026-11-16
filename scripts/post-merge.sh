@@ -67,4 +67,5 @@ SELECT 'rotterdam_active_teams' AS table_name, NULL AS operational_scope, count(
 SQL
 
 # Sync any remaining schema changes
+psql -v ON_ERROR_STOP=1 "$DATABASE_URL" -f lib/db/migrations/20261116_membership_categories.sql
 pnpm --filter db push-force

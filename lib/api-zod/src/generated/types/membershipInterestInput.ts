@@ -6,7 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MembershipInterestInputMembershipSection } from "./membershipInterestInputMembershipSection";
-import type { MembershipInterestInputMembershipTier } from "./membershipInterestInputMembershipTier";
 import type { MembershipInterestInputRawData } from "./membershipInterestInputRawData";
 
 export interface MembershipInterestInput {
@@ -16,6 +15,6 @@ export interface MembershipInterestInput {
   email: string;
   phone?: string;
   membershipSection?: MembershipInterestInputMembershipSection;
-  membershipTier: MembershipInterestInputMembershipTier;
+  membershipTier: string;
   rawData?: MembershipInterestInputRawData;
 }

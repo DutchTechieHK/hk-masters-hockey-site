@@ -10,6 +10,7 @@ import {
   teamsTable,
 } from "@workspace/db";
 import { and, desc, eq, sql } from "drizzle-orm";
+import { resolveCategory, seedMissingCategories } from "../utils/membershipCategories";
 
 const SOURCE = "notion_join";
 const HOLDING_TEAM_NAME = "Awaiting Selection";
@@ -245,6 +246,7 @@ async function fetchApplicants(): Promise<NotionApplicant[]> {
 
 async function ensureHoldingTeam(tx: any): Promise<number> {
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('hk-masters-membership-foundation'))`);
+  await seedMissingCategories(tx);
   const [existing] = await tx.select({ id: teamsTable.id }).from(teamsTable)
     .where(eq(teamsTable.name, HOLDING_TEAM_NAME)).limit(1);
   if (existing) {
@@ -507,7 +509,8 @@ async function syncNotionMemberProfile(
           ? { membershipSection: resolution.updates.currentMembershipSection }
           : {}),
         ...(resolution.updates.currentMembershipTier
-          ? { membershipTier: resolution.updates.currentMembershipTier }
+          ? { membershipTier: resolution.updates.currentMembershipTier,
+              amountDue: (await resolveCategory(resolution.updates.currentMembershipTier, tx)).defaultFee }
           : {}),
         updatedAt: new Date(),
       }).where(and(
@@ -659,6 +662,7 @@ async function performSync(currentSeasonId: number): Promise<NotionMemberSyncRes
               participationStatus: "active",
               membershipTier: applicant.membershipTier,
               membershipSection: applicant.membershipSection ?? "not_set",
+              amountDue: (await resolveCategory(applicant.membershipTier, tx)).defaultFee,
               source: SOURCE,
             });
             counts.created++;

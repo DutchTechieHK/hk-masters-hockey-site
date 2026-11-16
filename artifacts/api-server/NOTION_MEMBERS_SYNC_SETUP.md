@@ -30,7 +30,7 @@ Other form properties are retained in the submission audit data only when consen
 
 - The Notion page ID is the idempotency key.
 - New valid applicants become active members in the internal **Awaiting Selection** holding team.
-- Existing normalized-email matches are linked without changing an already selected Community, Social, or Masters Div. 1 tier. Applicants still awaiting selection move between **Trials** and **Awaiting Selection** according to the Notion answer.
+- Existing normalized-email matches are linked without changing an already selected membership category (including Community, Social, League Player or administrator-created categories). Applicants still awaiting selection move between **Trials** and **Awaiting Selection** according to the Notion answer. Membership categories remain independent of squad selection.
 - Duplicate emails, changed identity details, malformed rows, and missing consent require review.
 - Withdrawing consent makes a Notion-created applicant inactive and removes PII from the submission audit row.
 - A PostgreSQL advisory lock prevents scheduled and manual syncs from overlapping across server instances.

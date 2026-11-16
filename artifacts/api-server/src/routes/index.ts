@@ -36,6 +36,7 @@ import portalInvitationsRouter from "./portalInvitations";
 import memberBulkEditsRouter from "./memberBulkEdits";
 import { isolateStaffSession } from "../middleware/staffAccess";
 import lineupsRouter from "./lineups";
+import membershipCategoriesRouter from "./membershipCategories";
 
 const router: IRouter = Router();
 
@@ -45,6 +46,7 @@ router.use("/staff", staffRouter);
 router.use("/shirt-numbers", shirtNumbersRouter);
 router.use("/portal-invitations", portalInvitationsRouter);
 router.use("/member-bulk-edits", memberBulkEditsRouter);
+router.use("/membership-categories", membershipCategoriesRouter);
 router.use(healthRouter);
 router.use("/teams", teamsRouter);
 router.use("/players", playersRouter);

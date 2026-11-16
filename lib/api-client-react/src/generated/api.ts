@@ -78,6 +78,9 @@ import type {
   MemberGroupInput,
   MemberGroupUpdate,
   MemberPassportCopyUpdate,
+  MembershipCategory,
+  MembershipCategoryInput,
+  MembershipCategoryUpdate,
   MembershipInitializationResult,
   MembershipInterestImport,
   MembershipInterestImportResult,
@@ -131,6 +134,238 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getListMembershipCategoriesUrl = () => {
+  return `/api/membership-categories`;
+};
+
+export const listMembershipCategories = async (
+  options?: RequestInit,
+): Promise<MembershipCategory[]> => {
+  return customFetch<MembershipCategory[]>(getListMembershipCategoriesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMembershipCategoriesQueryKey = () => {
+  return [`/api/membership-categories`] as const;
+};
+
+export const getListMembershipCategoriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMembershipCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMembershipCategoriesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMembershipCategories>>
+  > = ({ signal }) => listMembershipCategories({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipCategories>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMembershipCategoriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMembershipCategories>>
+>;
+export type ListMembershipCategoriesQueryError = ErrorType<unknown>;
+
+export function useListMembershipCategories<
+  TData = Awaited<ReturnType<typeof listMembershipCategories>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMembershipCategories>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMembershipCategoriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateMembershipCategoryUrl = () => {
+  return `/api/membership-categories`;
+};
+
+export const createMembershipCategory = async (
+  membershipCategoryInput: MembershipCategoryInput,
+  options?: RequestInit,
+): Promise<MembershipCategory> => {
+  return customFetch<MembershipCategory>(getCreateMembershipCategoryUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(membershipCategoryInput),
+  });
+};
+
+export const getCreateMembershipCategoryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMembershipCategory>>,
+    TError,
+    { data: BodyType<MembershipCategoryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMembershipCategory>>,
+  TError,
+  { data: BodyType<MembershipCategoryInput> },
+  TContext
+> => {
+  const mutationKey = ["createMembershipCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMembershipCategory>>,
+    { data: BodyType<MembershipCategoryInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createMembershipCategory(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMembershipCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMembershipCategory>>
+>;
+export type CreateMembershipCategoryMutationBody =
+  BodyType<MembershipCategoryInput>;
+export type CreateMembershipCategoryMutationError = ErrorType<unknown>;
+
+export const useCreateMembershipCategory = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMembershipCategory>>,
+    TError,
+    { data: BodyType<MembershipCategoryInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMembershipCategory>>,
+  TError,
+  { data: BodyType<MembershipCategoryInput> },
+  TContext
+> => {
+  return useMutation(getCreateMembershipCategoryMutationOptions(options));
+};
+
+export const getUpdateMembershipCategoryUrl = (key: string) => {
+  return `/api/membership-categories/${key}`;
+};
+
+export const updateMembershipCategory = async (
+  key: string,
+  membershipCategoryUpdate: MembershipCategoryUpdate,
+  options?: RequestInit,
+): Promise<MembershipCategory> => {
+  return customFetch<MembershipCategory>(getUpdateMembershipCategoryUrl(key), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(membershipCategoryUpdate),
+  });
+};
+
+export const getUpdateMembershipCategoryMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMembershipCategory>>,
+    TError,
+    { key: string; data: BodyType<MembershipCategoryUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMembershipCategory>>,
+  TError,
+  { key: string; data: BodyType<MembershipCategoryUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateMembershipCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMembershipCategory>>,
+    { key: string; data: BodyType<MembershipCategoryUpdate> }
+  > = (props) => {
+    const { key, data } = props ?? {};
+
+    return updateMembershipCategory(key, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMembershipCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMembershipCategory>>
+>;
+export type UpdateMembershipCategoryMutationBody =
+  BodyType<MembershipCategoryUpdate>;
+export type UpdateMembershipCategoryMutationError = ErrorType<void>;
+
+export const useUpdateMembershipCategory = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMembershipCategory>>,
+    TError,
+    { key: string; data: BodyType<MembershipCategoryUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMembershipCategory>>,
+  TError,
+  { key: string; data: BodyType<MembershipCategoryUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateMembershipCategoryMutationOptions(options));
+};
 
 export const getGetMatchLineupUrl = (teamId: number, id: number) => {
   return `/api/staff/teams/${teamId}/matches/${id}/lineup`;

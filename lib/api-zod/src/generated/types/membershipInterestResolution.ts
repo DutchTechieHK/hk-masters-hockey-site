@@ -7,11 +7,10 @@
  */
 import type { MembershipInterestFieldChoice } from "./membershipInterestFieldChoice";
 import type { MembershipInterestResolutionMembershipSection } from "./membershipInterestResolutionMembershipSection";
-import type { MembershipInterestResolutionMembershipTier } from "./membershipInterestResolutionMembershipTier";
 
 export interface MembershipInterestResolution {
   playerId?: number | null;
-  membershipTier: MembershipInterestResolutionMembershipTier;
+  membershipTier: string;
   membershipSection?: MembershipInterestResolutionMembershipSection;
   dismiss?: boolean;
   expectedSourceUpdatedAt?: string;

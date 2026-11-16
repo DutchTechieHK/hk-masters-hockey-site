@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSeasonFeeAccount,
-  membershipCategoryAmountDue,
 } from "./membershipFees";
+import { membershipCategoryAmountDue } from "./membershipCategoryFixtures";
 
 describe("membershipCategoryAmountDue", () => {
   it("maps current categories to their 2026/27 fees", () => {

@@ -7,6 +7,108 @@
  */
 import * as zod from "zod";
 
+export const listMembershipCategoriesResponseOneOneNameMax = 100;
+
+export const listMembershipCategoriesResponseOneOneDefaultFeeMin = 0;
+export const listMembershipCategoriesResponseOneOneDefaultFeeMax = 99999999.99;
+
+export const ListMembershipCategoriesResponseItem = zod
+  .object({
+    name: zod
+      .string()
+      .min(1)
+      .max(listMembershipCategoriesResponseOneOneNameMax),
+    defaultFee: zod
+      .number()
+      .min(listMembershipCategoriesResponseOneOneDefaultFeeMin)
+      .max(listMembershipCategoriesResponseOneOneDefaultFeeMax)
+      .nullable(),
+  })
+  .and(
+    zod.object({
+      retired: zod.boolean(),
+      version: zod.number().min(1),
+    }),
+  )
+  .and(
+    zod.object({
+      key: zod.string(),
+      protected: zod.boolean(),
+    }),
+  );
+export const ListMembershipCategoriesResponse = zod.array(
+  ListMembershipCategoriesResponseItem,
+);
+
+export const createMembershipCategoryBodyNameMax = 100;
+
+export const createMembershipCategoryBodyDefaultFeeMin = 0;
+export const createMembershipCategoryBodyDefaultFeeMax = 99999999.99;
+
+export const CreateMembershipCategoryBody = zod.object({
+  name: zod.string().min(1).max(createMembershipCategoryBodyNameMax),
+  defaultFee: zod
+    .number()
+    .min(createMembershipCategoryBodyDefaultFeeMin)
+    .max(createMembershipCategoryBodyDefaultFeeMax)
+    .nullable(),
+});
+
+export const UpdateMembershipCategoryParams = zod.object({
+  key: zod.coerce.string(),
+});
+
+export const updateMembershipCategoryBodyOneNameMax = 100;
+
+export const updateMembershipCategoryBodyOneDefaultFeeMin = 0;
+export const updateMembershipCategoryBodyOneDefaultFeeMax = 99999999.99;
+
+export const UpdateMembershipCategoryBody = zod
+  .object({
+    name: zod.string().min(1).max(updateMembershipCategoryBodyOneNameMax),
+    defaultFee: zod
+      .number()
+      .min(updateMembershipCategoryBodyOneDefaultFeeMin)
+      .max(updateMembershipCategoryBodyOneDefaultFeeMax)
+      .nullable(),
+  })
+  .and(
+    zod.object({
+      retired: zod.boolean(),
+      version: zod.number().min(1),
+    }),
+  );
+
+export const updateMembershipCategoryResponseOneOneNameMax = 100;
+
+export const updateMembershipCategoryResponseOneOneDefaultFeeMin = 0;
+export const updateMembershipCategoryResponseOneOneDefaultFeeMax = 99999999.99;
+
+export const UpdateMembershipCategoryResponse = zod
+  .object({
+    name: zod
+      .string()
+      .min(1)
+      .max(updateMembershipCategoryResponseOneOneNameMax),
+    defaultFee: zod
+      .number()
+      .min(updateMembershipCategoryResponseOneOneDefaultFeeMin)
+      .max(updateMembershipCategoryResponseOneOneDefaultFeeMax)
+      .nullable(),
+  })
+  .and(
+    zod.object({
+      retired: zod.boolean(),
+      version: zod.number().min(1),
+    }),
+  )
+  .and(
+    zod.object({
+      key: zod.string(),
+      protected: zod.boolean(),
+    }),
+  );
+
 export const GetMatchLineupParams = zod.object({
   teamId: zod.coerce.number().min(1),
   id: zod.coerce.number().min(1),
@@ -2110,13 +2212,7 @@ export const ListPlayersResponseItem = zod.object({
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
-  currentMembershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  currentMembershipTier: zod.string(),
   membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
@@ -2190,15 +2286,7 @@ export const CreatePlayerBody = zod.object({
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]).optional(),
-  currentMembershipTier: zod
-    .enum([
-      "awaiting_selection",
-      "trials",
-      "community_member",
-      "social_player",
-      "masters_division_one",
-    ])
-    .optional(),
+  currentMembershipTier: zod.string().optional(),
 });
 
 /**
@@ -2307,13 +2395,7 @@ export const ListMembershipInterestSubmissionsResponseItem = zod.object({
   submittedEmail: zod.string(),
   submittedPhone: zod.string().nullish(),
   membershipSection: zod.enum(["not_set", "men", "women"]),
-  membershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  membershipTier: zod.string(),
   matchedPlayerId: zod.number().nullish(),
   matchedPlayerName: zod.string().nullish(),
   matchStatus: zod.enum([
@@ -2363,12 +2445,7 @@ export const ImportMembershipInterestSubmissionsBody = zod.object({
           .min(importMembershipInterestSubmissionsBodySubmissionsItemEmailMin),
         phone: zod.string().optional(),
         membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
-        membershipTier: zod.enum([
-          "trials",
-          "community_member",
-          "social_player",
-          "masters_division_one",
-        ]),
+        membershipTier: zod.string(),
         rawData: zod.record(zod.string(), zod.unknown()).optional(),
       }),
     )
@@ -2425,13 +2502,7 @@ export const ResolveMembershipInterestSubmissionParams = zod.object({
 
 export const ResolveMembershipInterestSubmissionBody = zod.object({
   playerId: zod.number().nullish(),
-  membershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  membershipTier: zod.string(),
   membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   dismiss: zod.boolean().optional(),
   expectedSourceUpdatedAt: zod.string().optional(),
@@ -2458,13 +2529,7 @@ export const ResolveMembershipInterestSubmissionResponse = zod.object({
   submittedEmail: zod.string(),
   submittedPhone: zod.string().nullish(),
   membershipSection: zod.enum(["not_set", "men", "women"]),
-  membershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  membershipTier: zod.string(),
   matchedPlayerId: zod.number().nullish(),
   matchedPlayerName: zod.string().nullish(),
   matchStatus: zod.enum([
@@ -2562,13 +2627,7 @@ export const GetSelfPlayerResponse = zod.object({
   feePaid: zod.boolean(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
-  currentMembershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  currentMembershipTier: zod.string(),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
   paymentBalance: zod
@@ -2689,13 +2748,7 @@ export const UpdateSelfPlayerResponse = zod.object({
   feePaid: zod.boolean(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
-  currentMembershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  currentMembershipTier: zod.string(),
   paymentAmountDue: zod.number().nullish(),
   paymentAmountPaid: zod.number().nullish(),
   paymentBalance: zod
@@ -2929,15 +2982,7 @@ export const UpdatePlayerBody = zod.object({
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]).optional(),
-  currentMembershipTier: zod
-    .enum([
-      "awaiting_selection",
-      "trials",
-      "community_member",
-      "social_player",
-      "masters_division_one",
-    ])
-    .optional(),
+  currentMembershipTier: zod.string().optional(),
 });
 
 export const UpdatePlayerResponse = zod.object({
@@ -3028,13 +3073,7 @@ export const UpdatePlayerResponse = zod.object({
   facebookHandle: zod.string().optional(),
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
-  currentMembershipTier: zod.enum([
-    "awaiting_selection",
-    "trials",
-    "community_member",
-    "social_player",
-    "masters_division_one",
-  ]),
+  currentMembershipTier: zod.string(),
   membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),

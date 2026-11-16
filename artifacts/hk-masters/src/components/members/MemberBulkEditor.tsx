@@ -10,28 +10,24 @@ import type { Player, MemberBulkEditPreview, MemberBulkEditResult, MemberBulkEdi
 import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
-import { formatCurrency } from "@/lib/utils"
+import { formatMembershipCurrency as formatCurrency } from "@/lib/utils"
+import { useMembershipCategories } from "@/lib/membership-categories"
 import { AlertTriangle, ArrowRight, CheckCircle2, History, Loader2, RotateCcw, X, Users, ShieldAlert } from "lucide-react"
 
 type Field = "category" | "section"
 
-export const BULK_CATEGORY_OPTIONS: Record<string, string> = {
-  awaiting_selection: "Awaiting Selection",
-  trials: "Trials",
-  community_member: "Community Member",
-  social_player: "Social Player",
-  masters_division_one: "Masters Div. 1",
-}
 export const BULK_SECTION_OPTIONS: Record<string, string> = {
   not_set: "Not set",
   men: "Men",
   women: "Women",
 }
 
-function valueLabel(field: string, value: string | null | undefined): string {
-  if (value == null || value === "") return "Not set"
-  const map = field === "category" ? BULK_CATEGORY_OPTIONS : BULK_SECTION_OPTIONS
-  return map[value] ?? value
+function useValueLabel() {
+  const { labelFor } = useMembershipCategories()
+  return (field: string, value: string | null | undefined): string => {
+    if (value == null || value === "") return "Not set"
+    return field === "category" ? labelFor(value) : BULK_SECTION_OPTIONS[value] ?? value
+  }
 }
 function fieldLabel(field: string) {
   return field === "category" ? "Membership category" : "Men/Women section"
@@ -103,6 +99,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: "pri
 }
 
 export function BulkEditRowsTable({ field, rows, testId }: { field: string; rows: MemberBulkEditRow[]; testId: string }) {
+  const valueLabel = useValueLabel()
   const sorted = useMemo(() => [...rows].sort((a, b) => Number(b.changed) - Number(a.changed) || a.name.localeCompare(b.name)), [rows])
   return (
     <div className="border border-border rounded-xl overflow-x-auto" data-testid={testId}>
@@ -223,6 +220,7 @@ function HistoryPage({ beforeId, onOlder }: { beforeId?: number; onOlder: (id: n
 
 function HistoryBatch({ batch }: { batch: MemberBulkEditResult }) {
   const [open, setOpen] = useState(false)
+  const valueLabel = useValueLabel()
   return (
     <article className="rounded-xl border border-border" data-testid={`card-history-${batch.batchId}`}>
       <button onClick={() => setOpen((o) => !o)} aria-expanded={open}
@@ -271,6 +269,8 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
   onClearSelection: () => void
 }) {
   const queryClient = useQueryClient()
+  const valueLabel = useValueLabel()
+  const { active: activeCategories, isLoading: categoriesLoading, isError: categoriesError } = useMembershipCategories()
   const previewMutation = usePreviewMemberBulkEdit()
   const applyMutation = useApplyMemberBulkEdit()
 
@@ -356,7 +356,10 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
     })
   }
 
-  const options = field === "category" ? BULK_CATEGORY_OPTIONS : field === "section" ? BULK_SECTION_OPTIONS : {}
+  // Only active categories can be newly assigned in bulk.
+  const options: Record<string, string> = field === "category"
+    ? Object.fromEntries(activeCategories.map((c) => [c.key, c.name]))
+    : field === "section" ? BULK_SECTION_OPTIONS : {}
   const applying = applyMutation.isPending
 
   return (
@@ -387,8 +390,7 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
           {ids.length > 500 && <span className="text-destructive font-medium">Max 500 per batch</span>}
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
-          {ids.length > 0 && (
-            <>
+          <div className={ids.length > 0 ? "contents" : "hidden"} aria-hidden={ids.length === 0}>
               <label className="sr-only" htmlFor="bulk-field">Field to change</label>
               <Select id="bulk-field" className="w-44 bg-white" value={field} data-testid="select-bulk-field"
                 onChange={(e) => { setField(e.target.value as Field | ""); setValue("") }}>
@@ -399,15 +401,14 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
               <label className="sr-only" htmlFor="bulk-value">New value</label>
               <Select id="bulk-value" className="w-44 bg-white" value={value} disabled={field === ""} data-testid="select-bulk-value"
                 onChange={(e) => setValue(e.target.value)}>
-                <option value="">{field === "" ? "Pick a field first" : "Choose new value..."}</option>
+                <option value="">{field === "" ? "Pick a field first" : field === "category" && categoriesLoading ? "Loading categories..." : field === "category" && categoriesError ? "Categories unavailable" : "Choose new value..."}</option>
                 {Object.entries(options).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </Select>
               <Button size="sm" onClick={preview ? () => setReviewOpen(true) : runPreview} disabled={!canPreview || previewLoading} data-testid="button-bulk-preview">
                 {previewLoading ? <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" />Previewing</> : preview ? "Review changes" : "Preview changes"}
               </Button>
               <Button size="sm" variant="outline" onClick={onClearSelection} data-testid="button-bulk-clear">Clear</Button>
-            </>
-          )}
+          </div>
           <Button size="sm" variant="outline" onClick={() => setHistoryOpen(true)} data-testid="button-bulk-history">
             <History className="w-4 h-4 mr-1.5" />Bulk edit history
           </Button>

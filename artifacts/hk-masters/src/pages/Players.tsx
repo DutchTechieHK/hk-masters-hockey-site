@@ -24,6 +24,10 @@ import { Link } from "wouter"
 import { ShirtHistoryPanel } from "@/components/shirt-numbers/ShirtHistoryPanel"
 import { ShirtSummaryCell } from "@/components/shirt-numbers/ShirtSummaryCell"
 import { MemberBulkEditor } from "@/components/members/MemberBulkEditor"
+import { MembershipCategoryManager } from "@/components/members/MembershipCategoryManager"
+import { useMembershipCategories, AWAITING_SELECTION_KEY } from "@/lib/membership-categories"
+import { useAuthIdentity } from "@/components/AdminAuthGate"
+import { Tags } from "lucide-react"
 
 function cloudinaryViewUrl(url: string): string {
   if (url.includes("res.cloudinary.com") && url.includes("/image/upload/")) {
@@ -48,13 +52,6 @@ declare global {
 }
 
 const SESSION_KEY = "hkm_admin_session"
-const MEMBERSHIP_TIER_LABELS: Record<string, string> = {
-  awaiting_selection: "Awaiting Selection",
-  trials: "Trials",
-  community_member: "Community Member",
-  social_player: "Social Player",
-  masters_division_one: "Masters Div. 1",
-}
 const MEMBERSHIP_SECTION_LABELS: Record<string, string> = {
   not_set: "Not set",
   men: "Men",
@@ -153,7 +150,7 @@ const playerSchema = z.object({
   facebookHandle: z.string().optional(),
   memberStatus: z.enum(["active", "inactive", "archived"]).default("active"),
   currentMembershipSection: z.enum(["not_set", "men", "women"]).default("not_set"),
-  currentMembershipTier: z.enum(["awaiting_selection", "trials", "community_member", "social_player", "masters_division_one"]).default("awaiting_selection"),
+  currentMembershipTier: z.string().min(1, "Choose a membership category").default(AWAITING_SELECTION_KEY),
 })
 
 type PlayerFormValues = z.infer<typeof playerSchema>
@@ -169,6 +166,10 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 export default function Players({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const { identity } = useAuthIdentity()
+  const canManageCategories = identity.kind === "admin" && !readOnly && !scope
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
+  const membershipCategories = useMembershipCategories()
 
   const [positionFilter, setPositionFilter] = useState<string>("all")
   const [memberStatusFilter, setMemberStatusFilter] = useState<string>("all")
@@ -245,7 +246,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     }
   }
 
-  const { register, handleSubmit, reset, setValue, formState: { errors, isSubmitting } } = useForm<PlayerFormValues>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<PlayerFormValues>({
     resolver: zodResolver(playerSchema)
   })
 
@@ -295,7 +296,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     paymentAmountDue: "",
     dietaryRequirements: "", medicalNotes: "", notes: "",
     instagramHandle: "", facebookHandle: "",
-    memberStatus: "active", currentMembershipSection: "not_set", currentMembershipTier: "awaiting_selection",
+    memberStatus: "active", currentMembershipSection: "not_set", currentMembershipTier: AWAITING_SELECTION_KEY,
   })
 
   const openAddModal = () => {
@@ -620,6 +621,11 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             <RefreshCw className={`w-4 h-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
             {isFetching ? "Refreshing…" : "Refresh"}
           </Button>
+          {canManageCategories && (
+            <Button variant="outline" onClick={() => setCategoryManagerOpen(true)} data-testid="button-manage-categories">
+              <Tags className="w-4 h-4 mr-2" /> Manage categories
+            </Button>
+          )}
           {!readOnly && (
             <Button onClick={openAddModal} disabled={!teams.some((team) => team.name === "Awaiting Selection")}>
                <Plus className="w-5 h-5 mr-2" /> Add Member
@@ -688,8 +694,8 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             onChange={(e) => setMembershipTierFilter(e.target.value)}
           >
             <option value="all">All categories</option>
-            {Object.entries(MEMBERSHIP_TIER_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+            {membershipCategories.categories.map((category) => (
+              <option key={category.key} value={category.key}>{category.name}{category.retired ? " (retired)" : ""}</option>
             ))}
           </Select>
         </div>
@@ -799,7 +805,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-col items-start gap-1">
-                          <Badge variant="outline">{MEMBERSHIP_TIER_LABELS[player.currentMembershipTier] || "Awaiting Selection"}</Badge>
+                          <Badge variant="outline">{membershipCategories.labelFor(player.currentMembershipTier)}</Badge>
                           <span className="text-[11px] text-muted-foreground">{MEMBER_STATUS_LABELS[player.memberStatus]}</span>
                         </div>
                       </td>
@@ -919,11 +925,13 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
             </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Category</label>
-              <Select {...register("currentMembershipTier")}>
-                {Object.entries(MEMBERSHIP_TIER_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+              <Select {...register("currentMembershipTier")} value={watch("currentMembershipTier") ?? ""} data-testid="select-member-category">
+                {membershipCategories.assignmentOptions(editingPlayer?.currentMembershipTier).map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </Select>
+              {errors.currentMembershipTier && <p className="text-xs text-destructive">{errors.currentMembershipTier.message}</p>}
+              {membershipCategories.isError && <p className="text-xs text-destructive">Could not load categories. Close and reopen to retry.</p>}
             </div>
             <input type="hidden" {...register("teamId")} />
             <div className="space-y-2">
@@ -976,7 +984,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
                     <div>
                       <p className="text-sm font-semibold">{participation.seasonName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {participation.teamName || MEMBERSHIP_TIER_LABELS[participation.membershipTier || ""] || "Member participation"}
+                        {participation.teamName || (participation.membershipTier ? membershipCategories.labelFor(participation.membershipTier) : "Member participation")}
                       </p>
                     </div>
                     <Badge variant={participation.seasonStatus === "current" ? "default" : "outline"}>
@@ -1173,6 +1181,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
         </form>
       </Modal>
 
+      {canManageCategories && <MembershipCategoryManager open={categoryManagerOpen} onClose={() => setCategoryManagerOpen(false)} />}
     </PageLayout>
   )
 }

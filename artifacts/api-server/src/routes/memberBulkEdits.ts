@@ -6,7 +6,8 @@ import { db, memberBulkEditsTable, playersTable, playerParticipationsTable, play
 import { PreviewMemberBulkEditBody, ApplyMemberBulkEditBody, PreviewMemberBulkEditResponse, ApplyMemberBulkEditResponse, ListMemberBulkEditHistoryResponse } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { getSessionLabel } from "../middleware/adminSession";
-import { MEMBERSHIP_CATEGORIES, membershipCategoryAmountDue, buildSeasonFeeAccount } from "../utils/membershipFees";
+import { membershipCategoryAmountDue, buildSeasonFeeAccount } from "../utils/membershipFees";
+import { categoryRows, resolveCategory, CategoryError } from "../utils/membershipCategories";
 
 const router = Router();
 router.use((_req, res, next) => {
@@ -28,8 +29,7 @@ class BulkEditError extends Error {
 function fail(message: string, status = 409): never { throw new BulkEditError(status, message); }
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 function selection(b: Selection): Selection {
-  const allowed: readonly string[] = b.field === "category" ? MEMBERSHIP_CATEGORIES : ["not_set", "men", "women"];
-  if (!allowed.includes(b.value)) fail("Choose a supported value for this field.", 400);
+  if (!b.value || (b.field === "section" && !["not_set", "men", "women"].includes(b.value))) fail("Choose a supported value for this field.", 400);
   return { ...b, playerIds: [...b.playerIds].sort((a, c) => a - c) };
 }
 function result(batch: MemberBulkEdit) {
@@ -44,6 +44,11 @@ function result(batch: MemberBulkEdit) {
 // Preview never runs the broad membership backfill: reading a batch cannot
 // change unselected members, custom fees, or historical participation.
 async function preview(tx: Tx, b: Selection, lock: boolean) {
+  const catalogue = await categoryRows(tx);
+  const category = b.field === "category" ? await resolveCategory(b.value, tx).catch(error => {
+    if (lock && error instanceof CategoryError) fail("The category is no longer available. Preview and review the batch again.");
+    throw error;
+  }) : null;
   const seasonQuery = tx.select().from(seasonsTable).where(and(
     eq(seasonsTable.kind, "membership"), eq(seasonsTable.isCurrent, true), eq(seasonsTable.status, "current"),
   )).orderBy(asc(seasonsTable.id));
@@ -75,13 +80,13 @@ async function preview(tx: Tx, b: Selection, lock: boolean) {
     const oldValue = (b.field === "category" ? player.currentMembershipTier : player.currentMembershipSection) ?? "not_set";
     const changed = oldValue !== b.value;
     const oldAmountDue = p.amountDue == null ? null : Number(p.amountDue);
-    const newAmountDue = b.field === "category" && changed ? membershipCategoryAmountDue(b.value) : oldAmountDue;
+    const newAmountDue = b.field === "category" && changed ? membershipCategoryAmountDue(b.value, catalogue) : oldAmountDue;
     const memberPayments = payments.filter(payment => payment.playerId === player.id);
     const before = buildSeasonFeeAccount(season.id, oldAmountDue, memberPayments);
     const after = buildSeasonFeeAccount(season.id, newAmountDue, memberPayments);
     const team = teams.find(t => t.id === p.teamId);
     const removeSquad = b.field === "section" && changed && p.teamId != null && team?.membershipSection !== b.value;
-    const customFee = b.field === "category" && changed && oldAmountDue !== membershipCategoryAmountDue(player.currentMembershipTier);
+    const customFee = b.field === "category" && changed && oldAmountDue !== membershipCategoryAmountDue(player.currentMembershipTier, catalogue);
     const warnings: string[] = [];
     if (customFee) warnings.push("The existing nonstandard/custom amount due will be replaced by the selected category's fee.");
     if (removeSquad) warnings.push(`The incompatible current squad ${team?.name ?? `#${p.teamId}`} will be removed.`);
@@ -97,6 +102,7 @@ async function preview(tx: Tx, b: Selection, lock: boolean) {
   // legacy foundation touches on reads). Include revisions and payment rows,
   // not just their total, so a replacement payment invalidates an old preview.
   const previewToken = hash({
+    category,
     selection: b, season: { id: season.id, name: season.name, slug: season.slug, kind: season.kind, status: season.status, isCurrent: season.isCurrent },
     members: players.map(p => ({ id: p.id, name: p.name, tier: p.currentMembershipTier, section: p.currentMembershipSection, status: p.memberStatus, tierUpdatedAt: p.membershipTierUpdatedAt })),
     participations: participations.map(p => ({ id: p.id, playerId: p.playerId, tier: p.membershipTier, section: p.membershipSection, status: p.participationStatus, teamId: p.teamId, amountDue: p.amountDue, updatedAt: p.updatedAt })),
@@ -107,7 +113,7 @@ async function preview(tx: Tx, b: Selection, lock: boolean) {
     seasonId: season.id, seasonName: season.name, field: b.field, value: b.value,
     rows, changed, unchanged: rows.length - changed, total: rows.length, previewToken,
     warnings: b.field === "category" ? [
-      "Changing category replaces only the current-season amount due with the selected category's fee; Trials and Awaiting Selection have no set fee.",
+      "Changing category replaces only the current-season amount due with the selected category's current default fee. An unset default leaves the fee unset.",
       "Recorded payments, payment dates, historical fees and squad selections stay unchanged. No payments, refunds or emails are created.",
     ] : [
       "Changing section leaves categories, fees, recorded payments and historical records unchanged.",
@@ -154,7 +160,7 @@ router.post("/apply", async (req, res) => {
       : { currentMembershipSection: b.value })
       .where(inArray(playersTable.id, changedIds));
     await tx.update(playerParticipationsTable).set(b.field === "category"
-      ? { membershipTier: b.value, amountDue: membershipCategoryAmountDue(b.value)?.toFixed(2) ?? null, updatedAt: now }
+      ? { membershipTier: b.value, amountDue: current.rows.find(r => r.changed)!.newAmountDue?.toFixed(2) ?? null, updatedAt: now }
       : {
         membershipSection: b.value, updatedAt: now,
         teamId: sql`CASE WHEN ${inArray(playerParticipationsTable.playerId, removeSquadIds)} THEN NULL ELSE ${playerParticipationsTable.teamId} END`,
@@ -179,7 +185,7 @@ router.get("/history", async (req, res) => {
   }));
 });
 router.use((error: unknown, _req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
-  if (error instanceof BulkEditError) res.status(error.status).json({ error: error.message });
+  if (error instanceof BulkEditError || error instanceof CategoryError) res.status(error.status).json({ error: error.message });
   else next(error);
 });
 export default router;

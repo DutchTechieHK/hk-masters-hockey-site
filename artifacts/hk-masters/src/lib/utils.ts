@@ -14,6 +14,16 @@ export function formatCurrency(amount: number) {
   }).format(amount);
 }
 
+/** Membership defaults support cents; never round a fee to whole dollars. */
+export function formatMembershipCurrency(amount: number) {
+  return new Intl.NumberFormat("en-HK", {
+    style: "currency",
+    currency: "HKD",
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
 export function getInitials(name: string) {
   return name
     .split(' ')

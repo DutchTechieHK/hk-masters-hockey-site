@@ -8,7 +8,6 @@
 import type { MembershipInterestConflictDetail } from "./membershipInterestConflictDetail";
 import type { MembershipInterestSubmissionMatchStatus } from "./membershipInterestSubmissionMatchStatus";
 import type { MembershipInterestSubmissionMembershipSection } from "./membershipInterestSubmissionMembershipSection";
-import type { MembershipInterestSubmissionMembershipTier } from "./membershipInterestSubmissionMembershipTier";
 
 export interface MembershipInterestSubmission {
   id: number;
@@ -16,7 +15,7 @@ export interface MembershipInterestSubmission {
   submittedEmail: string;
   submittedPhone?: string | null;
   membershipSection: MembershipInterestSubmissionMembershipSection;
-  membershipTier: MembershipInterestSubmissionMembershipTier;
+  membershipTier: string;
   matchedPlayerId?: number | null;
   matchedPlayerName?: string | null;
   matchStatus: MembershipInterestSubmissionMatchStatus;
