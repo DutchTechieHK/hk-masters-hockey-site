@@ -69,4 +69,6 @@ export interface CreatePlayer {
   memberStatus?: CreatePlayerMemberStatus;
   currentMembershipSection?: CreatePlayerCurrentMembershipSection;
   currentMembershipTier?: string;
+  /** The complete list of membership categories for the member. Real categories replace a status; an empty list leaves the member on Awaiting Selection or Trials. */
+  membershipCategories?: string[];
 }

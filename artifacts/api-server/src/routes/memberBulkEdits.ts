@@ -9,6 +9,7 @@ import { getSessionLabel } from "../middleware/adminSession";
 import { membershipCategoryAmountDue, buildSeasonFeeAccount } from "../utils/membershipFees";
 import { categoryRows, resolveCategory, CategoryError } from "../utils/membershipCategories";
 import { removeFromAllSquads } from "../utils/squads";
+import { categoryKeysByPlayer, planCategoryChange, setMemberCategories, DEFAULT_STATUS_KEY } from "../utils/memberCategories";
 
 const router = Router();
 router.use((_req, res, next) => {
@@ -29,6 +30,22 @@ class BulkEditError extends Error {
 }
 function fail(message: string, status = 409): never { throw new BulkEditError(status, message); }
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+
+/**
+ * A category bulk edit can replace, add or remove. The operation travels in
+ * the value so the stored batch record needs no new column:
+ *   "league"        -> every selected member gets exactly this category
+ *   "add:league"    -> the category is added to what each member already has
+ *   "remove:league" -> the category is taken away from each member
+ */
+type CategoryOperation = { mode: "set" | "add" | "remove"; key: string };
+function categoryOperation(value: string): CategoryOperation {
+  if (value.startsWith("add:")) return { mode: "add", key: value.slice(4) };
+  if (value.startsWith("remove:")) return { mode: "remove", key: value.slice(7) };
+  return { mode: "set", key: value };
+}
+/** The member's category list as one stored/displayed value. */
+const listValue = (categories: readonly string[], fallback: string) => (categories.length ? categories.join(",") : fallback);
 function selection(b: Selection): Selection {
   if (!b.value || (b.field === "section" && !["not_set", "men", "women"].includes(b.value))) fail("Choose a supported value for this field.", 400);
   return { ...b, playerIds: [...b.playerIds].sort((a, c) => a - c) };
@@ -46,10 +63,15 @@ function result(batch: MemberBulkEdit) {
 // change unselected members, custom fees, or historical participation.
 async function preview(tx: Tx, b: Selection, lock: boolean) {
   const catalogue = await categoryRows(tx);
-  const category = b.field === "category" ? await resolveCategory(b.value, tx).catch(error => {
+  const operation = b.field === "category" ? categoryOperation(b.value) : null;
+  // Removing may target a retired category; setting or adding needs an active one.
+  const category = operation ? await resolveCategory(operation.key, tx, operation.mode === "remove").catch(error => {
     if (lock && error instanceof CategoryError) fail("The category is no longer available. Preview and review the batch again.");
     throw error;
   }) : null;
+  if (operation && operation.mode !== "set" && category?.protected)
+    fail("Awaiting Selection and Trials are a status, not a category to add or remove. Choose \"Set category\" to move members to a status.", 400);
+
   const seasonQuery = tx.select().from(seasonsTable).where(and(
     eq(seasonsTable.kind, "membership"), eq(seasonsTable.isCurrent, true), eq(seasonsTable.status, "current"),
   )).orderBy(asc(seasonsTable.id));
@@ -72,27 +94,37 @@ async function preview(tx: Tx, b: Selection, lock: boolean) {
   const teamIds = [...new Set(participations.flatMap(p => p.teamId == null ? [] : [p.teamId]))].sort((a, c) => a - c);
   const teamQuery = tx.select().from(teamsTable).where(inArray(teamsTable.id, teamIds)).orderBy(asc(teamsTable.id));
   const teams = teamIds.length ? await (lock ? teamQuery.for("share") : teamQuery) : [];
+  const held = operation ? await categoryKeysByPlayer(season.id, b.playerIds, tx, catalogue) : new Map<number, string[]>();
   const rows = players.map(player => {
     const p = participations.find(p => p.playerId === player.id);
     if (player.memberStatus === "archived" || p?.participationStatus === "archived")
       fail(`${player.name} is archived and cannot be included in current membership bulk edits.`);
     if (!p || p.membershipTier !== player.currentMembershipTier || p.membershipSection !== player.currentMembershipSection)
       fail(`${player.name}'s current membership record needs refreshing. Reload Members or save their individual profile, then preview again.`);
-    const oldValue = (b.field === "category" ? player.currentMembershipTier : player.currentMembershipSection) ?? "not_set";
-    const changed = oldValue !== b.value;
     const oldAmountDue = p.amountDue == null ? null : Number(p.amountDue);
-    const newAmountDue = b.field === "category" && changed ? membershipCategoryAmountDue(b.value, catalogue) : oldAmountDue;
+    const previous = held.get(player.id) ?? [];
+    const plan = operation ? planCategoryChange({
+      requested: operation.mode === "set" ? [operation.key]
+        : operation.mode === "add" ? [...previous, operation.key]
+        : previous.filter(key => key !== operation.key),
+      previous, currentTier: player.currentMembershipTier, currentDue: oldAmountDue, catalogue,
+      statusHint: DEFAULT_STATUS_KEY,
+    }) : null;
+    const oldValue = plan ? listValue(previous, player.currentMembershipTier) : player.currentMembershipSection ?? "not_set";
+    const newValue = plan ? listValue(plan.categories, plan.mainCategory) : b.value;
+    const changed = plan ? plan.changed : oldValue !== b.value;
+    const newAmountDue = plan && changed ? plan.amountDue : oldAmountDue;
     const memberPayments = payments.filter(payment => payment.playerId === player.id);
     const before = buildSeasonFeeAccount(season.id, oldAmountDue, memberPayments);
     const after = buildSeasonFeeAccount(season.id, newAmountDue, memberPayments);
     const team = teams.find(t => t.id === p.teamId);
     const removeSquad = b.field === "section" && changed && p.teamId != null && team?.membershipSection !== b.value;
-    const customFee = b.field === "category" && changed && oldAmountDue !== membershipCategoryAmountDue(player.currentMembershipTier, catalogue);
+    const customFee = plan != null && changed && plan.customFeeKept;
     const warnings: string[] = [];
-    if (customFee) warnings.push("The existing nonstandard/custom amount due will be replaced by the selected category's fee.");
+    if (customFee) warnings.push(`The existing nonstandard/custom amount due is kept. The standard fee for the new categories would be ${plan!.standardFee == null ? "unset" : `HK$${plan!.standardFee}`}.`);
     if (removeSquad) warnings.push(`The incompatible current squad ${team?.name ?? `#${p.teamId}`} will be removed.`);
     return {
-      playerId: player.id, name: player.name, oldValue, newValue: b.value, changed,
+      playerId: player.id, name: player.name, oldValue, newValue, changed,
       oldAmountDue, newAmountDue, amountPaid: before.amountPaid, balanceBefore: before.balance, balanceAfter: after.balance,
       customFee, teamIdBefore: p.teamId, teamNameBefore: team?.name ?? null,
       teamIdAfter: removeSquad ? null : p.teamId, teamNameAfter: removeSquad ? null : team?.name ?? null, warnings,
@@ -105,7 +137,7 @@ async function preview(tx: Tx, b: Selection, lock: boolean) {
   const previewToken = hash({
     category,
     selection: b, season: { id: season.id, name: season.name, slug: season.slug, kind: season.kind, status: season.status, isCurrent: season.isCurrent },
-    members: players.map(p => ({ id: p.id, name: p.name, tier: p.currentMembershipTier, section: p.currentMembershipSection, status: p.memberStatus, tierUpdatedAt: p.membershipTierUpdatedAt })),
+    members: players.map(p => ({ id: p.id, name: p.name, tier: p.currentMembershipTier, section: p.currentMembershipSection, status: p.memberStatus, tierUpdatedAt: p.membershipTierUpdatedAt, categories: held.get(p.id) ?? [] })),
     participations: participations.map(p => ({ id: p.id, playerId: p.playerId, tier: p.membershipTier, section: p.membershipSection, status: p.participationStatus, teamId: p.teamId, amountDue: p.amountDue, updatedAt: p.updatedAt })),
     payments: payments.map(p => ({ id: p.id, playerId: p.playerId, amount: p.amount, paymentDate: p.paymentDate, createdAt: p.createdAt })),
     teams: teams.map(t => ({ id: t.id, name: t.name, section: t.membershipSection })),
@@ -114,7 +146,7 @@ async function preview(tx: Tx, b: Selection, lock: boolean) {
     seasonId: season.id, seasonName: season.name, field: b.field, value: b.value,
     rows, changed, unchanged: rows.length - changed, total: rows.length, previewToken,
     warnings: b.field === "category" ? [
-      "Changing category replaces only the current-season amount due with the selected category's current default fee. An unset default leaves the fee unset.",
+      "The current-season amount due follows the highest default fee among each member's categories. A fee that was set by hand is kept and flagged below.",
       "Recorded payments, payment dates, historical fees and squad selections stay unchanged. No payments, refunds or emails are created.",
     ] : [
       "Changing section leaves categories, fees, recorded payments and historical records unchanged.",
@@ -156,16 +188,23 @@ router.post("/apply", async (req, res) => {
     const removeSquadIds = current.rows.filter(r => r.changed && r.teamIdBefore !== r.teamIdAfter).map(r => r.playerId);
     // Set-based writes keep even a 500-member operation to two updates, while
     // unchanged rows (including any custom dues) remain true no-ops.
-    await tx.update(playersTable).set(b.field === "category"
-      ? { currentMembershipTier: b.value, membershipTierUpdatedAt: now }
-      : { currentMembershipSection: b.value })
-      .where(inArray(playersTable.id, changedIds));
-    await tx.update(playerParticipationsTable).set(b.field === "category"
-      ? { membershipTier: b.value, amountDue: current.rows.find(r => r.changed)!.newAmountDue?.toFixed(2) ?? null, updatedAt: now }
-      : {
+    if (b.field === "category") {
+      // Each member ends up with their own list and fee, so this is written
+      // per member, using the lists shown in the reviewed preview.
+      for (const row of current.rows.filter(r => r.changed)) {
+        await setMemberCategories(tx, {
+          playerId: row.playerId, seasonId: current.seasonId,
+          requested: row.newValue.split(","), statusHint: DEFAULT_STATUS_KEY,
+        });
+      }
+    } else {
+      await tx.update(playersTable).set({ currentMembershipSection: b.value })
+        .where(inArray(playersTable.id, changedIds));
+      await tx.update(playerParticipationsTable).set({
         membershipSection: b.value, updatedAt: now,
         teamId: sql`CASE WHEN ${inArray(playerParticipationsTable.playerId, removeSquadIds)} THEN NULL ELSE ${playerParticipationsTable.teamId} END`,
       }).where(and(inArray(playerParticipationsTable.playerId, changedIds), eq(playerParticipationsTable.seasonId, current.seasonId)));
+    }
     // A section change removes the member from every squad, not only the primary one.
     if (b.field !== "category") await removeFromAllSquads(tx, current.seasonId, removeSquadIds);
     const [batch] = await tx.insert(memberBulkEditsTable).values({

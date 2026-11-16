@@ -43,6 +43,7 @@ import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEma
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { visibleMember } from "../utils/memberVisibility";
 import { reconcileSquads, removeSquadsOutsideSection, squadTeamsByPlayer } from "../utils/squads";
+import { categoryKeysByPlayer, reconcileMemberCategories, setMemberCategories, standardFee, sameMoney } from "../utils/memberCategories";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { shirtSummaries, withShirtSummary } from "../utils/shirtNumbers";
@@ -87,6 +88,23 @@ type MembershipFeeAccount = {
   feePaid: boolean;
   latestPaymentDate: string | null;
 };
+
+/**
+ * Adds the member's full category list (main first) and the standard fee
+ * for it to already-mapped member records.
+ */
+export async function withMemberCategories<T extends { id: number }>(
+  members: T[], seasonId: number,
+): Promise<Array<T & { membershipCategories: string[]; membershipFeeStandard: number | null }>> {
+  const [keys, catalogue] = await Promise.all([
+    categoryKeysByPlayer(seasonId, members.map((member) => member.id)),
+    categoryRows(),
+  ]);
+  return members.map((member) => {
+    const membershipCategories = keys.get(member.id) ?? [];
+    return { ...member, membershipCategories, membershipFeeStandard: standardFee(membershipCategories, catalogue) };
+  });
+}
 
 export function mapPlayer(
   player: typeof playersTable.$inferSelect,
@@ -409,6 +427,9 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
   // Squads: copy any squad recorded the old single-team way into the squad
   // list and keep the season record's primary team in step. Idempotent.
   await reconcileSquads(executor, current.id);
+  // Categories: copy each member's existing category into the category list
+  // and keep the main category in step. Idempotent; never changes a fee.
+  await reconcileMemberCategories(executor, current.id);
 
   const participations = await executor.select({
     seasonId: playerParticipationsTable.seasonId,
@@ -1023,8 +1044,10 @@ router.get("/", requireAdminAccess, async (req, res) => {
     : await baseQuery.orderBy(playersTable.id);
   const membershipFees = await getMembershipFeeAccounts(players.map(({ player }) => player.id));
   const numbers = await shirtSummaries(players.map(({ player }) => player.id));
-  res.json(players.map(({ player, teamName, lastLoginAt }) =>
-    ({ ...mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id)), shirtNumber: undefined, shirtNumbers: numbers.get(player.id) })));
+  const [currentSeason] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG));
+  const mapped = players.map(({ player, teamName, lastLoginAt }) =>
+    ({ ...mapPlayer(player, teamName, lastLoginAt, membershipFees.get(player.id)), shirtNumber: undefined, shirtNumbers: numbers.get(player.id) }));
+  res.json(currentSeason ? await withMemberCategories(mapped, currentSeason.id) : mapped);
   return;
 });
 
@@ -1036,7 +1059,7 @@ router.post("/", requireAdminAccess, async (req, res) => {
     res.status(409).json({ error: "Archived content is read-only; use current membership payment endpoints" });
     return;
   }
-  const body = CreatePlayerBody.parse(req.body);
+  const { membershipCategories: requestedCategories, ...body } = CreatePlayerBody.parse(req.body);
   if (await isArchivedRotterdamTeam(body.teamId)) {
     res.status(409).json({ error: "Archived content is read-only" });
     return;
@@ -1046,7 +1069,14 @@ router.post("/", requireAdminAccess, async (req, res) => {
     await seedMissingCategories(tx);
     await resolveCategory(body.currentMembershipTier ?? "awaiting_selection", tx);
     const created = await tx.insert(playersTable).values({ ...(body as any), accessToken: crypto.randomUUID() }).returning();
-    await ensureMembershipFoundation(tx);
+    const foundation = await ensureMembershipFoundation(tx);
+    // Several categories at once: applied after the season record exists.
+    if (requestedCategories !== undefined) {
+      await setMemberCategories(tx, {
+        playerId: created[0].id, seasonId: foundation.currentSeasonId,
+        requested: requestedCategories, statusHint: body.currentMembershipTier ?? "awaiting_selection",
+      });
+    }
     return created;
   });
   const membershipFoundation = await ensureMembershipFoundation();
@@ -1068,7 +1098,8 @@ router.post("/", requireAdminAccess, async (req, res) => {
   const [refreshed] = await db.select().from(playersTable).where(eq(playersTable.id, player.id));
   await syncCurrentParticipation(refreshed.id);
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, refreshed.teamId));
-  res.status(201).json(await withShirtSummary(mapPlayer(refreshed, team?.name)));
+  const [created] = await withMemberCategories([mapPlayer(refreshed, team?.name)], membershipFoundation.currentSeasonId);
+  res.status(201).json(await withShirtSummary(created));
 });
 
 const SELF_EDITABLE_FIELDS = [
@@ -1719,6 +1750,7 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     paymentDate: requestedDate,
     feePaid: requestedFeePaid,
     membershipFeeAmountDue,
+    membershipCategories: requestedCategories,
     ...directUpdate
   } = body;
   if (
@@ -1759,15 +1791,35 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     const foundation = await ensureMembershipFoundation(tx);
     const [current] = await tx.select().from(playersTable).where(eq(playersTable.id, id)).for("update");
     const target = directUpdate.currentMembershipTier;
-    const changed = target !== undefined && target !== current.currentMembershipTier;
-    const category = changed ? await resolveCategory(target!, tx) : null;
-    if (Object.keys(directUpdate).length > 0)
-      await tx.update(playersTable).set(directUpdate as typeof playersTable.$inferInsert).where(eq(playersTable.id, id));
-    if (changed || membershipFeeAmountDue !== undefined) {
-      const due = changed ? category!.defaultFee : (membershipFeeAmountDue == null ? null : membershipFeeAmountDue.toFixed(2));
+    const tierChanged = target !== undefined && target !== current.currentMembershipTier;
+    // The category itself is written by setMemberCategories below, which also
+    // keeps the main category and the fee due in step.
+    const { currentMembershipTier: _tier, membershipTierUpdatedAt: _tierUpdatedAt, ...profileUpdate } =
+      directUpdate as typeof directUpdate & { membershipTierUpdatedAt?: unknown };
+    if (Object.keys(profileUpdate).length > 0)
+      await tx.update(playersTable).set(profileUpdate as typeof playersTable.$inferInsert).where(eq(playersTable.id, id));
+
+    const [participation] = await tx.select({ amountDue: playerParticipationsTable.amountDue }).from(playerParticipationsTable)
+      .where(and(eq(playerParticipationsTable.playerId, id), eq(playerParticipationsTable.seasonId, foundation.currentSeasonId)));
+    const currentDue = participation?.amountDue == null ? null : Number(participation.amountDue);
+    // The form always sends the fee back. It only counts as a hand-set fee
+    // when the administrator actually changed it in this save.
+    const feeEdited = membershipFeeAmountDue !== undefined && !sameMoney(membershipFeeAmountDue, currentDue);
+
+    if (requestedCategories !== undefined || tierChanged) {
+      // A full list replaces the member's categories. Without a list, a new
+      // single value means "exactly this category" (or this status).
+      // The single value sent next to a list may be stale, so there it only
+      // serves as the status (Awaiting Selection / Trials) for an empty list.
+      const requested = requestedCategories !== undefined ? requestedCategories : [target!];
+      await setMemberCategories(tx, {
+        playerId: id, seasonId: foundation.currentSeasonId, requested,
+        ...(requestedCategories !== undefined ? { statusHint: target ?? current.currentMembershipTier } : {}),
+        ...(feeEdited ? { explicitDue: membershipFeeAmountDue ?? null } : {}),
+      });
+    } else if (feeEdited) {
       await tx.update(playerParticipationsTable).set({
-        ...(changed ? { membershipTier: target } : {}),
-        amountDue: due, updatedAt: new Date(),
+        amountDue: membershipFeeAmountDue == null ? null : membershipFeeAmountDue.toFixed(2), updatedAt: new Date(),
       }).where(and(eq(playerParticipationsTable.playerId, id), eq(playerParticipationsTable.seasonId, foundation.currentSeasonId)));
     }
   });
@@ -1798,7 +1850,10 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   const membershipFees = await getMembershipFeeAccounts([id]);
-  res.json(await withShirtSummary(mapPlayer(player, team?.name, undefined, membershipFees.get(id))));
+  const [seasonForCategories] = await db.select({ id: seasonsTable.id }).from(seasonsTable).where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG));
+  const mapped = mapPlayer(player, team?.name, undefined, membershipFees.get(id));
+  const [withCategories] = seasonForCategories ? await withMemberCategories([mapped], seasonForCategories.id) : [mapped];
+  res.json(await withShirtSummary(withCategories));
 });
 
 router.patch("/:id/passport-copy", requireAdminAccess, async (req, res) => {

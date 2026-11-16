@@ -25,7 +25,7 @@ import { ShirtHistoryPanel } from "@/components/shirt-numbers/ShirtHistoryPanel"
 import { ShirtSummaryCell } from "@/components/shirt-numbers/ShirtSummaryCell"
 import { MemberBulkEditor } from "@/components/members/MemberBulkEditor"
 import { MembershipCategoryManager } from "@/components/members/MembershipCategoryManager"
-import { useMembershipCategories, AWAITING_SELECTION_KEY } from "@/lib/membership-categories"
+import { useMembershipCategories, AWAITING_SELECTION_KEY, memberCategoryKeys, memberHasCategory } from "@/lib/membership-categories"
 import { useAuthIdentity } from "@/components/AdminAuthGate"
 import { Tags } from "lucide-react"
 
@@ -170,6 +170,8 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const canManageCategories = identity.kind === "admin" && !readOnly && !scope
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false)
   const membershipCategories = useMembershipCategories()
+  // The member's real categories in the open form (several allowed).
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
 
   const [positionFilter, setPositionFilter] = useState<string>("all")
   const [memberStatusFilter, setMemberStatusFilter] = useState<string>("all")
@@ -257,7 +259,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
     )
     .filter(p => memberStatusFilter === "archived" ? p.memberStatus === "archived" : p.memberStatus !== "archived")
     .filter(p => memberStatusFilter === "all" || p.memberStatus === memberStatusFilter)
-    .filter(p => membershipTierFilter === "all" || p.currentMembershipTier === membershipTierFilter)
+    .filter(p => membershipTierFilter === "all" || memberHasCategory(p, membershipTierFilter))
     .sort((a, b) => sortOrder === "asc"
       ? a.name.localeCompare(b.name)
       : b.name.localeCompare(a.name)
@@ -301,6 +303,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
 
   const openAddModal = () => {
     setEditingPlayer(null)
+    setSelectedCategories([])
     reset(blankForm())
     setIsModalOpen(true)
   }
@@ -350,6 +353,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
       currentMembershipSection: player.currentMembershipSection,
       currentMembershipTier: player.currentMembershipTier,
     })
+    setSelectedCategories(memberCategoryKeys(player, membershipCategories.isStatus))
     setIsModalOpen(true)
   }
 
@@ -546,8 +550,13 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
   const onSubmit = async (data: PlayerFormValues) => {
     try {
       const clean = (v: any) => v === "" ? undefined : v
+      // Real categories replace a status. With none ticked, the status
+      // (Awaiting Selection or Trials) chosen in the form applies.
+      const statusChoice = membershipCategories.isStatus(data.currentMembershipTier) ? data.currentMembershipTier : AWAITING_SELECTION_KEY
       const payload = {
         ...data,
+        membershipCategories: selectedCategories,
+        currentMembershipTier: selectedCategories[0] ?? statusChoice,
         paymentAmountDue: clean(data.paymentAmountDue) as number | undefined,
               }
       delete (payload as Record<string, unknown>).shirtNumber
@@ -805,7 +814,14 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex flex-col items-start gap-1">
-                          <Badge variant="outline">{membershipCategories.labelFor(player.currentMembershipTier)}</Badge>
+                          {(() => {
+                            const held = memberCategoryKeys(player, membershipCategories.isStatus)
+                            return (
+                              <Badge variant="outline" title={held.length > 1 ? membershipCategories.labelsFor(player) : undefined}>
+                                {membershipCategories.labelFor(held[0] ?? player.currentMembershipTier)}{held.length > 1 ? ` +${held.length - 1}` : ""}
+                              </Badge>
+                            )
+                          })()}
                           <span className="text-[11px] text-muted-foreground">{MEMBER_STATUS_LABELS[player.memberStatus]}</span>
                         </div>
                       </td>
@@ -923,13 +939,54 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
                 ))}
               </Select>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Category</label>
-              <Select {...register("currentMembershipTier")} value={watch("currentMembershipTier") ?? ""} data-testid="select-member-category">
-                {membershipCategories.assignmentOptions(editingPlayer?.currentMembershipTier).map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </Select>
+            <div className="space-y-2 md:col-span-2" data-testid="field-member-categories">
+              <label className="text-sm font-semibold">Categories</label>
+              <p className="text-xs text-muted-foreground">Tick every category this member holds. The fee due follows the highest one.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {membershipCategories.categories
+                  .filter((category) => !category.protected && (!category.retired || selectedCategories.includes(category.key)))
+                  .map((category) => {
+                    const checked = selectedCategories.includes(category.key)
+                    return (
+                      <label key={category.key} className={`flex items-center gap-2.5 rounded-xl border-2 px-3 py-2 text-sm cursor-pointer transition-colors ${checked ? "border-primary bg-primary/5" : "border-input bg-background"}`}>
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 accent-primary"
+                          checked={checked}
+                          onChange={(e) => setSelectedCategories((current) => e.target.checked ? [...current, category.key] : current.filter((key) => key !== category.key))}
+                          data-testid={`checkbox-member-category-${category.key}`}
+                        />
+                        <span className="flex-1 min-w-0 font-medium leading-tight">{category.name}{category.retired ? " (retired)" : ""}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">{category.defaultFee == null ? "No fee" : `HK$${category.defaultFee}`}</span>
+                      </label>
+                    )
+                  })}
+              </div>
+              {selectedCategories.length === 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  <label className="text-xs font-semibold text-muted-foreground">No category ticked. Status:</label>
+                  <Select
+                    {...register("currentMembershipTier")}
+                    value={membershipCategories.isStatus(watch("currentMembershipTier") ?? "") ? watch("currentMembershipTier") : AWAITING_SELECTION_KEY}
+                    data-testid="select-member-category"
+                  >
+                    {membershipCategories.categories.filter((category) => category.protected).map((category) => (
+                      <option key={category.key} value={category.key}>{category.name}</option>
+                    ))}
+                  </Select>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground" data-testid="text-member-standard-fee">
+                  {(() => {
+                    const standard = membershipCategories.standardFeeFor(selectedCategories)
+                    const due = editingPlayer?.membershipFeeAmountDue
+                    const previous = editingPlayer?.membershipFeeStandard
+                    const handSet = editingPlayer != null && due != null && previous != null && due !== previous
+                    if (handSet) return `Custom fee of HK$${due} is kept. The standard fee for these categories would be ${standard == null ? "not set" : `HK$${standard}`}.`
+                    return standard == null ? "None of these categories has a fee." : `Standard fee for these categories: HK$${standard}.`
+                  })()}
+                </p>
+              )}
               {errors.currentMembershipTier && <p className="text-xs text-destructive">{errors.currentMembershipTier.message}</p>}
               {membershipCategories.isError && <p className="text-xs text-destructive">Could not load categories. Close and reopen to retry.</p>}
             </div>

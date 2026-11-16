@@ -13,6 +13,7 @@ import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
 import { playerMatchRsvps, submitMatchRsvp } from "./matchAttendance";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
 import { currentSquadTeamIds } from "../utils/squads";
+import { categoryKeysByPlayer } from "../utils/memberCategories";
 
 const router: IRouter = Router();
 
@@ -175,10 +176,14 @@ router.get("/me", requirePlayerSession, async (req, res) => {
   const payments = await db.select().from(playerPaymentsTable).where(and(
     eq(playerPaymentsTable.playerId, player.id), eq(playerPaymentsTable.seasonId, foundation.currentSeasonId),
   ));
+  const heldCategories = (await categoryKeysByPlayer(foundation.currentSeasonId, [player.id])).get(player.id) ?? [];
   const account = buildSeasonFeeAccount(foundation.currentSeasonId, participation?.amountDue == null ? null : parseFloat(participation.amountDue), payments);
   res.json({
     ...await withShirtSummary(mapPlayer(player, null, undefined, account)),
-    currentMembershipCategoryName: catalogue.find(c => c.key === player.currentMembershipTier)?.name ?? player.currentMembershipTier.replaceAll("_", " "),
+    // All categories the member holds, main first ("League Player, Community Member").
+    currentMembershipCategoryName: (heldCategories.length ? heldCategories : [player.currentMembershipTier])
+      .map(key => catalogue.find(c => c.key === key)?.name ?? key.replaceAll("_", " ")).join(", "),
+    membershipCategories: heldCategories,
     currentSquadTeamId: (participation?.participationStatus === "active" ? participation.teamId : null) ?? player.teamId,
     // Every squad the member is in this season; currentSquadTeamId stays the primary one.
     currentSquadTeamIds: await currentSquadTeamIds(player.id),

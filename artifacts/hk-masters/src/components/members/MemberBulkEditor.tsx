@@ -11,7 +11,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/select"
 import { formatMembershipCurrency as formatCurrency } from "@/lib/utils"
-import { useMembershipCategories } from "@/lib/membership-categories"
+import { useMembershipCategories, parseBulkCategoryValue, bulkCategoryValue, type BulkCategoryMode } from "@/lib/membership-categories"
 import { AlertTriangle, ArrowRight, CheckCircle2, History, Loader2, RotateCcw, X, Users, ShieldAlert } from "lucide-react"
 
 type Field = "category" | "section"
@@ -26,7 +26,19 @@ function useValueLabel() {
   const { labelFor } = useMembershipCategories()
   return (field: string, value: string | null | undefined): string => {
     if (value == null || value === "") return "Not set"
-    return field === "category" ? labelFor(value) : BULK_SECTION_OPTIONS[value] ?? value
+    if (field !== "category") return BULK_SECTION_OPTIONS[value] ?? value
+    // A member's list is stored comma separated; an operation carries a prefix.
+    return parseBulkCategoryValue(value).key.split(",").map((key) => labelFor(key)).join(", ")
+  }
+}
+
+/** "set to League Player", "add Community Member", "remove League Player". */
+function useChangeLabel() {
+  const valueLabel = useValueLabel()
+  return (field: string, value: string): string => {
+    const mode = field === "category" ? parseBulkCategoryValue(value).mode : "set"
+    const label = valueLabel(field, value)
+    return mode === "add" ? `add ${label}` : mode === "remove" ? `remove ${label}` : `set to ${label}`
   }
 }
 function fieldLabel(field: string) {
@@ -166,7 +178,7 @@ export function BulkEditRowsTable({ field, rows, testId }: { field: string; rows
 function ConsequenceCopy({ field }: { field: string }) {
   return field === "category" ? (
     <ul className="text-sm space-y-1 list-disc pl-5">
-      <li>Only the <strong>current-season amount due</strong> is replaced by the new category fee, including any custom or nonstandard amounts flagged below.</li>
+      <li>The <strong>current-season amount due</strong> follows the highest fee among each member&apos;s categories. A custom or nonstandard amount is <strong>kept</strong> and flagged below.</li>
       <li>Payments, payment dates, archive history and squad assignments are not touched.</li>
       <li>No emails are sent and no refunds or payments are created.</li>
       <li>Where the category fee is not set, amount due shows as Not set, not $0.</li>
@@ -220,6 +232,7 @@ function HistoryPage({ beforeId, onOlder }: { beforeId?: number; onOlder: (id: n
 
 function HistoryBatch({ batch }: { batch: MemberBulkEditResult }) {
   const [open, setOpen] = useState(false)
+  const changeLabel = useChangeLabel()
   const valueLabel = useValueLabel()
   return (
     <article className="rounded-xl border border-border" data-testid={`card-history-${batch.batchId}`}>
@@ -227,7 +240,7 @@ function HistoryBatch({ batch }: { batch: MemberBulkEditResult }) {
         className="w-full text-left p-4 flex flex-col sm:flex-row sm:items-center gap-2 hover:bg-muted/40 rounded-xl">
         <div className="flex-1 min-w-0">
           <div className="font-display font-semibold">
-            {fieldLabel(batch.field)} set to {valueLabel(batch.field, batch.value)}
+            {fieldLabel(batch.field)}: {changeLabel(batch.field, batch.value)}
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {batch.actor} &middot; {new Date(batch.recordedAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} &middot; {batch.seasonName}
@@ -275,7 +288,10 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
   const applyMutation = useApplyMemberBulkEdit()
 
   const [field, setField] = useState<Field | "">("")
+  // For categories the value carries the operation: "key", "add:key" or "remove:key".
   const [value, setValue] = useState("")
+  const [categoryMode, setCategoryMode] = useState<BulkCategoryMode>("set")
+  const changeLabel = useChangeLabel()
   const [previewState, setPreviewState] = useState<PreviewState | null>(null)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -357,9 +373,11 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
   }
 
   // Only active categories can be newly assigned in bulk.
+  // Adding or removing only makes sense for real categories, not for a status.
   const options: Record<string, string> = field === "category"
-    ? Object.fromEntries(activeCategories.map((c) => [c.key, c.name]))
+    ? Object.fromEntries(activeCategories.filter((c) => categoryMode === "set" || !c.protected).map((c) => [c.key, c.name]))
     : field === "section" ? BULK_SECTION_OPTIONS : {}
+  const selectedKey = field === "category" ? parseBulkCategoryValue(value).key : value
   const applying = applyMutation.isPending
 
   return (
@@ -368,7 +386,7 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
         <div role="status" className="px-4 py-3 border-b border-border bg-emerald-50 text-emerald-950 flex flex-col sm:flex-row sm:items-center gap-2" data-testid="status-bulk-result">
           <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
           <div className="text-sm flex-1 min-w-0">
-            <strong>{fieldLabel(result.field)} set to {valueLabel(result.field, result.value)}</strong> for {result.changed} member{result.changed === 1 ? "" : "s"}
+            <strong>{fieldLabel(result.field)}: {changeLabel(result.field, result.value)}</strong> for {result.changed} member{result.changed === 1 ? "" : "s"}
             {result.unchanged > 0 && <>, {result.unchanged} unchanged</>}.{" "}
             <span className="text-emerald-900/80 break-words">
               {result.rows.filter((r) => r.changed).map((r) => r.name).join(", ") || "No members changed."}
@@ -393,14 +411,25 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
           <div className={ids.length > 0 ? "contents" : "hidden"} aria-hidden={ids.length === 0}>
               <label className="sr-only" htmlFor="bulk-field">Field to change</label>
               <Select id="bulk-field" className="w-44 bg-white" value={field} data-testid="select-bulk-field"
-                onChange={(e) => { setField(e.target.value as Field | ""); setValue("") }}>
+                onChange={(e) => { setField(e.target.value as Field | ""); setValue(""); setCategoryMode("set") }}>
                 <option value="">Choose field...</option>
                 <option value="category">Membership category</option>
                 <option value="section">Men/Women section</option>
               </Select>
+              {field === "category" && (
+                <>
+                  <label className="sr-only" htmlFor="bulk-mode">What to do with the category</label>
+                  <Select id="bulk-mode" className="w-36 bg-white" value={categoryMode} data-testid="select-bulk-mode"
+                    onChange={(e) => { setCategoryMode(e.target.value as BulkCategoryMode); setValue("") }}>
+                    <option value="set">Set to (replace)</option>
+                    <option value="add">Add</option>
+                    <option value="remove">Remove</option>
+                  </Select>
+                </>
+              )}
               <label className="sr-only" htmlFor="bulk-value">New value</label>
-              <Select id="bulk-value" className="w-44 bg-white" value={value} disabled={field === ""} data-testid="select-bulk-value"
-                onChange={(e) => setValue(e.target.value)}>
+              <Select id="bulk-value" className="w-44 bg-white" value={selectedKey} disabled={field === ""} data-testid="select-bulk-value"
+                onChange={(e) => setValue(field === "category" ? bulkCategoryValue(categoryMode, e.target.value) : e.target.value)}>
                 <option value="">{field === "" ? "Pick a field first" : field === "category" && categoriesLoading ? "Loading categories..." : field === "category" && categoriesError ? "Categories unavailable" : "Choose new value..."}</option>
                 {Object.entries(options).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </Select>
@@ -425,7 +454,7 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
       <WideDialog
         open={reviewOpen && (!!preview || applyError?.kind === "conflict")}
         onClose={() => { if (!applying) setReviewOpen(false) }}
-        title={field ? `Review: ${fieldLabel(field)} to ${valueLabel(field, value)}` : "Review bulk edit"}
+        title={field ? `Review: ${fieldLabel(field)}, ${changeLabel(field, value)}` : "Review bulk edit"}
         subtitle={preview ? `${preview.seasonName} \u00b7 ${preview.total} selected member${preview.total === 1 ? "" : "s"}` : undefined}
         testId="dialog-bulk-review"
         footer={
@@ -469,7 +498,7 @@ export function MemberBulkEditor({ selectedPlayers, onClearSelection }: {
             </div>
             {preview.changed === 0 && (
               <p className="rounded-xl bg-secondary p-3 text-sm" data-testid="status-no-change">
-                Every selected member already has {valueLabel(preview.field, preview.value)}. There is nothing to apply.
+                No selected member would change ({changeLabel(preview.field, preview.value)}). There is nothing to apply.
               </p>
             )}
             <div className="rounded-xl border border-border p-3 bg-muted/30">

@@ -61,6 +61,15 @@ Only **MO40** (Men's Over-40) and **MO50** (Men's Over-50). W35 was fully remove
 - Shirt numbers for the current season belong to a squad: they are set in the squad list (`PUT /api/teams/:id/squad/:playerId/shirt-number`, helper `setSquadShirtNumber` in `utils/shirtNumbers.ts`) and stored as the current assignment in the season's league shirt context. A number can only be given to a member of that team's squad, and leaving a squad closes the number (kept in history, with an audit entry) via `endSquadShirtNumbers`. The member profile shows history and records past numbers only.
 - `reconcileSquads` runs with `ensureMembershipFoundation` and copies any squad recorded the old way into the squad list. It never removes squads. `ensureSquadStorage` creates the table at start-up if it is missing; without the table the app falls back to one team per member instead of failing.
 
+### Membership categories (several per member)
+
+- `player_categories` (one row per member, season and category) holds the **real** categories a member has. A member can hold several. Awaiting Selection and Trials (`protected` categories) are a **status**: a member has either a status or one or more real categories, never both.
+- `players.current_membership_tier` and `player_participations.membership_tier` hold only the **main** category (highest default fee), or the status. Do not write them directly: use `setMemberCategories` in `artifacts/api-server/src/utils/memberCategories.ts`, which also keeps the fee due in step.
+- Fee rule: the amount due is the highest default fee among the member's categories. A fee set by hand (amount due differs from that standard) is **kept** when categories change and is flagged in the UI. Payments are never touched.
+- API: member records return `membershipCategories` (main first) and `membershipFeeStandard`. Create/update accept `membershipCategories` (the complete list). Bulk edit values: `"key"` replaces, `"add:key"` adds, `"remove:key"` removes.
+- `reconcileMemberCategories` runs with `ensureMembershipFoundation`: it copies a category written the old way into the list and re-points the main category. It never changes a fee. `ensureCategoryListStorage` creates the table at start-up if missing; without it the app falls back to one category per member.
+- After pulling schema changes from GitHub, run `pnpm --filter db push` in the Shell **before** republishing, otherwise Replit's publish step proposes to drop tables the development database does not have yet.
+
 ## Monorepo Structure
 
 ```

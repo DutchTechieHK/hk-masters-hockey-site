@@ -77,6 +77,10 @@ export interface Player {
   memberStatus: PlayerMemberStatus;
   currentMembershipSection: PlayerCurrentMembershipSection;
   currentMembershipTier: string;
+  /** Every membership category the member holds this season, main category (highest fee) first. Empty when the member only has a status (Awaiting Selection or Trials). */
+  membershipCategories?: string[];
+  /** The highest default fee among the member's categories. Differs from membershipFeeAmountDue when a fee was set by hand. */
+  membershipFeeStandard?: number | null;
   membershipTierUpdatedAt?: string | null;
   travelReminderSentAt?: string | null;
   feeReminderSentAt?: string | null;
