@@ -85,7 +85,7 @@ function isMissingFeeDetails(p: Player): boolean {
   return false
 }
 
-function exportToCSV(players: Player[], labelFor: (key: string) => string) {
+function exportToCSV(players: Player[], labelFor: (member: Player) => string) {
   const headers = [
     "Category",
     "Name",
@@ -98,7 +98,7 @@ function exportToCSV(players: Player[], labelFor: (key: string) => string) {
   ]
   const rows = players.map(p => {
     return [
-      labelFor(p.currentMembershipTier),
+      labelFor(p),
       p.name,
       p.email,
       p.membershipFeeAmountDue ?? "",
@@ -283,7 +283,7 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
     }
   }
 
-  const { categories: catalogue, labelFor } = useMembershipCategories()
+  const { categories: catalogue, labelFor, labelsFor } = useMembershipCategories()
   // All catalogue categories (active and retired) plus any unknown keys still held by members.
   const categories = useMemo<Array<[string, string]>>(() => {
     const entries: Array<[string, string]> = catalogue.map(c => [c.key, c.retired ? `${c.name} (retired)` : c.name])
@@ -359,7 +359,7 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
       action={
         <Button
           variant="outline"
-          onClick={() => exportToCSV(visiblePlayers, labelFor)}
+          onClick={() => exportToCSV(visiblePlayers, labelsFor)}
           disabled={visiblePlayers.length === 0}
         >
           <Download className="w-4 h-4 mr-2" /> Export CSV
@@ -688,7 +688,9 @@ export default function Fees({ scope, readOnly }: { scope?: string, readOnly?: b
             <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
               {editingPlayer?.membershipFeeAmountDue == null
                 ? "No fee until a category is assigned"
-                : `${formatCurrency(editingPlayer.membershipFeeAmountDue)} — set by ${labelFor(editingPlayer.currentMembershipTier)}`}
+                : editingPlayer.membershipFeeStandard != null && editingPlayer.membershipFeeStandard !== editingPlayer.membershipFeeAmountDue
+                  ? `${formatCurrency(editingPlayer.membershipFeeAmountDue)}, a custom fee. The standard fee for ${labelsFor(editingPlayer)} is ${formatCurrency(editingPlayer.membershipFeeStandard)}`
+                  : `${formatCurrency(editingPlayer.membershipFeeAmountDue)}, the highest fee among: ${labelsFor(editingPlayer)}`}
             </div>
           </div>
 

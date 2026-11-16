@@ -2246,6 +2246,18 @@ export const ListPlayersResponseItem = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.string(),
+  membershipCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Every membership category the member holds this season, main category (highest fee) first. Empty when the member only has a status (Awaiting Selection or Trials).",
+    ),
+  membershipFeeStandard: zod
+    .number()
+    .nullish()
+    .describe(
+      "The highest default fee among the member's categories. Differs from membershipFeeAmountDue when a fee was set by hand.",
+    ),
   membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),
@@ -2320,6 +2332,12 @@ export const CreatePlayerBody = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   currentMembershipTier: zod.string().optional(),
+  membershipCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "The complete list of membership categories for the member. Real categories replace a status; an empty list leaves the member on Awaiting Selection or Trials.",
+    ),
 });
 
 /**
@@ -3016,6 +3034,12 @@ export const UpdatePlayerBody = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]).optional(),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]).optional(),
   currentMembershipTier: zod.string().optional(),
+  membershipCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "The complete list of membership categories for the member. Real categories replace a status; an empty list leaves the member on Awaiting Selection or Trials.",
+    ),
 });
 
 export const UpdatePlayerResponse = zod.object({
@@ -3107,6 +3131,18 @@ export const UpdatePlayerResponse = zod.object({
   memberStatus: zod.enum(["active", "inactive", "archived"]),
   currentMembershipSection: zod.enum(["not_set", "men", "women"]),
   currentMembershipTier: zod.string(),
+  membershipCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Every membership category the member holds this season, main category (highest fee) first. Empty when the member only has a status (Awaiting Selection or Trials).",
+    ),
+  membershipFeeStandard: zod
+    .number()
+    .nullish()
+    .describe(
+      "The highest default fee among the member's categories. Differs from membershipFeeAmountDue when a fee was set by hand.",
+    ),
   membershipTierUpdatedAt: zod.string().nullish(),
   travelReminderSentAt: zod.string().nullish(),
   feeReminderSentAt: zod.string().nullish(),

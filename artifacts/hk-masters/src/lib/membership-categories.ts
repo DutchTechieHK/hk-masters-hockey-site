@@ -14,6 +14,41 @@ export function humanizeCategoryKey(key: string | null | undefined): string {
   return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
+/**
+ * A member's real categories, main (highest fee) first. Falls back to the
+ * single category on the member record for data from before multi-select.
+ */
+export function memberCategoryKeys(
+  member: { membershipCategories?: string[] | null; currentMembershipTier?: string | null },
+  isStatus: (key: string) => boolean,
+): string[] {
+  if (member.membershipCategories && member.membershipCategories.length > 0) return member.membershipCategories
+  const tier = member.currentMembershipTier
+  return tier && !isStatus(tier) ? [tier] : []
+}
+
+/** Does the member hold this category (or, for a status, is that their status)? */
+export function memberHasCategory(
+  member: { membershipCategories?: string[] | null; currentMembershipTier?: string | null },
+  key: string,
+): boolean {
+  return member.currentMembershipTier === key || (member.membershipCategories ?? []).includes(key)
+}
+
+/**
+ * Bulk edit values: "key" replaces, "add:key" adds, "remove:key" removes.
+ * Stored and previewed lists are comma separated ("league,community").
+ */
+export type BulkCategoryMode = "set" | "add" | "remove"
+export function parseBulkCategoryValue(value: string): { mode: BulkCategoryMode; key: string } {
+  if (value.startsWith("add:")) return { mode: "add", key: value.slice(4) }
+  if (value.startsWith("remove:")) return { mode: "remove", key: value.slice(7) }
+  return { mode: "set", key: value }
+}
+export function bulkCategoryValue(mode: BulkCategoryMode, key: string): string {
+  return key === "" || mode === "set" ? key : `${mode}:${key}`
+}
+
 export function normalizeCategoryToken(value: string): string {
   return value.trim().replace(/\s+/g, " ").toLowerCase()
 }
@@ -61,6 +96,27 @@ export function useMembershipCategories(options?: { enabled?: boolean }) {
     (key: string | null | undefined) => (key ? byKey.get(key)?.name ?? humanizeCategoryKey(key) : "Not set"),
     [byKey],
   )
+  /** Awaiting Selection and Trials are a status, not a category a member holds next to others. */
+  const isStatus = useCallback(
+    (key: string) => byKey.get(key)?.protected === true || (!byKey.has(key) && (key === AWAITING_SELECTION_KEY || key === TRIALS_KEY)),
+    [byKey],
+  )
+  /** "League Player, Community Member" for a member, or their status. */
+  const labelsFor = useCallback(
+    (member: { membershipCategories?: string[] | null; currentMembershipTier?: string | null }) => {
+      const keys = memberCategoryKeys(member, isStatus)
+      return keys.length ? keys.map((key) => labelFor(key)).join(", ") : labelFor(member.currentMembershipTier)
+    },
+    [isStatus, labelFor],
+  )
+  /** Highest default fee among these categories, or null when none has a fee. */
+  const standardFeeFor = useCallback(
+    (keys: string[]) => {
+      const fees = keys.map((key) => byKey.get(key)?.defaultFee).filter((fee): fee is number => fee != null)
+      return fees.length ? Math.max(...fees) : null
+    },
+    [byKey],
+  )
   /** Options for an assignment select: active categories, plus the current value if it is retired/unknown. */
   const assignmentOptions = useCallback(
     (currentKey?: string | null) => {
@@ -78,6 +134,9 @@ export function useMembershipCategories(options?: { enabled?: boolean }) {
     active,
     byKey,
     labelFor,
+    labelsFor,
+    isStatus,
+    standardFeeFor,
     assignmentOptions,
     isLoading: query.isLoading,
     isError: query.isError,

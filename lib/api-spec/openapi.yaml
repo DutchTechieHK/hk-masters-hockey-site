@@ -3436,6 +3436,15 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
+        membershipCategories:
+          type: array
+          items:
+            type: string
+          description: Every membership category the member holds this season, main category (highest fee) first. Empty when the member only has a status (Awaiting Selection or Trials).
+        membershipFeeStandard:
+          type: number
+          nullable: true
+          description: The highest default fee among the member's categories. Differs from membershipFeeAmountDue when a fee was set by hand.
         membershipTierUpdatedAt:
           type: string
           nullable: true
@@ -3612,6 +3621,11 @@ components:
           enum: [not_set, men, women]
         currentMembershipTier:
           type: string
+        membershipCategories:
+          type: array
+          items:
+            type: string
+          description: The complete list of membership categories for the member. Real categories replace a status; an empty list leaves the member on Awaiting Selection or Trials.
       required:
         - teamId
         - name

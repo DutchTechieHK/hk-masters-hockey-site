@@ -90,14 +90,17 @@ describe("safe current-membership bulk edits", () => {
     ]) expect((await view(body)).status).toBe(400);
     expect((await view(chosen("category", "social_player", [2147483647]))).status).toBe(409);
   });
-  it("previews exact names, custom fee replacement, current-only payments and changed/no-op counts without writing", async () => {
+  // Since multi-select categories (Phase 2C): a fee set by hand is kept when
+  // categories change, and flagged, instead of being replaced.
+  it("previews exact names, a kept custom fee, current-only payments and changed/no-op counts without writing", async () => {
     const original = await participation(a);
     const r = await view();
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ changed: 1, unchanged: 1, total: 2, seasonId });
     expect(r.body.rows).toHaveLength(2);
-    expect(r.body.rows[0]).toMatchObject({ playerId: a, name: `${tag}-0`, oldValue: "community_member", newValue: "social_player", oldAmountDue: 125, newAmountDue: 300, amountPaid: 80, balanceBefore: 45, balanceAfter: 220, customFee: true, teamIdAfter: teamId });
-    expect(r.body.rows[0].warnings.join(" ")).toContain("nonstandard/custom");
+    expect(r.body.rows[0]).toMatchObject({ playerId: a, name: `${tag}-0`, oldValue: "community_member", newValue: "social_player", oldAmountDue: 125, newAmountDue: 125, amountPaid: 80, balanceBefore: 45, balanceAfter: 45, customFee: true, teamIdAfter: teamId });
+    expect(r.body.rows[0].warnings.join(" ")).toContain("nonstandard/custom amount due is kept");
+    expect(r.body.rows[0].warnings.join(" ")).toContain("HK$300");
     expect(r.body.rows[1].changed).toBe(false);
     expect(await participation(a)).toEqual(original);
   });
