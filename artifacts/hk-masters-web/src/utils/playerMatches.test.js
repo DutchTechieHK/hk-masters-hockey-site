@@ -12,6 +12,16 @@ describe("player portal match audience", () => {
     expect(matchesForPlayer(matches, { teamId: 4, currentSquadTeamId: null })).toEqual([matches[1]]);
   });
 
+  it("shows the fixtures of every squad the member is in", () => {
+    const three = [...matches, { id: 3, teamId: 9 }];
+    expect(matchesForPlayer(three, { teamId: 4, currentSquadTeamId: 5, currentSquadTeamIds: [5, 9] }))
+      .toEqual([three[0], three[2]]);
+  });
+
+  it("ignores an empty squad list and falls back as before", () => {
+    expect(matchesForPlayer(matches, { teamId: 4, currentSquadTeamId: null, currentSquadTeamIds: [] })).toEqual([matches[1]]);
+  });
+
   it("shows available fixtures to a player with no team", () => {
     expect(matchesForPlayer(matches, { teamId: null, currentSquadTeamId: null })).toEqual(matches);
   });

@@ -17,6 +17,7 @@ import { withLeagueNumbers } from "../utils/shirtNumbers";
 import { eventRsvpAdminChangesTable } from "@workspace/db";
 import { createEventRsvpCorrection } from "./eventRsvpManagement";
 import { visibleMember } from "../utils/memberVisibility";
+import { currentSquadTeamIds, squadTeamIdsByPlayer } from "../utils/squads";
 
 const router: IRouter = Router();
 const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
@@ -97,6 +98,8 @@ function serialize(
 }
 
 type LocalEventInvitee = {
+  /** Every squad the member is in this season. teamId stays the primary (or legacy) team. */
+  teamIds: number[];
   id: number;
   name: string;
   email: string | null;
@@ -138,6 +141,9 @@ async function listLocalEventInvitees(
   eventTeamId: number | null,
   activeMembersOnly = false,
 ): Promise<LocalEventInvitee[]> {
+  const [season] = await db.select({ id: seasonsTable.id }).from(seasonsTable)
+    .where(eq(seasonsTable.slug, CURRENT_MEMBERSHIP_SEASON_SLUG)).limit(1);
+  const squadTeamIds = season ? await squadTeamIdsByPlayer(season.id) : new Map<number, number[]>();
   const [players, participations] = await Promise.all([
     db
       .select({
@@ -186,9 +192,10 @@ async function listLocalEventInvitees(
         ...player,
         teamId: current?.teamId ?? player.teamId,
         teamName: current?.teamName ?? player.teamName ?? null,
+        teamIds: current ? squadTeamIds.get(player.id) ?? [] : [],
       };
     })
-    .filter((player) => eventTeamId == null || player.teamId === eventTeamId));
+    .filter((player) => eventTeamId == null || player.teamId === eventTeamId || player.teamIds.includes(eventTeamId)));
 }
 
 async function getEventAudienceChangeImpact(
@@ -756,7 +763,8 @@ router.get(["/attendance", "/training-attendance"], (_req, res, next) => {
       gt(eventsTable.startsAt, new Date()),
     )).orderBy(asc(eventsTable.startsAt));
   const groups = await loadEventGroups(candidateEvents);
-  const events = candidateEvents.filter((event) => groups.includes(event, { id: player.id, teamId: effectiveTeamId }));
+  const mySquadTeamIds = await currentSquadTeamIds(player.id);
+  const events = candidateEvents.filter((event) => groups.includes(event, { id: player.id, teamId: effectiveTeamId, teamIds: mySquadTeamIds }));
   if (!events.length) { res.json({ events: [] }); return; }
 
   const invitees = await listLocalEventInvitees(null, true);
@@ -1050,7 +1058,7 @@ async function upsertOwnRsvp(req: Request, res: Response): Promise<void> {
   if (event.operationalScope == null) { res.status(409).json({ error: "Unclassified records must be classified before editing" }); return; }
   const effectiveTeamId = await getEffectiveEventTeamId(player.id, player.teamId);
   const groups = await loadEventGroups([event]);
-  if (!groups.includes(event, { id: player.id, teamId: effectiveTeamId })) {
+  if (!groups.includes(event, { id: player.id, teamId: effectiveTeamId, teamIds: await currentSquadTeamIds(player.id) })) {
     res.status(403).json({ error: "You are not in this event's invited audience" }); return;
   }
 
@@ -1071,6 +1079,7 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
   const effectiveTeamId = playerId == null
     ? playerTeamId
     : await getEffectiveEventTeamId(playerId, playerTeamId);
+  const squadTeamIdsForPlayer = playerId == null ? [] : await currentSquadTeamIds(playerId);
   const candidates = await db
     .select({ event: eventsTable, teamName: teamsTable.name })
     .from(eventsTable)
@@ -1085,7 +1094,7 @@ export async function listEventsForPlayer(playerTeamId: number | null, playerId:
     // Anonymous callers never get group invitations, even if a legacy caller
     // supplies a squad but not a verified member ID.
     event.audienceMode === "groups" && playerId == null ? false
-      : groups.includes(event, { id: playerId ?? -1, teamId: effectiveTeamId }));
+      : groups.includes(event, { id: playerId ?? -1, teamId: effectiveTeamId, teamIds: squadTeamIdsForPlayer }));
   const ids = rows.map((r) => r.event.id);
   const counts = await loadRsvpCounts(
     rows.map(({ event }) => event),

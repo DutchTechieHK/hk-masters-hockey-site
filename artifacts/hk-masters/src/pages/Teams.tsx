@@ -55,7 +55,9 @@ const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
 function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onBack: () => void; onEdit: (team: Team) => void; readOnly?: boolean; scope?: string }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const isLeagueSquad = team.name === "Masters Div. 1" && !scope
+  // Every current team has a squad. The internal holding team and the
+  // archived Rotterdam teams (shown with a scope) keep the plain roster.
+  const isLeagueSquad = !scope && team.name !== "Awaiting Selection"
   const { data: defaultPlayers = [], isLoading: defaultLoading } = useListPlayers({ teamId: team.id }, { query: { enabled: !scope } } as any)
 
   const { data: archivePlayers = [], isLoading: archiveLoading } = useQuery({
@@ -157,7 +159,8 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
             <p><span className="font-semibold text-foreground">Team</span> is the entry in the league: its name, manager and coach.</p>
             <p><span className="font-semibold text-foreground">Squad</span> is the group of members selected to play for this team this season.</p>
             <p><span className="font-semibold text-foreground">Eligible members</span> are all active members of this team&apos;s section with a 2026/27 season record. They are listed so you can pick from them, they are not in the squad until you add them.</p>
-            <p>Adding or removing a member only changes this season&apos;s squad. Their membership category, fees, and Rotterdam team remain unchanged.</p>
+            <p>A member can be in more than one squad in the same season, for example a league team and a tournament team.</p>
+            <p>Adding or removing a member only changes this team&apos;s squad. Their other squads, membership category, fees, and Rotterdam team remain unchanged.</p>
           </div>
 
           {squadLoading ? (
@@ -460,7 +463,7 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
                       </div>
                     )}
                     <div className="mt-auto pt-3 border-t border-border/50 text-xs font-medium text-primary flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" /> Click to view team roster →
+                      <Users className="w-3.5 h-3.5" /> Click to view the squad →
                     </div>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { playersTable, teamsTable, seasonsTable, playerParticipationsTable, worl
 import { and, eq, sql } from "drizzle-orm";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
 import { visibleMember } from "../utils/memberVisibility";
+import { inSquad } from "../utils/squads";
 
 const router = Router();
 
@@ -48,7 +49,10 @@ router.get("/squad", async (req, res) => {
     .leftJoin(seasonsTable, eq(seasonsTable.slug, "membership-2026-27"))
     .leftJoin(playerParticipationsTable, and(eq(playerParticipationsTable.playerId, playersTable.id),
       eq(playerParticipationsTable.seasonId, seasonsTable.id), eq(playerParticipationsTable.participationStatus, "active")))
-    .leftJoin(teamsTable, sql`${teamsTable.id} = coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId})`)
+    // One row per member per squad, so a member in two squads is listed in
+    // both teams. Members in no squad fall back to their old team as before.
+    .leftJoin(teamsTable, sql`${teamsTable.id} = coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId})
+      OR (${playerParticipationsTable.id} IS NOT NULL AND ${inSquad(playersTable.id, playerParticipationsTable.seasonId, teamsTable.id)})`)
     .where(and(eq(teamsTable.isInternal, false), visibleMember()))
     .orderBy(playersTable.id);
 

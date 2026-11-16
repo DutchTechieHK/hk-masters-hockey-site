@@ -42,6 +42,7 @@ import {
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { visibleMember } from "../utils/memberVisibility";
+import { reconcileSquads, removeSquadsOutsideSection, squadTeamsByPlayer } from "../utils/squads";
 import { requireSession } from "../middleware/adminSession";
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { shirtSummaries, withShirtSummary } from "../utils/shirtNumbers";
@@ -405,6 +406,9 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
       AND current_participation.season_id = ${current.id}
       AND current_participation.membership_section IS DISTINCT FROM member.current_membership_section
   `);
+  // Squads: copy any squad recorded the old single-team way into the squad
+  // list and keep the season record's primary team in step. Idempotent.
+  await reconcileSquads(executor, current.id);
 
   const participations = await executor.select({
     seasonId: playerParticipationsTable.seasonId,
@@ -512,6 +516,8 @@ async function syncCurrentParticipation(playerId: number) {
     const foundation = await ensureMembershipFoundation(tx);
     const [player] = await tx.select().from(playersTable).where(eq(playersTable.id, playerId)).for("update");
     if (!player) return;
+    // Squads in a different section go first, so the primary team below is right.
+    await removeSquadsOutsideSection(tx, foundation.currentSeasonId, playerId, player.currentMembershipSection);
     await tx.update(playerParticipationsTable).set({
       teamId: sql`CASE
         WHEN ${playerParticipationsTable.teamId} IS NULL THEN NULL
@@ -923,7 +929,13 @@ router.get("/:id/participations", requireAdminAccess, async (req, res) => {
     .leftJoin(teamsTable, eq(playerParticipationsTable.teamId, teamsTable.id))
     .where(eq(playerParticipationsTable.playerId, id))
     .orderBy(desc(seasonsTable.startsOn));
-  res.json(rows.map(({ participation, season, teamName }) => ({
+  // A member can be in several squads in one season: show all of them.
+  const squadNames = new Map<number, string>();
+  for (const { participation } of rows) {
+    const squads = (await squadTeamsByPlayer(participation.seasonId, [id])).get(id) ?? [];
+    if (squads.length) squadNames.set(participation.id, squads.map((squad) => squad.teamName).join(", "));
+  }
+  res.json(rows.map(({ participation, season, teamName: primaryTeamName }) => { const teamName = squadNames.get(participation.id) ?? primaryTeamName; return ({
     id: participation.id,
     playerId: participation.playerId,
     seasonId: participation.seasonId,
@@ -939,7 +951,7 @@ router.get("/:id/participations", requireAdminAccess, async (req, res) => {
     source: participation.source,
     legacySnapshot: participation.legacySnapshot,
     createdAt: participation.createdAt.toISOString(),
-  })));
+  }); }));
 });
 
 router.get("/", requireAdminAccess, async (req, res) => {

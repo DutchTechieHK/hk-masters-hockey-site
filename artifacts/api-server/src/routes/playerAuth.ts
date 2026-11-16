@@ -12,6 +12,7 @@ import { withShirtSummary } from "../utils/shirtNumbers";
 import { listEventsForPlayer, playerRsvpHandler, requestBase } from "./events";
 import { playerMatchRsvps, submitMatchRsvp } from "./matchAttendance";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
+import { currentSquadTeamIds } from "../utils/squads";
 
 const router: IRouter = Router();
 
@@ -179,6 +180,8 @@ router.get("/me", requirePlayerSession, async (req, res) => {
     ...await withShirtSummary(mapPlayer(player, null, undefined, account)),
     currentMembershipCategoryName: catalogue.find(c => c.key === player.currentMembershipTier)?.name ?? player.currentMembershipTier.replaceAll("_", " "),
     currentSquadTeamId: (participation?.participationStatus === "active" ? participation.teamId : null) ?? player.teamId,
+    // Every squad the member is in this season; currentSquadTeamId stays the primary one.
+    currentSquadTeamIds: await currentSquadTeamIds(player.id),
     accessToken: player.accessToken,
   });
 });

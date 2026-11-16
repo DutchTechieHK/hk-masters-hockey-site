@@ -22,6 +22,7 @@ import {
 import { requireAdminAccess } from "../middleware/adminAuth";
 import { buildSeasonFeeAccount } from "../utils/membershipFees";
 import { loadEventGroups } from "../utils/eventGroups";
+import { squadTeamIdsByPlayer } from "../utils/squads";
 
 const router: IRouter = Router();
 const CURRENT_SEASON_SLUG = "membership-2026-27";
@@ -138,6 +139,8 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
       .orderBy(asc(playersTable.name)),
   ]);
 
+  // A member can be in several squads: use the squad list, not one team.
+  const squadTeamIds = await squadTeamIdsByPlayer(season.id);
   const currentParticipationRows = await db
     .select({
       playerId: playerParticipationsTable.playerId,
@@ -212,12 +215,16 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
       name: player.name,
       ...resolvedPlayerTeams.get(player.id)!,
     }))
-    .filter((player) => eventTeamId == null || player.teamId === eventTeamId);
+    .filter((player) => eventTeamId == null || player.teamId === eventTeamId
+      || (activeCurrentTeamByPlayer.has(player.id) && (squadTeamIds.get(player.id) ?? []).includes(eventTeamId)));
 
   const groupAudiences = await loadEventGroups(trainingEvents);
   const training = await Promise.all(trainingEvents.map(async (event) => {
     const invitees = inviteesForTraining(event.teamId).filter((member) =>
-      groupAudiences.includes(event, { id: member.id, teamId: resolvedPlayerTeams.get(member.id)?.teamId ?? null }));
+      groupAudiences.includes(event, {
+        id: member.id, teamId: resolvedPlayerTeams.get(member.id)?.teamId ?? null,
+        teamIds: activeCurrentTeamByPlayer.has(member.id) ? squadTeamIds.get(member.id) ?? [] : [],
+      }));
     const inviteeIds = invitees.map((player) => player.id);
     const rsvps = inviteeIds.length
       ? await db.select().from(eventRsvpsTable).where(and(
@@ -258,7 +265,7 @@ router.get("/reports/current", requireAdminAccess, async (_req, res): Promise<vo
 
   const matches = await Promise.all(localMatches.map(async (match) => {
     const squad = currentParticipationRows
-      .filter((participation) => participation.teamId === match.teamId)
+      .filter((participation) => (squadTeamIds.get(participation.playerId) ?? []).includes(match.teamId))
       .map((participation) => participation.playerId);
     const eligible = participations
       .filter((member) => member.memberStatus === "active" && squad.includes(member.playerId))

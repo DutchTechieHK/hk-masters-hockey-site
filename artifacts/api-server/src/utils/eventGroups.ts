@@ -2,7 +2,8 @@ import { db, memberGroupMembersTable, eventGroupsTable, memberGroupsTable } from
 import { asc, inArray } from "drizzle-orm";
 
 export type EventAudience = { id: number; teamId: number | null; audienceMode?: string };
-export type AudienceMember = { id: number; teamId: number | null };
+/** teamIds lists every squad the member is in; teamId is their primary (or legacy) team. */
+export type AudienceMember = { id: number; teamId: number | null; teamIds?: number[] };
 
 export async function loadEventGroups(events: EventAudience[]) {
   const groupEvents = events.filter((event) => event.audienceMode === "groups");
@@ -26,7 +27,7 @@ export async function loadEventGroups(events: EventAudience[]) {
       // A missing/empty group association fails closed, never to "all squads".
       return event.audienceMode === "groups"
         ? playerIdsByEvent.get(event.id)?.has(player.id) === true
-        : event.teamId == null || event.teamId === player.teamId;
+        : event.teamId == null || event.teamId === player.teamId || player.teamIds?.includes(event.teamId) === true;
     },
   };
 }
