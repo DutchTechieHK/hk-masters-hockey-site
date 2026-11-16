@@ -968,7 +968,7 @@ export default function Players({ scope, readOnly }: { scope?: string, readOnly?
           ) : editingPlayer ? (
             <ShirtSummaryCell summary={editingPlayer.shirtNumbers ?? (editingPlayer.shirtNumber != null ? { current: [], legacyNumber: editingPlayer.shirtNumber } : null)} />
           ) : (
-            <p className="text-sm text-muted-foreground rounded-lg border border-dashed px-3 py-2.5" data-testid="text-shirt-save-first">Save the new member first, then reopen their profile to assign shirt numbers per league or tournament.</p>
+            <p className="text-sm text-muted-foreground rounded-lg border border-dashed px-3 py-2.5" data-testid="text-shirt-save-first">Save the new member first. Shirt numbers are then set per squad, in the squad list on the Teams page.</p>
           )}
 
           {editingPlayer && (

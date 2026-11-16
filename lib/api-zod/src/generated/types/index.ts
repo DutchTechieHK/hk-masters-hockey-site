@@ -208,6 +208,8 @@ export * from "./sponsorTier";
 export * from "./squadCandidate";
 export * from "./squadCandidateMembershipSection";
 export * from "./squadSelectionUpdate";
+export * from "./squadShirtNumberResult";
+export * from "./squadShirtNumberUpdate";
 export * from "./staffAccessDirectory";
 export * from "./staffAttendance";
 export * from "./staffAttendanceInput";

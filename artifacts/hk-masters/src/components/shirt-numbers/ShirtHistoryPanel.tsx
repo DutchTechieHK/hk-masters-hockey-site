@@ -279,16 +279,13 @@ export function ShirtHistoryPanel({ playerId }: { playerId: number }) {
   return (
     <div className="space-y-3" data-testid="panel-shirt-history">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-muted-foreground">Numbers are recorded per competition and team. Dates are optional; leave blank if unknown.</p>
+        <p className="text-xs text-muted-foreground">This season&apos;s numbers are set per squad, in the squad list on the Teams page. Here you see every number and its history, and can record a number from a past season or tournament.</p>
         <div className="flex gap-1.5">
           <Button type="button" size="sm" variant="ghost" onClick={() => refetch()} disabled={isFetching} title="Reload history" data-testid="button-refresh-shirt-history">
             <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
           <Button type="button" size="sm" variant="outline" onClick={() => openDraft("history")} disabled={!!draft} data-testid="button-add-past-shirt">
             <History className="w-3.5 h-3.5 mr-1.5" /> Past
-          </Button>
-          <Button type="button" size="sm" onClick={() => openDraft("assign")} disabled={!!draft} data-testid="button-assign-shirt">
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Assign
           </Button>
         </div>
       </div>
@@ -437,7 +434,7 @@ export function ShirtHistoryPanel({ playerId }: { playerId: number }) {
         {groups.current.length === 0 && groups.past.length === 0 ? (
           <div className="rounded-xl border border-dashed p-4 text-center">
             <p className="text-sm font-semibold">No shirt numbers recorded</p>
-            <p className="text-xs text-muted-foreground">Assign a current number or record a past one for a league or tournament.</p>
+            <p className="text-xs text-muted-foreground">Set this season&apos;s number in the squad list on the Teams page, or record a past one here.</p>
           </div>
         ) : (
           <>

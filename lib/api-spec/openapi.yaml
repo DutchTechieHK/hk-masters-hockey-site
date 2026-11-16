@@ -850,7 +850,7 @@ paths:
         "401":
           description: Admin authentication required
         "404":
-          description: Masters Div. 1 squad not found
+          description: Team has no current squad
         "409":
           description: Current membership season is not configured
 
@@ -886,9 +886,49 @@ paths:
         "401":
           description: Admin authentication required
         "404":
-          description: Masters Div. 1 squad or current member not found
+          description: Team has no current squad, or current member not found
         "409":
           description: Current season is unavailable or the member is no longer eligible
+
+  /teams/{id}/squad/{playerId}/shirt-number:
+    put:
+      operationId: setSquadShirtNumber
+      tags: [teams]
+      summary: Set, change or clear a squad member's shirt number for this team this season
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SquadShirtNumberUpdate"
+      responses:
+        "200":
+          description: Updated squad member, with any duplicate-number warnings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SquadShirtNumberResult"
+        "400":
+          description: Invalid shirt number
+        "401":
+          description: Admin authentication required
+        "404":
+          description: Team has no current squad
+        "409":
+          description: The member is not in this team's squad
+        "503":
+          description: Squad storage is not available yet
 
   /players:
     get:
@@ -3224,6 +3264,28 @@ components:
         selected:
           type: boolean
       required: [selected]
+
+    SquadShirtNumberUpdate:
+      type: object
+      properties:
+        number:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 99
+          description: The shirt number for this squad, or null to clear it.
+      required: [number]
+
+    SquadShirtNumberResult:
+      type: object
+      properties:
+        candidate:
+          $ref: "#/components/schemas/SquadCandidate"
+        warnings:
+          type: array
+          items:
+            type: string
+      required: [candidate, warnings]
 
     Player:
       type: object

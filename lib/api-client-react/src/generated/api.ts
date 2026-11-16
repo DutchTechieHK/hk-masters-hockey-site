@@ -110,6 +110,8 @@ import type {
   Sponsor,
   SquadCandidate,
   SquadSelectionUpdate,
+  SquadShirtNumberResult,
+  SquadShirtNumberUpdate,
   StaffAccessDirectory,
   StaffAttendance,
   StaffAttendanceInput,
@@ -4781,6 +4783,97 @@ export const useUpdateCurrentSquadSelection = <
   TContext
 > => {
   return useMutation(getUpdateCurrentSquadSelectionMutationOptions(options));
+};
+
+/**
+ * @summary Set, change or clear a squad member's shirt number for this team this season
+ */
+export const getSetSquadShirtNumberUrl = (id: number, playerId: number) => {
+  return `/api/teams/${id}/squad/${playerId}/shirt-number`;
+};
+
+export const setSquadShirtNumber = async (
+  id: number,
+  playerId: number,
+  squadShirtNumberUpdate: SquadShirtNumberUpdate,
+  options?: RequestInit,
+): Promise<SquadShirtNumberResult> => {
+  return customFetch<SquadShirtNumberResult>(
+    getSetSquadShirtNumberUrl(id, playerId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(squadShirtNumberUpdate),
+    },
+  );
+};
+
+export const getSetSquadShirtNumberMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setSquadShirtNumber>>,
+    TError,
+    { id: number; playerId: number; data: BodyType<SquadShirtNumberUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setSquadShirtNumber>>,
+  TError,
+  { id: number; playerId: number; data: BodyType<SquadShirtNumberUpdate> },
+  TContext
+> => {
+  const mutationKey = ["setSquadShirtNumber"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setSquadShirtNumber>>,
+    { id: number; playerId: number; data: BodyType<SquadShirtNumberUpdate> }
+  > = (props) => {
+    const { id, playerId, data } = props ?? {};
+
+    return setSquadShirtNumber(id, playerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetSquadShirtNumberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setSquadShirtNumber>>
+>;
+export type SetSquadShirtNumberMutationBody = BodyType<SquadShirtNumberUpdate>;
+export type SetSquadShirtNumberMutationError = ErrorType<void>;
+
+/**
+ * @summary Set, change or clear a squad member's shirt number for this team this season
+ */
+export const useSetSquadShirtNumber = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setSquadShirtNumber>>,
+    TError,
+    { id: number; playerId: number; data: BodyType<SquadShirtNumberUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setSquadShirtNumber>>,
+  TError,
+  { id: number; playerId: number; data: BodyType<SquadShirtNumberUpdate> },
+  TContext
+> => {
+  return useMutation(getSetSquadShirtNumberMutationOptions(options));
 };
 
 /**

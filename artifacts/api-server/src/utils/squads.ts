@@ -1,5 +1,6 @@
 import {
   db, squadMembershipsTable, playerParticipationsTable, playersTable, seasonsTable, teamsTable,
+  shirtAssignmentsTable, shirtContextsTable, shirtAuditTable,
 } from "@workspace/db";
 import { and, asc, eq, inArray, sql, type SQL, type AnyColumn } from "drizzle-orm";
 
@@ -196,15 +197,61 @@ export async function syncPrimarySquad(executor: Pick<typeof db, "execute">, sea
   `);
 }
 
+type SquadPair = { playerId: number; teamId: number };
+
+function pairsFrom(result: unknown): SquadPair[] {
+  const rows = (result as { rows?: Array<{ player_id: number; team_id: number }> }).rows ?? [];
+  return rows.map((row) => ({ playerId: Number(row.player_id), teamId: Number(row.team_id) }));
+}
+
+/**
+ * A squad number belongs to the squad. When a member leaves a squad, their
+ * current number for that team this season is closed (kept in the history,
+ * with an audit entry), so nobody keeps a number for a squad they are not in.
+ */
+export async function endSquadShirtNumbers(
+  executor: Pick<typeof db, "execute">, seasonId: number, pairs: SquadPair[], actor = "System",
+) {
+  if (pairs.length === 0) return;
+  const pairList = sql.join(pairs.map((pair) => sql`(${pair.playerId}, ${pair.teamId})`), sql`, `);
+  await executor.execute(sql`
+    WITH today AS (
+      SELECT to_char(now() AT TIME ZONE 'Asia/Hong_Kong', 'YYYY-MM-DD') AS day
+    ), ended AS (
+      UPDATE ${shirtAssignmentsTable} AS assignment
+      SET status = 'historical',
+          ends_on = GREATEST(COALESCE(assignment.starts_on, today.day), today.day)
+      FROM ${shirtContextsTable} AS context, today
+      WHERE context.id = assignment.context_id
+        AND context.kind = 'league'
+        AND context.season_id = ${seasonId}
+        AND assignment.status = 'current'
+        AND (assignment.player_id, assignment.team_id) IN (${pairList})
+      RETURNING assignment.id, assignment.player_id, assignment.number, assignment.team_name, assignment.context_id
+    ), audited AS (
+      INSERT INTO ${shirtAuditTable} (player_id, actor, action, reason, detail)
+      SELECT player_id, ${actor}, 'end', 'Removed from the squad',
+        'end #' || number || ', assignment ' || id || ', competition ' || context_id || ', ' || team_name || '; closed because the member left the squad'
+      FROM ended
+      RETURNING player_id
+    )
+    UPDATE ${playersTable} AS member
+    SET shirt_number_revision = member.shirt_number_revision + 1
+    WHERE member.id IN (SELECT player_id FROM audited)
+  `);
+}
+
 /** Remove a set of members from every squad of the season (e.g. after a section change). */
 export async function removeFromAllSquads(executor: Pick<typeof db, "execute">, seasonId: number, playerIds: number[]) {
   if (!storageReady || playerIds.length === 0) return;
-  await executor.execute(sql`
+  const removed = await executor.execute(sql`
     DELETE FROM ${squadMembershipsTable}
     WHERE season_id = ${seasonId}
       AND player_id IN (${sql.join(playerIds.map((id) => sql`${id}`), sql`, `)})
+    RETURNING player_id, team_id
   `);
   await syncPrimarySquad(executor, seasonId, playerIds);
+  await endSquadShirtNumbers(executor, seasonId, pairsFrom(removed));
 }
 
 /**
@@ -215,15 +262,17 @@ export async function removeSquadsOutsideSection(
   executor: Pick<typeof db, "execute">, seasonId: number, playerId: number, section: string,
 ) {
   if (!storageReady) return;
-  await executor.execute(sql`
+  const removed = await executor.execute(sql`
     DELETE FROM ${squadMembershipsTable} squad_link
     USING ${teamsTable} team
     WHERE squad_link.season_id = ${seasonId}
       AND squad_link.player_id = ${playerId}
       AND team.id = squad_link.team_id
       AND team.membership_section IS DISTINCT FROM ${section}
+    RETURNING squad_link.player_id, squad_link.team_id
   `);
   await syncPrimarySquad(executor, seasonId, [playerId]);
+  await endSquadShirtNumbers(executor, seasonId, pairsFrom(removed));
 }
 
 /**
