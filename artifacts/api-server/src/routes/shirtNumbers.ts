@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { db, playersTable, teamsTable, seasonsTable, shirtContextsTable, shirtAssignmentsTable, shirtAuditTable, worldCupPlayerSnapshotsTable } from "@workspace/db";
+import { db, playersTable, teamsTable, seasonsTable, shirtContextsTable, shirtAssignmentsTable, shirtAuditTable, worldCupPlayerSnapshotsTable, playerParticipationsTable } from "@workspace/db";
+import { CURRENT_MEMBERSHIP_SEASON_SLUG, inSquadOrPrimary } from "../utils/squads";
 import { and, eq, desc, ne, sql } from "drizzle-orm";
 import { CreateShirtContextBody, ChangePlayerShirtNumberBody } from "@workspace/api-zod";
 import { requireAdminAccess } from "../middleware/adminAuth";
@@ -108,6 +109,19 @@ router.post("/players/:playerId", async (req, res) => {
       const startsOn = date(b.startsOn), endsOn = date(b.endsOn);
       if (startsOn && endsOn && endsOn < startsOn) fail(400, "End date cannot precede start date.");
       if (b.action === "assign" && endsOn) fail(400, "A current assignment cannot have an end date.");
+      if (b.action === "assign" && context.kind === "league" && context.seasonId != null) {
+        // This season's numbers belong to a squad: the member must be in that
+        // team's squad first. Older seasons and tournaments are unaffected.
+        const [season] = await tx.select({ slug: seasonsTable.slug }).from(seasonsTable).where(eq(seasonsTable.id, context.seasonId));
+        if (season?.slug === CURRENT_MEMBERSHIP_SEASON_SLUG) {
+          const [inTeamSquad] = await tx.select({ id: playerParticipationsTable.id }).from(playerParticipationsTable).where(and(
+            eq(playerParticipationsTable.playerId, playerId), eq(playerParticipationsTable.seasonId, context.seasonId),
+            eq(playerParticipationsTable.participationStatus, "active"),
+            inSquadOrPrimary(playerParticipationsTable.playerId, context.seasonId, team.id),
+          ));
+          if (!inTeamSquad) fail(409, `This member is not in the ${team.name} squad. Add them to the squad on the Teams page, then set their number in the squad list.`);
+        }
+      }
       if (b.action === "assign") {
         const [current] = await tx.select().from(shirtAssignmentsTable).where(and(eq(shirtAssignmentsTable.playerId, playerId),
           eq(shirtAssignmentsTable.contextId, context.id), eq(shirtAssignmentsTable.teamId, team.id), eq(shirtAssignmentsTable.status, "current")));

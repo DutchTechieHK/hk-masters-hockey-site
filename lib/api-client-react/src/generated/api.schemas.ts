@@ -1175,6 +1175,20 @@ export interface SquadSelectionUpdate {
   selected: boolean;
 }
 
+export interface SquadShirtNumberUpdate {
+  /**
+   * The shirt number for this squad, or null to clear it.
+   * @minimum 1
+   * @maximum 99
+   */
+  number: number | null;
+}
+
+export interface SquadShirtNumberResult {
+  candidate: SquadCandidate;
+  warnings: string[];
+}
+
 export type PlayerMemberStatus =
   (typeof PlayerMemberStatus)[keyof typeof PlayerMemberStatus];
 

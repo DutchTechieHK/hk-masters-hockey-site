@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   useListTeams,
   useCreateTeam,
@@ -8,6 +8,7 @@ import {
   useListPlayers,
   useListCurrentSquadCandidates,
   useUpdateCurrentSquadSelection,
+  useSetSquadShirtNumber,
   getListCurrentSquadCandidatesQueryKey,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
@@ -52,6 +53,53 @@ const teamSchema = z.object({
 type TeamFormValues = z.infer<typeof teamSchema>
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
 
+/**
+ * Shirt number for one squad member, edited in place. Saves on Enter or when
+ * the field loses focus; an empty field clears the number.
+ */
+function SquadNumberField({ value, duplicate, disabled, onSave }: {
+  value: number | null
+  duplicate: boolean
+  disabled: boolean
+  onSave: (next: number | null) => Promise<boolean>
+}) {
+  const [text, setText] = useState(value == null ? "" : String(value))
+  const [saving, setSaving] = useState(false)
+  useEffect(() => { setText(value == null ? "" : String(value)) }, [value])
+
+  const commit = async () => {
+    const trimmed = text.trim()
+    const next = trimmed === "" ? null : Number(trimmed)
+    if (next === value) return
+    if (next != null && (!Number.isInteger(next) || next < 1 || next > 99)) {
+      setText(value == null ? "" : String(value))
+      return
+    }
+    setSaving(true)
+    const saved = await onSave(next)
+    setSaving(false)
+    if (!saved) setText(value == null ? "" : String(value))
+  }
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      maxLength={2}
+      value={text}
+      disabled={disabled || saving}
+      placeholder="—"
+      aria-label="Shirt number"
+      title={duplicate ? "Another squad member has this number" : "Shirt number for this squad. Leave empty for none."}
+      onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ""))}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLInputElement).blur() } }}
+      className={`w-11 h-9 shrink-0 rounded-lg border-2 text-center font-bold text-sm tabular-nums focus:outline-none focus:border-primary disabled:opacity-60 ${duplicate ? "border-amber-400 bg-amber-50 text-amber-900" : "border-primary/20 bg-primary/5 text-primary"}`}
+      data-testid="input-squad-shirt-number"
+    />
+  )
+}
+
 function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onBack: () => void; onEdit: (team: Team) => void; readOnly?: boolean; scope?: string }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
@@ -89,6 +137,30 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
   const eligibleMembers = sortedCandidates.filter((candidate) => !candidate.selected)
   const selectedCount = squadMembers.length
   const sortedPlayers = [...players].sort(compareRosterOrder)
+
+  const numberMutation = useSetSquadShirtNumber()
+  // Numbers worn by more than one member of this squad.
+  const duplicateNumbers = new Set(
+    squadMembers
+      .map((candidate) => candidate.shirtNumber)
+      .filter((number, index, all): number is number => number != null && all.indexOf(number) !== index),
+  )
+
+  const saveShirtNumber = async (playerId: number, number: number | null): Promise<boolean> => {
+    try {
+      const result = await numberMutation.mutateAsync({ id: team.id, playerId, data: { number } })
+      await queryClient.invalidateQueries({ queryKey: getListCurrentSquadCandidatesQueryKey(team.id) })
+      if (result.warnings.length) {
+        toast({ title: "Number saved, but check for a duplicate", description: result.warnings.join(" ") })
+      } else {
+        toast({ title: number == null ? "Shirt number cleared" : `Shirt number ${number} saved` })
+      }
+      return true
+    } catch {
+      toast({ title: "Could not save the shirt number", variant: "destructive" })
+      return false
+    }
+  }
 
   const updateSquadSelection = async (playerId: number, selected: boolean) => {
     try {
@@ -160,6 +232,7 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
             <p><span className="font-semibold text-foreground">Squad</span> is the group of members selected to play for this team this season.</p>
             <p><span className="font-semibold text-foreground">Eligible members</span> are all active members of this team&apos;s section with a 2026/27 season record. They are listed so you can pick from them, they are not in the squad until you add them.</p>
             <p>A member can be in more than one squad in the same season, for example a league team and a tournament team.</p>
+            <p><span className="font-semibold text-foreground">Shirt numbers</span> are set here, per squad: type the number in the box in front of a squad member. The same member can have a different number in another squad. Leaving the squad closes the number and keeps it in their history.</p>
             <p>Adding or removing a member only changes this team&apos;s squad. Their other squads, membership category, fees, and Rotterdam team remain unchanged.</p>
           </div>
 
@@ -187,15 +260,25 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
                       {group.rows.map((candidate) => (
                         <div key={candidate.playerId} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/10">
                           <div className="flex items-center gap-3 min-w-0">
-                            {candidate.shirtNumber != null ? (
-                              <div className="w-8 h-8 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">{candidate.shirtNumber}</div>
+                            {candidate.selected && !readOnly ? (
+                              <SquadNumberField
+                                value={candidate.shirtNumber ?? null}
+                                duplicate={candidate.shirtNumber != null && duplicateNumbers.has(candidate.shirtNumber)}
+                                disabled={squadMutation.isPending}
+                                onSave={(next) => saveShirtNumber(candidate.playerId, next)}
+                              />
+                            ) : candidate.shirtNumber != null ? (
+                              <div className="w-11 h-9 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">{candidate.shirtNumber}</div>
                             ) : (
-                              <div className="w-8 h-8 shrink-0 rounded-lg bg-muted/50 text-muted-foreground flex items-center justify-center text-xs">—</div>
+                              <div className="w-11 h-9 shrink-0 rounded-lg bg-muted/50 text-muted-foreground flex items-center justify-center text-xs">—</div>
                             )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
                                 <p className="font-semibold text-foreground truncate">{candidate.name}</p>
                                 {candidate.selected && <Badge variant="success">Selected</Badge>}
+                                {candidate.selected && candidate.shirtNumber != null && duplicateNumbers.has(candidate.shirtNumber) && (
+                                  <Badge variant="outline" className="text-amber-800 border-amber-400 bg-amber-50">Duplicate number</Badge>
+                                )}
                               </div>
                               <p className="text-sm text-muted-foreground truncate">{candidate.position || "Position not set"}</p>
                             </div>

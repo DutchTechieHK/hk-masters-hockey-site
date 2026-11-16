@@ -11,12 +11,15 @@ import {
   ListCurrentSquadCandidatesParams,
   UpdateCurrentSquadSelectionParams,
   UpdateCurrentSquadSelectionBody,
+  SetSquadShirtNumberParams,
+  SetSquadShirtNumberBody,
 } from "@workspace/api-zod";
 import { hasAdminAccess, requireAdminAccess } from "../middleware/adminAuth";
-import { withLeagueNumbers } from "../utils/shirtNumbers";
+import { setSquadShirtNumber, withLeagueNumbers } from "../utils/shirtNumbers";
+import { getSessionLabel } from "../middleware/adminSession";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { squadMembershipsTable } from "@workspace/db";
-import { ensureSquadStorage, inSquadOrPrimary, syncPrimarySquad } from "../utils/squads";
+import { endSquadShirtNumbers, ensureSquadStorage, inSquadOrPrimary, syncPrimarySquad } from "../utils/squads";
 
 const CURRENT_SEASON_SLUG = "membership-2026-27";
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"]);
@@ -192,6 +195,11 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
   res.status(204).send();
 });
 
+async function adminActor(req: { headers: Record<string, unknown> }): Promise<string> {
+  const token = req.headers["x-session-token"];
+  return typeof token === "string" ? await getSessionLabel(token) ?? "Full admin" : "Admin API key";
+}
+
 /**
  * A squad can be managed for every current team. The internal holding team
  * and the archived Rotterdam teams have no squad.
@@ -254,6 +262,7 @@ router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise
     return;
   }
   const { team, currentSeason } = loaded;
+  const actor = await adminActor(req);
 
   if (!await ensureSquadStorage()) {
     // Safety net: without the squad table, fall back to the original
@@ -286,6 +295,7 @@ router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise
       res.status(409).json({ error: "Squad selection changed or member is no longer current" });
       return;
     }
+    if (!selected) await endSquadShirtNumbers(db, currentSeason.id, [{ playerId, teamId: id }], actor);
     res.json(mapSquadCandidate(
       (await withLeagueNumbers([{ ...fallbackPlayer, teamId: id }], currentSeason.id))[0],
       updated.membershipTier,
@@ -328,6 +338,8 @@ router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise
       ));
     }
     await syncPrimarySquad(tx, currentSeason.id, [playerId]);
+    // Leaving the squad closes the member's number for this team (kept in history).
+    if (!selected) await endSquadShirtNumbers(tx, currentSeason.id, [{ playerId, teamId: id }], actor);
     await tx.update(playerParticipationsTable)
       .set({ source: "admin_squad_selection", updatedAt: new Date() })
       .where(eq(playerParticipationsTable.id, participation.id));
@@ -344,6 +356,59 @@ router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise
     outcome.membershipTier,
     selected,
   ));
+});
+
+router.put("/:id/squad/:playerId/shirt-number", requireAdminAccess, async (req, res): Promise<void> => {
+  const { id, playerId } = SetSquadShirtNumberParams.parse(req.params);
+  const parsed = SetSquadShirtNumberBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Enter a whole shirt number from 1 to 99, or clear it." });
+    return;
+  }
+  const number = parsed.data.number ?? null;
+  if (number != null && (!Number.isInteger(number) || number < 1 || number > 99)) {
+    res.status(400).json({ error: "Enter a whole shirt number from 1 to 99, or clear it." });
+    return;
+  }
+  const loaded = await loadSquadTeam(id);
+  if ("error" in loaded) {
+    res.status(loaded.error!.status).json({ error: loaded.error!.message });
+    return;
+  }
+  const { team, currentSeason } = loaded;
+  await ensureSquadStorage();
+  const actor = await adminActor(req);
+
+  const outcome = await db.transaction(async (tx) => {
+    // A number can only be given to someone who is in this team's squad.
+    const [member] = await tx.select({ player: playersTable, membershipTier: playerParticipationsTable.membershipTier })
+      .from(playerParticipationsTable)
+      .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
+      .where(and(
+        eq(playerParticipationsTable.playerId, playerId),
+        eq(playerParticipationsTable.seasonId, currentSeason.id),
+        eq(playerParticipationsTable.participationStatus, "active"),
+        inSquadOrPrimary(playerParticipationsTable.playerId, currentSeason.id, id),
+      ));
+    if (!member) return null;
+    const warnings = await setSquadShirtNumber(tx, {
+      playerId, team: { id: team.id, name: team.name }, season: { id: currentSeason.id, name: currentSeason.name }, number, actor,
+    });
+    return { ...member, warnings };
+  });
+
+  if (!outcome) {
+    res.status(409).json({ error: "Add the member to this team's squad before giving them a number." });
+    return;
+  }
+  res.json({
+    candidate: mapSquadCandidate(
+      (await withLeagueNumbers([{ ...outcome.player, teamId: id }], currentSeason.id))[0],
+      outcome.membershipTier,
+      true,
+    ),
+    warnings: outcome.warnings,
+  });
 });
 
 export default router;

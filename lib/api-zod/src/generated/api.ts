@@ -2107,6 +2107,39 @@ export const UpdateCurrentSquadSelectionResponse = zod.object({
 });
 
 /**
+ * @summary Set, change or clear a squad member's shirt number for this team this season
+ */
+export const SetSquadShirtNumberParams = zod.object({
+  id: zod.coerce.number(),
+  playerId: zod.coerce.number(),
+});
+
+export const setSquadShirtNumberBodyNumberMax = 99;
+
+export const SetSquadShirtNumberBody = zod.object({
+  number: zod
+    .number()
+    .min(1)
+    .max(setSquadShirtNumberBodyNumberMax)
+    .nullable()
+    .describe("The shirt number for this squad, or null to clear it."),
+});
+
+export const SetSquadShirtNumberResponse = zod.object({
+  candidate: zod.object({
+    playerId: zod.number(),
+    name: zod.string(),
+    email: zod.string(),
+    position: zod.string().nullish(),
+    shirtNumber: zod.number().nullish(),
+    membershipTier: zod.string().nullish(),
+    membershipSection: zod.enum(["not_set", "men", "women"]),
+    selected: zod.boolean(),
+  }),
+  warnings: zod.array(zod.string()),
+});
+
+/**
  * @summary List all players
  */
 export const ListPlayersQueryParams = zod.object({
