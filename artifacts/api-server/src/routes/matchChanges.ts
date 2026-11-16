@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { inSquadOrPrimary } from "../utils/squads";
 import { and, desc, eq } from "drizzle-orm";
 import {
   db, pool, matchesTable, matchChangeNoticesTable, playerParticipationsTable,
@@ -29,7 +30,7 @@ async function eligible(teamId: number) {
     .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
     .where(and(eq(seasonsTable.slug, "membership-2026-27"),
       eq(playerParticipationsTable.participationStatus, "active"),
-      eq(playerParticipationsTable.teamId, teamId), eq(playersTable.memberStatus, "active")));
+      inSquadOrPrimary(playerParticipationsTable.playerId, playerParticipationsTable.seasonId, teamId), eq(playersTable.memberStatus, "active")));
   return [...new Map(rows.map((row) => [row.id, row])).values()];
 }
 

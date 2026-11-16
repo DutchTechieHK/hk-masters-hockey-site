@@ -14,6 +14,9 @@ import {
 } from "@workspace/api-zod";
 import { hasAdminAccess, requireAdminAccess } from "../middleware/adminAuth";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
+import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
+import { squadMembershipsTable } from "@workspace/db";
+import { ensureSquadStorage, inSquadOrPrimary, syncPrimarySquad } from "../utils/squads";
 
 const CURRENT_SEASON_SLUG = "membership-2026-27";
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"]);
@@ -179,28 +182,51 @@ router.delete("/:id", requireAdminAccess, async (req, res) => {
     res.status(409).json({ error: "Canonical teams cannot be deleted" });
     return;
   }
+  const [squadMember] = !await ensureSquadStorage() ? [] : await db.select({ id: squadMembershipsTable.id }).from(squadMembershipsTable)
+    .where(eq(squadMembershipsTable.teamId, id)).limit(1);
+  if (squadMember) {
+    res.status(409).json({ error: "This team still has members in its squad. Remove them from the squad before deleting the team." });
+    return;
+  }
   await db.delete(teamsTable).where(eq(teamsTable.id, id));
   res.status(204).send();
 });
 
-router.get("/:id/squad", requireAdminAccess, async (req, res): Promise<void> => {
-  const { id } = ListCurrentSquadCandidatesParams.parse(req.params);
+/**
+ * A squad can be managed for every current team. The internal holding team
+ * and the archived Rotterdam teams have no squad.
+ */
+async function loadSquadTeam(id: number) {
   const [[team], [currentSeason]] = await Promise.all([
     db.select().from(teamsTable).where(eq(teamsTable.id, id)),
     db.select().from(seasonsTable).where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG)),
   ]);
-  if (!team || team.name !== "Masters Div. 1") {
-    res.status(404).json({ error: "Masters Div. 1 squad not found" });
-    return;
+  if (!team || team.isInternal || await isArchivedRotterdamTeam(team.id)) {
+    return { error: { status: 404, message: "This team has no current squad" } } as const;
   }
   if (!currentSeason) {
-    res.status(409).json({ error: "Current membership season is not configured" });
+    return { error: { status: 409, message: "Current membership season is not configured" } } as const;
+  }
+  return { team, currentSeason } as const;
+}
+
+router.get("/:id/squad", requireAdminAccess, async (req, res): Promise<void> => {
+  const { id } = ListCurrentSquadCandidatesParams.parse(req.params);
+  const loaded = await loadSquadTeam(id);
+  if ("error" in loaded) {
+    res.status(loaded.error!.status).json({ error: loaded.error!.message });
     return;
   }
+  const { team, currentSeason } = loaded;
+  await ensureSquadStorage();
+  const selectedInThisSquad = inSquadOrPrimary(playersTable.id, currentSeason.id, id);
 
+  // Eligible members: active this season and in the team's section, plus
+  // anyone already in this squad. Being in another squad does not exclude.
   const rows = await db.select({
     player: playersTable,
     participation: playerParticipationsTable,
+    selected: sql<boolean>`${selectedInThisSquad}`,
   }).from(playerParticipationsTable)
     .innerJoin(playersTable, eq(playerParticipationsTable.playerId, playersTable.id))
     .where(and(
@@ -209,69 +235,114 @@ router.get("/:id/squad", requireAdminAccess, async (req, res): Promise<void> => 
       eq(playersTable.memberStatus, "active"),
       or(
         eq(playersTable.currentMembershipSection, team.membershipSection),
-        eq(playerParticipationsTable.teamId, id),
+        selectedInThisSquad,
       ),
     ))
     .orderBy(playersTable.name);
 
   const contextual = await withLeagueNumbers(rows.map(({ player }) => ({ ...player, teamId: id })), currentSeason.id);
-  res.json(rows.map(({ participation }, i) =>
-    mapSquadCandidate(contextual[i], participation.membershipTier, participation.teamId === id)));
+  res.json(rows.map(({ participation, selected }, i) =>
+    mapSquadCandidate(contextual[i], participation.membershipTier, selected === true)));
 });
 
 router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise<void> => {
   const { id, playerId } = UpdateCurrentSquadSelectionParams.parse(req.params);
   const { selected } = UpdateCurrentSquadSelectionBody.parse(req.body);
-  const [[team], [currentSeason]] = await Promise.all([
-    db.select().from(teamsTable).where(eq(teamsTable.id, id)),
-    db.select().from(seasonsTable).where(eq(seasonsTable.slug, CURRENT_SEASON_SLUG)),
-  ]);
-  if (!team || team.name !== "Masters Div. 1") {
-    res.status(404).json({ error: "Masters Div. 1 squad not found" });
+  const loaded = await loadSquadTeam(id);
+  if ("error" in loaded) {
+    res.status(loaded.error!.status).json({ error: loaded.error!.message });
     return;
   }
-  if (!currentSeason) {
-    res.status(409).json({ error: "Current membership season is not configured" });
+  const { team, currentSeason } = loaded;
+
+  if (!await ensureSquadStorage()) {
+    // Safety net: without the squad table, fall back to the original
+    // behaviour of one squad per member, stored on the season record.
+    const [updated] = await db.update(playerParticipationsTable).set({
+      teamId: selected ? id : null,
+      source: "admin_squad_selection",
+      updatedAt: new Date(),
+    }).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, currentSeason.id),
+      eq(playerParticipationsTable.participationStatus, "active"),
+      selected
+        ? undefined
+        : or(eq(playerParticipationsTable.teamId, id), isNull(playerParticipationsTable.teamId)),
+      sql`EXISTS (
+        SELECT 1 FROM ${playersTable}
+        WHERE ${playersTable.id} = ${playerParticipationsTable.playerId}
+          AND (
+            ${selected} = false
+            OR (
+              ${playersTable.memberStatus} = 'active'
+              AND ${playersTable.currentMembershipSection} = ${team.membershipSection}
+            )
+          )
+      )`,
+    )).returning();
+    const [fallbackPlayer] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
+    if (!updated || !fallbackPlayer) {
+      res.status(409).json({ error: "Squad selection changed or member is no longer current" });
+      return;
+    }
+    res.json(mapSquadCandidate(
+      (await withLeagueNumbers([{ ...fallbackPlayer, teamId: id }], currentSeason.id))[0],
+      updated.membershipTier,
+      updated.teamId === id,
+    ));
     return;
   }
 
-  const [updated] = await db.update(playerParticipationsTable).set({
-    teamId: selected ? id : null,
-    source: "admin_squad_selection",
-    updatedAt: new Date(),
-  }).where(and(
-    eq(playerParticipationsTable.playerId, playerId),
-    eq(playerParticipationsTable.seasonId, currentSeason.id),
-    eq(playerParticipationsTable.participationStatus, "active"),
-    selected
-      ? undefined
-      : or(eq(playerParticipationsTable.teamId, id), isNull(playerParticipationsTable.teamId)),
-    sql`EXISTS (
-      SELECT 1 FROM ${playersTable}
-      WHERE ${playersTable.id} = ${playerParticipationsTable.playerId}
-        AND (
-          ${selected} = false
-          OR (
-            ${playersTable.memberStatus} = 'active'
-            AND ${playersTable.currentMembershipSection} = ${team.membershipSection}
-          )
-        )
-    )`,
-  )).returning();
-  if (!updated) {
+  const outcome = await db.transaction(async (tx) => {
+    // Lock the member's season record so two squad changes for the same
+    // member cannot interleave.
+    const [participation] = await tx.select().from(playerParticipationsTable).where(and(
+      eq(playerParticipationsTable.playerId, playerId),
+      eq(playerParticipationsTable.seasonId, currentSeason.id),
+      eq(playerParticipationsTable.participationStatus, "active"),
+    )).for("update");
+    const [player] = await tx.select().from(playersTable).where(eq(playersTable.id, playerId));
+    if (!participation || !player) return null;
+
+    // A squad still recorded the old way (only on the season record) is
+    // written into the squad list first, so it cannot be lost by this change.
+    if (participation.teamId != null) {
+      await tx.insert(squadMembershipsTable).values({
+        playerId, teamId: participation.teamId, seasonId: currentSeason.id, source: "backfill_primary_team",
+      }).onConflictDoNothing();
+    }
+
+    if (selected) {
+      // Adding needs a current, active member in the team's section.
+      if (player.memberStatus !== "active" || player.currentMembershipSection !== team.membershipSection) return null;
+      await tx.insert(squadMembershipsTable).values({
+        playerId, teamId: id, seasonId: currentSeason.id, source: "admin_squad_selection",
+      }).onConflictDoNothing();
+    } else {
+      // Removing only ever touches this team's squad, never another squad.
+      await tx.delete(squadMembershipsTable).where(and(
+        eq(squadMembershipsTable.playerId, playerId),
+        eq(squadMembershipsTable.teamId, id),
+        eq(squadMembershipsTable.seasonId, currentSeason.id),
+      ));
+    }
+    await syncPrimarySquad(tx, currentSeason.id, [playerId]);
+    await tx.update(playerParticipationsTable)
+      .set({ source: "admin_squad_selection", updatedAt: new Date() })
+      .where(eq(playerParticipationsTable.id, participation.id));
+    return { player, membershipTier: participation.membershipTier };
+  });
+
+  if (!outcome) {
     res.status(409).json({ error: "Squad selection changed or member is no longer current" });
-    return;
-  }
-  const [player] = await db.select().from(playersTable).where(eq(playersTable.id, playerId));
-  if (!player) {
-    res.status(404).json({ error: "Current member not found" });
     return;
   }
 
   res.json(mapSquadCandidate(
-    (await withLeagueNumbers([{ ...player, teamId: id }], currentSeason.id))[0],
-    updated.membershipTier,
-    updated.teamId === id,
+    (await withLeagueNumbers([{ ...outcome.player, teamId: id }], currentSeason.id))[0],
+    outcome.membershipTier,
+    selected,
   ));
 });
 

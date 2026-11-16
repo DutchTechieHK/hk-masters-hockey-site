@@ -1,4 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
+import { inSquadOrPrimary } from "../utils/squads";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import {
   db, matchLineupsTable, matchesTable, playersTable, playerParticipationsTable, seasonsTable,
@@ -69,7 +70,7 @@ async function peopleFor(tx: Tx, teamId: number, seasonId: number): Promise<Line
   const people = await tx.select({
     playerId: playersTable.id, name: playersTable.name, position: playersTable.position,
   }).from(playerParticipationsTable).innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
-    .where(and(eq(playerParticipationsTable.seasonId, seasonId), eq(playerParticipationsTable.teamId, teamId),
+    .where(and(eq(playerParticipationsTable.seasonId, seasonId), inSquadOrPrimary(playerParticipationsTable.playerId, seasonId, teamId),
       eq(playerParticipationsTable.participationStatus, "active"), eq(playersTable.memberStatus, "active")))
     .for("share");
   const numbered = await withLeagueNumbers(people.map((p) => ({ ...p, id: p.playerId, teamId, shirtNumber: null as number | null })), seasonId);
@@ -183,7 +184,7 @@ router.get("/player-auth/matches/:id/lineup", privateResponse, requirePlayerSess
       throw new StaffAccessError(404, "Lineup not available for this season.");
     const [eligible] = await tx.select({ id: playersTable.id }).from(playerParticipationsTable)
       .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
-      .where(and(eq(playerParticipationsTable.seasonId, season.id), eq(playerParticipationsTable.teamId, match.teamId),
+      .where(and(eq(playerParticipationsTable.seasonId, season.id), inSquadOrPrimary(playerParticipationsTable.playerId, season.id, match.teamId),
         eq(playerParticipationsTable.playerId, req.player!.id), eq(playerParticipationsTable.participationStatus, "active"),
         eq(playersTable.memberStatus, "active"))).for("share");
     if (!eligible || await isArchivedRotterdamTeam(match.teamId)) throw new StaffAccessError(403, "This lineup is not available to your current squad.");

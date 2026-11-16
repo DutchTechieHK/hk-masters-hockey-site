@@ -8,6 +8,7 @@ import { requireAdminAccess } from "../middleware/adminAuth";
 import { getSessionLabel } from "../middleware/adminSession";
 import { membershipCategoryAmountDue, buildSeasonFeeAccount } from "../utils/membershipFees";
 import { categoryRows, resolveCategory, CategoryError } from "../utils/membershipCategories";
+import { removeFromAllSquads } from "../utils/squads";
 
 const router = Router();
 router.use((_req, res, next) => {
@@ -165,6 +166,8 @@ router.post("/apply", async (req, res) => {
         membershipSection: b.value, updatedAt: now,
         teamId: sql`CASE WHEN ${inArray(playerParticipationsTable.playerId, removeSquadIds)} THEN NULL ELSE ${playerParticipationsTable.teamId} END`,
       }).where(and(inArray(playerParticipationsTable.playerId, changedIds), eq(playerParticipationsTable.seasonId, current.seasonId)));
+    // A section change removes the member from every squad, not only the primary one.
+    if (b.field !== "category") await removeFromAllSquads(tx, current.seasonId, removeSquadIds);
     const [batch] = await tx.insert(memberBulkEditsTable).values({
       requestId: input.requestId, inputHash, seasonId: current.seasonId, seasonName: current.seasonName,
       field: b.field, value: b.value, actor, changed: current.changed, unchanged: current.unchanged, rows: current.rows,

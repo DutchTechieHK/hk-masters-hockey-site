@@ -53,6 +53,13 @@ The `netlify.toml` has a redirect rule: any `/api/*` request to hkmastershockey.
 
 Only **MO40** (Men's Over-40) and **MO50** (Men's Over-50). W35 was fully removed.
 
+### Squads (several per member)
+
+- `squad_memberships` (one row per member, team and season) is the source of truth for who is in a team's squad. A member can be in several squads in one season. Every current team has a squad; the internal "Awaiting Selection" team and the archived Rotterdam teams do not.
+- `player_participations.team_id` is kept only as the member's **primary** squad (the one joined first) so older single-team code keeps working. Never write it directly: change squads through `PUT /api/teams/:id/squad/:playerId`, or the helpers in `artifacts/api-server/src/utils/squads.ts` (`syncPrimarySquad`, `removeFromAllSquads`, `removeSquadsOutsideSection`).
+- To ask "is this member in team X's squad", use `inSquadOrPrimary(...)` / `currentSquadTeamIds(...)` from `utils/squads.ts`, not `player_participations.team_id = X`.
+- `reconcileSquads` runs with `ensureMembershipFoundation` and copies any squad recorded the old way into the squad list. It never removes squads. `ensureSquadStorage` creates the table at start-up if it is missing; without the table the app falls back to one team per member instead of failing.
+
 ## Monorepo Structure
 
 ```

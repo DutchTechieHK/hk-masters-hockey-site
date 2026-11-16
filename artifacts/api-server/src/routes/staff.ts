@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
 import { Router, type Request, type Response } from "express";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import {
   db, staffTeamGrantsTable, staffSessionsTable, staffAuditTable, playersTable,
   teamsTable, playerParticipationsTable, eventsTable, matchesTable, eventRsvpsTable,
@@ -17,6 +17,7 @@ import { createLocalMatch, handleUpdateMatch } from "./matches";
 import { createLocalEvent, updateLocalEvent, listEventInvitees } from "./events";
 import { adminCorrectMatchRsvp, eligiblePlayersForTeams, remindMatchNonresponders } from "./matchAttendance";
 import { visibleMember } from "../utils/memberVisibility";
+import { inSquad } from "../utils/squads";
 import { remindStaffEvent } from "../utils/staffEventReminders";
 
 const router = Router();
@@ -134,7 +135,11 @@ async function roster(teamId: number, seasonId: number) {
       eq(playerParticipationsTable.playerId, playersTable.id), eq(playerParticipationsTable.seasonId, seasonId),
       eq(playerParticipationsTable.participationStatus, "active"),
     )).where(and(eq(playersTable.memberStatus, "active"),
-      sql`coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId}) = ${teamId}`,
+      // In this team's squad, or (for members in no squad at all) on the team the old way.
+      or(
+        sql`coalesce(${playerParticipationsTable.teamId}, ${playersTable.teamId}) = ${teamId}`,
+        and(isNotNull(playerParticipationsTable.id), inSquad(playersTable.id, seasonId, teamId)),
+      ),
     )).orderBy(asc(playersTable.name));
   return (await withLeagueNumbers(rows.map((p) => ({ ...p, teamId })), seasonId)).map(({ teamId: _teamId, ...p }) => p);
 }

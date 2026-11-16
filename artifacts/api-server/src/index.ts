@@ -5,6 +5,7 @@ import { isNull, isNotNull, sql } from "drizzle-orm";
 import { scheduleDailyPledgeDigest } from "./jobs/dailyPledgeDigest";
 import { scheduleNotionMemberSync } from "./jobs/notionMemberSync";
 import { ensureMembershipFoundation } from "./routes/players";
+import { ensureSquadStorage } from "./utils/squads";
 
 const rawPort = process.env["PORT"];
 
@@ -36,6 +37,8 @@ async function backfillPortalAccess() {
 
 async function start() {
   await backfillPortalAccess();
+  // Never blocks start-up: without the squad table the app runs with one team per member.
+  await ensureSquadStorage(true);
   await ensureMembershipFoundation();
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);

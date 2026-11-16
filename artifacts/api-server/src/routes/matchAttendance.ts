@@ -1,13 +1,14 @@
 import type { Request, Response } from "express";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import {
-  db, pool, matchesTable, matchRsvpsTable, matchRsvpAdminChangesTable, playerParticipationsTable, playersTable, seasonsTable,
+  db, pool, matchesTable, matchRsvpsTable, matchRsvpAdminChangesTable, playerParticipationsTable, playersTable, seasonsTable, squadMembershipsTable,
   emailBlastsTable, emailBlastRecipientsTable,
 } from "@workspace/db";
 import { sendMatchReminderEmail } from "../utils/email";
 import { getSessionLabel } from "../middleware/adminSession";
 import { assertStaffResource, lookupStaffIdentity } from "../middleware/staffAccess";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
+import { currentSquadTeamIds, inSquadOrPrimary, squadStorageReady } from "../utils/squads";
 
 const CURRENT_SEASON = "membership-2026-27";
 const STATUSES = ["yes", "maybe", "no"] as const;
@@ -20,7 +21,27 @@ function matchId(req: Request): number | null {
 
 export async function eligiblePlayersForTeams(teamIds: number[]) {
   if (!teamIds.length) return [];
-  const rows = await db.select({
+  // One row per member per squad: a member in two of these teams appears
+  // once for each, so every team's attendance list is complete.
+  const rows = !squadStorageReady() ? [] : await db.select({
+    teamId: squadMembershipsTable.teamId,
+    id: playersTable.id, name: playersTable.name, shirtNumber: playersTable.shirtNumber,
+    email: playersTable.email,
+  }).from(playerParticipationsTable)
+    .innerJoin(seasonsTable, eq(seasonsTable.id, playerParticipationsTable.seasonId))
+    .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
+    .innerJoin(squadMembershipsTable, and(
+      eq(squadMembershipsTable.playerId, playerParticipationsTable.playerId),
+      eq(squadMembershipsTable.seasonId, playerParticipationsTable.seasonId),
+    ))
+    .where(and(
+      eq(seasonsTable.slug, CURRENT_SEASON),
+      eq(playerParticipationsTable.participationStatus, "active"),
+      inArray(squadMembershipsTable.teamId, teamIds),
+      eq(playersTable.memberStatus, "active"),
+    )).orderBy(asc(playersTable.name));
+  // The primary team on the season record counts as a squad as well.
+  const primaryRows = await db.select({
     teamId: playerParticipationsTable.teamId,
     id: playersTable.id, name: playersTable.name, shirtNumber: playersTable.shirtNumber,
     email: playersTable.email,
@@ -30,9 +51,15 @@ export async function eligiblePlayersForTeams(teamIds: number[]) {
     .where(and(
       eq(seasonsTable.slug, CURRENT_SEASON),
       eq(playerParticipationsTable.participationStatus, "active"),
-       inArray(playerParticipationsTable.teamId, teamIds),
+      inArray(playerParticipationsTable.teamId, teamIds),
       eq(playersTable.memberStatus, "active"),
-    )).orderBy(asc(playersTable.name));
+    ));
+  const seen = new Set(rows.map((row) => `${row.id}:${row.teamId}`));
+  for (const row of primaryRows) {
+    if (row.teamId == null || seen.has(`${row.id}:${row.teamId}`)) continue;
+    rows.push({ ...row, teamId: row.teamId });
+  }
+  rows.sort((a, b) => a.name.localeCompare(b.name));
   return withLeagueNumbers(rows);
 }
 
@@ -243,20 +270,17 @@ export async function playerMatchRsvps(req: Request, res: Response): Promise<voi
   res.vary("Authorization");
   res.vary("x-player-session");
   const playerId = req.player!.id;
-  const [squad] = await db.select({ teamId: playerParticipationsTable.teamId })
-    .from(playerParticipationsTable)
-    .innerJoin(seasonsTable, eq(seasonsTable.id, playerParticipationsTable.seasonId))
-    .where(and(eq(playerParticipationsTable.playerId, playerId),
-      eq(playerParticipationsTable.participationStatus, "active"),
-      eq(seasonsTable.slug, CURRENT_SEASON))).limit(1);
-  if (squad?.teamId == null) { res.json({ matches: [] }); return; }
-  const fixtures = await db.select({ id: matchesTable.id }).from(matchesTable)
-    .where(and(eq(matchesTable.teamId, squad.teamId),
+  // The member sees the fixtures of every squad they are in.
+  const squadTeamIds = await currentSquadTeamIds(playerId);
+  if (!squadTeamIds.length) { res.json({ matches: [] }); return; }
+  const fixtures = await db.select({ id: matchesTable.id, teamId: matchesTable.teamId }).from(matchesTable)
+    .where(and(inArray(matchesTable.teamId, squadTeamIds),
       eq(matchesTable.operationalScope, "local_2026_27"),
       eq(matchesTable.status, "scheduled"), gt(matchesTable.kickoffAt, new Date())));
   if (!fixtures.length) { res.json({ matches: [] }); return; }
   const ids = fixtures.map((m) => m.id);
-  const players = await eligiblePlayers(squad.teamId);
+  const squadPlayers = await eligiblePlayersForTeams(squadTeamIds);
+  const players = [...new Map(squadPlayers.map((player) => [player.id, player])).values()];
   if (!players.some((player) => player.id === playerId)) {
     res.status(403).json({ error: "Match attendance is not available to your current membership" });
     return;
@@ -266,12 +290,14 @@ export async function playerMatchRsvps(req: Request, res: Response): Promise<voi
     ? await db.select().from(matchRsvpsTable)
       .where(and(inArray(matchRsvpsTable.matchId, ids), inArray(matchRsvpsTable.playerId, playerIds)))
     : [];
-  const matches = fixtures.map(({ id }) => {
+  const matches = fixtures.map(({ id, teamId }) => {
+    // Only count replies from members of the squad this fixture belongs to.
+    const inThisSquad = new Set(squadPlayers.filter((player) => player.teamId === teamId).map((player) => player.id));
     const counts: Record<Status, number> = { yes: 0, maybe: 0, no: 0 };
-    for (const row of rows) if (row.matchId === id && STATUSES.includes(row.status as Status)) counts[row.status as Status]++;
+    for (const row of rows) if (row.matchId === id && inThisSquad.has(row.playerId) && STATUSES.includes(row.status as Status)) counts[row.status as Status]++;
     const mine = rows.find((row) => row.matchId === id && row.playerId === playerId);
     const namesFor = (status: Status) => {
-      const respondingIds = new Set(rows.filter((row) => row.matchId === id && row.status === status).map((row) => row.playerId));
+      const respondingIds = new Set(rows.filter((row) => row.matchId === id && row.status === status && inThisSquad.has(row.playerId)).map((row) => row.playerId));
       return players.filter((player) => respondingIds.has(player.id))
         .map((player) => ({ id: player.id, name: player.name }))
         .sort((a, b) => a.name.localeCompare(b.name, "en", { sensitivity: "base" }) || a.id - b.id);
@@ -400,7 +426,7 @@ export async function adminCorrectMatchRsvp(req: Request, res: Response): Promis
       .innerJoin(playersTable, eq(playersTable.id, playerParticipationsTable.playerId))
       .where(and(eq(seasonsTable.slug, CURRENT_SEASON),
         eq(playerParticipationsTable.participationStatus, "active"),
-        eq(playerParticipationsTable.teamId, match.teamId),
+        inSquadOrPrimary(playerParticipationsTable.playerId, playerParticipationsTable.seasonId, match.teamId),
         eq(playersTable.memberStatus, "active"), eq(playersTable.id, playerId))).limit(1);
     if (!eligible.length) return { code: 403, error: "Player is not in this match's current squad" } as const;
     const [current] = await tx.select().from(matchRsvpsTable)

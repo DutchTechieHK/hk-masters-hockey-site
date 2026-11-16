@@ -37,3 +37,4 @@ export * from "./site-content";
 export * from "./world-cup-player-snapshots";
 export * from "./world-cup-team-snapshots";
 export * from "./event-rsvp-admin-changes";
+export * from "./squad-memberships";
