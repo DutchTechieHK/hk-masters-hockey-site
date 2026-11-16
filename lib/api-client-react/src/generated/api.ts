@@ -3122,6 +3122,94 @@ export const useUpdateClubEvent = <
   return useMutation(getUpdateClubEventMutationOptions(options));
 };
 
+/**
+ * @summary Record, correct or clear an event reply as a full admin
+ */
+export const getCorrectEventRsvpUrl = (id: number, playerId: number) => {
+  return `/api/events/${id}/rsvps/${playerId}`;
+};
+
+export const correctEventRsvp = async (
+  id: number,
+  playerId: number,
+  staffAttendanceInput: StaffAttendanceInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getCorrectEventRsvpUrl(id, playerId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(staffAttendanceInput),
+  });
+};
+
+export const getCorrectEventRsvpMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof correctEventRsvp>>,
+    TError,
+    { id: number; playerId: number; data: BodyType<StaffAttendanceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof correctEventRsvp>>,
+  TError,
+  { id: number; playerId: number; data: BodyType<StaffAttendanceInput> },
+  TContext
+> => {
+  const mutationKey = ["correctEventRsvp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof correctEventRsvp>>,
+    { id: number; playerId: number; data: BodyType<StaffAttendanceInput> }
+  > = (props) => {
+    const { id, playerId, data } = props ?? {};
+
+    return correctEventRsvp(id, playerId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CorrectEventRsvpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof correctEventRsvp>>
+>;
+export type CorrectEventRsvpMutationBody = BodyType<StaffAttendanceInput>;
+export type CorrectEventRsvpMutationError = ErrorType<void>;
+
+/**
+ * @summary Record, correct or clear an event reply as a full admin
+ */
+export const useCorrectEventRsvp = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof correctEventRsvp>>,
+    TError,
+    { id: number; playerId: number; data: BodyType<StaffAttendanceInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof correctEventRsvp>>,
+  TError,
+  { id: number; playerId: number; data: BodyType<StaffAttendanceInput> },
+  TContext
+> => {
+  return useMutation(getCorrectEventRsvpMutationOptions(options));
+};
+
 export const getGetEventAudienceChangeImpactUrl = (
   id: number,
   params?: GetEventAudienceChangeImpactParams,

@@ -1141,6 +1141,7 @@ export const GetStaffTeamResponse = zod.object({
             ])
             .nullish(),
           myNote: zod.string().nullish(),
+          canManageRsvps: zod.boolean().optional(),
         }),
       ),
   ),
@@ -1465,6 +1466,7 @@ export const ListClubEventsResponseItem = zod
         ])
         .nullish(),
       myNote: zod.string().nullish(),
+      canManageRsvps: zod.boolean().optional(),
     }),
   );
 export const ListClubEventsResponse = zod.array(ListClubEventsResponseItem);
@@ -1584,8 +1586,39 @@ export const UpdateClubEventResponse = zod
         ])
         .nullish(),
       myNote: zod.string().nullish(),
+      canManageRsvps: zod.boolean().optional(),
     }),
   );
+
+/**
+ * @summary Record, correct or clear an event reply as a full admin
+ */
+
+export const CorrectEventRsvpParams = zod.object({
+  id: zod.coerce.number().min(1),
+  playerId: zod.coerce.number().min(1),
+});
+
+export const correctEventRsvpBodyNoteMax = 2000;
+
+export const CorrectEventRsvpBody = zod.object({
+  status: zod
+    .union([
+      zod.literal("yes"),
+      zod.literal("maybe"),
+      zod.literal("no"),
+      zod.literal(null),
+    ])
+    .nullable(),
+  note: zod.string().max(correctEventRsvpBodyNoteMax).nullish(),
+  expected: zod.union([
+    zod.null(),
+    zod.object({
+      id: zod.number(),
+      revision: zod.number(),
+    }),
+  ]),
+});
 
 export const GetEventAudienceChangeImpactParams = zod.object({
   id: zod.coerce.number().min(1),

@@ -14,6 +14,8 @@ import { formatEventDateTime } from "../utils/eventTime";
 import { loadEventGroups, lockEventGroups, InvalidEventGroups, type EventAudience } from "../utils/eventGroups";
 import { assertStaffResource } from "../middleware/staffAccess";
 import { withLeagueNumbers } from "../utils/shirtNumbers";
+import { eventRsvpAdminChangesTable } from "@workspace/db";
+import { createEventRsvpCorrection } from "./eventRsvpManagement";
 
 const router: IRouter = Router();
 const CURRENT_MEMBERSHIP_SEASON_SLUG = "membership-2026-27";
@@ -86,6 +88,7 @@ function serialize(
     isPublic: row.isPublic,
     photoUrl: base ? resolvePhotoUrl(base, row.photoUrl) : (row.photoUrl ?? null),
     createdAt: row.createdAt.toISOString(),
+    canManageRsvps: row.operationalScope === "local_2026_27",
     rsvpCounts: extras?.rsvpCounts ?? emptyCounts(),
     myRsvp: extras?.myRsvp ?? null,
     myNote: extras?.myNote ?? null,
@@ -788,6 +791,8 @@ router.get(["/attendance", "/training-attendance"], (_req, res, next) => {
 });
 
 // Admin-only: roster of who RSVP'd what for a single event.
+router.put("/:id/rsvps/:playerId", requireAdminAccess, createEventRsvpCorrection(listEventInvitees));
+
 router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -814,12 +819,14 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     const noResponse = eligible.filter(({ participation }) => !respondedIds.has(participation.playerId)).map(({ participation }) => ({ ...byId.get(participation.playerId)!, playerId: participation.playerId }));
     const counts = emptyCounts();
     for (const response of responses) if (response.status === "yes" || response.status === "no" || response.status === "maybe") counts[response.status]++;
-    res.json({ event: serialize(event, null, { rsvpCounts: counts }), counts: { ...counts, noResponse: noResponse.length, invited: eligible.length }, responses, noResponse, excludedResponses: [] });
+    res.json({ event: serialize(event, null, { rsvpCounts: counts }), counts: { ...counts, noResponse: noResponse.length, invited: eligible.length }, responses, noResponse, excludedResponses: [], history: [] });
     return;
   }
 
   const rows = await db
     .select({
+      id: eventRsvpsTable.id,
+      revision: eventRsvpsTable.revision,
       playerId: playersTable.id,
       playerName: playersTable.name,
       shirtNumber: playersTable.shirtNumber,
@@ -843,6 +850,8 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
   const responses = rows
     .filter((r) => invitedById.has(r.playerId))
     .map((r) => ({
+      id: r.id,
+      revision: r.revision,
       playerId: r.playerId,
       playerName: r.playerName,
       shirtNumber: invitedById.get(r.playerId)!.shirtNumber,
@@ -889,6 +898,19 @@ router.get("/:id/rsvps", requireAdminAccess, (async (req, res) => {
     responses,
     noResponse,
     excludedResponses,
+    history: await db.select({
+      playerId: eventRsvpAdminChangesTable.playerId,
+      playerName: playersTable.name,
+      actor: eventRsvpAdminChangesTable.actor,
+      changedAt: eventRsvpAdminChangesTable.changedAt,
+      previousStatus: eventRsvpAdminChangesTable.previousStatus,
+      previousNote: eventRsvpAdminChangesTable.previousNote,
+      newStatus: eventRsvpAdminChangesTable.newStatus,
+      newNote: eventRsvpAdminChangesTable.newNote,
+    }).from(eventRsvpAdminChangesTable)
+      .innerJoin(playersTable, eq(playersTable.id, eventRsvpAdminChangesTable.playerId))
+      .where(eq(eventRsvpAdminChangesTable.eventId, id))
+      .orderBy(asc(eventRsvpAdminChangesTable.changedAt), asc(eventRsvpAdminChangesTable.id)),
   });
 }) as (req: Request, res: Response) => Promise<void>);
 

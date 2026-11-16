@@ -10,7 +10,7 @@
 - [SW navigation denylist](sw-navigation-denylist.md) — public-site SW hijacks cross-artifact navigations not in its denylist → public 404 in prod only (hard-refresh works, click fails); add every sibling base path.
 - [Composite TS project references stale types](composite-project-references-stale-types.md) — after schema edits in lib/db, run `tsc -b --force` there or consumer typecheck shows false missing-property errors.
 - [openapi.yaml schema drift](openapi-schema-drift.md) — missing schema crashes boot; missing *field* on existing schema silently strips it from validation on codegen rerun (data loss). Diff generated output before trusting a regen.
-- [hk-masters admin auth testing](hk-masters-admin-auth-testing.md) — no dev bypass for the team-password gate; insert an admin_sessions row + temp-patch AdminAuthGate to e2e-test admin pages, then fully revert.
+- [hk-masters admin auth testing](hk-masters-admin-auth-testing.md) — use a temporary dev admin session through the real gate; never patch authentication for browser tests.
 - [Email send throttle & failure visibility](email-send-throttle.md) — bulk email loops must pace ~500ms (Resend ~2/sec) and report a `failed` count; unthrottled loops 429 silently and drop sends.
 - [Reminder delivery uncertainty](reminder-uncertain-delivery.md) — persist a pending recipient before provider contact; ambiguous outcomes require manual reconciliation, never automatic resend.
 - [Change notice revisions](change-notice-revisions.md) — correct a pending notice by creating a new revision when message details change; retain old delivery history.

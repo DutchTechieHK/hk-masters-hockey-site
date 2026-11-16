@@ -513,6 +513,32 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ClubEvent" }
+  /events/{id}/rsvps/{playerId}:
+    put:
+      operationId: correctEventRsvp
+      summary: Record, correct or clear an event reply as a full admin
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, minimum: 1 } }
+        - { name: playerId, in: path, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StaffAttendanceInput" }
+      responses:
+        "200":
+          description: Reply saved and correction history recorded
+        "400":
+          description: Invalid reply or missing reason
+        "401":
+          description: Full admin access required
+        "403":
+          description: Player is outside the event audience
+        "404":
+          description: Event not found
+        "409":
+          description: Reply changed or event is read-only
+
   /events/{id}/audience-change-impact:
     get:
       operationId: getEventAudienceChangeImpact
@@ -2596,6 +2622,7 @@ components:
             rsvpCounts: { $ref: "#/components/schemas/MatchAttendanceCounts" }
             myRsvp: { type: [string, "null"], enum: [yes, no, maybe, null] }
             myNote: { type: [string, "null"] }
+            canManageRsvps: { type: boolean }
     EventAudienceImpact:
       type: object
       required: [totalResponses, currentlyCounted, newlyCounted, becomeIneligible, becomeEligible]

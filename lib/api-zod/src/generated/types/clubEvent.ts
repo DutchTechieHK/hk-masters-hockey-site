@@ -19,4 +19,5 @@ export type ClubEvent = ClubEventInput & {
   myRsvp?: ClubEventMyRsvp;
   /** @nullable */
   myNote?: string | null;
+  canManageRsvps?: boolean;
 };

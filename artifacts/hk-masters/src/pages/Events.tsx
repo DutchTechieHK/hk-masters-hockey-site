@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 import { fetchGroups, type MemberGroup } from "@/lib/member-groups"
 import EventsCsvImport from "@/components/ui/EventsCsvImport"
+import EventRsvpEditor, { type EventReplyEdit } from "@/components/EventRsvpEditor"
 
 type EventRow = {
   id: number
@@ -31,9 +32,12 @@ type EventRow = {
   isPublic: boolean
   photoUrl?: string | null
   rsvpCounts?: { yes: number; no: number; maybe: number }
+  canManageRsvps?: boolean
 }
 
 type RsvpResponse = {
+  id: number
+  revision: number
   playerId: number
   playerName: string
   shirtNumber: number | null
@@ -44,7 +48,7 @@ type RsvpResponse = {
   respondedAt: string
 }
 
-type ExcludedRsvpResponse = RsvpResponse & {
+type ExcludedRsvpResponse = Omit<RsvpResponse, "id" | "revision"> & {
   exclusionReason: string
 }
 
@@ -54,6 +58,11 @@ type RsvpRoster = {
   responses: RsvpResponse[]
   noResponse: Array<{ playerId: number; playerName: string; shirtNumber: number | null; teamId: number | null; teamName: string | null }>
   excludedResponses: ExcludedRsvpResponse[]
+  history: Array<{
+    playerId: number; playerName: string; actor: string; changedAt: string
+    previousStatus: string | null; previousNote: string | null
+    newStatus: string | null; newNote: string | null
+  }>
 }
 
 type FormState = {
@@ -308,7 +317,7 @@ function EventMonthSection({
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end items-center gap-1">
-                        <button onClick={() => openRoster(ev.id)} title="View RSVPs" className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all">
+                        <button onClick={() => openRoster(ev.id)} title="Manage RSVPs" aria-label={`Manage RSVPs for ${ev.title}`} className="p-1.5 text-muted-foreground hover:text-emerald-600 rounded border border-transparent hover:border-emerald-200 transition-all">
                           <ClipboardList className="w-4 h-4" />
                         </button>
                         {!readOnly && (
@@ -348,6 +357,8 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
   const [roster, setRoster] = useState<RsvpRoster | null>(null)
   const [rosterLoading, setRosterLoading] = useState(false)
   const [reminding, setReminding] = useState(false)
+  const [editingReply, setEditingReply] = useState<EventReplyEdit | null>(null)
+  const activeRosterId = useRef<number | null>(null)
   const [remindResult, setRemindResult] = useState<{ sent: number; skippedNoEmail: number; failed: number } | null>(null)
   const [showCsvImport, setShowCsvImport] = useState(false)
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -374,6 +385,8 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
   const groupNames = useMemo(() => new Map(groups.map((g) => [g.id, g.name])), [groups])
 
   const openRoster = async (id: number) => {
+    activeRosterId.current = id
+    setEditingReply(null)
     setRosterEventId(id)
     setRoster(null)
     setRosterLoading(true)
@@ -381,26 +394,31 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
     try {
       const res = await fetch(`/api/events/${id}/rsvps`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Failed to load RSVPs")
-      setRoster(await res.json())
+      const data = await res.json()
+      if (activeRosterId.current === id) setRoster(data)
     } catch (err) {
-      toast({ title: (err as Error).message, variant: "destructive" })
-      setRosterEventId(null)
+      if (activeRosterId.current === id) {
+        toast({ title: (err as Error).message, variant: "destructive" })
+        setRosterEventId(null)
+        activeRosterId.current = null
+      }
     } finally {
-      setRosterLoading(false)
+      if (activeRosterId.current === id || activeRosterId.current === null) setRosterLoading(false)
     }
   }
 
   const refreshRoster = async () => {
-    if (rosterEventId == null) return
+    if (rosterEventId == null || activeRosterId.current !== rosterEventId) return
     setRosterLoading(true)
     try {
       const res = await fetch(`/api/events/${rosterEventId}/rsvps`, { headers: authHeaders() })
       if (!res.ok) throw new Error("Failed to refresh RSVPs")
-      setRoster(await res.json())
+      const data = await res.json()
+      if (activeRosterId.current === rosterEventId) setRoster(data)
     } catch (err) {
       toast({ title: (err as Error).message, variant: "destructive" })
     } finally {
-      setRosterLoading(false)
+      if (activeRosterId.current === rosterEventId) setRosterLoading(false)
     }
   }
 
@@ -1095,13 +1113,33 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
 
       <Modal
         isOpen={rosterEventId !== null}
-        onClose={() => { setRosterEventId(null); setRoster(null) }}
+        onClose={() => { activeRosterId.current = null; setRosterEventId(null); setRoster(null); setEditingReply(null) }}
         title={roster ? `RSVPs · ${roster.event.title} · ${new Date(roster.event.startsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : "RSVPs"}
       >
         {rosterLoading || !roster ? (
           <div className="py-8 text-center text-muted-foreground">Loading…</div>
         ) : (
           <div className="space-y-5">
+            <p className="text-xs text-muted-foreground">
+              {roster.event.canManageRsvps
+                ? "Record a reply on a member’s behalf, edit an existing response, or clear it back to No reply. All changes are recorded below."
+                : "This event’s attendance is read-only."}
+            </p>
+            {editingReply && rosterEventId !== null && (
+              <EventRsvpEditor key={`${rosterEventId}-${editingReply.playerId}`} eventId={rosterEventId}
+                editing={editingReply} onCancel={() => setEditingReply(null)}
+                onSaved={() => {
+                  if (activeRosterId.current === rosterEventId) { setEditingReply(null); refreshRoster() }
+                  refresh()
+                  toast({ title: "Event reply saved" })
+                }}
+                onConflict={() => {
+                  if (activeRosterId.current !== rosterEventId) return
+                  setEditingReply(null)
+                  refreshRoster()
+                  toast({ title: "Reply changed or event is now read-only", description: "The roster has been refreshed. Reopen the reply to review the latest information.", variant: "destructive" })
+                }} />
+            )}
             <div className="flex justify-end gap-3">
               <button
                 onClick={downloadRosterCsv}
@@ -1163,7 +1201,15 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
                                   {r.shirtNumber != null && <span className="text-muted-foreground mr-2">#{r.shirtNumber}</span>}
                                   <span className="font-medium">{r.playerName}</span>
                                 </span>
-                                <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                                <div className="flex flex-wrap items-center justify-end gap-2">
+                                  <span className="text-xs text-muted-foreground">{format(new Date(r.respondedAt), "d MMM HH:mm")}</span>
+                                  {roster.event.canManageRsvps && (
+                                    <Button type="button" size="sm" variant="outline"
+                                      disabled={editingReply !== null}
+                                      aria-label={`Edit attendance for ${r.playerName}`}
+                                      onClick={() => setEditingReply({ playerId: r.playerId, playerName: r.playerName, original: r })}>Edit</Button>
+                                  )}
+                                </div>
                               </div>
                               {r.note && (
                                 <p className="mt-0.5 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">{r.note}</p>
@@ -1213,9 +1259,17 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
                           <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1 px-1">{teamName}</p>
                           <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
                             {byTeam[teamName].map((p) => (
-                              <li key={p.playerId} className="px-3 py-2 text-sm bg-white">
+                              <li key={p.playerId} className="flex items-center justify-between gap-2 px-3 py-2 text-sm bg-white">
+                                <span>
                                 {p.shirtNumber != null && <span className="text-muted-foreground mr-2">#{p.shirtNumber}</span>}
                                 <span className="font-medium">{p.playerName}</span>
+                                </span>
+                                {roster.event.canManageRsvps && (
+                                  <Button type="button" size="sm" variant="outline"
+                                    disabled={editingReply !== null}
+                                    aria-label={`Record attendance for ${p.playerName}`}
+                                    onClick={() => setEditingReply({ playerId: p.playerId, playerName: p.playerName, original: null })}>Record reply</Button>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -1256,6 +1310,22 @@ export default function Events({ scope, readOnly }: { scope?: string, readOnly?:
               </div>
             )}
 
+            {(roster.history?.length ?? 0) > 0 && (
+              <details className="border-t border-border pt-3 text-xs">
+                <summary className="cursor-pointer font-medium">Admin correction history ({roster.history.length})</summary>
+                <ul className="mt-2 space-y-2">
+                  {roster.history.map((change, index) => (
+                    <li key={`${change.changedAt}-${index}`}>
+                      {new Date(change.changedAt).toLocaleString("en-GB", { timeZone: "Asia/Hong_Kong" })} HKT · {change.actor} · {change.playerName}:{" "}
+                      {change.previousStatus === "yes" ? "Going" : change.previousStatus === "no" ? "Not going" : change.previousStatus === "maybe" ? "Maybe" : "No reply"}
+                      {change.previousNote ? ` (${change.previousNote})` : ""} →{" "}
+                      {change.newStatus === "yes" ? "Going" : change.newStatus === "no" ? "Not going" : change.newStatus === "maybe" ? "Maybe" : "No reply"}
+                      {change.newNote ? ` (${change.newNote})` : ""}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
             {roster.responses.length === 0 && roster.noResponse.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">No one has been invited yet.</p>
             )}
