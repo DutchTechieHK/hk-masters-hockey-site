@@ -5,6 +5,8 @@ import {
   useSaveStaffGrant,
   useRevokeStaffGrant,
   getGetStaffAccessQueryKey,
+  useListTeams,
+  getListTeamsQueryKey,
   StaffGrantInputRoleLabel,
   type StaffGrant,
 } from "@workspace/api-client-react";
@@ -33,6 +35,26 @@ type Draft = {
   manageSchedule: boolean;
   manageLineups: boolean;
 };
+
+type NamedStaff = { role: string; name: string };
+type TeamStaffFields = {
+  id: number;
+  managerName?: string | null;
+  assistantManagerName?: string | null;
+  coachName?: string | null;
+};
+
+const normaliseName = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
+
+/** People typed into the team's own Manager / Assistant Manager / Coach fields. */
+function namedStaffFor(team: TeamStaffFields | undefined): NamedStaff[] {
+  if (!team) return [];
+  return [
+    { role: "Manager", name: team.managerName ?? "" },
+    { role: "Assistant Manager", name: team.assistantManagerName ?? "" },
+    { role: "Coach", name: team.coachName ?? "" },
+  ].filter((entry) => entry.name.trim().length > 0);
+}
 
 const EMPTY: Draft = { playerId: "", teamId: "", roleLabel: "Coach", manageAttendance: false, manageSchedule: false, manageLineups: false };
 
@@ -66,6 +88,7 @@ export default function StaffAccess() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const access = useGetStaffAccess({ query: { queryKey: getGetStaffAccessQueryKey(), refetchOnWindowFocus: false } });
+  const teamList = useListTeams(undefined, { query: { queryKey: getListTeamsQueryKey(), refetchOnWindowFocus: false } });
   const save = useSaveStaffGrant();
   const revoke = useRevokeStaffGrant();
 
@@ -92,15 +115,32 @@ export default function StaffAccess() {
   const selectedMember = dir?.members.find((m) => m.id === Number(draft.playerId));
   const memberInactive = selectedMember ? selectedMember.memberStatus !== "active" : false;
 
-  const grantsByTeam = useMemo(() => {
+  const teamDetails = useMemo(
+    () => new Map(((teamList.data ?? []) as TeamStaffFields[]).map((t) => [t.id, t])),
+    [teamList.data],
+  );
+
+  // Every current team is listed, including teams nobody has access to yet,
+  // so a team with a named manager or coach but no grant is visible.
+  const teamSections = useMemo(() => {
     const groups = new Map<number, StaffGrant[]>();
+    for (const t of dir?.teams ?? []) groups.set(t.id, []);
     for (const g of dir?.grants ?? []) {
       const arr = groups.get(g.teamId) ?? [];
       arr.push(g);
       groups.set(g.teamId, arr);
     }
-    return [...groups.entries()].sort((a, b) => (teamName.get(a[0]) ?? "").localeCompare(teamName.get(b[0]) ?? ""));
-  }, [dir, teamName]);
+    return [...groups.entries()]
+      .map(([teamId, grants]) => {
+        const activeNames = new Set(grants.filter((g) => !g.revokedAt).map((g) => normaliseName(g.playerName)));
+        const named = namedStaffFor(teamDetails.get(teamId)).map((entry) => ({
+          ...entry,
+          hasAccess: activeNames.has(normaliseName(entry.name)),
+        }));
+        return { teamId, grants, named };
+      })
+      .sort((a, b) => (teamName.get(a.teamId) ?? "").localeCompare(teamName.get(b.teamId) ?? ""));
+  }, [dir, teamName, teamDetails]);
 
   const activeCount = dir?.grants.filter((g) => !g.revokedAt).length ?? 0;
 
@@ -286,18 +326,44 @@ export default function StaffAccess() {
             {/* Grants */}
             <div className="space-y-4">
               <div className="flex items-baseline justify-between">
-                <h2 className="font-display font-bold text-lg">Grants by team</h2>
+                <h2 className="font-display font-bold text-lg">Staff by team</h2>
                 <p className="text-sm text-muted-foreground"><span className="font-mono font-semibold text-foreground">{activeCount}</span> active</p>
               </div>
-              {grantsByTeam.length === 0 ? (
+              <p className="text-sm text-muted-foreground -mt-2">
+                Each team shows the manager and coach named on the team, followed by the members who can actually sign in to its staff workspace. A name on the team does not give access by itself.
+              </p>
+              {teamSections.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border p-10 text-center">
                   <Users className="w-7 h-7 mx-auto text-muted-foreground mb-2" />
-                  <p className="font-medium">No coaches or managers yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">Pick a member and team on the left to open their workspace.</p>
+                  <p className="font-medium">No current teams yet</p>
+                  <p className="text-sm text-muted-foreground mt-1">Add a team first, then give its coach or manager access here.</p>
                 </div>
-              ) : grantsByTeam.map(([teamId, grants]) => (
-                <section key={teamId} className="rounded-2xl border border-border bg-card overflow-hidden">
-                  <header className="px-4 py-2.5 bg-primary/5 border-b border-border text-sm font-semibold">{teamName.get(teamId) ?? grants[0].teamName}</header>
+              ) : teamSections.map(({ teamId, grants, named }) => (
+                <section key={teamId} className="rounded-2xl border border-border bg-card overflow-hidden" data-testid={`section-team-${teamId}`}>
+                  <header className="px-4 py-2.5 bg-primary/5 border-b border-border text-sm font-semibold">{teamName.get(teamId) ?? grants[0]?.teamName ?? `Team ${teamId}`}</header>
+                  <div className="px-4 py-3 border-b border-border bg-muted/20" data-testid={`named-staff-${teamId}`}>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground mb-2">Named on the team</p>
+                    {named.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No manager or coach is named on this team yet.</p>
+                    ) : (
+                      <ul className="space-y-1.5">
+                        {named.map((entry) => (
+                          <li key={`${entry.role}-${entry.name}`} className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="text-muted-foreground w-36 shrink-0">{entry.role}</span>
+                            <span className="font-medium">{entry.name}</span>
+                            {entry.hasAccess ? (
+                              <Badge variant="secondary" className="text-[10px]">Has staff access</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] text-amber-800 border-amber-500/50 bg-amber-500/10">No staff access</Badge>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {grants.length === 0 ? (
+                    <p className="px-4 py-3 text-sm text-muted-foreground">Nobody has staff access to this team yet.</p>
+                  ) : (
                   <ul className="divide-y divide-border">
                     {grants.map((g) => (
                       <li key={g.id} className={cn("px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3", g.revokedAt && "bg-muted/40")} data-testid={`row-grant-${g.id}`}>
@@ -322,6 +388,7 @@ export default function StaffAccess() {
                       </li>
                     ))}
                   </ul>
+                  )}
                 </section>
               ))}
             </div>

@@ -25,6 +25,7 @@ import { format } from "date-fns"
 import { useQuery } from "@tanstack/react-query"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 import { isTeamVisibleForScope } from "@/lib/teamScope"
+import { compareRosterOrder } from "@/lib/rosterOrder"
 import type { Team } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 
@@ -80,7 +81,12 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
     },
   })
   const squadMutation = useUpdateCurrentSquadSelection()
-  const selectedCount = squadCandidates.filter((candidate) => candidate.selected).length
+  // Order: selected first, then shirt number (members without a number last), then name.
+  const sortedCandidates = [...squadCandidates].sort(compareRosterOrder)
+  const squadMembers = sortedCandidates.filter((candidate) => candidate.selected)
+  const eligibleMembers = sortedCandidates.filter((candidate) => !candidate.selected)
+  const selectedCount = squadMembers.length
+  const sortedPlayers = [...players].sort(compareRosterOrder)
 
   const updateSquadSelection = async (playerId: number, selected: boolean) => {
     try {
@@ -140,15 +146,18 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
         <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
           <div className="p-6 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h3 className="text-xl font-bold text-foreground">Current League Squad</h3>
+              <h3 className="text-xl font-bold text-foreground">Squad</h3>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {selectedCount} selected from {squadCandidates.length} current member{squadCandidates.length !== 1 ? "s" : ""}
+                {selectedCount} in the squad, {eligibleMembers.length} more eligible member{eligibleMembers.length !== 1 ? "s" : ""} to pick from
               </p>
             </div>
             <Badge variant="outline">2026/27 season</Badge>
           </div>
-          <div className="px-6 py-4 bg-primary/5 border-b border-border text-sm text-muted-foreground">
-            Adding or removing a member here only changes this season&apos;s league squad. Their membership category, fees, and Rotterdam team remain unchanged.
+          <div className="px-6 py-4 bg-primary/5 border-b border-border text-sm text-muted-foreground space-y-1.5">
+            <p><span className="font-semibold text-foreground">Team</span> is the entry in the league: its name, manager and coach.</p>
+            <p><span className="font-semibold text-foreground">Squad</span> is the group of members selected to play for this team this season.</p>
+            <p><span className="font-semibold text-foreground">Eligible members</span> are all active members of this team&apos;s section with a 2026/27 season record. They are listed so you can pick from them, they are not in the squad until you add them.</p>
+            <p>Adding or removing a member only changes this season&apos;s squad. Their membership category, fees, and Rotterdam team remain unchanged.</p>
           </div>
 
           {squadLoading ? (
@@ -159,31 +168,51 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
               <p className="font-medium">No current members are available.</p>
             </div>
           ) : (
-            <div className="divide-y divide-border">
-              {squadCandidates.map((candidate) => (
-                <div key={candidate.playerId} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/10">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-foreground truncate">{candidate.name}</p>
-                      {candidate.selected && <Badge variant="success">Selected</Badge>}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {candidate.position || "Position not set"}
-                      {candidate.shirtNumber != null ? ` · #${candidate.shirtNumber}` : ""}
-                    </p>
+            <>
+              {[
+                { key: "squad", title: "In the squad", empty: "Nobody has been added to the squad yet.", rows: squadMembers },
+                { key: "eligible", title: "Eligible members, not in the squad", empty: "Every eligible member is already in the squad.", rows: eligibleMembers },
+              ].map((group) => (
+                <div key={group.key} data-testid={`squad-group-${group.key}`}>
+                  <div className="px-6 py-2.5 bg-muted/30 border-b border-border text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    {group.title} ({group.rows.length})
                   </div>
-                  {!readOnly && (
-                    <Button
-                      variant={candidate.selected ? "outline" : "default"}
-                      disabled={squadMutation.isPending}
-                      onClick={() => updateSquadSelection(candidate.playerId, !candidate.selected)}
-                    >
-                      {candidate.selected ? "Remove" : "Add to squad"}
-                    </Button>
+                  {group.rows.length === 0 ? (
+                    <p className="px-6 py-4 text-sm text-muted-foreground border-b border-border">{group.empty}</p>
+                  ) : (
+                    <div className="divide-y divide-border border-b border-border">
+                      {group.rows.map((candidate) => (
+                        <div key={candidate.playerId} className="px-6 py-4 flex items-center justify-between gap-4 hover:bg-muted/10">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {candidate.shirtNumber != null ? (
+                              <div className="w-8 h-8 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">{candidate.shirtNumber}</div>
+                            ) : (
+                              <div className="w-8 h-8 shrink-0 rounded-lg bg-muted/50 text-muted-foreground flex items-center justify-center text-xs">—</div>
+                            )}
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-foreground truncate">{candidate.name}</p>
+                                {candidate.selected && <Badge variant="success">Selected</Badge>}
+                              </div>
+                              <p className="text-sm text-muted-foreground truncate">{candidate.position || "Position not set"}</p>
+                            </div>
+                          </div>
+                          {!readOnly && (
+                            <Button
+                              variant={candidate.selected ? "outline" : "default"}
+                              disabled={squadMutation.isPending}
+                              onClick={() => updateSquadSelection(candidate.playerId, !candidate.selected)}
+                            >
+                              {candidate.selected ? "Remove" : "Add to squad"}
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
-            </div>
+            </>
           )}
         </div>
       ) : (
@@ -219,7 +248,7 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {players.map(player => (
+                {sortedPlayers.map(player => (
                   <tr key={player.id} className="hover:bg-muted/10 transition-colors">
                     <td className="px-6 py-3">
                       {player.shirtNumber != null ? (
