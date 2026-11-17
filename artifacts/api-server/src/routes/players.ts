@@ -42,6 +42,7 @@ import {
 import { sendTravelReminderEmail, sendFeeReminderEmail, sendInsuranceReminderEmail, sendOnboardingInviteEmail, sendPassportUploadNotificationEmail, sendHkidUploadNotificationEmail, sendProfileUpdateNotificationEmail, sendBulkAnnouncementEmail } from "../utils/email";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { visibleMember } from "../utils/memberVisibility";
+import { refreshTeamStaffText } from "../utils/teamSetup";
 import { reconcileSquads, removeSquadsOutsideSection, squadTeamsByPlayer } from "../utils/squads";
 import { categoryKeysByPlayer, reconcileMemberCategories, setMemberCategories, standardFee, sameMoney } from "../utils/memberCategories";
 import { requireSession } from "../middleware/adminSession";
@@ -1857,6 +1858,8 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   }
   await recomputePlayerAggregates(id, { feePaidOverride: requestedFeePaid });
   await syncCurrentParticipation(id);
+  // Teams where this member is manager, coach, etc. show their current details.
+  await refreshTeamStaffText(db, id);
   const [player] = await db.select().from(playersTable).where(eq(playersTable.id, id));
   const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, player.teamId));
   const membershipFees = await getMembershipFeeAccounts([id]);

@@ -27,17 +27,16 @@ import { useQuery } from "@tanstack/react-query"
 import { getStoredAdminToken } from "@/lib/admin-auth"
 import { isTeamVisibleForScope } from "@/lib/teamScope"
 import { compareRosterOrder } from "@/lib/rosterOrder"
+import { useMembershipCategories } from "@/lib/membership-categories"
 import type { Team } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 
+// A team is defined by its section and the member categories it draws from.
+// Manager, assistant manager, coach and captain are members picked from the
+// list (kept outside this schema, see TeamStaffPicker below).
 const teamSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  category: z.string().min(1, "Category is required"),
-  managerName: z.string().min(1, "Manager name is required"),
-  managerEmail: z.string().email("Invalid email"),
-  managerPhone: z.string().min(1, "Phone is required"),
-  assistantManagerName: z.string().optional(),
-  assistantManagerContact: z.string().optional(),
+  membershipSection: z.enum(["men", "women"], { message: "Choose Men or Women" }),
   whatsappGroupLink: z.string().optional(),
   targetPlayerCount: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? undefined : v),
@@ -45,10 +44,28 @@ const teamSchema = z.object({
   ),
   kitNotes: z.string().optional(),
   notes: z.string().optional(),
-  coachName: z.string().optional(),
-  captainName: z.string().optional(),
   description: z.string().optional(),
 })
+
+const STAFF_ROLES = [
+  { key: "managerPlayerId", label: "Manager", typed: "managerName" },
+  { key: "assistantManagerPlayerId", label: "Assistant Manager", typed: "assistantManagerName" },
+  { key: "coachPlayerId", label: "Coach", typed: "coachName" },
+  { key: "captainPlayerId", label: "Captain", typed: "captainName" },
+] as const
+type StaffRoleKey = (typeof STAFF_ROLES)[number]["key"]
+type StaffSelection = Record<StaffRoleKey, number | null>
+const NO_STAFF: StaffSelection = { managerPlayerId: null, assistantManagerPlayerId: null, coachPlayerId: null, captainPlayerId: null }
+
+const SECTION_LABELS: Record<string, string> = { men: "Men", women: "Women", not_set: "Section not set" }
+
+/** "Men · League Player, Tournament Player" for a current team; the stored tag for archived teams. */
+function teamBadgeLabel(team: Team, labelFor: (key: string) => string, scope?: string): string {
+  if (scope) return team.category
+  const section = SECTION_LABELS[team.membershipSection] ?? team.membershipSection
+  const categories = (team.eligibleCategories ?? []).map((key) => labelFor(key))
+  return categories.length ? `${section} · ${categories.join(", ")}` : section
+}
 
 type TeamFormValues = z.infer<typeof teamSchema>
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
@@ -106,6 +123,8 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
   // Every current team has a squad. The internal holding team and the
   // archived Rotterdam teams (shown with a scope) keep the plain roster.
   const isLeagueSquad = !scope && team.name !== "Awaiting Selection"
+  const { labelFor } = useMembershipCategories()
+  const teamCategories = team.eligibleCategories ?? []
   const { data: defaultPlayers = [], isLoading: defaultLoading } = useListPlayers({ teamId: team.id }, { query: { enabled: !scope } } as any)
 
   const { data: archivePlayers = [], isLoading: archiveLoading } = useQuery({
@@ -187,7 +206,7 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
       <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden mb-6">
         <div className="p-6 border-b border-border bg-gradient-to-br from-primary/5 to-transparent flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
-            <Badge className="mb-2">{team.category}</Badge>
+            <Badge className="mb-2">{teamBadgeLabel(team, labelFor, scope)}</Badge>
             <h2 className="text-3xl font-bold text-primary">{team.name}</h2>
             {team.createdAt && (
               <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>
@@ -230,7 +249,7 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
           <div className="px-6 py-4 bg-primary/5 border-b border-border text-sm text-muted-foreground space-y-1.5">
             <p><span className="font-semibold text-foreground">Team</span> is the entry in the league: its name, manager and coach.</p>
             <p><span className="font-semibold text-foreground">Squad</span> is the group of members selected to play for this team this season.</p>
-            <p><span className="font-semibold text-foreground">Eligible members</span> are all active members of this team&apos;s section with a 2026/27 season record. They are listed so you can pick from them, they are not in the squad until you add them.</p>
+            <p><span className="font-semibold text-foreground">Eligible members</span> are active members of this team&apos;s section{teamCategories.length > 0 ? <> who hold one of its categories ({teamCategories.map((key) => labelFor(key)).join(", ")})</> : <> (no categories are set on this team, so the whole section is listed)</>}. They are not in the squad until you add them.</p>
             <p>A member can be in more than one squad in the same season, for example a league team and a tournament team.</p>
             <p><span className="font-semibold text-foreground">Shirt numbers</span> are set here, per squad: type the number in the box in front of a squad member. The same member can have a different number in another squad. Leaving the squad closes the number and keeps it in their history.</p>
             <p>Adding or removing a member only changes this team&apos;s squad. Their other squads, membership category, fees, and Rotterdam team remain unchanged.</p>
@@ -279,8 +298,14 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
                                 {candidate.selected && candidate.shirtNumber != null && duplicateNumbers.has(candidate.shirtNumber) && (
                                   <Badge variant="outline" className="text-amber-800 border-amber-400 bg-amber-50">Duplicate number</Badge>
                                 )}
+                                {candidate.categoryMismatch && (
+                                  <Badge variant="outline" className="text-amber-800 border-amber-400 bg-amber-50" title="This member holds none of the categories this team draws from. They stay in the squad until you remove them.">Category mismatch</Badge>
+                                )}
                               </div>
-                              <p className="text-sm text-muted-foreground truncate">{candidate.position || "Position not set"}</p>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {candidate.position || "Position not set"}
+                                {(candidate.membershipCategories ?? []).length > 0 ? ` · ${(candidate.membershipCategories ?? []).map((key) => labelFor(key)).join(", ")}` : ""}
+                              </p>
                             </div>
                           </div>
                           {!readOnly && (
@@ -369,6 +394,14 @@ function TeamDetail({ team, onBack, onEdit, readOnly, scope }: { team: Team; onB
 export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: boolean }) {
   const queryClient = useQueryClient()
   const { toast } = useToast()
+  const membershipCategories = useMembershipCategories()
+  // Members to pick staff from. Loaded only for the current-season view.
+  const { data: allMembers = [] } = useListPlayers(undefined, { query: { enabled: !scope } } as any)
+  const pickableMembers = [...allMembers]
+    .filter((member) => member.memberStatus !== "archived")
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const [teamCategoryKeys, setTeamCategoryKeys] = useState<string[]>([])
+  const [staff, setStaff] = useState<StaffSelection>(NO_STAFF)
   const { data: defaultTeams = [], isLoading: defaultLoading } = useListTeams(
     undefined,
     { query: { queryKey: getListTeamsQueryKey(), enabled: !scope } },
@@ -408,12 +441,11 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
   const openAddModal = () => {
     setEditingTeam(null)
     reset({
-      name: "", category: "Men's Squad",
-      managerName: "", managerEmail: "", managerPhone: "",
-      assistantManagerName: "", assistantManagerContact: "",
-      whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: "",
-      coachName: "", captainName: "", description: "",
+      name: "", membershipSection: "men",
+      whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: "", description: "",
     })
+    setTeamCategoryKeys([])
+    setStaff(NO_STAFF)
     setIsModalOpen(true)
   }
 
@@ -421,19 +453,20 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
     setEditingTeam(team)
     reset({
       name: team.name,
-      category: team.category,
-      managerName: team.managerName,
-      managerEmail: team.managerEmail,
-      managerPhone: team.managerPhone,
-      assistantManagerName: team.assistantManagerName || "",
-      assistantManagerContact: team.assistantManagerContact || "",
+      // A team without a section yet makes the administrator choose one.
+      membershipSection: (team.membershipSection === "men" || team.membershipSection === "women" ? team.membershipSection : "") as "men" | "women",
       whatsappGroupLink: team.whatsappGroupLink || "",
       targetPlayerCount: team.targetPlayerCount ?? undefined,
       kitNotes: team.kitNotes || "",
       notes: team.notes || "",
-      coachName: (team as any).coachName || "",
-      captainName: (team as any).captainName || "",
-      description: (team as any).description || "",
+      description: team.description || "",
+    })
+    setTeamCategoryKeys(team.eligibleCategories ?? [])
+    setStaff({
+      managerPlayerId: team.managerPlayerId ?? null,
+      assistantManagerPlayerId: team.assistantManagerPlayerId ?? null,
+      coachPlayerId: team.coachPlayerId ?? null,
+      captainPlayerId: team.captainPlayerId ?? null,
     })
     setIsModalOpen(true)
   }
@@ -450,14 +483,13 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
     }
   }
 
-  const onSubmit = async (data: TeamFormValues) => {
+  const onSubmit = async (formData: TeamFormValues) => {
     try {
+      const data = { ...formData, eligibleCategories: teamCategoryKeys, ...staff }
       if (editingTeam) {
-        await updateMutation.mutateAsync({ id: editingTeam.id, data })
+        const saved = await updateMutation.mutateAsync({ id: editingTeam.id, data })
         toast({ title: "Team updated successfully" })
-        if (selectedTeam?.id === editingTeam.id) {
-          setSelectedTeam({ ...selectedTeam, ...data })
-        }
+        if (selectedTeam?.id === editingTeam.id) setSelectedTeam(saved)
       } else {
         await createMutation.mutateAsync({ data })
         toast({ title: "Team created successfully" })
@@ -523,7 +555,7 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
                         )}
                       </div>
                     )}
-                    <Badge className="mb-3">{team.category}</Badge>
+                    <Badge className="mb-3">{teamBadgeLabel(team, membershipCategories.labelFor, scope)}</Badge>
                     <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
                     {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>}
                   </div>
@@ -586,58 +618,73 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold">Category</label>
-              <Select {...register("category")} defaultValue="Men's Squad">
-                <option value="Men's Squad">Men's Squad</option>
-                <option value="Women's Squad">Women's Squad</option>
-                <option value="League Team">League Team</option>
-                <option value="Social">Social</option>
+              <label className="text-sm font-semibold">Section</label>
+              <Select {...register("membershipSection")} data-testid="select-team-section">
+                <option value="">Choose section...</option>
+                <option value="men">Men</option>
+                <option value="women">Women</option>
               </Select>
-              {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
+              {errors.membershipSection && <p className="text-xs text-destructive">{errors.membershipSection.message}</p>}
             </div>
           </div>
 
-          <div className="space-y-4 pt-4 border-t border-border">
-            <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Manager Details</h4>
-            <div className="space-y-2">
-              <label className="text-sm font-semibold">Manager Full Name *</label>
-              <Input placeholder="Manager Name" {...register("managerName")} />
-              {errors.managerName && <p className="text-xs text-destructive">{errors.managerName.message}</p>}
+          <div className="space-y-2" data-testid="field-team-categories">
+            <label className="text-sm font-semibold">Draws its squad from</label>
+            <p className="text-xs text-muted-foreground">Tick the member categories this team picks from. With none ticked, every member of the section is eligible.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {membershipCategories.categories
+                .filter((category) => !category.protected && (!category.retired || teamCategoryKeys.includes(category.key)))
+                .map((category) => {
+                  const checked = teamCategoryKeys.includes(category.key)
+                  return (
+                    <label key={category.key} className={`flex items-center gap-2.5 rounded-xl border-2 px-3 py-2 text-sm cursor-pointer transition-colors ${checked ? "border-primary bg-primary/5" : "border-input bg-background"}`}>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-primary"
+                        checked={checked}
+                        onChange={(e) => setTeamCategoryKeys((current) => e.target.checked ? [...current, category.key] : current.filter((key) => key !== category.key))}
+                        data-testid={`checkbox-team-category-${category.key}`}
+                      />
+                      <span className="flex-1 min-w-0 font-medium leading-tight">{category.name}{category.retired ? " (retired)" : ""}</span>
+                    </label>
+                  )
+                })}
             </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-border" data-testid="field-team-staff">
+            <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Team Staff</h4>
+            <p className="text-xs text-muted-foreground">Pick a member for each role. Their name and contact details come from their member record. A role here does not give login access; that is done under Staff Access.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Manager Email *</label>
-                <Input type="email" placeholder="manager@example.com" {...register("managerEmail")} />
-                {errors.managerEmail && <p className="text-xs text-destructive">{errors.managerEmail.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Manager Phone *</label>
-                <Input placeholder="+852 XXXX XXXX" {...register("managerPhone")} />
-                {errors.managerPhone && <p className="text-xs text-destructive">{errors.managerPhone.message}</p>}
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Assistant Manager Name</label>
-                <Input placeholder="Optional" {...register("assistantManagerName")} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Assistant Manager Contact</label>
-                <Input placeholder="Phone or email" {...register("assistantManagerContact")} />
-              </div>
+              {STAFF_ROLES.map((role) => {
+                const typedName = editingTeam ? (editingTeam[role.typed] ?? "") : ""
+                const linkedId = staff[role.key]
+                const linkedMissing = linkedId != null && !pickableMembers.some((member) => member.id === linkedId)
+                return (
+                  <div key={role.key} className="space-y-2">
+                    <label className="text-sm font-semibold">{role.label}</label>
+                    <Select
+                      value={linkedId == null ? "" : String(linkedId)}
+                      onChange={(e) => setStaff((current) => ({ ...current, [role.key]: e.target.value === "" ? null : Number(e.target.value) }))}
+                      data-testid={`select-team-staff-${role.key}`}
+                    >
+                      <option value="">Not set</option>
+                      {linkedMissing && <option value={String(linkedId)}>{typedName || `Member #${linkedId}`}</option>}
+                      {pickableMembers.map((member) => (
+                        <option key={member.id} value={String(member.id)}>{member.name}</option>
+                      ))}
+                    </Select>
+                    {linkedId == null && typedName.trim() !== "" && (
+                      <p className="text-xs text-amber-800">Typed earlier, not linked to a member: <strong>{typedName}</strong>. Pick the member above to link them.</p>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
 
           <div className="space-y-4 pt-4 border-t border-border">
             <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Public Profile</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Coach Name</label>
-                <Input placeholder="e.g. John Smith" {...register("coachName")} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-semibold">Captain Name</label>
-                <Input placeholder="e.g. Jane Doe" {...register("captainName")} />
-              </div>
-            </div>
             <div className="space-y-2">
               <label className="text-sm font-semibold">Public Description</label>
               <textarea

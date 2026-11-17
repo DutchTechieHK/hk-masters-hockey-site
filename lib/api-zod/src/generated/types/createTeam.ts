@@ -9,11 +9,11 @@ import type { CreateTeamMembershipSection } from "./createTeamMembershipSection"
 
 export interface CreateTeam {
   name: string;
-  category: string;
+  category?: string;
   membershipSection?: CreateTeamMembershipSection;
-  managerName: string;
-  managerEmail: string;
-  managerPhone: string;
+  managerName?: string;
+  managerEmail?: string;
+  managerPhone?: string;
   assistantManagerName?: string;
   assistantManagerContact?: string;
   whatsappGroupLink?: string;
@@ -23,4 +23,11 @@ export interface CreateTeam {
   coachName?: string;
   captainName?: string;
   description?: string;
+  /** Membership categories this team draws its squad from. Empty means every member of the team's section is eligible. */
+  eligibleCategories?: string[];
+  /** The member who is this team's manager, when linked. */
+  managerPlayerId?: number | null;
+  assistantManagerPlayerId?: number | null;
+  coachPlayerId?: number | null;
+  captainPlayerId?: number | null;
 }

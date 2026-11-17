@@ -3183,6 +3183,24 @@ components:
           type: string
         createdAt:
           type: string
+        eligibleCategories:
+          type: array
+          items:
+            type: string
+          description: Membership categories this team draws its squad from. Empty means every member of the team's section is eligible.
+        managerPlayerId:
+          type: integer
+          nullable: true
+          description: The member who is this team's manager, when linked.
+        assistantManagerPlayerId:
+          type: integer
+          nullable: true
+        coachPlayerId:
+          type: integer
+          nullable: true
+        captainPlayerId:
+          type: integer
+          nullable: true
       required:
         - id
         - name
@@ -3226,12 +3244,26 @@ components:
           type: string
         description:
           type: string
+        eligibleCategories:
+          type: array
+          items:
+            type: string
+          description: Membership categories this team draws its squad from. Empty means every member of the team's section is eligible.
+        managerPlayerId:
+          type: integer
+          nullable: true
+          description: The member who is this team's manager, when linked.
+        assistantManagerPlayerId:
+          type: integer
+          nullable: true
+        coachPlayerId:
+          type: integer
+          nullable: true
+        captainPlayerId:
+          type: integer
+          nullable: true
       required:
         - name
-        - category
-        - managerName
-        - managerEmail
-        - managerPhone
 
     SquadCandidate:
       type: object
@@ -3256,6 +3288,14 @@ components:
           enum: [not_set, men, women]
         selected:
           type: boolean
+        membershipCategories:
+          type: array
+          items:
+            type: string
+          description: Every membership category the member holds, main first.
+        categoryMismatch:
+          type: boolean
+          description: True for a squad member who holds none of the categories the team draws from.
       required: [playerId, name, email, membershipSection, selected]
 
     SquadSelectionUpdate:

@@ -1986,6 +1986,19 @@ export const ListTeamsResponseItem = zod.object({
   captainName: zod.string().optional(),
   description: zod.string().optional(),
   createdAt: zod.string().optional(),
+  eligibleCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Membership categories this team draws its squad from. Empty means every member of the team's section is eligible.",
+    ),
+  managerPlayerId: zod
+    .number()
+    .nullish()
+    .describe("The member who is this team's manager, when linked."),
+  assistantManagerPlayerId: zod.number().nullish(),
+  coachPlayerId: zod.number().nullish(),
+  captainPlayerId: zod.number().nullish(),
 });
 export const ListTeamsResponse = zod.array(ListTeamsResponseItem);
 
@@ -1994,11 +2007,11 @@ export const ListTeamsResponse = zod.array(ListTeamsResponseItem);
  */
 export const CreateTeamBody = zod.object({
   name: zod.string(),
-  category: zod.string(),
+  category: zod.string().optional(),
   membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
-  managerName: zod.string(),
-  managerEmail: zod.string(),
-  managerPhone: zod.string(),
+  managerName: zod.string().optional(),
+  managerEmail: zod.string().optional(),
+  managerPhone: zod.string().optional(),
   assistantManagerName: zod.string().optional(),
   assistantManagerContact: zod.string().optional(),
   whatsappGroupLink: zod.string().optional(),
@@ -2008,6 +2021,19 @@ export const CreateTeamBody = zod.object({
   coachName: zod.string().optional(),
   captainName: zod.string().optional(),
   description: zod.string().optional(),
+  eligibleCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Membership categories this team draws its squad from. Empty means every member of the team's section is eligible.",
+    ),
+  managerPlayerId: zod
+    .number()
+    .nullish()
+    .describe("The member who is this team's manager, when linked."),
+  assistantManagerPlayerId: zod.number().nullish(),
+  coachPlayerId: zod.number().nullish(),
+  captainPlayerId: zod.number().nullish(),
 });
 
 /**
@@ -2019,11 +2045,11 @@ export const UpdateTeamParams = zod.object({
 
 export const UpdateTeamBody = zod.object({
   name: zod.string(),
-  category: zod.string(),
+  category: zod.string().optional(),
   membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
-  managerName: zod.string(),
-  managerEmail: zod.string(),
-  managerPhone: zod.string(),
+  managerName: zod.string().optional(),
+  managerEmail: zod.string().optional(),
+  managerPhone: zod.string().optional(),
   assistantManagerName: zod.string().optional(),
   assistantManagerContact: zod.string().optional(),
   whatsappGroupLink: zod.string().optional(),
@@ -2033,6 +2059,19 @@ export const UpdateTeamBody = zod.object({
   coachName: zod.string().optional(),
   captainName: zod.string().optional(),
   description: zod.string().optional(),
+  eligibleCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Membership categories this team draws its squad from. Empty means every member of the team's section is eligible.",
+    ),
+  managerPlayerId: zod
+    .number()
+    .nullish()
+    .describe("The member who is this team's manager, when linked."),
+  assistantManagerPlayerId: zod.number().nullish(),
+  coachPlayerId: zod.number().nullish(),
+  captainPlayerId: zod.number().nullish(),
 });
 
 export const UpdateTeamResponse = zod.object({
@@ -2053,6 +2092,19 @@ export const UpdateTeamResponse = zod.object({
   captainName: zod.string().optional(),
   description: zod.string().optional(),
   createdAt: zod.string().optional(),
+  eligibleCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe(
+      "Membership categories this team draws its squad from. Empty means every member of the team's section is eligible.",
+    ),
+  managerPlayerId: zod
+    .number()
+    .nullish()
+    .describe("The member who is this team's manager, when linked."),
+  assistantManagerPlayerId: zod.number().nullish(),
+  coachPlayerId: zod.number().nullish(),
+  captainPlayerId: zod.number().nullish(),
 });
 
 /**
@@ -2078,6 +2130,16 @@ export const ListCurrentSquadCandidatesResponseItem = zod.object({
   membershipTier: zod.string().nullish(),
   membershipSection: zod.enum(["not_set", "men", "women"]),
   selected: zod.boolean(),
+  membershipCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe("Every membership category the member holds, main first."),
+  categoryMismatch: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True for a squad member who holds none of the categories the team draws from.",
+    ),
 });
 export const ListCurrentSquadCandidatesResponse = zod.array(
   ListCurrentSquadCandidatesResponseItem,
@@ -2104,6 +2166,16 @@ export const UpdateCurrentSquadSelectionResponse = zod.object({
   membershipTier: zod.string().nullish(),
   membershipSection: zod.enum(["not_set", "men", "women"]),
   selected: zod.boolean(),
+  membershipCategories: zod
+    .array(zod.string())
+    .optional()
+    .describe("Every membership category the member holds, main first."),
+  categoryMismatch: zod
+    .boolean()
+    .optional()
+    .describe(
+      "True for a squad member who holds none of the categories the team draws from.",
+    ),
 });
 
 /**
@@ -2135,6 +2207,16 @@ export const SetSquadShirtNumberResponse = zod.object({
     membershipTier: zod.string().nullish(),
     membershipSection: zod.enum(["not_set", "men", "women"]),
     selected: zod.boolean(),
+    membershipCategories: zod
+      .array(zod.string())
+      .optional()
+      .describe("Every membership category the member holds, main first."),
+    categoryMismatch: zod
+      .boolean()
+      .optional()
+      .describe(
+        "True for a squad member who holds none of the categories the team draws from.",
+      ),
   }),
   warnings: zod.array(zod.string()),
 });

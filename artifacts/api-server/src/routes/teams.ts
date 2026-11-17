@@ -20,14 +20,48 @@ import { getSessionLabel } from "../middleware/adminSession";
 import { isArchivedRotterdamTeam } from "../utils/archivedTeams";
 import { squadMembershipsTable } from "@workspace/db";
 import { endSquadShirtNumbers, ensureSquadStorage, inSquadOrPrimary, syncPrimarySquad } from "../utils/squads";
+import {
+  ensureTeamSetupStorage, setTeamCategories, setTeamStaff, teamCategoryKeys, teamStaffLinks, TeamSetupError,
+  type TeamStaffLinks,
+} from "../utils/teamSetup";
+import { categoryKeysByPlayer } from "../utils/memberCategories";
 
 const CURRENT_SEASON_SLUG = "membership-2026-27";
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"]);
 
 const router = Router();
 
-function mapTeam(t: typeof teamsTable.$inferSelect) {
+type TeamSetup = { eligibleCategories: string[]; staff: TeamStaffLinks | undefined };
+
+/** Load the category list and linked staff for a set of teams in two queries. */
+async function loadTeamSetup(teamIds: number[]): Promise<Map<number, TeamSetup>> {
+  await ensureTeamSetupStorage();
+  const [categories, staff] = await Promise.all([teamCategoryKeys(teamIds), teamStaffLinks(teamIds)]);
+  return new Map(teamIds.map((id) => [id, { eligibleCategories: categories.get(id) ?? [], staff: staff.get(id) }]));
+}
+
+/** What the team form sends for categories and linked staff, split from the plain columns. */
+function splitTeamBody<T extends {
+  eligibleCategories?: string[];
+  managerPlayerId?: number | null; assistantManagerPlayerId?: number | null;
+  coachPlayerId?: number | null; captainPlayerId?: number | null;
+}>(body: T) {
+  const { eligibleCategories, managerPlayerId, assistantManagerPlayerId, coachPlayerId, captainPlayerId, ...columns } = body;
+  const staff: Partial<TeamStaffLinks> = {};
+  if (managerPlayerId !== undefined) staff.manager = managerPlayerId;
+  if (assistantManagerPlayerId !== undefined) staff.assistant_manager = assistantManagerPlayerId;
+  if (coachPlayerId !== undefined) staff.coach = coachPlayerId;
+  if (captainPlayerId !== undefined) staff.captain = captainPlayerId;
+  return { columns, eligibleCategories, staff };
+}
+
+function mapTeam(t: typeof teamsTable.$inferSelect, setup?: TeamSetup) {
   return {
+    eligibleCategories: setup?.eligibleCategories ?? [],
+    managerPlayerId: setup?.staff?.manager ?? null,
+    assistantManagerPlayerId: setup?.staff?.assistant_manager ?? null,
+    coachPlayerId: setup?.staff?.coach ?? null,
+    captainPlayerId: setup?.staff?.captain ?? null,
     id: t.id,
     name: t.name,
     category: t.category,
@@ -66,8 +100,11 @@ function mapSquadCandidate(
   player: Pick<typeof playersTable.$inferSelect, "id" | "name" | "email" | "position" | "shirtNumber" | "currentMembershipSection">,
   membershipTier: string | null,
   selected: boolean,
+  categories?: { held: string[]; mismatch: boolean },
 ) {
   return {
+    membershipCategories: categories?.held ?? [],
+    categoryMismatch: categories?.mismatch ?? false,
     playerId: player.id,
     name: player.name,
     email: player.email,
@@ -102,7 +139,7 @@ router.get("/", async (req, res) => {
       }
       return [team.id, mapped];
     })).values()];
-    return res.json(unique.map(mapTeam));
+    return res.json(unique.map((team) => mapTeam(team)));
   }
   if (isAdmin) {
     const teams = await db.select().from(teamsTable).where(notExists(
@@ -110,7 +147,8 @@ router.get("/", async (req, res) => {
         .innerJoin(seasonsTable, eq(seasonsTable.id, playerParticipationsTable.seasonId))
         .where(and(eq(playerParticipationsTable.teamId, teamsTable.id), eq(playerParticipationsTable.participationStatus, "active"), eq(seasonsTable.slug, "rotterdam-2026"))),
     )).orderBy(teamsTable.id);
-    return res.json(teams.map(mapTeam));
+    const setup = await loadTeamSetup(teams.map((team) => team.id));
+    return res.json(teams.map((team) => mapTeam(team, setup.get(team.id))));
   }
   const teams = await db.select().from(teamsTable)
     .where(and(eq(teamsTable.isInternal, false), notExists(
@@ -130,18 +168,38 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", requireAdminAccess, async (req, res) => {
-  const body = CreateTeamBody.parse(req.body);
+  const { columns: body, eligibleCategories, staff } = splitTeamBody(CreateTeamBody.parse(req.body));
   if (CANONICAL_TEAM_NAMES.has(body.name)) {
     res.status(409).json({ error: "This team name is reserved" });
     return;
   }
-  const [team] = await db.insert(teamsTable).values(body as any).returning();
-  res.status(201).json(mapTeam(team));
+  await ensureTeamSetupStorage();
+  try {
+    const team = await db.transaction(async (tx) => {
+      // The team form no longer asks for a category or typed manager details.
+      // The columns stay, with neutral defaults, for older screens and the archive.
+      const [created] = await tx.insert(teamsTable).values({
+        ...(body as any),
+        category: body.category?.trim() || "Team",
+        managerName: body.managerName ?? "",
+        managerEmail: body.managerEmail ?? "",
+        managerPhone: body.managerPhone ?? "",
+      }).returning();
+      if (eligibleCategories !== undefined) await setTeamCategories(tx, created.id, eligibleCategories);
+      await setTeamStaff(tx, created.id, staff);
+      const [fresh] = await tx.select().from(teamsTable).where(eq(teamsTable.id, created.id));
+      return fresh;
+    });
+    res.status(201).json(mapTeam(team, (await loadTeamSetup([team.id])).get(team.id)));
+  } catch (error) {
+    if (error instanceof TeamSetupError) { res.status(error.status).json({ error: error.message }); return; }
+    throw error;
+  }
 });
 
 router.put("/:id", requireAdminAccess, async (req, res) => {
   const { id } = UpdateTeamParams.parse(req.params);
-  const body = UpdateTeamBody.parse(req.body);
+  const { columns: body, eligibleCategories, staff } = splitTeamBody(UpdateTeamBody.parse(req.body));
   const [existing] = await db.select().from(teamsTable).where(eq(teamsTable.id, id));
   if (!existing) {
     res.status(404).json({ error: "Team not found" });
@@ -162,8 +220,26 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
     res.status(409).json({ error: "Canonical team names cannot be changed or reused" });
     return;
   }
-  const [team] = await db.update(teamsTable).set(body as any).where(eq(teamsTable.id, id)).returning();
-  res.json(mapTeam(team));
+  await ensureTeamSetupStorage();
+  try {
+    const team = await db.transaction(async (tx) => {
+      // A form that sends no category (the current team form) keeps the stored one.
+      const { category, ...rest } = body as typeof body & { category?: string };
+      await tx.update(teamsTable).set({
+        ...(rest as any),
+        ...(category?.trim() ? { category: category.trim() } : {}),
+      }).where(eq(teamsTable.id, id));
+      if (eligibleCategories !== undefined) await setTeamCategories(tx, id, eligibleCategories);
+      // Linked staff are applied last so their member details win over typed text.
+      await setTeamStaff(tx, id, staff);
+      const [fresh] = await tx.select().from(teamsTable).where(eq(teamsTable.id, id));
+      return fresh;
+    });
+    res.json(mapTeam(team, (await loadTeamSetup([id])).get(id)));
+  } catch (error) {
+    if (error instanceof TeamSetupError) { res.status(error.status).json({ error: error.message }); return; }
+    throw error;
+  }
 });
 
 router.delete("/:id", requireAdminAccess, async (req, res) => {
@@ -248,9 +324,21 @@ router.get("/:id/squad", requireAdminAccess, async (req, res): Promise<void> => 
     ))
     .orderBy(playersTable.name);
 
-  const contextual = await withLeagueNumbers(rows.map(({ player }) => ({ ...player, teamId: id })), currentSeason.id);
-  res.json(rows.map(({ participation, selected }, i) =>
-    mapSquadCandidate(contextual[i], participation.membershipTier, selected === true)));
+  // A team may draw from certain membership categories only. Members of the
+  // section who hold none of them are left out of the pick list. Anyone
+  // already in the squad always stays listed, flagged as a mismatch.
+  await ensureTeamSetupStorage();
+  const teamCategories = (await teamCategoryKeys([id])).get(id) ?? [];
+  const held = await categoryKeysByPlayer(currentSeason.id, rows.map(({ player }) => player.id));
+  const listed = rows.map((row) => {
+    const categories = held.get(row.player.id) ?? [];
+    const fits = teamCategories.length === 0 || categories.some((key) => teamCategories.includes(key));
+    return { ...row, categories, fits, inSquad: row.selected === true };
+  }).filter((row) => row.inSquad || row.fits);
+
+  const contextual = await withLeagueNumbers(listed.map(({ player }) => ({ ...player, teamId: id })), currentSeason.id);
+  res.json(listed.map(({ participation, inSquad, categories, fits }, i) =>
+    mapSquadCandidate(contextual[i], participation.membershipTier, inSquad, { held: categories, mismatch: inSquad && !fits })));
 });
 
 router.put("/:id/squad/:playerId", requireAdminAccess, async (req, res): Promise<void> => {
