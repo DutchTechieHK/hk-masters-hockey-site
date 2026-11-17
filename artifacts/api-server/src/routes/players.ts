@@ -365,8 +365,17 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
   await executor.update(playerPaymentsTable)
     .set({ seasonId: rotterdam.id })
     .where(isNull(playerPaymentsTable.seasonId));
+  // Only members who do not have a season record yet need one. Looking that
+  // up once replaces one or two insert round trips per member on every call,
+  // which made every page that runs this upkeep slow as membership grew.
+  const existingRecords = await executor.select({
+    playerId: playerParticipationsTable.playerId, seasonId: playerParticipationsTable.seasonId,
+  }).from(playerParticipationsTable)
+    .where(inArray(playerParticipationsTable.seasonId, [rotterdam.id, current.id]));
+  const hasRotterdamRecord = new Set(existingRecords.filter((row) => row.seasonId === rotterdam.id).map((row) => row.playerId));
+  const hasCurrentRecord = new Set(existingRecords.filter((row) => row.seasonId === current.id).map((row) => row.playerId));
   for (const player of players) {
-    if (player.createdAt < ROTTERDAM_MIGRATION_CUTOFF) {
+    if (player.createdAt < ROTTERDAM_MIGRATION_CUTOFF && !hasRotterdamRecord.has(player.id)) {
       await executor.insert(playerParticipationsTable).values({
         playerId: player.id,
         seasonId: rotterdam.id,
@@ -377,6 +386,7 @@ async function ensureMembershipFoundationWithExecutor(executor: MembershipDbExec
         legacySnapshot: legacyRotterdamSnapshot(player),
       }).onConflictDoNothing();
     }
+    if (hasCurrentRecord.has(player.id)) continue;
     await executor.insert(playerParticipationsTable).values({
       playerId: player.id,
       seasonId: current.id,
