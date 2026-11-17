@@ -25,4 +25,11 @@ export interface Team {
   captainName?: string;
   description?: string;
   createdAt?: string;
+  /** Membership categories this team draws its squad from. Empty means every member of the team's section is eligible. */
+  eligibleCategories?: string[];
+  /** The member who is this team's manager, when linked. */
+  managerPlayerId?: number | null;
+  assistantManagerPlayerId?: number | null;
+  coachPlayerId?: number | null;
+  captainPlayerId?: number | null;
 }

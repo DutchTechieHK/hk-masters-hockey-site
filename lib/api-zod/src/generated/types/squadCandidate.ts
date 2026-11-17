@@ -16,4 +16,8 @@ export interface SquadCandidate {
   membershipTier?: string | null;
   membershipSection: SquadCandidateMembershipSection;
   selected: boolean;
+  /** Every membership category the member holds, main first. */
+  membershipCategories?: string[];
+  /** True for a squad member who holds none of the categories the team draws from. */
+  categoryMismatch?: boolean;
 }

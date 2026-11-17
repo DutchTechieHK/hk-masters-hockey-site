@@ -7,6 +7,7 @@ import { scheduleNotionMemberSync } from "./jobs/notionMemberSync";
 import { ensureMembershipFoundation } from "./routes/players";
 import { ensureSquadStorage } from "./utils/squads";
 import { ensureCategoryListStorage } from "./utils/memberCategories";
+import { ensureTeamSetupStorage, autoLinkTypedStaffNames } from "./utils/teamSetup";
 
 const rawPort = process.env["PORT"];
 
@@ -41,6 +42,11 @@ async function start() {
   // Never blocks start-up: without the squad table the app runs with one team per member.
   await ensureSquadStorage(true);
   await ensureCategoryListStorage(true);
+  // Team categories and linked staff. Typed staff names that match exactly
+  // one member are linked once here; failures never block start-up.
+  if (await ensureTeamSetupStorage(true)) {
+    await autoLinkTypedStaffNames().catch((error) => console.error("[team-setup] auto-link failed:", error));
+  }
   await ensureMembershipFoundation();
   app.listen(port, () => {
     console.log(`Server listening on port ${port}`);

@@ -36,24 +36,31 @@ type Draft = {
   manageLineups: boolean;
 };
 
-type NamedStaff = { role: string; name: string };
+type NamedStaff = { role: string; name: string; playerId: number | null; grantRole: StaffGrantInputRoleLabel };
 type TeamStaffFields = {
   id: number;
   managerName?: string | null;
   assistantManagerName?: string | null;
   coachName?: string | null;
+  managerPlayerId?: number | null;
+  assistantManagerPlayerId?: number | null;
+  coachPlayerId?: number | null;
 };
 
 const normaliseName = (value: string) => value.trim().toLowerCase().replace(/\s+/g, " ");
 
-/** People typed into the team's own Manager / Assistant Manager / Coach fields. */
+/**
+ * The manager, assistant manager and coach named on the team. Each is either
+ * linked to a member (playerId set) or, for older data, only a typed name.
+ */
 function namedStaffFor(team: TeamStaffFields | undefined): NamedStaff[] {
   if (!team) return [];
-  return [
-    { role: "Manager", name: team.managerName ?? "" },
-    { role: "Assistant Manager", name: team.assistantManagerName ?? "" },
-    { role: "Coach", name: team.coachName ?? "" },
-  ].filter((entry) => entry.name.trim().length > 0);
+  const entries: NamedStaff[] = [
+    { role: "Manager", name: team.managerName ?? "", playerId: team.managerPlayerId ?? null, grantRole: "Manager" },
+    { role: "Assistant Manager", name: team.assistantManagerName ?? "", playerId: team.assistantManagerPlayerId ?? null, grantRole: "Manager" },
+    { role: "Coach", name: team.coachName ?? "", playerId: team.coachPlayerId ?? null, grantRole: "Coach" },
+  ];
+  return entries.filter((entry) => entry.playerId != null || entry.name.trim().length > 0);
 }
 
 const EMPTY: Draft = { playerId: "", teamId: "", roleLabel: "Coach", manageAttendance: false, manageSchedule: false, manageLineups: false };
@@ -132,10 +139,13 @@ export default function StaffAccess() {
     }
     return [...groups.entries()]
       .map(([teamId, grants]) => {
-        const activeNames = new Set(grants.filter((g) => !g.revokedAt).map((g) => normaliseName(g.playerName)));
+        const active = grants.filter((g) => !g.revokedAt);
+        const activeNames = new Set(active.map((g) => normaliseName(g.playerName)));
+        const activeIds = new Set(active.map((g) => g.playerId));
         const named = namedStaffFor(teamDetails.get(teamId)).map((entry) => ({
           ...entry,
-          hasAccess: activeNames.has(normaliseName(entry.name)),
+          // A linked member is matched on the member; a typed name only on the name.
+          hasAccess: entry.playerId != null ? activeIds.has(entry.playerId) : activeNames.has(normaliseName(entry.name)),
         }));
         return { teamId, grants, named };
       })
@@ -330,7 +340,7 @@ export default function StaffAccess() {
                 <p className="text-sm text-muted-foreground"><span className="font-mono font-semibold text-foreground">{activeCount}</span> active</p>
               </div>
               <p className="text-sm text-muted-foreground -mt-2">
-                Each team shows the manager and coach named on the team, followed by the members who can actually sign in to its staff workspace. A name on the team does not give access by itself.
+                Each team shows the manager, assistant manager and coach named on the team, followed by the members who can actually sign in to its staff workspace. A role on the team does not give access by itself: use "Give access" to load that member into the form, choose the permissions, and grant.
               </p>
               {teamSections.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border p-10 text-center">
@@ -351,10 +361,31 @@ export default function StaffAccess() {
                           <li key={`${entry.role}-${entry.name}`} className="flex flex-wrap items-center gap-2 text-sm">
                             <span className="text-muted-foreground w-36 shrink-0">{entry.role}</span>
                             <span className="font-medium">{entry.name}</span>
+                            {entry.playerId == null && (
+                              <Badge variant="outline" className="text-[10px]" title="Typed name from before. Link the member in the team's Edit form.">Not linked to a member</Badge>
+                            )}
                             {entry.hasAccess ? (
                               <Badge variant="secondary" className="text-[10px]">Has staff access</Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[10px] text-amber-800 border-amber-500/50 bg-amber-500/10">No staff access</Badge>
+                              <>
+                                <Badge variant="outline" className="text-[10px] text-amber-800 border-amber-500/50 bg-amber-500/10">No staff access</Badge>
+                                {entry.playerId != null && (
+                                  <Button
+                                    type="button" size="sm" variant="outline" className="h-6 px-2 text-[11px]"
+                                    onClick={() => {
+                                      // Fills the form on the left. Access is only given once you review the permissions and press Grant.
+                                      setDraft({ ...EMPTY, playerId: String(entry.playerId), teamId: String(teamId), roleLabel: entry.grantRole });
+                                      setMemberFilter("");
+                                      setFormError(null);
+                                      setConflict(false);
+                                      window.scrollTo({ top: 0, behavior: "smooth" });
+                                    }}
+                                    data-testid={`button-give-access-${teamId}-${entry.playerId}`}
+                                  >
+                                    Give access
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </li>
                         ))}

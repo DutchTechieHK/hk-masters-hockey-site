@@ -70,6 +70,14 @@ Only **MO40** (Men's Over-40) and **MO50** (Men's Over-50). W35 was fully remove
 - `reconcileMemberCategories` runs with `ensureMembershipFoundation`: it copies a category written the old way into the list and re-points the main category. It never changes a fee. `ensureCategoryListStorage` creates the table at start-up if missing; without it the app falls back to one category per member.
 - After pulling schema changes from GitHub, run `pnpm --filter db push` in the Shell **before** republishing, otherwise Replit's publish step proposes to drop tables the development database does not have yet.
 
+### Team definition and linked staff
+
+- A team is defined by its **section** (`teams.membership_section`) and the member categories it draws its squad from (`team_categories`). No categories means the whole section is eligible. `teams.category` is no longer edited in the team form; it stays for the Rotterdam archive tags (MO40, MO50) and older code.
+- The squad pick list (`GET /api/teams/:id/squad`) only offers members of the section who hold one of the team's categories. Members already in the squad who do not fit stay listed with `categoryMismatch: true`; nobody is removed automatically.
+- Manager, assistant manager, coach and captain are members linked in `team_staff` (one person per role per team). API fields: `managerPlayerId`, `assistantManagerPlayerId`, `coachPlayerId`, `captainPlayerId`. The text columns on `teams` (`manager_name`, `coach_name`, ...) are filled from the linked member by `setTeamStaff` and `refreshTeamStaffText` in `artifacts/api-server/src/utils/teamSetup.ts`, so the public site keeps working. Do not write those text columns for a linked role.
+- Holding a role never grants staff access. Staff Access stays a separate grant.
+- `autoLinkTypedStaffNames` runs at start-up and links a typed name that matches exactly one current member. `ensureTeamSetupStorage` creates the tables if missing; without them teams fall back to typed names and whole-section squads.
+
 ## Monorepo Structure
 
 ```
