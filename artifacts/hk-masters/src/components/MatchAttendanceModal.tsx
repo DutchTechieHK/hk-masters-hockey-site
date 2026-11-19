@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import type { Match } from "@workspace/api-client-react"
 import { Link } from "wouter"
 import { LayoutGrid } from "lucide-react"
@@ -46,7 +46,15 @@ export default function MatchAttendanceModal({ match, token, onClose, onChanged 
   const [confirmEdit, setConfirmEdit] = useState(false)
   const [editError, setEditError] = useState("")
   const [saving, setSaving] = useState(false)
+  const editorRef = useRef<HTMLElement>(null)
+  const editorId = useId()
   const canEdit = match.status !== "cancelled"
+
+  useEffect(() => {
+    if (!editing) return
+    editorRef.current?.scrollIntoView({ block: "nearest" })
+    editorRef.current?.focus({ preventScroll: true })
+  }, [editing])
 
   const startEdit = (person: Person, original: Reply | null) => {
     setEditing({ person, original })
@@ -98,6 +106,8 @@ export default function MatchAttendanceModal({ match, token, onClose, onChanged 
 
   const editAction = (person: Person, original: Reply | null) => canEdit && (
     <Button type="button" size="sm" variant="outline" onClick={() => startEdit(person, original)}
+      aria-expanded={editing?.person.playerId === person.playerId}
+      aria-controls={editing?.person.playerId === person.playerId ? editorId : undefined}
       disabled={saving} aria-label={`${original ? "Edit" : "Record"} attendance for ${person.playerName}`}>
       {original ? "Edit" : "Record reply"}
     </Button>
@@ -236,7 +246,9 @@ export default function MatchAttendanceModal({ match, token, onClose, onChanged 
               ) : <p className="text-xs text-muted-foreground">Everyone has replied.</p>}
             </section>
             {editing && (
-              <section className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 space-y-3" aria-label={`Edit attendance for ${editing.person.playerName}`}>
+              <section ref={editorRef} id={editorId} tabIndex={-1}
+                className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-4 space-y-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label={`Edit attendance for ${editing.person.playerName}`}>
                 <h3 className="font-semibold text-sm">{editing.original ? "Correct" : "Record"} reply · {editing.person.playerName}</h3>
                 {editing.original && <p className="text-xs text-muted-foreground">Current reply: {statuses.find((s) => s.key === editing.original?.status)?.label} {editing.original.note ? `· ${editing.original.note}` : ""}</p>}
                 <label className="block text-sm">Reply
