@@ -1,5 +1,5 @@
-// Single source of truth for league team names, divisions and fixture filters.
-// sourceTeamName must match `teamName` in GET /api/league-fixtures/ladies.
+// Stable fixture identities and filter links. Public Ladies team details
+// come from CMS team records, not these source labels.
 
 export const MEN_TEAM = {
   slug: "men",

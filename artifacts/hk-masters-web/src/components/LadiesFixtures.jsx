@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { API_BASE } from "../utils/api";
 import {
-  LADIES_SOURCE_URL, LADIES_TEAMS, ladiesTeamForSource, isUnconfirmed, splitLadiesFixtures,
+  LADIES_SOURCE_URL, LADIES_TEAMS, isUnconfirmed, splitLadiesFixtures,
 } from "../content/leagueTeams";
 
 const TZ = "Asia/Hong_Kong";
@@ -9,8 +9,8 @@ const fmtDate = (iso) => new Date(iso).toLocaleDateString("en-GB", { weekday: "s
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ });
 const fmtChecked = (iso) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: TZ });
 
-export function LadiesFixtureCard({ fixture, sourceUrl, past = false }) {
-  const team = ladiesTeamForSource(fixture.teamName);
+export function LadiesFixtureCard({ fixture, sourceUrl, past = false, teams = [] }) {
+  const team = teams.find((item) => item.sourceTeamName === fixture.teamName);
   const flagged = isUnconfirmed(fixture);
   return (
     <article
@@ -52,7 +52,7 @@ export function LadiesFixtureCard({ fixture, sourceUrl, past = false }) {
   );
 }
 
-function Group({ title, note, items, sourceUrl, past }) {
+function Group({ title, note, items, sourceUrl, past, teams }) {
   if (!items.length) return null;
   return (
     <div className="mb-10">
@@ -62,13 +62,13 @@ function Group({ title, note, items, sourceUrl, past }) {
       </div>
       {note && <p className="mb-4 text-sm text-gray-600">{note}</p>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((f) => <LadiesFixtureCard key={f.id} fixture={f} sourceUrl={sourceUrl} past={past} />)}
+        {items.map((f) => <LadiesFixtureCard key={f.id} fixture={f} sourceUrl={sourceUrl} past={past} teams={teams} />)}
       </div>
     </div>
   );
 }
 
-export default function LadiesFixtures({ teamSlug = "all" }) {
+export default function LadiesFixtures({ teamSlug = "all", teams = [] }) {
   const [state, setState] = useState({ loading: true, error: null, data: null });
 
   const load = useCallback(() => {
@@ -86,7 +86,7 @@ export default function LadiesFixtures({ teamSlug = "all" }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const selected = LADIES_TEAMS.find((t) => t.slug === teamSlug);
+  const selected = teams.find((t) => t.slug === teamSlug);
   const heading = selected ? `${selected.label} · ${selected.division}` : "Ladies Masters";
   const { loading, error, data } = state;
 
@@ -122,13 +122,13 @@ export default function LadiesFixtures({ teamSlug = "all" }) {
           <a href={LADIES_SOURCE_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Official schedule</a>
         </div>
       ) : (
-        <LadiesBody data={data} teamSlug={teamSlug} />
+        <LadiesBody data={data} teamSlug={teamSlug} teams={teams} />
       )}
     </section>
   );
 }
 
-function LadiesBody({ data, teamSlug }) {
+function LadiesBody({ data, teamSlug, teams }) {
   const selected = LADIES_TEAMS.find((t) => t.slug === teamSlug);
   const all = Array.isArray(data?.fixtures) ? data.fixtures : [];
   const fixtures = selected ? all.filter((f) => f.teamName === selected.sourceTeamName) : all;
@@ -149,14 +149,14 @@ function LadiesBody({ data, teamSlug }) {
         </div>
       ) : (
         <>
-          <Group title="Upcoming fixtures" items={upcoming} sourceUrl={sourceUrl} />
-          <Group title="Inactive or flagged by source" note="These fixtures are not confirmed. Check the official schedule before travelling." items={flagged} sourceUrl={sourceUrl} />
+          <Group title="Upcoming fixtures" items={upcoming} sourceUrl={sourceUrl} teams={teams} />
+          <Group title="Inactive or flagged by source" note="These fixtures are not confirmed. Check the official schedule before travelling." items={flagged} sourceUrl={sourceUrl} teams={teams} />
           <details className="rounded-2xl border border-[#D9C9A8] bg-white/40 p-5">
             <summary className="min-h-10 cursor-pointer text-lg font-bold text-[#1E3A6E]">
               Past fixtures ({past.length})
             </summary>
             <div className="mt-4">
-              <Group title="Past fixtures" note="This is a fixture schedule only; match results are not supplied by this feed." items={past} sourceUrl={sourceUrl} past />
+              <Group title="Past fixtures" note="This is a fixture schedule only; match results are not supplied by this feed." items={past} sourceUrl={sourceUrl} past teams={teams} />
             </div>
           </details>
         </>

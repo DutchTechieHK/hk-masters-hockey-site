@@ -2,7 +2,8 @@ import { Link } from "wouter";
 import content from "../content/teams.json";
 import RichText from "../components/RichText";
 import { usePageTexts } from "../utils/pageTexts";
-import { LADIES_TEAMS, MEN_TEAM, fixturesHref } from "../content/leagueTeams";
+import { MEN_TEAM, fixturesHref } from "../content/leagueTeams";
+import { useCmsLadiesTeams } from "../utils/leagueTeams";
 
 function TeamCard({ label, division, slug, linkLabel, accent }) {
   return (
@@ -38,6 +39,7 @@ function Fee({ amount, name, description }) {
 
 export default function Teams() {
   const t = usePageTexts("teams", content);
+  const ladies = useCmsLadiesTeams(true);
   const linkLabel = t.fixtures_link_label || "View fixtures";
 
   return (
@@ -69,10 +71,25 @@ export default function Teams() {
           <h2 id="ladies-heading" className="mb-4 text-3xl font-extrabold text-[#1E3A6E] sm:text-4xl">{t.league_ladies_heading}</h2>
           <p className="mb-8 max-w-3xl text-lg leading-relaxed text-[#5A4F45]">{t.ladies_league_text}</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {LADIES_TEAMS.map((team) => (
-              <TeamCard key={team.slug} label={team.label} division={team.division} slug={team.slug} linkLabel={linkLabel} accent="bg-[#DE2910]" />
+            {ladies.loading && <p role="status">Loading teams from the club app…</p>}
+            {ladies.error && <p role="alert">{ladies.error} <button onClick={ladies.retry} className="underline">Retry</button></p>}
+            {!ladies.loading && !ladies.error && !ladies.teams.length && <p>Team information will appear here once it is set up in the club app.</p>}
+            {ladies.teams.map((team) => (
+              <div key={team.slug} data-testid={`cms-team-${team.slug}`}>
+                <TeamCard label={team.label} division={team.division} slug={team.slug} linkLabel={linkLabel} accent="bg-[#DE2910]" />
+                {team.description && <p className="mt-3 text-[#5A4F45]">{team.description}</p>}
+                {team.players.length > 0 ? (
+                  <div className="mt-4 rounded-xl border border-[#D9C9A8] bg-white p-5">
+                    <h4 className="font-bold text-[#1E3A6E]">Squad</h4>
+                    <ul className="mt-2 space-y-1 text-[#5A4F45]">
+                      {team.players.map((player) => <li key={player.id}>{player.name}</li>)}
+                    </ul>
+                  </div>
+                ) : !ladies.playersError && <p className="mt-3 text-sm text-[#5A4F45]">Player names will follow once the squad is confirmed.</p>}
+              </div>
             ))}
           </div>
+          {ladies.playersError && <p role="alert" className="mt-4">{ladies.playersError} <button onClick={ladies.retry} className="underline">Retry</button></p>}
         </div>
       </section>
 

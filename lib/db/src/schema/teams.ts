@@ -8,6 +8,8 @@ export const teamsTable = pgTable("teams", {
   name: text("name").notNull(),
   category: text("category").notNull(),
   membershipSection: text("membership_section").default("not_set").notNull(),
+  // Stable identity for public league links; names remain editable in the CMS.
+  leagueKey: text("league_key"),
   managerName: text("manager_name").notNull(),
   managerEmail: text("manager_email").notNull(),
   managerPhone: text("manager_phone").notNull(),
@@ -23,6 +25,7 @@ export const teamsTable = pgTable("teams", {
   isInternal: boolean("is_internal").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (t) => ({
+  leagueKeyUnique: uniqueIndex("teams_league_key_unique").on(t.leagueKey),
   awaitingSelectionNameUnique: uniqueIndex("teams_awaiting_selection_name_unique")
     .on(t.name)
     .where(sql`${t.name} = 'Awaiting Selection'`),

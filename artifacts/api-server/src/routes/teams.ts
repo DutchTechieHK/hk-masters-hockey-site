@@ -66,6 +66,7 @@ function mapTeam(t: typeof teamsTable.$inferSelect, setup?: TeamSetup) {
     name: t.name,
     category: t.category,
     membershipSection: t.membershipSection,
+    leagueKey: t.leagueKey,
     managerName: t.managerName,
     managerEmail: t.managerEmail,
     managerPhone: t.managerPhone,
@@ -88,6 +89,7 @@ function mapTeamPublic(t: typeof teamsTable.$inferSelect, playerCount: number) {
     name: t.name,
     category: t.category,
     membershipSection: t.membershipSection,
+    leagueKey: t.leagueKey,
     managerName: t.managerName || null,
     coachName: t.coachName || null,
     captainName: t.captainName || null,
@@ -169,6 +171,13 @@ router.get("/", async (req, res) => {
 
 router.post("/", requireAdminAccess, async (req, res) => {
   const { columns: body, eligibleCategories, staff } = splitTeamBody(CreateTeamBody.parse(req.body));
+  if (body.leagueKey && body.membershipSection !== "women") {
+    res.status(400).json({ error: "Ladies league teams must be in the Women section" });
+    return;
+  }
+  if (body.leagueKey && !body.category?.trim()) {
+    res.status(400).json({ error: "A league division is required" }); return;
+  }
   if (CANONICAL_TEAM_NAMES.has(body.name)) {
     res.status(409).json({ error: "This team name is reserved" });
     return;
@@ -193,6 +202,9 @@ router.post("/", requireAdminAccess, async (req, res) => {
     res.status(201).json(mapTeam(team, (await loadTeamSetup([team.id])).get(team.id)));
   } catch (error) {
     if (error instanceof TeamSetupError) { res.status(error.status).json({ error: error.message }); return; }
+    if ((error as any)?.code === "23505" || (error as any)?.cause?.code === "23505") {
+      res.status(409).json({ error: "This league team already exists. Refresh Teams to see it." }); return;
+    }
     throw error;
   }
 });
@@ -204,6 +216,16 @@ router.put("/:id", requireAdminAccess, async (req, res) => {
   if (!existing) {
     res.status(404).json({ error: "Team not found" });
     return;
+  }
+  // Keep public fixture links stable even when the display name changes.
+  if (body.leagueKey !== undefined && body.leagueKey !== existing.leagueKey) {
+    res.status(400).json({ error: "A team's league link cannot be changed" }); return;
+  }
+  if (existing.leagueKey && body.membershipSection && body.membershipSection !== "women") {
+    res.status(400).json({ error: "Ladies league teams must remain in the Women section" }); return;
+  }
+  if (existing.leagueKey && body.category !== undefined && !body.category.trim()) {
+    res.status(400).json({ error: "A league division is required" }); return;
   }
   const [rotterdam] = await db.select({ id: playerParticipationsTable.id }).from(playerParticipationsTable)
     .innerJoin(seasonsTable, eq(playerParticipationsTable.seasonId, seasonsTable.id))

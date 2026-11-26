@@ -5,6 +5,12 @@ description: Confirmed Ladies team divisions and scope for public team coverage.
 
 Show team and player names publicly for Ladies Masters A, Masters B and Masters C. Ladies Masters A plays in the Premier League, Masters B in Division 2, and Masters C in Division 3. Men's Masters A plays in Division 1, not the Premier League.
 
+The app is the CMS and the source of team information. Ladies teams must exist there, ready for player records; a website-only implementation is incomplete.
+
+**Why:** The user explicitly corrected the initial website-only implementation.
+
+**How to apply:** Reuse app team and squad management. Read public Ladies team details and player names from app records rather than maintaining separate website lists.
+
 The fees are the same for the Ladies Masters.
 
 **Why:** The user explicitly confirmed the same fees apply.

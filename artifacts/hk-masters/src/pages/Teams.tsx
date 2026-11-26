@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast"
 // list (kept outside this schema, see TeamStaffPicker below).
 const teamSchema = z.object({
   name: z.string().min(1, "Name is required"),
+  category: z.string().optional(),
   membershipSection: z.enum(["men", "women"], { message: "Choose Men or Women" }),
   whatsappGroupLink: z.string().optional(),
   targetPlayerCount: z.preprocess(
@@ -69,6 +70,11 @@ function teamBadgeLabel(team: Team, labelFor: (key: string) => string, scope?: s
 
 type TeamFormValues = z.infer<typeof teamSchema>
 const CANONICAL_TEAM_NAMES = new Set(["Awaiting Selection", "Masters Div. 1"])
+const LADIES_SETUP = [
+  { leagueKey: "ladies-a", name: "Ladies Masters A", category: "Premier League" },
+  { leagueKey: "ladies-b", name: "Ladies Masters B", category: "Division 2" },
+  { leagueKey: "ladies-c", name: "Ladies Masters C", category: "Division 3" },
+] as const
 
 /**
  * Shirt number for one squad member, edited in place. Saves on Enter or when
@@ -433,6 +439,22 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
   const createMutation = useCreateTeam()
   const updateMutation = useUpdateTeam()
   const deleteMutation = useDeleteTeam()
+  const [settingUpLadies, setSettingUpLadies] = useState(false)
+  const missingLadies = LADIES_SETUP.filter((item) => !defaultTeams.some((team) => team.leagueKey === item.leagueKey))
+  const setupLadies = async () => {
+    setSettingUpLadies(true)
+    try {
+      for (const team of missingLadies) {
+        await createMutation.mutateAsync({ data: { ...team, membershipSection: "women" } })
+      }
+      toast({ title: "Ladies teams are ready", description: "Open each team to manage details and add members to its squad. No player records were created." })
+    } catch {
+      toast({ title: "Setup was not completed", description: "Refresh and retry to add any missing teams. Existing teams have been kept.", variant: "destructive" })
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey() })
+      setSettingUpLadies(false)
+    }
+  }
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<TeamFormValues>({
     resolver: zodResolver(teamSchema)
@@ -441,7 +463,7 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
   const openAddModal = () => {
     setEditingTeam(null)
     reset({
-      name: "", membershipSection: "men",
+      name: "", category: "", membershipSection: "men",
       whatsappGroupLink: "", targetPlayerCount: undefined, kitNotes: "", notes: "", description: "",
     })
     setTeamCategoryKeys([])
@@ -453,6 +475,7 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
     setEditingTeam(team)
     reset({
       name: team.name,
+      category: team.category,
       // A team without a section yet makes the administrator choose one.
       membershipSection: (team.membershipSection === "men" || team.membershipSection === "women" ? team.membershipSection : "") as "men" | "women",
       whatsappGroupLink: team.whatsappGroupLink || "",
@@ -524,6 +547,17 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
         />
       ) : (
         <>
+          {!scope && !readOnly && !isLoading && missingLadies.length > 0 && (
+            <div className="mb-6 rounded-xl border border-border bg-white p-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold">Ladies Masters league teams</p>
+                <p className="text-sm text-muted-foreground">Set up the missing teams for the website and future squad lists. This does not enable RSVP.</p>
+              </div>
+              <Button onClick={setupLadies} disabled={settingUpLadies} data-testid="setup-ladies-teams">
+                {settingUpLadies ? "Setting up…" : "Set up Ladies teams"}
+              </Button>
+            </div>
+          )}
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
               {[1,2,3].map(i => <div key={i} className="h-64 bg-white rounded-2xl border border-border"></div>)}
@@ -557,6 +591,7 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
                     )}
                     <Badge className="mb-3">{teamBadgeLabel(team, membershipCategories.labelFor, scope)}</Badge>
                     <h3 className="text-2xl font-display font-bold text-primary">{team.name}</h3>
+                    {team.leagueKey && <p className="text-sm font-semibold mt-1">{team.category}</p>}
                     {team.createdAt && <p className="text-xs text-muted-foreground mt-1">Created {format(new Date(team.createdAt), 'd MMM yyyy')}</p>}
                   </div>
                   <div className="p-6 flex-1 flex flex-col gap-4">
@@ -629,6 +664,13 @@ export default function Teams({ scope, readOnly }: { scope?: string, readOnly?: 
           </div>
 
           <div className="space-y-2" data-testid="field-team-categories">
+            {editingTeam?.leagueKey && (
+              <div className="space-y-2 mb-4">
+                <label className="text-sm font-semibold" htmlFor="league-division">League division</label>
+                <Input id="league-division" {...register("category")} placeholder="Premier League" />
+                <p className="text-xs text-muted-foreground">Shown on the public website. Player names come from this team's squad.</p>
+              </div>
+            )}
             <label className="text-sm font-semibold">Draws its squad from</label>
             <p className="text-xs text-muted-foreground">Tick the member categories this team picks from. With none ticked, every member of the section is eligible.</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

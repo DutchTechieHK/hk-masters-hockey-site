@@ -5,9 +5,12 @@
  * HK Masters League, Socials, and World Cup archive API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateTeamLeagueKey } from "./createTeamLeagueKey";
 import type { CreateTeamMembershipSection } from "./createTeamMembershipSection";
 
 export interface CreateTeam {
+  /** @nullable */
+  leagueKey?: CreateTeamLeagueKey;
   name: string;
   category?: string;
   membershipSection?: CreateTeamMembershipSection;

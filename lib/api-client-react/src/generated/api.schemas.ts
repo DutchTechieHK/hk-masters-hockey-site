@@ -1095,6 +1095,19 @@ export interface DashboardStats {
   upcomingDeadlines: DashboardStatsUpcomingDeadlinesItem[];
 }
 
+/**
+ * @nullable
+ */
+export type TeamLeagueKey =
+  | (typeof TeamLeagueKey)[keyof typeof TeamLeagueKey]
+  | null;
+
+export const TeamLeagueKey = {
+  "ladies-a": "ladies-a",
+  "ladies-b": "ladies-b",
+  "ladies-c": "ladies-c",
+} as const;
+
 export type TeamMembershipSection =
   (typeof TeamMembershipSection)[keyof typeof TeamMembershipSection];
 
@@ -1105,6 +1118,8 @@ export const TeamMembershipSection = {
 } as const;
 
 export interface Team {
+  /** @nullable */
+  leagueKey?: TeamLeagueKey;
   id: number;
   name: string;
   category: string;
@@ -1131,6 +1146,19 @@ export interface Team {
   captainPlayerId?: number | null;
 }
 
+/**
+ * @nullable
+ */
+export type CreateTeamLeagueKey =
+  | (typeof CreateTeamLeagueKey)[keyof typeof CreateTeamLeagueKey]
+  | null;
+
+export const CreateTeamLeagueKey = {
+  "ladies-a": "ladies-a",
+  "ladies-b": "ladies-b",
+  "ladies-c": "ladies-c",
+} as const;
+
 export type CreateTeamMembershipSection =
   (typeof CreateTeamMembershipSection)[keyof typeof CreateTeamMembershipSection];
 
@@ -1141,6 +1169,8 @@ export const CreateTeamMembershipSection = {
 } as const;
 
 export interface CreateTeam {
+  /** @nullable */
+  leagueKey?: CreateTeamLeagueKey;
   name: string;
   category?: string;
   membershipSection?: CreateTeamMembershipSection;

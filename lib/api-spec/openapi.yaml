@@ -3170,6 +3170,9 @@ components:
     Team:
       type: object
       properties:
+        leagueKey:
+          type: [string, "null"]
+          enum: [ladies-a, ladies-b, ladies-c, null]
         id:
           type: integer
         name:
@@ -3235,6 +3238,9 @@ components:
     CreateTeam:
       type: object
       properties:
+        leagueKey:
+          type: [string, "null"]
+          enum: [ladies-a, ladies-b, ladies-c, null]
         name:
           type: string
         category:

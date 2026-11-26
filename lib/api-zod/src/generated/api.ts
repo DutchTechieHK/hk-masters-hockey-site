@@ -1969,6 +1969,14 @@ export const ListTeamsQueryParams = zod.object({
 });
 
 export const ListTeamsResponseItem = zod.object({
+  leagueKey: zod
+    .union([
+      zod.literal("ladies-a"),
+      zod.literal("ladies-b"),
+      zod.literal("ladies-c"),
+      zod.literal(null),
+    ])
+    .nullish(),
   id: zod.number(),
   name: zod.string(),
   category: zod.string(),
@@ -2006,6 +2014,14 @@ export const ListTeamsResponse = zod.array(ListTeamsResponseItem);
  * @summary Create a team
  */
 export const CreateTeamBody = zod.object({
+  leagueKey: zod
+    .union([
+      zod.literal("ladies-a"),
+      zod.literal("ladies-b"),
+      zod.literal("ladies-c"),
+      zod.literal(null),
+    ])
+    .nullish(),
   name: zod.string(),
   category: zod.string().optional(),
   membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
@@ -2044,6 +2060,14 @@ export const UpdateTeamParams = zod.object({
 });
 
 export const UpdateTeamBody = zod.object({
+  leagueKey: zod
+    .union([
+      zod.literal("ladies-a"),
+      zod.literal("ladies-b"),
+      zod.literal("ladies-c"),
+      zod.literal(null),
+    ])
+    .nullish(),
   name: zod.string(),
   category: zod.string().optional(),
   membershipSection: zod.enum(["not_set", "men", "women"]).optional(),
@@ -2075,6 +2099,14 @@ export const UpdateTeamBody = zod.object({
 });
 
 export const UpdateTeamResponse = zod.object({
+  leagueKey: zod
+    .union([
+      zod.literal("ladies-a"),
+      zod.literal("ladies-b"),
+      zod.literal("ladies-c"),
+      zod.literal(null),
+    ])
+    .nullish(),
   id: zod.number(),
   name: zod.string(),
   category: zod.string(),

@@ -29,6 +29,12 @@ try {
         writes.push(path);
         return route.abort();
       }
+      if (path === "/api/teams") return route.fulfill({ json: [
+        { id: 1, leagueKey: "ladies-a", name: "Ladies Masters A", category: "Premier League", membershipSection: "women" },
+        { id: 2, leagueKey: "ladies-b", name: "Ladies Masters B", category: "Division 2", membershipSection: "women" },
+        { id: 3, leagueKey: "ladies-c", name: "Ladies Masters C", category: "Division 3", membershipSection: "women" },
+      ] });
+      if (path === "/api/public/squad") return route.fulfill({ json: [] });
       if (path === "/api/site-content/page-texts") return route.fulfill({ json: { pages: { teams: {
         header_subtitle: "OLD MEN ONLY INTRO", ladies_text: "OLD INCORRECT DIVISIONS",
         join_heading: "Trials Start 18 September", join_text: "OLD MEN ONLY JOIN",

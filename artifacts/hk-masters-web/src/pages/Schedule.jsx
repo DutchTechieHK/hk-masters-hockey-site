@@ -8,6 +8,7 @@ import { getPlayerToken } from "../lib/playerAuth";
 import { useLocation, useSearch } from "wouter";
 import LadiesFixtures from "../components/LadiesFixtures";
 import { TEAM_FILTERS, MEN_TEAM, parseTeamFilter } from "../content/leagueTeams";
+import { useCmsLadiesTeams } from "../utils/leagueTeams";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
 
@@ -196,7 +197,7 @@ function SubscribeButton() {
   );
 }
 
-function TeamFilter({ value, onChange }) {
+function TeamFilter({ value, onChange, teams }) {
   return (
     <nav aria-label="Filter fixtures by team" className="mb-10 -mx-4 px-4 overflow-x-auto">
       <div className="flex gap-2 w-max sm:w-auto sm:flex-wrap">
@@ -213,7 +214,7 @@ function TeamFilter({ value, onChange }) {
                 active ? "bg-[#1E3A6E] border-[#1E3A6E] text-white" : "bg-white border-[#D9C9A8] text-[#1E3A6E] hover:border-[#1E3A6E]"
               }`}
             >
-              {f.label}
+              {teams.find((team) => team.slug === f.slug)?.label || f.label}
             </button>
           );
         })}
@@ -223,6 +224,7 @@ function TeamFilter({ value, onChange }) {
 }
 
 export default function Schedule() {
+  const ladies = useCmsLadiesTeams();
   const search = useSearch();
   const [, navigate] = useLocation();
   const team = parseTeamFilter(search);
@@ -293,8 +295,8 @@ export default function Schedule() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <TeamFilter value={team} onChange={setTeam} />
-        {showLadies && <LadiesFixtures teamSlug={team} />}
+        <TeamFilter value={team} onChange={setTeam} teams={ladies.teams} />
+        {showLadies && <LadiesFixtures teamSlug={team} teams={ladies.teams} />}
         {showMen && (
         <section aria-labelledby="men-fixtures-heading">
         <div className="mb-6 border-b border-[#D9C9A8] pb-4">
