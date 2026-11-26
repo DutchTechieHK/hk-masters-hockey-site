@@ -86,6 +86,22 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
     ],
   },
   teams: {
+    league_header_subtitle:
+      "Four league teams, one club: Men's Masters in Division 1 and three Ladies Masters teams across the Hong Kong Hockey League.",
+    league_ladies_heading: "Three Ladies Teams in the League",
+    league_mens_heading: "Men's Masters in Division 1",
+    league_intro:
+      "HK Masters Hockey is a home for experienced players. Our Ladies and Men's teams share the same club spirit, community and player fees.",
+    ladies_league_text:
+      "Our Ladies Masters field three teams in the Hong Kong Hockey League this season. Squad lists will be shared here once confirmed.",
+    league_squad_fee_name: "League Squad Fee",
+    league_squad_fee_description:
+      "Required once selected to play for a Men's or Ladies Masters team in the Hong Kong Hockey League.",
+    league_fees_note: "The same fees apply to Men's and Ladies Masters players.",
+    league_join_heading: "Play Masters Hockey With Us",
+    league_join_text:
+      "Experienced player looking for a team? Ladies and men are both welcome. Register your interest and we will help you find the right squad.",
+    fixtures_link_label: "View fixtures",
     header_badge: "2026/27 Season",
     header_title: "Masters Teams — 2026/27 Season",
     header_subtitle:
@@ -117,7 +133,7 @@ export const PAGE_TEXT_DEFAULTS: Record<string, PageTexts> = {
     ladies_badge: "Ladies Masters",
     ladies_heading: "Three Teams Again This Season",
     ladies_text:
-      "For another season, Hong Kong Masters Hockey fields three ladies' Masters teams (35+) in the Hong Kong Hockey League, drawn from our club's Premier League players. Masters A and Masters B compete in Division 1, Masters C in Division 2.",
+      "Hong Kong Masters Hockey fields three Ladies Masters teams in the Hong Kong Hockey League. Masters A plays in the Premier League, Masters B in Division 2, and Masters C in Division 3.",
   },
   rotterdam: {
     header_badge: "22 July - 1 August 2026",

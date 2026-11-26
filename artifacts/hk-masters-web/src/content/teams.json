@@ -1,9 +1,9 @@
 {
   "header_badge": "2026/27 Season",
   "header_title": "Masters Teams — 2026/27 Season",
-  "header_subtitle": "A new men's team enters Division 1, and three ladies' teams return to the league this season.",
+  "header_subtitle": "Four league teams, one club: Men's Masters in Division 1 and three Ladies Masters teams across the Hong Kong Hockey League.",
   "mens_badge": "New for 2026/27",
-  "mens_heading": "Men's Masters Return to Division 1",
+  "mens_heading": "Men's Masters in Division 1",
   "mens_text": "For the first time in many years, HK Masters Hockey will field a men's team in the Hong Kong Hockey League, competing in the First Division. The season kicks off Friday 2 October, with fixtures every Friday night at 20:30 at the Hong Kong Football Club (HKFC).",
   "sidebar_join_heading": "Join Us",
   "sidebar_join_text": "Interested in joining HK Masters Hockey? Register your interest to get involved.",
@@ -22,8 +22,8 @@
   "join_button_label": "Sign Up to Join →",
   "join_url": "/join",
   "ladies_badge": "Ladies Masters",
-  "ladies_heading": "Three Teams Again This Season",
-  "ladies_text": "For another season, Hong Kong Masters Hockey fields three ladies' Masters teams (35+) in the Hong Kong Hockey League, drawn from our club's Premier League players. Masters A and Masters B compete in Division 1, Masters C in Division 2.",
+  "ladies_heading": "Three Ladies Teams in the League",
+  "ladies_text": "Hong Kong Masters Hockey fields three Ladies Masters teams in the Hong Kong Hockey League. Masters A plays in the Premier League, Masters B in Division 2, and Masters C in Division 3.",
   "squads": [
     {
       "captain": "Thomas Cousins",
@@ -47,5 +47,16 @@
       "id": "men-o50",
       "description": "The MO50 squad has a proud history on the international masters stage. Seasoned, tactical and never short of passion, this group is ready to fly the HK flag once again in Rotterdam."
     }
-  ]
+  ],
+  "league_header_subtitle": "Four league teams, one club: Men's Masters in Division 1 and three Ladies Masters teams across the Hong Kong Hockey League.",
+  "league_ladies_heading": "Three Ladies Teams in the League",
+  "league_mens_heading": "Men's Masters in Division 1",
+  "league_intro": "HK Masters Hockey is a home for experienced players. Our Ladies and Men's teams share the same club spirit, community and player fees.",
+  "ladies_league_text": "Our Ladies Masters field three teams in the Hong Kong Hockey League this season. Squad lists will be shared here once confirmed.",
+  "league_squad_fee_name": "League Squad Fee",
+  "league_squad_fee_description": "Required once selected to play for a Men's or Ladies Masters team in the Hong Kong Hockey League.",
+  "league_fees_note": "The same fees apply to Men's and Ladies Masters players.",
+  "league_join_heading": "Play Masters Hockey With Us",
+  "league_join_text": "Experienced player looking for a team? Ladies and men are both welcome. Register your interest and we will help you find the right squad.",
+  "fixtures_link_label": "View fixtures"
 }

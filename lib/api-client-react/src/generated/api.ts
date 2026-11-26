@@ -39,12 +39,14 @@ import type {
   FundraisingEntry,
   GetAnnouncementRecipientCountParams,
   GetEventAudienceChangeImpactParams,
+  GetLadiesLeagueFixtures502,
   GetPlayerAccessToken200,
   GroupCandidateMember,
   HealthStatus,
   InsuranceReminderRequest,
   KitDistribution,
   KitOrder,
+  LadiesLeagueSchedule,
   LineupInput,
   LineupPublication,
   LineupPublicationInput,
@@ -8450,6 +8452,83 @@ export const useDeleteLogisticsTask = <
 > => {
   return useMutation(getDeleteLogisticsTaskMutationOptions(options));
 };
+
+/**
+ * @summary Read Ladies Masters fixtures from the official HK Hockey schedule
+ */
+export const getGetLadiesLeagueFixturesUrl = () => {
+  return `/api/league-fixtures/ladies`;
+};
+
+export const getLadiesLeagueFixtures = async (
+  options?: RequestInit,
+): Promise<LadiesLeagueSchedule> => {
+  return customFetch<LadiesLeagueSchedule>(getGetLadiesLeagueFixturesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLadiesLeagueFixturesQueryKey = () => {
+  return [`/api/league-fixtures/ladies`] as const;
+};
+
+export const getGetLadiesLeagueFixturesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLadiesLeagueFixtures>>,
+  TError = ErrorType<GetLadiesLeagueFixtures502>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLadiesLeagueFixtures>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLadiesLeagueFixturesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLadiesLeagueFixtures>>
+  > = ({ signal }) => getLadiesLeagueFixtures({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLadiesLeagueFixtures>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLadiesLeagueFixturesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLadiesLeagueFixtures>>
+>;
+export type GetLadiesLeagueFixturesQueryError =
+  ErrorType<GetLadiesLeagueFixtures502>;
+
+/**
+ * @summary Read Ladies Masters fixtures from the official HK Hockey schedule
+ */
+
+export function useGetLadiesLeagueFixtures<
+  TData = Awaited<ReturnType<typeof getLadiesLeagueFixtures>>,
+  TError = ErrorType<GetLadiesLeagueFixtures502>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLadiesLeagueFixtures>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLadiesLeagueFixturesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List all matches

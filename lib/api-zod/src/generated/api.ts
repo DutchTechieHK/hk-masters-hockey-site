@@ -3636,6 +3636,30 @@ export const DeleteLogisticsTaskParams = zod.object({
 });
 
 /**
+ * @summary Read Ladies Masters fixtures from the official HK Hockey schedule
+ */
+export const GetLadiesLeagueFixturesResponse = zod.object({
+  sourceUrl: zod.string(),
+  fetchedAt: zod.string(),
+  season: zod.string(),
+  stale: zod.boolean(),
+  fixtures: zod.array(
+    zod.object({
+      id: zod.string(),
+      teamName: zod.enum(["Masters A", "Masters B", "Masters C"]),
+      division: zod.string(),
+      homeTeam: zod.string(),
+      awayTeam: zod.string(),
+      opponent: zod.string(),
+      kickoffAt: zod.string(),
+      venue: zod.string(),
+      sourceStatus: zod.string(),
+      isInactive: zod.boolean(),
+    }),
+  ),
+});
+
+/**
  * @summary List all matches
  */
 export const ListMatchesQueryParams = zod.object({

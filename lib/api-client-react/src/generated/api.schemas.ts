@@ -2175,6 +2175,36 @@ export interface MatchAttendanceSaved {
   respondedAt: string;
 }
 
+export type LadiesLeagueFixtureTeamName =
+  (typeof LadiesLeagueFixtureTeamName)[keyof typeof LadiesLeagueFixtureTeamName];
+
+export const LadiesLeagueFixtureTeamName = {
+  Masters_A: "Masters A",
+  Masters_B: "Masters B",
+  Masters_C: "Masters C",
+} as const;
+
+export interface LadiesLeagueFixture {
+  id: string;
+  teamName: LadiesLeagueFixtureTeamName;
+  division: string;
+  homeTeam: string;
+  awayTeam: string;
+  opponent: string;
+  kickoffAt: string;
+  venue: string;
+  sourceStatus: string;
+  isInactive: boolean;
+}
+
+export interface LadiesLeagueSchedule {
+  sourceUrl: string;
+  fetchedAt: string;
+  season: string;
+  stale: boolean;
+  fixtures: LadiesLeagueFixture[];
+}
+
 export type CreateMatchStatus =
   (typeof CreateMatchStatus)[keyof typeof CreateMatchStatus];
 
@@ -2436,6 +2466,10 @@ export type ListKitsParams = {
 
 export type ListLogisticsParams = {
   teamId?: number;
+};
+
+export type GetLadiesLeagueFixtures502 = {
+  error: string;
 };
 
 export type ListMatchesParams = {

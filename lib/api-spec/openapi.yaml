@@ -1781,6 +1781,28 @@ paths:
         "204":
           description: Deleted
 
+  /league-fixtures/ladies:
+    get:
+      operationId: getLadiesLeagueFixtures
+      tags: [teams]
+      summary: Read Ladies Masters fixtures from the official HK Hockey schedule
+      responses:
+        "200":
+          description: Official schedule, cached briefly; stale data is explicitly marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LadiesLeagueSchedule"
+        "502":
+          description: Official schedule unavailable or no longer recognizable
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
+
   /matches:
     get:
       operationId: listMatches
@@ -4639,6 +4661,33 @@ components:
         note: { type: [string, "null"] }
         respondedAt: { type: string, format: date-time }
       required: [matchId, status, note, respondedAt]
+
+    LadiesLeagueFixture:
+      type: object
+      required: [id, teamName, division, homeTeam, awayTeam, opponent, kickoffAt, venue, sourceStatus, isInactive]
+      properties:
+        id: { type: string }
+        teamName: { type: string, enum: [Masters A, Masters B, Masters C] }
+        division: { type: string }
+        homeTeam: { type: string }
+        awayTeam: { type: string }
+        opponent: { type: string }
+        kickoffAt: { type: string }
+        venue: { type: string }
+        sourceStatus: { type: string }
+        isInactive: { type: boolean }
+    LadiesLeagueSchedule:
+      type: object
+      required: [sourceUrl, fetchedAt, season, stale, fixtures]
+      properties:
+        sourceUrl: { type: string }
+        fetchedAt: { type: string }
+        season: { type: string }
+        stale: { type: boolean }
+        fixtures:
+          type: array
+          items:
+            $ref: "#/components/schemas/LadiesLeagueFixture"
 
     Match:
       type: object

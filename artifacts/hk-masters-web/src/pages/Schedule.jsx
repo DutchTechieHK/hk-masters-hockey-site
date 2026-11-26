@@ -5,6 +5,9 @@ import { themeFor } from "../utils/teamTheme";
 import useMatchAttendance from "../hooks/useMatchAttendance";
 import MatchAttendanceSummary from "../components/MatchAttendanceSummary";
 import { getPlayerToken } from "../lib/playerAuth";
+import { useLocation, useSearch } from "wouter";
+import LadiesFixtures from "../components/LadiesFixtures";
+import { TEAM_FILTERS, MEN_TEAM, parseTeamFilter } from "../content/leagueTeams";
 
 const HONG_KONG_TZ = "Asia/Hong_Kong";
 
@@ -193,7 +196,39 @@ function SubscribeButton() {
   );
 }
 
+function TeamFilter({ value, onChange }) {
+  return (
+    <nav aria-label="Filter fixtures by team" className="mb-10 -mx-4 px-4 overflow-x-auto">
+      <div className="flex gap-2 w-max sm:w-auto sm:flex-wrap">
+        {TEAM_FILTERS.map((f) => {
+          const active = f.slug === value;
+          return (
+            <button
+              key={f.slug}
+              type="button"
+              aria-pressed={active}
+              data-testid={`filter-team-${f.slug}`}
+              onClick={() => onChange(f.slug)}
+              className={`min-h-11 whitespace-nowrap rounded-full px-4 text-sm font-bold border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1E3A6E] ${
+                active ? "bg-[#1E3A6E] border-[#1E3A6E] text-white" : "bg-white border-[#D9C9A8] text-[#1E3A6E] hover:border-[#1E3A6E]"
+              }`}
+            >
+              {f.label}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 export default function Schedule() {
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const team = parseTeamFilter(search);
+  const showMen = team === "all" || team === MEN_TEAM.slug;
+  const showLadies = team === "all" || team.startsWith("ladies");
+  const setTeam = (slug) => navigate(slug === "all" ? "/fixtures" : `/fixtures?team=${slug}`, { replace: true });
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
@@ -252,17 +287,25 @@ export default function Schedule() {
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold mb-3">Fixtures &amp; Results</h1>
           <p className="text-[#BFD9F5] text-lg max-w-2xl">
-            Current Hong Kong Masters league fixtures and results. Times are shown in Hong Kong time.
+            League fixtures for our Men's and Ladies Masters teams. Times are shown in Hong Kong time.
           </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <TeamFilter value={team} onChange={setTeam} />
+        {showLadies && <LadiesFixtures teamSlug={team} />}
+        {showMen && (
+        <section aria-labelledby="men-fixtures-heading">
+        <div className="mb-6 border-b border-[#D9C9A8] pb-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-[#DE2910]">{MEN_TEAM.division}</p>
+          <h2 id="men-fixtures-heading" className="text-3xl font-extrabold text-[#1E3A6E]">{MEN_TEAM.label}</h2>
+        </div>
         {loading ? (
-          <div className="text-center py-16 text-gray-400">Loading schedule…</div>
+          <div className="text-center py-16 text-gray-500" role="status">Loading Men's fixtures…</div>
         ) : error ? (
           <div className="rounded-xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-700">
-            Could not load match schedule. Please try again later.
+            Could not load Men's fixtures. <button type="button" className="min-h-10 font-semibold underline" onClick={() => window.location.reload()}>Retry</button>
           </div>
         ) : matches.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center border border-[#D9C9A8]">
@@ -355,6 +398,8 @@ export default function Schedule() {
               </section>
             )}
           </>
+        )}
+        </section>
         )}
       </div>
     </div>

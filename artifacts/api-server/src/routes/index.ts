@@ -37,6 +37,7 @@ import memberBulkEditsRouter from "./memberBulkEdits";
 import { isolateStaffSession } from "../middleware/staffAccess";
 import lineupsRouter from "./lineups";
 import membershipCategoriesRouter from "./membershipCategories";
+import leagueFixturesRouter from "./leagueFixtures";
 
 const router: IRouter = Router();
 
@@ -59,6 +60,7 @@ router.use("/contributions", retiredArchiveReadOnly, contributionsRouter);
 router.use("/admin/auth", adminAuthRouter);
 router.use("/sponsors", retiredArchiveReadOnly, sponsorsRouter);
 router.use("/matches", matchesRouter);
+router.use("/league-fixtures", leagueFixturesRouter);
 router.use("/public", publicSquadRouter);
 router.use("/player-auth", playerAuthRouter);
 router.use("/events", eventsRouter);
