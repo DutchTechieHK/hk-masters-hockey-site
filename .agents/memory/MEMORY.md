@@ -43,3 +43,4 @@
 - [Portal invitation semantics](portal-invitation-semantics.md) — selective email targeting is not an access grant or sign-in allowlist; keep authentication independent.
 - [Match lineup choices](match-lineup-product-rules.md) — private staff drafts become player-visible only on publication; suggest positions, then coach adjusts.
 - [Archived member visibility](archived-member-visibility.md) — hide archived players from normal member displays; show them only when explicitly restoring accounts.
+- [Ladies league visibility](ladies-league-visibility.md) — confirmed divisions, public player names and fixtures; no Ladies RSVP yet; position Ladies above fees.
