@@ -13,7 +13,7 @@ function proxiedImage(url) {
 
 function sanitizeHtml(html) {
   if (!html) return "";
-  return DOMPurify.sanitize(html, {
+  const fragment = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       "p","br","strong","em","u","s","del","h1","h2","h3","h4","h5","h6",
       "ul","ol","li","blockquote","hr","a","img","figure","figcaption",
@@ -22,8 +22,20 @@ function sanitizeHtml(html) {
     ALLOWED_ATTR: ["href","src","alt","title","target","rel","class","style"],
     ALLOW_DATA_ATTR: false,
     FORCE_BODY: true,
-    RETURN_DOM_FRAGMENT: false,
+    RETURN_DOM_FRAGMENT: true,
   });
+  // Rich-editor uploads use API-relative paths, just like cover images.
+  // Resolve them after sanitizing so a separate website host cannot swallow
+  // them with its SPA fallback. Do not rewrite external image URLs.
+  fragment.querySelectorAll("img[src]").forEach((image) => {
+    const src = image.getAttribute("src");
+    if (src?.startsWith("/") && !src.startsWith("//")) {
+      image.setAttribute("src", proxiedImage(src));
+    }
+  });
+  const container = document.createElement("div");
+  container.append(fragment);
+  return container.innerHTML;
 }
 
 
@@ -165,8 +177,8 @@ export default function NewsArticle() {
       {/* Cover */}
       {cover && (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 -mb-6 mt-8">
-          <div className="aspect-[16/7] rounded-2xl overflow-hidden shadow-lg bg-gray-100">
-            <img src={cover} alt={post.title} className="w-full h-full object-cover" />
+          <div className="rounded-2xl overflow-hidden shadow-lg bg-gray-100">
+            <img src={cover} alt={post.title} className="w-full h-auto" />
           </div>
         </div>
       )}
