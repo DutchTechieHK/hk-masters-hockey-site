@@ -12,6 +12,11 @@ try {
     await page.route("**/api/**", async route => {
       const path = new URL(route.request().url()).pathname;
       if (route.request().method() !== "GET") return route.abort();
+      if (path === "/api/news") return route.fulfill({ json: { configured: true, posts: [{
+        id: 1, title: "Road to Kuala Lumpur: HK Masters Begins the Journey",
+        slug: "render-check", coverImage: "/api/news/serve-image/test-cover",
+        category: "Announcement", excerpt: "The campaign begins.",
+      }] } });
       if (path === "/api/news/render-check") return route.fulfill({ json: {
         title: "Road to Kuala Lumpur", slug: "render-check", author: "Test Author",
         coverImage: "/api/news/serve-image/test-cover", category: "Announcement",
@@ -54,6 +59,24 @@ try {
     assert.equal(geometry.unsafe, false, "Article HTML must remain sanitized");
     assert.equal(geometry.overflow, false, "Article images must fit the mobile viewport");
     console.log(`PASS ${viewport.width}px: images load uncropped, typography works, HTML remains sanitized.`);
+    await page.goto(`${process.env.NEWS_TEST_URL ?? "http://localhost:80"}/news`);
+    const thumbnail = page.locator("article img");
+    await thumbnail.waitFor();
+    await thumbnail.scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => document.querySelector("article img")?.naturalWidth > 0);
+    await thumbnail.hover();
+    const card = await thumbnail.evaluate(img => {
+      const style = getComputedStyle(img);
+      const heading = img.closest("article").querySelector("h2");
+      return { fit: style.objectFit, transform: style.transform,
+        headingVisible: heading.scrollWidth <= heading.clientWidth,
+        overflow: document.documentElement.scrollWidth > innerWidth };
+    });
+    assert.equal(card.fit, "contain", "News card must show all banner lettering, not crop to fill");
+    assert.equal(card.transform, "none", "Hover must not zoom and crop the banner");
+    assert.equal(card.headingVisible, true, "The article title must wrap inside the card");
+    assert.equal(card.overflow, false);
+    console.log(`PASS ${viewport.width}px: listing card preserves the whole banner and wraps its title.`);
     await page.close();
   }
 } finally {

@@ -31,11 +31,11 @@ function NewsCard({ post }) {
     <article className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col hover:shadow-md transition-shadow">
       <Link href={`/news/${post.slug}`} className="block">
         {cover ? (
-          <div className="aspect-[16/9] overflow-hidden bg-gray-100">
+          <div className="aspect-[16/9] overflow-hidden bg-white">
             <img
               src={cover}
               alt={post.title}
-              className="w-full h-full object-cover hover:scale-[1.02] transition-transform duration-300"
+              className="w-full h-full object-contain"
               loading="lazy"
             />
           </div>
